@@ -44,7 +44,7 @@ async function busyCustomer(page: Page) {
   expect(chat.ok()).toBe(true)
 }
 
-async function openProfile(page: Page) {
+async function openProfile(page: Page, { loaded = true } = {}) {
   const sheet = page.getByRole('dialog')
   // The button shows before the app has hydrated; retry the click until the sheet opens.
   await expect(async () => {
@@ -53,8 +53,13 @@ async function openProfile(page: Page) {
       timeout: 1500,
     })
   }).toPass()
+  // The sheet also opens while the account is still loading: wait until it knows who this is.
+  if (loaded) await expect(sheet.getByText('Signed in as Neighbour')).toBeVisible()
   return sheet
 }
+
+const followsOnPhone = (page: Page) =>
+  page.evaluate(() => localStorage.getItem('chalkboard.customer.follows'))
 
 for (const size of SIZES) {
   const phone = size.width < 600
@@ -154,31 +159,74 @@ for (const size of SIZES) {
           : route.fallback(),
       )
       await page.goto('/explore/saved')
-      // Device-kept follows, seeded once (no init script, so the reload cannot re-seed them):
-      // they must be gone even though the sign-out fails.
+      const sheet = await openProfile(page)
+      // Device-kept follows, seeded once and only after the account has loaded (loading moves
+      // them into the account; no init script, so the reload cannot re-seed them): they must be
+      // gone even though the sign-out fails.
       await page.evaluate(() =>
         localStorage.setItem('chalkboard.customer.follows', JSON.stringify(['x'])),
       )
-      const sheet = await openProfile(page)
       await sheet.getByRole('button', { name: 'Delete my data' }).click()
+      const confirm = sheet.getByRole('group', { name: 'Delete my data' })
+      await expect(confirm).toContainText('then signs you out')
       const erased = page.waitForResponse(
         (r) => r.url().endsWith('/api/v1/customer/data') && r.request().method() === 'DELETE',
       )
-      await sheet.getByRole('button', { name: 'Delete', exact: true }).click()
+      // Still there right before Delete, so the empty list below proves the erase cleared it.
+      expect(JSON.parse((await followsOnPhone(page)) ?? '[]')).toEqual(['x'])
+      await confirm.getByRole('button', { name: 'Delete', exact: true }).click()
       expect(((await (await erased).json()) as { status: string }).status).toBe('erased')
       // A clear notice on Ask, not a silent stay on the sheet. By text: in local mode the session
       // cookie outlives the failed sign-out, and the first-run dialog it opens is modal.
       await expect(page.getByText('but sign-out didn’t finish')).toBeVisible()
       await expect(page).toHaveURL(/\/explore\/$/)
       // The phone's follows are gone (the reloaded app may write back an empty list).
-      await expect
-        .poll(async () =>
-          JSON.parse(
-            (await page.evaluate(() => localStorage.getItem('chalkboard.customer.follows'))) ??
-              '[]',
-          ),
-        )
-        .toEqual([])
+      await expect.poll(async () => JSON.parse((await followsOnPhone(page)) ?? '[]')).toEqual([])
+    })
+
+    test(`OB-96 Delete waits while the account is loading, then erases the account · ${size.width}`, async ({
+      page,
+    }) => {
+      await prepare(page, 'light')
+      await busyCustomer(page)
+      // Hold the app's /me: until it answers, a signed-in customer looks like no one.
+      let answer!: () => void
+      const held = new Promise<void>((resolve) => (answer = resolve))
+      await page.route('**/api/v1/customer/me', async (route) => {
+        await held
+        await route.fallback()
+      })
+      const deletes: string[] = []
+      page.on('request', (r) => {
+        if (r.url().endsWith('/api/v1/customer/data') && r.method() === 'DELETE')
+          deletes.push(r.url())
+      })
+      await page.goto('/explore/saved')
+      const sheet = await openProfile(page, { loaded: false })
+      const waiting = sheet.getByRole('button', { name: 'Loading your account…' })
+      await expect(waiting).toBeDisabled()
+      await expect(sheet.getByRole('button', { name: 'Delete my data' })).toHaveCount(0)
+      // A disabled button takes no click: no confirm, no device-only erase, no "Deleted".
+      await waiting.click({ force: true })
+      await expect(sheet.getByRole('group', { name: 'Delete my data' })).toHaveCount(0)
+      await expect(sheet.getByRole('button', { name: 'Delete', exact: true })).toHaveCount(0)
+      await expect(sheet.getByText('Deleted.')).toHaveCount(0)
+      expect(deletes).toEqual([])
+
+      answer()
+      await expect(sheet.getByText('Signed in as Neighbour')).toBeVisible()
+      await sheet.getByRole('button', { name: 'Delete my data' }).click()
+      const confirm = sheet.getByRole('group', { name: 'Delete my data' })
+      await expect(confirm).toContainText('then signs you out')
+      const erased = page.waitForResponse(
+        (r) => r.url().endsWith('/api/v1/customer/data') && r.request().method() === 'DELETE',
+      )
+      await confirm.getByRole('button', { name: 'Delete', exact: true }).click()
+      expect(((await (await erased).json()) as { status: string }).status).toBe('erased')
+      await expect(
+        page.getByRole('status').filter({ hasText: 'Your data is deleted.' }),
+      ).toBeVisible()
+      await expect(page.getByText('Deleted. Your stamps')).toHaveCount(0)
     })
 
     for (const appearance of ['light', 'dark'] as const) {

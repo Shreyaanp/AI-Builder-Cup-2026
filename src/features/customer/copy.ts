@@ -154,6 +154,7 @@ export const deleteDataStrings = {
   deleteDataDo: 'Delete',
   deleteDataDone: 'Deleted. Your stamps and followed shops are gone from this phone.',
   deleteDataFailed: 'Couldn’t delete everything yet. Please try again.',
+  deleteDataLoading: 'Loading your account…',
 }
 /** One locale's customer copy: the delete-my-data strings may still be missing. */
 export type LocaleAccountStrings = AccountStrings &

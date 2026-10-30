@@ -126,6 +126,9 @@ export function ProfileSheet({ open, onClose }: { open: boolean; onClose: () => 
   const [confirming, setConfirming] = useState(false)
   const profile = account.profile
   const identified = account.status === 'signed-in' || account.status === 'guest'
+  // Until the account is known, Delete could wrongly take the device-only branch for someone
+  // who is signed in: it waits (OB-96 review).
+  const loading = account.status === 'loading'
   const chips = preferenceChips(profile, t, locale)
   async function remove(key: PreferenceKey, label: string) {
     if (!profile) return
@@ -169,7 +172,7 @@ export function ProfileSheet({ open, onClose }: { open: boolean; onClose: () => 
    * phone, the stamps and follows it kept.
    */
   async function deleteMine() {
-    if (clearing) return
+    if (clearing || loading) return
     setClearing(true)
     setNotice(null)
     try {
@@ -337,22 +340,28 @@ export function ProfileSheet({ open, onClose }: { open: boolean; onClose: () => 
           )}
           <Button
             onClick={() => setConfirming(true)}
-            disabled={clearing || confirming}
-            startIcon={<Trash2 size={20} />}
+            disabled={clearing || confirming || loading}
+            startIcon={
+              loading ? <CircularProgress size={20} color="inherit" /> : <Trash2 size={20} />
+            }
             sx={settingsRowSx}
           >
-            {t.deleteData}
+            {loading ? t.deleteDataLoading : t.deleteData}
           </Button>
           {confirming && (
             <Alert severity="warning" role="group" aria-label={t.deleteData}>
               <Typography variant="bodyMedium">
-                {identified ? t.deleteDataBody : t.deleteDataDeviceBody}
+                {loading
+                  ? t.deleteDataLoading
+                  : identified
+                    ? t.deleteDataBody
+                    : t.deleteDataDeviceBody}
               </Typography>
               <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
                 <Button
                   variant="contained"
                   color="error"
-                  disabled={clearing}
+                  disabled={clearing || loading}
                   onClick={() => void deleteMine()}
                 >
                   {t.deleteDataDo}
