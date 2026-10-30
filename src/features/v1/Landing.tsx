@@ -51,7 +51,10 @@ export function Landing({ onPreview }: { onPreview: () => void }) {
           }}
         >
           <Stack spacing={3} sx={{ minWidth: 0, overflowWrap: 'anywhere' }}>
-            <Typography variant="bodyLarge" sx={{ color: roles.primary, fontWeight: 500 }}>
+            <Typography
+              variant="bodyLarge"
+              sx={{ color: roles.primary, fontWeight: 500, textWrap: 'balance' }}
+            >
               {t.landingEyebrow}
             </Typography>
             <Typography
@@ -127,6 +130,9 @@ export function Landing({ onPreview }: { onPreview: () => void }) {
   )
 }
 
+/** One type role for every sign-in button, in both the local and the production branch. */
+const actionSx = { '&.MuiButton-sizeLarge': { typography: 'bodyLarge', fontWeight: 500 } } as const
+
 function SignInActions({
   onPreview,
   compact = false,
@@ -143,12 +149,7 @@ function SignInActions({
       {identity.mode === 'local' ? (
         <>
           {/* The closing CTA uses its own label so each action has a unique accessible name. */}
-          <Button
-            variant="contained"
-            size="large"
-            sx={{ '&.MuiButton-sizeLarge': { typography: 'bodyLarge', fontWeight: 500 } }}
-            onClick={onPreview}
-          >
+          <Button variant="contained" size="large" sx={actionSx} onClick={onPreview}>
             {compact ? t.getStarted : t.continuePreview}
           </Button>
           {!compact && (
@@ -158,16 +159,21 @@ function SignInActions({
           )}
         </>
       ) : identity.status === 'error' ? (
-        <Button variant="contained" size="large" onClick={() => location.reload()}>
+        <Button variant="contained" size="large" sx={actionSx} onClick={() => location.reload()}>
           {t.retry}
         </Button>
       ) : (
         <>
-          <Button variant="contained" size="large" onClick={() => void identity.signIn()}>
+          <Button
+            variant="contained"
+            size="large"
+            sx={actionSx}
+            onClick={() => void identity.signIn()}
+          >
             {compact ? t.getStarted : t.signIn}
           </Button>
           {/* No account needed: the public demo shop is the way in for anyone just looking. */}
-          <Button variant="outlined" size="large" href="/demo">
+          <Button variant="outlined" size="large" sx={actionSx} href="/demo">
             {demo.tryDemo}
           </Button>
         </>

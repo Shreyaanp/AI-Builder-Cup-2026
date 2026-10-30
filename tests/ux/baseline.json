@@ -1,4 +1,36 @@
 {
+  "business-sign-in-firebase|1280x800|dark": {
+    "spacingOff": 0,
+    "fonts": 4
+  },
+  "business-sign-in-firebase|1280x800|light": {
+    "spacingOff": 0,
+    "fonts": 4
+  },
+  "business-sign-in-firebase|360x800|dark": {
+    "spacingOff": 0,
+    "fonts": 3
+  },
+  "business-sign-in-firebase|360x800|light": {
+    "spacingOff": 0,
+    "fonts": 3
+  },
+  "business-sign-in-firebase|390x844|dark": {
+    "spacingOff": 0,
+    "fonts": 3
+  },
+  "business-sign-in-firebase|390x844|light": {
+    "spacingOff": 0,
+    "fonts": 3
+  },
+  "business-sign-in-firebase|412x915|dark": {
+    "spacingOff": 0,
+    "fonts": 3
+  },
+  "business-sign-in-firebase|412x915|light": {
+    "spacingOff": 0,
+    "fonts": 3
+  },
   "business-sign-in|1280x800|dark": {
     "spacingOff": 0,
     "fonts": 4
