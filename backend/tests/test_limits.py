@@ -3,6 +3,7 @@ from collections.abc import Iterator
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
 from types import SimpleNamespace
+from typing import Literal
 from unittest.mock import Mock, patch
 from uuid import uuid4
 
@@ -232,39 +233,66 @@ async def test_ob91_store_outage_never_blocks_cheap_owner_actions(action: str) -
 
 
 # OB-91: what a limiter-store outage does to each key. "capped" = per-instance counter with the
-# same limits (paid AI, voice, Maps: never unmetered); "closed" = 429 (anonymous / public);
-# "open" = owner-only cheap action, never locks an owner out over a Firestore blip.
-PAID_KEYS = {
-    "coach", "voice", "voice:resume", "tts", "photo", "import", "recap", "playbook",
-    "playbook:regenerate", "reverse", "forecast", "proposal", "icon",
+# same limits (paid AI, voice, Maps: never unmetered); "closed" = 429 (anonymous / public /
+# customer keys); "open" = signed-in cheap action, never locks a user out over a Firestore blip.
+# Every key in LIMITS needs an entry here: a new key without a mode fails the test below.
+OUTAGE_MODE: dict[str, Literal["capped", "open", "closed"]] = {
+    **dict.fromkeys(
+        (
+            "coach", "voice", "voice:resume", "tts", "photo", "import", "recap", "playbook",
+            "playbook:regenerate", "reverse", "forecast", "proposal", "icon",
+        ),
+        "capped",
+    ),
+    **dict.fromkeys(
+        (
+            "owner:read", "owner:write", "rescue:write", "playbook:edit", "gallery",
+            "thread:owner", "customer:erase", "me", "consent",
+        ),
+        "open",
+    ),
+    **dict.fromkeys(
+        (
+            "discover", "discover:photo", "discover:place", "discover:ask", "discover:suggest",
+            "discover:similar", "demo:world", "recs:event", "stock:ip", "stock:shop",
+            "stock:read", "rescue:public", "rescue:hold", "ask:ip", "ask:shop", "inquire:ip",
+            "thread:token", "thread:customer", "thread:guest", "thread:translate", "tips",
+            "passport", "helpful", "today", "bootstrap",
+        ),
+        "closed",
+    ),
 }  # fmt: skip
-OPEN_KEYS = {
-    "owner:read", "owner:write", "rescue:write", "playbook:edit", "gallery",
-    "thread:owner", "customer:erase",
-}  # fmt: skip
 
 
-def outage_mode(action: str, anonymous: bool) -> str:
-    if anonymous:
-        return "closed"
-    return "capped" if action in PAID_OWNER_ACTIONS else "open"
+def test_ob91_every_limit_key_has_an_explicit_outage_mode() -> None:
+    assert set(LIMITS) - set(OUTAGE_MODE) == set(), "LIMITS key without an outage mode"
+    assert set(OUTAGE_MODE) - set(LIMITS) == set(), "outage mode for a key not in LIMITS"
 
 
-def test_ob91_per_key_outage_mode_table() -> None:
-    assert PAID_KEYS == PAID_OWNER_ACTIONS
-    assert {outage_mode(a, False) for a in PAID_KEYS} == {"capped"}
-    assert {outage_mode(a, False) for a in OPEN_KEYS} == {"open"}
-    assert OPEN_KEYS <= LIMITS.keys() and not OPEN_KEYS & PAID_OWNER_ACTIONS
-    # Customer / public keys are never listed as paid-owner or open: they are always anonymous.
-    for action in (
-        "discover",
-        "discover:ask",
-        "discover:photo",
-        "demo:world",
-        "ask:ip",
-        "bootstrap",
-    ):
-        assert action not in PAID_OWNER_ACTIONS | OPEN_KEYS
+def test_ob91_paid_owner_actions_match_capped_modes() -> None:
+    capped = {key for key, mode in OUTAGE_MODE.items() if mode == "capped"}
+    assert capped == PAID_OWNER_ACTIONS
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("action", sorted(OUTAGE_MODE))
+async def test_ob91_outage_behaviour_matches_mode(action: str) -> None:
+    mode = OUTAGE_MODE[action]
+    first_window = LIMITS[action][0][0]
+    request = failing_store()
+    if mode == "closed":
+        with pytest.raises(HTTPException) as rejected:
+            await enforce_limits(request, [(action, "x")], anonymous=True, clock=lambda: 0)
+        assert rejected.value.status_code == 429
+        return
+    for _ in range(first_window):
+        await enforce_limits(request, [(action, "x")], clock=lambda: 0)
+    if mode == "capped":
+        with pytest.raises(HTTPException) as rejected:
+            await enforce_limits(request, [(action, "x")], clock=lambda: 0)
+        assert rejected.value.status_code == 429
+    else:
+        await enforce_limits(request, [(action, "x")], clock=lambda: 0)
 
 
 @pytest.mark.asyncio
