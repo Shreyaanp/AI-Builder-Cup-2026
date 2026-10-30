@@ -8,6 +8,7 @@ the tool returns `ask_owner` and the model must ask instead of guessing again.
 """
 
 import re
+import time
 from contextvars import ContextVar
 from dataclasses import dataclass, field
 from datetime import date
@@ -30,9 +31,11 @@ from .merchant import (
     ProposalRequest,
 )
 from .money import to_major, to_minor
+from .passport import local_now
 from .product_categories import suggest_category
 from .product_units import UNITS, normalize_unit
 from .recap import recap_facts
+from .region import shop_zone
 from .search_engine import SearchEngine
 from .sourcing import OrderItem, SupplierGenerator
 from .vendor_profile import (
@@ -471,7 +474,8 @@ def get_insights() -> dict[str, Any]:
         return {"status": "needs_business"}
     signals = ctx.store.recap_signals(ctx.uid, ctx.business_id)
     sales = ctx.store.sales_history(ctx.uid, ctx.business_id)
-    year, week, _ = date.today().isocalendar()
+    shop = (ctx.store.context(ctx.uid, ctx.business_id) or {}).get("business") or {}
+    year, week, _ = local_now(shop_zone(shop.get("fields")), time.time()).date().isocalendar()
     facts = recap_facts(f"{year}-W{week:02d}", sales, signals)
     currency = facts["currency"]
     for key in ("revenue", "previous_revenue", "revenue_change"):

@@ -35,6 +35,7 @@ from .discover import (
     open_now,
 )
 from .gemini_schema import gemini_schema, parse_reply
+from .latin_names import names_any, spelled_any
 from .limits import client_ip, enforce_limits
 from .maps_grounding import AreaAnswer, AreaGrounding, is_area_question
 from .merchant import MerchantRepository
@@ -487,6 +488,8 @@ def literal_anchor(shops: list[dict[str, Any]], words: list[str]) -> bool:
         shop_text = f"{shop['name']} {shop['category']}".casefold()
         if any(word.casefold() in shop_text for word in words if word):
             return True
+        if names_any(words, shop["name"]):
+            return True
         if any(p["available"] and item_matches(p, words) for p in shop["products"]):
             return True
     return False
@@ -581,9 +584,16 @@ async def ai_intent(request: Request, body: AskRequest) -> Intent | None:
     return parsed if isinstance(parsed, Intent) else None
 
 
-def item_matches(item: dict[str, Any], words: list[str]) -> bool:
+def item_matches(item: dict[str, Any], words: list[str], by_sound: bool = True) -> bool:
+    """Whether the item is named by these words: in its own letters, spelled in Latin letters
+    ('dosa' for 'डोसा'), or (by_sound) as it sounds ('samosa' for 'समोसा', OB-170)."""
     text = f"{item.get('name', '')} {item.get('category', '')}".casefold()
-    return any(word.casefold() in text or text in word.casefold() for word in words if word)
+    name = str(item.get("name") or "")
+    return (
+        any(word.casefold() in text or text in word.casefold() for word in words if word)
+        or spelled_any(words, name)
+        or (by_sound and names_any(words, name))
+    )
 
 
 def search_engine(request: Request) -> SearchEngine:
@@ -629,7 +639,10 @@ def shop_pick(
     meaning = meaning or Relevance()
     products = [p for p in shop["products"] if p["available"]]
     matched = [p for p in products if item_matches(p, words)] if words else []
-    by_words = bool(matched)
+    # A name matched only by its sound ranks with a shop-name hit, below a real spelling: 'bread'
+    # puts the bread shop first, never a 'ब्रेड' that merely sounds like it (OB-170).
+    by_words = any(item_matches(p, words, by_sound=False) for p in matched)
+    by_sound = bool(matched) and not by_words
     if words:
         # Include synonyms even alongside literal matches (bread: loaf AND croissant).
         matched.extend(
@@ -652,7 +665,8 @@ def shop_pick(
     category_hit = bool(intent.category) and any(
         term in shop_text for term in CATEGORIES.get(intent.category, ((), ()))[1]
     )
-    name_hit = any(word.casefold() in shop_text for word in words)
+    # 'chinku jiya' names 'चिंकू जिया': a name in any script is also found by its sound (OB-170).
+    name_hit = any(word.casefold() in shop_text for word in words) or names_any(words, shop["name"])
     # A shop close in meaning counts only without a budget (a budget needs a priced item).
     meaning_hit = limit is None and meaning.shop >= shop_recall
     if words and not (matched or name_hit or category_hit or meaning_hit):
@@ -662,7 +676,11 @@ def shop_pick(
     d = distance(lat, lng, shop["lat"], shop["lng"])
     components = Components(
         semantic=meaning.best,
-        keyword=(1.0 if by_words else 0.6 if name_hit or category_hit else 0.0) if words else 0.5,
+        keyword=(
+            (1.0 if by_words else 0.6 if by_sound or name_hit or category_hit else 0.0)
+            if words
+            else 0.5
+        ),
         distance_m=d,
         open_now=is_open,
         price_fit=1.0 if limit is not None and matched else None,

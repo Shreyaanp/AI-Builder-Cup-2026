@@ -73,6 +73,7 @@ export const bn: Copy = {
   connectionOffline: 'অফলাইন',
   connectionReconnecting: 'আবার সংযোগ হচ্ছে…',
   voiceFailed: 'কথার সংযোগ বন্ধ হয়েছে। আবার চেষ্টা করুন বা লিখুন।',
+  voiceOffline: 'কথা বলতে ইন্টারনেট লাগে। তার বদলে লিখুন।',
   voiceRestarted: 'কথার সংযোগ ফিরেছে। আবার বলুন।',
   voiceMicDenied:
     'মাইক্রোফোনের অনুমতি বন্ধ। ব্রাউজারের সেটিংসে অনুমতি দিয়ে আবার চেষ্টা করুন, বা লিখুন।',

@@ -1,6 +1,11 @@
 import type { AppSide } from './appSide'
 
-export type FarewellReason = 'signed-out' | 'deleted'
+/**
+ * `deleted`: the owner's account. `data-deleted`: the customer's "Delete my data" (their Google
+ * sign-in itself stays); `data-deleted-signed-in`: the same, but the sign-out did not finish.
+ */
+const reasons = ['signed-out', 'deleted', 'data-deleted', 'data-deleted-signed-in'] as const
+export type FarewellReason = (typeof reasons)[number]
 
 const key = (side: AppSide) => `chalkboard.${side}.farewell`
 
@@ -16,7 +21,9 @@ export function leaveFarewell(side: AppSide, reason: FarewellReason) {
 export function readFarewell(side: AppSide): FarewellReason | null {
   try {
     const value = sessionStorage.getItem(key(side))
-    return value === 'signed-out' || value === 'deleted' ? value : null
+    return (reasons as readonly (string | null)[]).includes(value)
+      ? (value as FarewellReason)
+      : null
   } catch {
     return null
   }

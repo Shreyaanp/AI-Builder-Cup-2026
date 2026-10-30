@@ -75,6 +75,7 @@ export const hi: Copy = {
   connectionOffline: 'ऑफ़लाइन',
   connectionReconnecting: 'फिर जुड़ रहा है…',
   voiceFailed: 'आवाज़ का कनेक्शन बंद हो गया। फिर कोशिश करें या लिखें।',
+  voiceOffline: 'आवाज़ के लिए इंटरनेट चाहिए। इसके बजाय लिखें।',
   voiceRestarted: 'आवाज़ फिर जुड़ गई। दोबारा बोलें।',
   voiceMicDenied:
     'माइक्रोफ़ोन की अनुमति बंद है। ब्राउज़र सेटिंग में अनुमति देकर फिर कोशिश करें, या लिखें।',

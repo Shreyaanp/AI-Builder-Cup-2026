@@ -65,7 +65,7 @@ for (const size of PHONES) {
         sheet.getByRole('button', { name: /^Language:/ }),
         sheet.getByRole('button', { name: 'Switch to dark mode' }),
         sheet.getByRole('button', { name: 'Clear preferences and searches' }),
-        sheet.getByRole('button', { name: 'Clear my stamps and follows' }),
+        sheet.getByRole('button', { name: 'Delete my data' }),
         sheet
           .getByRole('region', { name: 'Help' })
           .getByRole('button', { name: 'Replay the intro' }),
@@ -87,7 +87,7 @@ for (const size of PHONES) {
       )
     })
 
-    test(`A-21 clear my stamps and follows empties this phone · ${size.width}`, async ({
+    test(`A-21 signed out, Delete my data (OB-96) empties this phone · ${size.width}`, async ({
       page,
     }) => {
       await prepare(page)
@@ -108,18 +108,22 @@ for (const size of PHONES) {
       await expect(page.getByRole('region', { name: 'Following' })).toBeVisible()
       await page.getByRole('button', { name: 'Profile and preferences' }).first().click()
       const sheet = page.getByRole('dialog')
-      await sheet.getByRole('button', { name: 'Clear my stamps and follows' }).click()
+      await sheet.getByRole('button', { name: 'Delete my data' }).click()
       // Nothing is removed before it is confirmed.
-      await expect(sheet.getByText('This removes your stamps and followed shops.')).toBeVisible()
+      await expect(
+        sheet.getByText('This deletes the stamps and followed shops kept on this phone.'),
+      ).toBeVisible()
       expect(
         await page.evaluate(() => localStorage.getItem('chalkboard.customer.follows')),
       ).toContain('demo-story')
       await sheet.getByRole('button', { name: 'Not now' }).click()
-      await expect(sheet.getByText('This removes your stamps and followed shops.')).toHaveCount(0)
-      await sheet.getByRole('button', { name: 'Clear my stamps and follows' }).click()
-      await sheet.getByRole('button', { name: 'Clear', exact: true }).click()
       await expect(
-        sheet.getByText('Cleared. Your stamps and followed shops are gone.'),
+        sheet.getByText('This deletes the stamps and followed shops kept on this phone.'),
+      ).toHaveCount(0)
+      await sheet.getByRole('button', { name: 'Delete my data' }).click()
+      await sheet.getByRole('button', { name: 'Delete', exact: true }).click()
+      await expect(
+        sheet.getByText('Deleted. Your stamps and followed shops are gone from this phone.'),
       ).toBeVisible()
       expect(await page.evaluate(() => localStorage.getItem('chalkboard.customer.follows'))).toBe(
         '[]',

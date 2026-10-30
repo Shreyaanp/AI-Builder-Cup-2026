@@ -649,6 +649,11 @@ class FirestoreMerchantStore:
         snapshot = ref.get()
         return list((snapshot.to_dict() or {}).get("owners") or []) if snapshot.exists else []
 
+    def sealed_shops(self) -> list[str]:
+        # An erasure that stopped half way, or a shop hidden by hand (OB-136).
+        query = self.businesses.where(filter=FieldFilter("deleting", "==", True))
+        return [snapshot.id for snapshot in query.select(["owners"]).stream()]
+
     def public_shop(self, bid: str) -> dict[str, Any] | None:
         try:
             ref = self.businesses.document(document_id(bid, "Not found."))
@@ -1005,6 +1010,14 @@ class FirestoreMerchantStore:
     def complete_inquiry(self, uid: str, bid: str, iid: str) -> Inquiry:
         return self.thread_action(uid, bid, iid, "", "close")
 
+    def thread_exists(self, bid: str, iid: str) -> bool:
+        try:
+            business = self.businesses.document(document_id(bid, "Business not found."))
+            iid = document_id(iid, "Conversation not found.")
+        except HTTPException:
+            return False  # Not a name any stored chat can have.
+        return bool(business.collection("inquiries").document(iid).get().exists)
+
     def thread_action(
         self, uid: str | None, bid: str, iid: str, token: str, action: str, text: str = ""
     ) -> Inquiry:
@@ -1016,7 +1029,9 @@ class FirestoreMerchantStore:
             shop = business.get(transaction=transaction)
             if uid is not None:
                 self.owned(shop, uid)
-            elif not shop.exists or (shop.to_dict() or {}).get("deleting"):
+            elif action != "delete" and (not shop.exists or (shop.to_dict() or {}).get("deleting")):
+                # A sealed shop takes no new writes; the customer's own delete is the erasure
+                # itself (OB-96), so it still removes the chat if it is stored.
                 raise HTTPException(404, "Conversation not found.")
             data = ref.get(transaction=transaction).to_dict()
             if data is None:

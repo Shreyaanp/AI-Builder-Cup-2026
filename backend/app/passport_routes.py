@@ -477,6 +477,19 @@ async def nearby_shops(request: Request, lat: float | None, lng: float | None) -
     return [s for d, s in sorted(near, key=lambda pair: pair[0]) if d <= NEARBY_M]
 
 
+async def home_today(
+    request: Request,
+    state: PassportState,
+    timezone: str,
+    known_shops: list[dict[str, Any]] | None = None,
+) -> date:
+    """The customer's streak and quest day: their home area's shop-local day, else the phone's."""
+    latest = next((s for s in state.stamps if s.area), None)
+    if latest:
+        return await area_today(request, state, latest.area, known_shops)
+    return local_now(timezone, time.time()).date()
+
+
 async def area_today(
     request: Request,
     state: PassportState,
@@ -750,12 +763,12 @@ async def build_view(
     uid: str | None = None,
 ) -> PassportView:
     now = time.time()
-    today = local_now(timezone, now).date()
     level = state.level
     upcoming = next_level(level)
     reqs = requirements(state, upcoming) if upcoming else []
     nearby = await nearby_shops(request, lat, lng)
     data = await recent_shops(request, state)
+    today = await home_today(request, state, timezone, nearby + list(data.values()))
     shops = [
         shop_stamp(bid, p, data.get(bid) or {})
         for bid, p in sorted(state.shops.items(), key=lambda kv: kv[1].days[-1:], reverse=True)
@@ -833,8 +846,10 @@ async def post_board(request: Request, principal: Principal, state: PassportStat
     if principal.guest or not state.leaderboard or flagged(state, time.time()):
         return
     service = passports(request)
+    # One cached read of the shared shops serves every area, not one uncached read per area.
+    shared = await anyio.to_thread.run_sync(store(request).shared_shops)
     for area, weeks in state.week_points.items():
-        week = week_of(await area_today(request, state, area))
+        week = week_of(await area_today(request, state, area, shared))
         points = weeks.get(week, 0)
         if not points:
             continue
@@ -1123,17 +1138,21 @@ async def passport(
 @router.delete("/customer/passport")
 async def erase_passport(request: Request) -> dict[str, bool]:
     principal = await customer(request)
-    state = await anyio.to_thread.run_sync(passports(request).get, principal.uid)
+    await forget_passport(request, principal.uid)
+    return {"deleted": True}
+
+
+async def forget_passport(request: Request, uid: str) -> list[str]:
+    """Erase the passport and this customer's share of the shared tallies; returns its shops."""
+    state = await anyio.to_thread.run_sync(passports(request).get, uid)
     # The shared tallies forget this customer too (co-op help, "neighbours tried this").
     helped: dict[str, list[str]] = {}
     for key in state.coop_helped:
         area, _, week = key.partition("|")
         helped.setdefault(area, []).append(week)
-    await anyio.to_thread.run_sync(
-        coops(request).erase_member, principal.uid, helped, list(state.shops)
-    )
-    await anyio.to_thread.run_sync(passports(request).erase, principal.uid)
-    return {"deleted": True}
+    await anyio.to_thread.run_sync(coops(request).erase_member, uid, helped, list(state.shops))
+    await anyio.to_thread.run_sync(passports(request).erase, uid)
+    return list(state.shops)
 
 
 @router.post("/customer/passport/shops/{business_id}/claim", response_model=PassportView)

@@ -28,11 +28,6 @@ export const accountStrings = {
   notNow: 'Not now',
   signedInAs: 'Signed in as {name}',
   signOut: 'Sign out',
-  clearDevice: 'Clear my stamps and follows',
-  clearDeviceBody: 'This removes your stamps and followed shops. It cannot be undone.',
-  clearDeviceDo: 'Clear',
-  clearDeviceDone: 'Cleared. Your stamps and followed shops are gone.',
-  clearDeviceFailed: 'Couldn’t clear everything. Please try again.',
   // Profile
   profile: 'Your profile',
   profileButton: 'Profile and preferences',
@@ -146,11 +141,31 @@ export const accountStrings = {
 
 export type AccountStrings = Record<keyof typeof accountStrings, string>
 
+/**
+ * OB-96 "Delete my data". English in every language until the release translations (owner,
+ * 29 Oct: translations after release); a locale that has them overrides these.
+ */
+export const deleteDataStrings = {
+  deleteData: 'Delete my data',
+  deleteDataBody:
+    'This deletes your chats with shops, stamps, followed shops, tips, preferences and searches, then signs you out. It cannot be undone.',
+  deleteDataDeviceBody:
+    'This deletes the stamps and followed shops kept on this phone. It cannot be undone.',
+  deleteDataDo: 'Delete',
+  deleteDataDone: 'Deleted. Your stamps and followed shops are gone from this phone.',
+  deleteDataFailed: 'Couldn’t delete everything yet. Please try again.',
+  deleteDataLoading: 'Loading your account…',
+}
+/** One locale's customer copy: the delete-my-data strings may still be missing. */
+export type LocaleAccountStrings = AccountStrings &
+  Partial<Record<keyof typeof deleteDataStrings, string>>
+
 const count = (many: string, one: string) => (n: number) =>
   n === 1 ? one : many.replace('{n}', String(n))
 
-function build(s: AccountStrings) {
+function build(s: LocaleAccountStrings) {
   return {
+    ...deleteDataStrings,
     ...s,
     unread: count(s.unread, s.unreadOne),
     followedCount: count(s.followedCount, s.followedCountOne),

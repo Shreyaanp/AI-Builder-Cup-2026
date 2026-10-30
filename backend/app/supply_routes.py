@@ -82,6 +82,7 @@ def forecaster(request: Request) -> ForecastService:
 @router.get("/businesses/{business_id}/supply")
 async def overview(business_id: str, request: Request) -> dict[str, Any]:
     uid = await owner(request)
+    await enforce_limits(request, [("supply:read", uid)])
     rows = await anyio.to_thread.run_sync(
         supply_chain.relationships, store(request), uid, business_id
     )

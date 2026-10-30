@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   Alert,
   Box,
@@ -7,6 +7,7 @@ import {
   IconButton,
   Menu,
   MenuItem,
+  Snackbar,
   Stack,
   Typography,
   useMediaQuery,
@@ -19,6 +20,8 @@ import { GALLERY_KINDS, galleryGroupCopy as groups, type GalleryKind } from './g
 import { GALLERY_LIMIT, type useGallery } from './useGallery'
 
 const PHOTO_TYPES = 'image/jpeg,image/png,image/webp'
+/** How long a removed photo can still be brought back; the file is deleted only after this. */
+const UNDO_MS = 5000
 const EASE = 'cubic-bezier(0.2, 0, 0, 1)' // M3 emphasized decelerate
 // A new photo pops in; the global reduced-motion rule makes this instant.
 const pop = {
@@ -38,6 +41,44 @@ export function GalleryEditor({ gallery }: { gallery: ReturnType<typeof useGalle
   const upload = useRef<HTMLInputElement>(null)
   const camera = useRef<HTMLInputElement>(null)
   const [kind, setKind] = useState<GalleryKind>('storefront')
+  // Removed photos leave the screen at once but are deleted for good only after UNDO_MS (OB-229).
+  const [removed, setRemoved] = useState<string[]>([])
+  const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>())
+  const latest = useRef(gallery)
+  useEffect(() => {
+    latest.current = gallery
+  })
+  const commit = (id: string) => {
+    clearTimeout(timers.current.get(id))
+    timers.current.delete(id)
+    void latest.current.remove(id).finally(() => setRemoved((now) => now.filter((x) => x !== id)))
+  }
+  const remove = (id: string) => {
+    setRemoved((now) => [...now, id])
+    timers.current.set(
+      id,
+      setTimeout(() => commit(id), UNDO_MS),
+    )
+  }
+  const undo = () => {
+    const id = removed[removed.length - 1]
+    if (!id) return
+    clearTimeout(timers.current.get(id))
+    timers.current.delete(id)
+    setRemoved((now) => now.filter((x) => x !== id))
+  }
+  // Closing the sheet inside the window still deletes what the owner removed.
+  useEffect(() => {
+    const pending = timers.current
+    return () => {
+      for (const [id, timer] of pending) {
+        clearTimeout(timer)
+        void latest.current.remove(id)
+      }
+      pending.clear()
+    }
+  }, [])
+  const ids = gallery.ids.filter((id) => !removed.includes(id))
   const [moving, setMoving] = useState<{ id: string; anchor: HTMLElement } | null>(null)
   const pick = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -50,7 +91,7 @@ export function GalleryEditor({ gallery }: { gallery: ReturnType<typeof useGalle
         {g.photosTip}
       </Typography>
       {GALLERY_KINDS.map((group) => {
-        const members = gallery.ids.filter((id) => gallery.kinds[id] === group)
+        const members = ids.filter((id) => gallery.kinds[id] === group)
         if (!members.length) return null
         return (
           <Stack key={group} component="section" spacing={1} aria-label={groups.kinds[group]}>
@@ -65,7 +106,7 @@ export function GalleryEditor({ gallery }: { gallery: ReturnType<typeof useGalle
               }}
             >
               {members.map((id) => {
-                const index = gallery.ids.indexOf(id)
+                const index = ids.indexOf(id)
                 return (
                   <Stack key={id} spacing={1}>
                     <Box
@@ -93,18 +134,23 @@ export function GalleryEditor({ gallery }: { gallery: ReturnType<typeof useGalle
                       )}
                       <IconButton
                         aria-label={fill(g.removePhoto, { n: index + 1 })}
-                        onClick={() => void gallery.remove(id)}
-                        size="small"
-                        sx={{
-                          position: 'absolute',
-                          top: 4,
-                          right: 4,
-                          bgcolor: 'rgba(0,0,0,0.55)',
-                          color: '#fff',
-                          '&:hover': { bgcolor: 'rgba(0,0,0,0.7)' },
-                        }}
+                        onClick={() => remove(id)}
+                        sx={{ position: 'absolute', top: 0, right: 0, width: 48, height: 48 }}
                       >
-                        <X size={16} />
+                        <Box
+                          component="span"
+                          sx={{
+                            display: 'grid',
+                            placeItems: 'center',
+                            width: 28,
+                            height: 28,
+                            borderRadius: '50%',
+                            bgcolor: 'rgba(0,0,0,0.55)',
+                            color: '#fff',
+                          }}
+                        >
+                          <X size={16} />
+                        </Box>
                       </IconButton>
                     </Box>
                     {index === 0 ? (
@@ -154,7 +200,7 @@ export function GalleryEditor({ gallery }: { gallery: ReturnType<typeof useGalle
           </MenuItem>
         ))}
       </Menu>
-      {gallery.ids.length > 0 && (
+      {ids.length > 0 && (
         <Typography variant="bodySmall" color="text.secondary">
           {groups.usedNote}
         </Typography>
@@ -224,9 +270,7 @@ export function GalleryEditor({ gallery }: { gallery: ReturnType<typeof useGalle
           </Button>
         )}
         <Typography variant="bodySmall" color="text.secondary" aria-live="polite">
-          {gallery.busy
-            ? g.adding
-            : fill(g.photosCount, { n: gallery.ids.length, max: GALLERY_LIMIT })}
+          {gallery.busy ? g.adding : fill(g.photosCount, { n: ids.length, max: GALLERY_LIMIT })}
         </Typography>
       </Stack>
       {gallery.failed && (
@@ -234,6 +278,15 @@ export function GalleryEditor({ gallery }: { gallery: ReturnType<typeof useGalle
           {g.photoFailed}
         </Alert>
       )}
+      <Snackbar
+        open={removed.length > 0}
+        message={groups.removed}
+        action={
+          <Button color="inherit" sx={{ minHeight: 48 }} onClick={undo}>
+            {groups.undo}
+          </Button>
+        }
+      />
       <input ref={upload} type="file" accept={PHOTO_TYPES} hidden onChange={pick} />
       <input
         ref={camera}

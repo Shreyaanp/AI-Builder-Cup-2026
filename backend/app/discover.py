@@ -12,6 +12,7 @@ import structlog
 from fastapi import APIRouter, HTTPException, Query, Request, Response
 from pydantic import BaseModel
 
+from .latin_names import names_any
 from .limits import client_ip, enforce_limits
 from .merchant import MerchantRepository, ProposalRequest
 from .place_photos import PlacesPhotos
@@ -740,7 +741,13 @@ def matches(place: DiscoveryPlace, q: str, category: str, only_open: bool) -> bo
     text = " ".join([place.name, place.category, *(item.name for item in place.items)]).casefold()
     query = re.sub(r"\b(near me|open now|nearby)\b", "", q, flags=re.I).strip()
     terms = [*words(query.casefold()), *re.findall(r"\d+", query)]
-    if query and not all(word in text for word in terms):
+    names = [place.name, *(item.name for item in place.items)]
+    # A name in any script is also found by its sound in English letters (OB-170), word by word
+    # or, for a name written without spaces ('khao man' in 'ร้านข้าวมันไก่'), as one stretch.
+    if query and not (
+        all(word in text or names_any([word], *names) for word in terms)
+        or (len(terms) > 1 and names_any([" ".join(terms)], *names))
+    ):
         return False
     if category and not any(term in place.category.casefold() for term in CATEGORIES[category][1]):
         return False

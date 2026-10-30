@@ -73,6 +73,7 @@ export const ms: Copy = {
   connectionOffline: 'Luar talian',
   connectionReconnecting: 'Menyambung semula…',
   voiceFailed: 'Sambungan suara tamat. Cuba lagi atau gunakan teks.',
+  voiceOffline: 'Suara perlukan sambungan. Taip mesej anda sebaliknya.',
   voiceRestarted: 'Suara disambung semula. Sila sebut sekali lagi.',
   voiceMicDenied:
     'Akses mikrofon disekat. Benarkan mikrofon dalam tetapan pelayar dan cuba lagi, atau gunakan teks.',

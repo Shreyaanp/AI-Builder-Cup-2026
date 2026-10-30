@@ -1218,6 +1218,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/customer/data": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Erase My Data
+         * @description OB-96 "Delete my data": chats (and the shops' copies), passport, tips, follows,
+         *     preferences, searches and the profile. Only this customer's; Try again repeats every step.
+         */
+        delete: operations["erase_my_data_api_v1_customer_data_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/customer/follows/{business_id}": {
         parameters: {
             query?: never;
@@ -9583,6 +9604,28 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Me"];
+                };
+            };
+        };
+    };
+    erase_my_data_api_v1_customer_data_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
