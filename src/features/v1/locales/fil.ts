@@ -79,6 +79,7 @@ export const fil: Copy = {
   connectionOffline: 'Offline',
   connectionReconnecting: 'Muling kumokonekta…',
   voiceFailed: 'Natapos ang koneksyon sa boses. Subukan muli o gumamit ng teksto.',
+  voiceOffline: 'Kailangan ng koneksyon ang boses. Mag-type na lang.',
   voiceRestarted: 'Nakakonekta muli ang boses. Pakisabi iyon muli.',
   voiceMicDenied:
     'Naka-block ang mikropono. Payagan ito sa mga setting ng browser at subukang muli, o mag-type.',

@@ -72,6 +72,7 @@ export const vi: Copy = {
   connectionOffline: 'Ngoại tuyến',
   connectionReconnecting: 'Đang kết nối lại…',
   voiceFailed: 'Kết nối giọng nói đã kết thúc. Hãy thử lại hoặc dùng văn bản.',
+  voiceOffline: 'Giọng nói cần có kết nối. Hãy nhập văn bản thay thế.',
   voiceRestarted: 'Đã kết nối lại giọng nói. Vui lòng nói lại.',
   voiceMicDenied:
     'Quyền truy cập micrô bị chặn. Hãy cho phép micrô trong cài đặt trình duyệt rồi thử lại, hoặc nhập văn bản.',

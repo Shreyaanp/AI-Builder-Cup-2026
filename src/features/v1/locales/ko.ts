@@ -73,6 +73,7 @@ export const ko: Copy = {
   connectionOffline: '오프라인',
   connectionReconnecting: '다시 연결 중…',
   voiceFailed: '음성 연결이 종료되었습니다. 다시 시도하거나 텍스트를 사용하세요.',
+  voiceOffline: '음성에는 연결이 필요해요. 대신 텍스트로 입력하세요.',
   voiceRestarted: '음성이 다시 연결되었습니다. 다시 말씀해 주세요.',
   voiceMicDenied:
     '마이크 접근이 차단되었습니다. 브라우저 설정에서 마이크를 허용하고 다시 시도하거나 텍스트를 입력하세요.',
