@@ -174,11 +174,13 @@ const compactTypeVars = Object.fromEntries(
     ['--type-hero-size', heroPhone.fontSize],
     ['--type-hero-line', heroPhone.lineHeight],
     ['--type-hero-tracking', heroPhone.letterSpacing],
-  ].concat((Object.keys(compactScale) as TypeRole[]).flatMap((key) => [
-    [`--type-${key}-size`, compactScale[key].fontSize],
-    [`--type-${key}-line`, compactScale[key].lineHeight],
-    [`--type-${key}-tracking`, compactScale[key].letterSpacing],
-  ])),
+  ].concat(
+    (Object.keys(compactScale) as TypeRole[]).flatMap((key) => [
+      [`--type-${key}-size`, compactScale[key].fontSize],
+      [`--type-${key}-line`, compactScale[key].lineHeight],
+      [`--type-${key}-tracking`, compactScale[key].letterSpacing],
+    ]),
+  ),
 )
 // Fields stay 16px on phones (OB-198): iOS zooms into smaller inputs, and the floating label (75%
 // of this) stays at 12px.
