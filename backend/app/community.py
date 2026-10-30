@@ -417,6 +417,14 @@ DEMO_TIPS = [
 ]
 
 
+DEMO_UPDATE_IDS = frozenset(f"demo-update-{n}" for n in range(4))
+
+
+def is_demo_update(doc: dict[str, Any]) -> bool:
+    """A current demo card; the older demo-<week>-N cards are ignored (OB-221)."""
+    return bool(doc.get("demo")) and doc.get("id") in DEMO_UPDATE_IDS
+
+
 def update_key(bid: str, update_id: str) -> str:
     # Per shop: fixed demo IDs repeat across shops.
     return f"{bid}\0{update_id}"
@@ -682,7 +690,9 @@ class Community:
         """Labelled demo updates from the demo shop's actual menu, refreshed weekly."""
         if not shop.get("demo"):
             return
-        recent = [u for u in self.docs.scoped("update", bid, 20) if u.get("demo")]
+        # Legacy demo-<week>-N cards still sit in stored data: they neither count as "recent"
+        # (that blocked the refresh) nor show in feeds (see updates()).
+        recent = [u for u in self.docs.scoped("update", bid, 20) if is_demo_update(u)]
         if recent and recent[0]["created"] > time.time() - 7 * DAY:
             return
         products = shop.get("products", [])
@@ -748,6 +758,7 @@ class Community:
         rows = [
             Update.model_validate(u) for bid in bids for u in self.docs.scoped("update", bid, 20)
         ]
+        rows = [r for r in rows if not r.demo or r.id in DEMO_UPDATE_IDS]
         rows.sort(key=lambda u: -u.created)
         active = []
         for row in rows:

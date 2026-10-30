@@ -36,6 +36,7 @@ from .passport_routes import (
     ScratchView,
     build_view,
     coops,
+    home_today,
     passports,
     scratch_view,
     shop_perks,
@@ -117,7 +118,11 @@ async def freeze(
 ) -> FreezeResult:
     principal = await customer(request)
     await enforce_limits(request, [("passport", principal.uid)], anonymous=True)
-    current = week_of(local_now(tz, time.time()).date())
+    current = week_of(
+        await home_today(
+            request, await anyio.to_thread.run_sync(passports(request).get, principal.uid), tz
+        )
+    )
     state, verdict = await anyio.to_thread.run_sync(
         passports(request).edit, principal.uid, lambda s: plan_freeze(s, current, body.week)
     )

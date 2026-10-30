@@ -3,7 +3,10 @@
 import { tracked, read } from './lib.mjs'
 
 export const id = 'import-type'
-const RE = /:\s*import\(\s*['"][^'"]+['"]\s*\)\.|<\s*import\(\s*['"][^'"]+['"]\s*\)\./
+// Any `import('x').Name` (annotation, `type A = ...`, union, generic) and `typeof import('x')`.
+// Promise methods on a real dynamic import (`import('x').then(...)`) are allowed.
+export const RE =
+  /\bimport\(\s*['"][^'"]+['"]\s*\)\s*\.\s*(?!then\b|catch\b|finally\b)[A-Za-z_$]|\btypeof\s+import\(/
 
 export function run() {
   const failures = []

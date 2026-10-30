@@ -3,13 +3,16 @@
 import json
 import socket
 from collections.abc import Iterator
-from datetime import date
+from datetime import date, datetime
+from types import SimpleNamespace
 from unittest.mock import AsyncMock
+from zoneinfo import ZoneInfo
 
 import pytest
 from fastapi.testclient import TestClient
 from starlette.websockets import WebSocketDisconnect
 
+from app import supply_io
 from tests.test_photos import app, jpeg  # noqa: F401
 from tests.test_public_demo import open_demo, owner, read
 
@@ -197,3 +200,106 @@ def test_ob155_demo_voice_cannot_open_an_owned_live_session(live_parent_demo):
         with client.websocket_connect(f"/api/v1/demo/sessions/{session}/api/voice"):
             pytest.fail("OB-155: the demo proxy accepted a voice WebSocket")
     parent_app.state.services.runtime.session.assert_not_called()
+
+
+def test_ob221_remaining_allowed_demo_routes_never_call_paid_ai(live_parent_demo, monkeypatch):
+    """Every other ALLOWED sandbox route (app/public_demo.py) runs offline beside live flags."""
+    client, parent_app, session, bid = live_parent_demo
+    base = f"businesses/{bid}"
+    # Rescue deals need a pickup time before closing: pin the clock to 10:00 in the shop.
+    morning = datetime.now(ZoneInfo("Asia/Kolkata")).replace(hour=10, minute=0, second=0)
+    monkeypatch.setattr("app.rescue.time", SimpleNamespace(time=lambda: morning.timestamp()))
+    for path in (
+        "reminders",
+        "trust",
+        "places/reverse?lat=12.96880&lng=77.63820",
+        "places/pin?q=Indiranagar",
+    ):
+        response = owner(client, session, path)
+        assert response.status_code == 200, (path, response.text)
+    assert owner(client, session, "reminders", "PUT", json={"enabled": True}).status_code == 200
+    menu = owner(client, session, f"{base}/inventory").json()
+    item, sold_out = menu[0], menu[-1]
+    for path, method, body in (
+        (f"{base}/inventory/{sold_out['id']}/availability", "POST", {"available": False}),
+        (f"{base}/freshness/confirm", "POST", None),
+        (f"{base}/supply/demo/next", "POST", None),
+        (
+            f"{base}/day/prepare",
+            "POST",
+            {
+                "date": date.today().isoformat(),
+                "sales": [{"item": "Masala chai", "quantity": 2, "amount": 40}],
+            },
+        ),
+        (f"{base}/playbook", "PATCH", {"summary": "Sample shop summary."}),
+    ):
+        response = owner(client, session, path, method, **({"json": body} if body else {}))
+        assert response.status_code == 200, (path, response.status_code, response.text)
+    rescue = owner(
+        client,
+        session,
+        f"{base}/rescue",
+        "POST",
+        json={
+            "items": [{"name": item["name"], "qty": 1}],
+            "discount_pct": 30,
+            "until": "11:00",
+        },
+    )
+    assert rescue.status_code == 200, rescue.text
+    approved = owner(
+        client,
+        session,
+        f"{base}/rescue/{rescue.json()['id']}/approve",
+        "POST",
+        json={"digest": rescue.json()["digest"]},
+    )
+    assert approved.status_code == 200, approved.text
+    assert (
+        owner(client, session, f"{base}/rescue/{rescue.json()['id']}", "DELETE").status_code == 200
+    )
+    assert owner(client, session, f"{base}/supply/reorder", "POST", json={}).status_code == 200
+    supply = owner(client, session, f"{base}/supply").json()
+    incoming = next(o for o in supply["orders"] if o["status"] in {"dispatched", "invoiced"})
+    received = owner(
+        client,
+        session,
+        f"{base}/supply/orders/{incoming['id']}/received",
+        "POST",
+        json={"version": incoming["version"]},
+    )
+    assert received.status_code == 200, received.text
+    entries = supply_io.inbox(parent_app.state.public_demos[session].store, bid)
+    assert entries, "the demo supply chain should hold inbound documents"
+    dismissed = owner(client, session, f"{base}/supply/inbox/{entries[0]['id']}/dismiss", "POST")
+    assert dismissed.status_code == 200, dismissed.text
+    imported = owner(
+        client,
+        session,
+        f"{base}/import",
+        "POST",
+        content=b"item,price\nTea,10\n",
+        headers={"Content-Type": "text/csv"},
+    )
+    assert imported.status_code == 200, imported.text
+    proposal = imported.json()["proposal"]
+    approve = owner(
+        client,
+        session,
+        f"proposals/{proposal['id']}/approve",
+        "POST",
+        json={"digest": proposal["digest"]},
+    )
+    assert approve.status_code == 200, approve.text
+
+
+def test_ob221_demo_world_is_not_reachable_from_the_sandbox(live_parent_demo, monkeypatch):
+    """/demo/world would use the real WorldGenerator (Gemini) if demo_world_enabled were on."""
+    client, parent_app, session, _ = live_parent_demo
+    parent_app.state.v1_settings.demo_world_enabled = True
+    generate = AsyncMock(side_effect=AssertionError("OB-221: real WorldGenerator called"))
+    monkeypatch.setattr(parent_app.state.world_generator, "generate", generate)
+    response = owner(client, session, "demo/world", "POST", json={"lat": 12.9, "lng": 77.6})
+    assert response.status_code == 403, response.text
+    generate.assert_not_called()

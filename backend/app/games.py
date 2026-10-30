@@ -16,7 +16,7 @@ import hashlib
 import secrets
 import time
 from collections.abc import Callable
-from datetime import UTC, date, datetime, timedelta
+from datetime import date, timedelta
 from typing import Any, Literal
 
 from pydantic import BaseModel
@@ -128,7 +128,9 @@ def reveal(state: PassportState, ticket_id: str, now: float) -> ScratchTicket | 
     else:
         state.points += points
     if ticket.prize == "freeze":
-        week = week_of(datetime.fromtimestamp(now, UTC).date())
+        # The ticket's day is the shop-local date of the visit, so Monday 00:00-08:00 in
+        # Singapore counts for the new week, not the UTC one.
+        week = week_of(date.fromisoformat(ticket.day))
         state.freeze_wins = [*state.freeze_wins, week][-20:]
     if ticket.prize == "perk" and ticket.perk_text:
         state.won_perks = [
