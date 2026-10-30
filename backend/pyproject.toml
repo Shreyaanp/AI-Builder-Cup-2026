@@ -27,6 +27,7 @@ dependencies = [
   "openpyxl==3.1.5",
   "google-cloud-texttospeech==2.38.0",
   "tzdata>=2026.5",
+  "anyascii>=0.3.2,<0.4",
 ]
 
 [project.optional-dependencies]

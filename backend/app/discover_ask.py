@@ -35,6 +35,7 @@ from .discover import (
     open_now,
 )
 from .gemini_schema import gemini_schema, parse_reply
+from .latin_names import names_any
 from .limits import client_ip, enforce_limits
 from .maps_grounding import AreaAnswer, AreaGrounding, is_area_question
 from .merchant import MerchantRepository
@@ -487,6 +488,8 @@ def literal_anchor(shops: list[dict[str, Any]], words: list[str]) -> bool:
         shop_text = f"{shop['name']} {shop['category']}".casefold()
         if any(word.casefold() in shop_text for word in words if word):
             return True
+        if names_any(words, shop["name"]):
+            return True
         if any(p["available"] and item_matches(p, words) for p in shop["products"]):
             return True
     return False
@@ -583,7 +586,9 @@ async def ai_intent(request: Request, body: AskRequest) -> Intent | None:
 
 def item_matches(item: dict[str, Any], words: list[str]) -> bool:
     text = f"{item.get('name', '')} {item.get('category', '')}".casefold()
-    return any(word.casefold() in text or text in word.casefold() for word in words if word)
+    return any(
+        word.casefold() in text or text in word.casefold() for word in words if word
+    ) or names_any(words, str(item.get("name") or ""))
 
 
 def search_engine(request: Request) -> SearchEngine:
@@ -652,7 +657,8 @@ def shop_pick(
     category_hit = bool(intent.category) and any(
         term in shop_text for term in CATEGORIES.get(intent.category, ((), ()))[1]
     )
-    name_hit = any(word.casefold() in shop_text for word in words)
+    # 'chinku jiya' names 'चिंकू जिया': a name in any script is also found by its sound (OB-170).
+    name_hit = any(word.casefold() in shop_text for word in words) or names_any(words, shop["name"])
     # A shop close in meaning counts only without a budget (a budget needs a priced item).
     meaning_hit = limit is None and meaning.shop >= shop_recall
     if words and not (matched or name_hit or category_hit or meaning_hit):
