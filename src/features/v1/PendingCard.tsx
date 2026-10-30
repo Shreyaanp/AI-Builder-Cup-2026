@@ -173,7 +173,7 @@ export function PendingCard({
         <Box aria-hidden="true" sx={{ display: 'flex', color: roles.primary, pt: 1 }}>
           {card.icon}
         </Box>
-        <Box sx={{ flex: 1, minWidth: 0, pt: 0.5 }}>
+        <Box sx={{ flex: 1, minWidth: 0, pt: 1 }}>
           <Typography id={titleId} component="h2" variant={compact ? 'bodyMedium' : 'titleMedium'}>
             {card.title}
           </Typography>

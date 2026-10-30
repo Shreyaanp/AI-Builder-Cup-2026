@@ -60,7 +60,7 @@ export function TodaySupply() {
         <Typography variant="titleSmall" component="h2">
           {s.title}
         </Typography>
-        <Typography variant="titleLarge" component="p" aria-live="polite">
+        <Typography variant="headlineSmall" component="p" aria-live="polite">
           {productName(item, locale)}{' '}
           {need ? `${s.runsOut} ${dayLabel(need.runs_out, locale)}` : s.restocked}
         </Typography>

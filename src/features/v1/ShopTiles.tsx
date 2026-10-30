@@ -258,7 +258,7 @@ function YourPage({ onSheet }: { onSheet: (kind: ShopSheetKind) => void }) {
         </Button>
       </Stack>
       {summary && (
-        <Typography variant="bodyMedium" sx={{ mt: 0.5, overflowWrap: 'anywhere' }}>
+        <Typography variant="bodyMedium" sx={{ mt: 1, overflowWrap: 'anywhere' }}>
           {summary}
         </Typography>
       )}

@@ -179,7 +179,7 @@ export function AppShell() {
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
-              gap: 1.5,
+              gap: 1,
               pt: 'calc(16px + env(safe-area-inset-top))',
               pl: 'env(safe-area-inset-left)',
             }}
@@ -239,6 +239,8 @@ export function AppShell() {
                   top: 80,
                   maxHeight: 'calc(100dvh - 96px)',
                   overflowY: 'auto',
+                  // Beside the coach the page keeps one top size (headlineSmall), not a fourth.
+                  '& .MuiTypography-titleLarge': { typography: 'headlineSmall' },
                 }}
               >
                 <Suspense fallback={null}>
@@ -261,7 +263,7 @@ export function AppShell() {
               display: 'grid',
               gridTemplateColumns: `repeat(${destinations.length}, 1fr)`,
               bgcolor: roles.surfaceContainer,
-              pt: 1.5,
+              pt: 1,
               pb: 'calc(16px + env(safe-area-inset-bottom))',
               px: 'env(safe-area-inset-left)',
             }}
@@ -352,7 +354,7 @@ function NavItem({
       onClick={() => onSelect(item.id)}
       sx={{
         flexDirection: 'column',
-        gap: 0.5,
+        gap: 0,
         minWidth: rail ? 80 : 64,
         minHeight: 56,
         borderRadius: `${shape.lg}px`,
@@ -379,7 +381,7 @@ function NavItem({
         sx={{
           fontWeight: selected ? 700 : 500,
           lineHeight: 1.8,
-          py: 0.5,
+          py: 1,
           'html[lang="ta"] &': { fontFamily: '"Noto Sans Tamil", sans-serif' },
         }}
       >
@@ -401,7 +403,7 @@ function TopBar() {
   // Settings live on the You tab now; the top bar keeps the shop switcher, new chat and "+".
   return (
     <AppHeader sx={{ gap: 1, justifyContent: 'flex-start' }}>
-      <BrandLogo wordmark="wide" href="/" />
+      <BrandLogo wordmark="wide" href="/" large={ws.destination === 'coach'} />
       <Button
         onClick={(event) => setShopMenu(event.currentTarget)}
         endIcon={<ChevronDown size={18} />}
@@ -417,7 +419,7 @@ function TopBar() {
       >
         {/* One line with an ellipsis: a long shop name must not grow the bar (OB-117). */}
         <Typography
-          variant="titleLarge"
+          variant={ws.destination === 'coach' ? 'headlineSmall' : 'titleLarge'}
           component="span"
           noWrap
           title={ws.active?.fields.name ?? t.appName}

@@ -433,10 +433,16 @@ export function nivaTheme(
       // Switches, checkboxes, radios and their labels are 48px targets (OB-115).
       MuiSwitch: {
         styleOverrides: {
+          // 48px target on the 4px grid: 24px thumb (12px ring) on a 44x16 track.
           root: {
+            width: 60,
             height: layout.target,
-            paddingBlock: 17,
-            '& .MuiSwitch-switchBase': { padding: 14 },
+            padding: '16px 8px',
+            '& .MuiSwitch-switchBase': {
+              padding: '12px 8px',
+              '&.Mui-checked': { transform: 'translateX(20px)' },
+            },
+            '& .MuiSwitch-thumb': { width: 24, height: 24 },
           },
         },
       },

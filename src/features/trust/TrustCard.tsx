@@ -88,7 +88,7 @@ export function TrustCard({ compact = false }: { compact?: boolean }) {
           transition: 'background-color 300ms linear',
         }}
       >
-        <Stack direction="row" spacing={2} sx={{ alignItems: 'center', mb: 1.5 }}>
+        <Stack direction="row" spacing={2} sx={{ alignItems: 'center', mb: 1 }}>
           <Box
             aria-hidden="true"
             sx={{ display: 'flex', color: verified ? 'inherit' : roles.primary }}

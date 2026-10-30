@@ -95,11 +95,7 @@ export function TodayView({
   return (
     <Stack spacing={{ xs: 4, sm: 5 }} sx={{ pt: { xs: 1, sm: 6 }, pb: 4 }} data-testid="today">
       <Box data-tour="today">
-        <Typography
-          component="h1"
-          variant="headlineSmall"
-          sx={{ overflowWrap: 'anywhere', fontSize: { xs: '1.375rem', sm: undefined } }}
-        >
+        <Typography component="h1" variant="headlineSmall" sx={{ overflowWrap: 'anywhere' }}>
           {tt.greet(plan.part, name ?? '')}
         </Typography>
         {plan.line && <LineText line={plan.line} />}
@@ -246,7 +242,13 @@ function DayOne({ step, food, actions }: { step: StepId; food: boolean; actions:
       <Typography
         id="today-day-one"
         component="h2"
-        sx={{ fontFamily: HAND_FONT, fontSize: '1.75rem', fontWeight: 700, lineHeight: 1.2 }}
+        variant="headlineLarge"
+        sx={(t) => ({
+          fontFamily: HAND_FONT,
+          fontWeight: 700,
+          lineHeight: 1.2,
+          [t.breakpoints.up('sm')]: { fontSize: t.typography.headlineMedium.fontSize },
+        })}
       >
         {tt.dayOne(ws.active?.fields.name ?? '')}
       </Typography>
@@ -361,9 +363,9 @@ export function NeedsCard({
         <Typography
           id="today-needs"
           component="h2"
+          variant="headlineSmall"
           sx={{
             fontFamily: HAND_FONT,
-            fontSize: '1.5rem',
             fontWeight: 700,
             lineHeight: 1.2,
             px: 1,
