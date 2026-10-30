@@ -1595,7 +1595,7 @@ function AssistantTurn({
           <Typography variant="labelLarge" color="text.secondary">
             {accountCopy.remembered.replace(
               '{items}',
-              preferenceChips(account.profile, accountCopy, locale)
+              preferenceChips(account.profile, accountCopy, locale, areaCurrency(turn.place))
                 .filter((chip) => answer.personal!.saved.includes(chip.key))
                 .map((chip) => chip.label)
                 .join(' · ') || answer.personal!.saved.join(' · '),
