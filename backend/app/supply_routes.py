@@ -106,6 +106,14 @@ async def overview(business_id: str, request: Request) -> dict[str, Any]:
 
     for need in needs:
         need["supplied"] = await anyio.to_thread.run_sync(supplied, need["item"])
+        # What is already on its way, so Today does not ask for the same milk twice (OB-226).
+        unit = (
+            next(p for p in context["inventory"] if p["name"] == need["item"]).get("unit") or "kg"
+        )
+        coming = await anyio.to_thread.run_sync(
+            supply_chain.on_order, store(request), uid, business_id, need["item"], unit
+        )
+        need["on_order"], need["arrives"] = coming["quantity"], coming["arrives"]
     # Today leads with what a linked supplier can bring: chai runs out because tea dust does.
     needs.sort(key=lambda need: (not need["supplied"], need["runs_out"]))
     return {"suppliers": rows, "orders": orders, "needs": needs}

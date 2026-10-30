@@ -275,6 +275,12 @@ def supply_reply(name: str, result: dict[str, Any]) -> str | None:
     if io is not None:
         return io
     if name == "draft_reorder":
+        if result.get("status") == "already_on_order":
+            arrives = f", arriving {human_date(result['arrives'])}" if result.get("arrives") else ""
+            return (
+                f"Offline coach: {result['on_order']:g} {result['unit']} {result['item']} is "
+                f"already on order{arrives}. No new order needed."
+            )
         if result.get("status") not in {"needs_owner_tap", "sent_automatically"}:
             return "Offline coach: tell me which item to reorder and I'll draft the order."
         currency = result.get("currency", "SGD")

@@ -20,15 +20,22 @@ export function SupplyHubTile() {
   const [open, setOpen] = useState(false)
   const { board } = useBoard(true)
   const n = counts(board)
+  // Partners come from orders and documents: with none, "all on time" would be a claim about
+  // nobody (OB-227).
+  const none = board !== null && board.orders.length === 0 && board.inbox.length === 0
   return (
     <>
       <Tile
         icon={<Truck size={20} />}
         label={c.title}
-        value={board === null ? '–' : n.needs ? c.needsNow(n.needs) : c.allQuiet}
+        value={
+          board === null ? '–' : n.needs ? c.needsNow(n.needs) : none ? c.noPartners : c.allQuiet
+        }
         onClick={() => setOpen(true)}
       >
-        <Supporting>{n.send ? c.notSent(n.send) : c.empty.send}</Supporting>
+        <Supporting>
+          {n.send ? c.notSent(n.send) : none ? c.noPartnersHint : c.empty.send}
+        </Supporting>
       </Tile>
       <SupplyHub open={open} onClose={() => setOpen(false)} />
     </>
@@ -246,7 +253,11 @@ function Screen({ board, view, open }: { board: Board; view: View; open: (id: st
   const filled = groups.filter((group) => group.items.length)
   return (
     <Stack spacing={4}>
-      {filled.length === 0 && <Typography color="text.secondary">{c.empty[view]}</Typography>}
+      {filled.length === 0 && (
+        <Typography color="text.secondary">
+          {board.orders.length === 0 && board.inbox.length === 0 ? c.noPartnersHint : c.empty[view]}
+        </Typography>
+      )}
       {filled.map((group) => (
         <Group key={group.title ?? view} title={group.title} items={group.items} />
       ))}

@@ -1,13 +1,24 @@
 import { useCallback, useEffect, useState } from 'react'
 import { ApiError, type Proposal } from '../v1/api'
 import { useWorkspace } from '../v1/workspaceContext'
+import { useLocale } from '../../state/hooks'
+import { productName } from '../../i18n/productNames'
 import { useSupplyCopy } from './copy'
+import { useOrderChangeCopy } from './orderChangeCopy'
 import type { PurchaseOrder, Relationship, RuleSet } from './types'
 
 interface SupplyOverview {
   suppliers: Relationship[]
   orders: PurchaseOrder[]
-  needs?: { item: string; runs_out: string; stock: number; supplied?: boolean }[]
+  needs?: {
+    item: string
+    runs_out: string
+    stock: number
+    supplied?: boolean
+    /** Already ordered and on its way, in the item's unit, and the earliest arrival. */
+    on_order?: number
+    arrives?: string
+  }[]
 }
 
 /** The shop's supplier relationships and purchase orders (newest first). */
@@ -94,24 +105,51 @@ export function usePoActions(onChange: (order: PurchaseOrder) => void) {
   }
 }
 
+interface ReorderResult {
+  status: 'drafted' | 'needs_item' | 'no_supplier' | 'on_order'
+  order?: PurchaseOrder
+  item?: string
+  unit?: string
+  quantity?: number
+  arrives?: string
+}
+
+/**
+ * Drafts the reorder. When nothing is drafted, `note` says why and what to do next (nothing runs
+ * out, no supplier, or it is already on order: OB-226, OB-227); the caller shows it in place.
+ */
 export function useDraftReorder() {
-  const { api, activeId, notify } = useWorkspace()
+  const { api, activeId } = useWorkspace()
   const s = useSupplyCopy()
+  const c = useOrderChangeCopy()
+  const locale = useLocale()
   return useCallback(
-    async (item = ''): Promise<PurchaseOrder | null> => {
+    async (item = ''): Promise<{ order: PurchaseOrder | null; note: string }> => {
       try {
-        const result = await api<{ status: string; order?: PurchaseOrder }>(
+        const result = await api<ReorderResult>(
           `/businesses/${encodeURIComponent(activeId ?? '')}/supply/reorder`,
           { method: 'POST', body: JSON.stringify(item ? { item } : {}) },
         )
-        if (!result.order) notify(s.noOrders)
-        return result.order ?? null
+        if (result.order) return { order: result.order, note: '' }
+        const name = productName(result.item ?? item, locale)
+        const quantity = new Intl.NumberFormat(locale, { maximumFractionDigits: 2 })
+        const note =
+          result.status === 'on_order'
+            ? c.onOrder(
+                quantity.format(result.quantity ?? 0),
+                result.unit ?? '',
+                name,
+                dayLabel(result.arrives ?? '', locale),
+              )
+            : result.status === 'no_supplier'
+              ? c.noSupplierFor(name)
+              : c.nothingToReorder
+        return { order: null, note }
       } catch {
-        notify(s.failed)
-        return null
+        return { order: null, note: s.failed }
       }
     },
-    [api, activeId, notify, s],
+    [api, activeId, s, c, locale],
   )
 }
 

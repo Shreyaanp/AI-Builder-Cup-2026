@@ -405,6 +405,47 @@ def need_from_forecast(
     }
 
 
+# Ordered but not here yet: a reorder counts it before asking for more (OB-226).
+ON_ITS_WAY = {"sent", "changed", "confirmed", "dispatched"}
+
+
+def on_order(store: MerchantRepository, uid: str, bid: str, item: str, unit: str) -> dict[str, Any]:
+    """What is already coming for this item, in the shop's unit: sent purchase orders and chat
+    order requests, with the earliest arrival; and an open draft PO for it, if one waits."""
+    from . import sourcing
+
+    def same(name: str) -> bool:
+        return sourcing.matches(name, item) or sourcing.matches(item, name)
+
+    quantity, arrives, draft = 0.0, "", None
+    for po in all_orders(store, bid):
+        lines = [line for line in po["lines"] if same(line["item"])]
+        if not lines and not same(str((po.get("reason") or {}).get("item", ""))):
+            continue
+        if po["status"] == "draft":
+            draft = draft or po
+            continue
+        if po["status"] not in ON_ITS_WAY:
+            continue
+        for line in lines:
+            amount = sourcing.convert(line["quantity"], line["unit"], unit)
+            if amount:
+                quantity += amount
+                arrives = min(arrives or po["delivery"], po["delivery"])
+    for order in sourcing.orders(store, uid, bid):
+        if order["status"] not in sourcing.OPEN:
+            continue
+        for line in order["lines"]:
+            if line["price"] is None or not same(line["name"]):
+                continue
+            amount = sourcing.convert(line["quantity"], line["unit"], unit)
+            if amount:
+                quantity += amount
+                day = str(order.get("delivery_at") or "")[:10]
+                arrives = min(arrives or day, day) if day else arrives
+    return {"quantity": round(quantity, 3), "arrives": arrives, "draft": draft}
+
+
 async def draft_reorder(
     store: MerchantRepository,
     uid: str,
@@ -450,11 +491,27 @@ async def draft_reorder(
     unit = (product or {}).get("unit") or "kg"
     need = need_from_forecast(product, forecast, target, today)
     need_by = need["runs_out"] or ""
+    coming = await anyio.to_thread.run_sync(on_order, store, uid, bid, target, unit)
+    if coming["draft"]:
+        # One draft per need: the open one comes back (with the owner's quantity, if named).
+        po = coming["draft"]
+        if quantity and po["lines"]:
+            po["lines"][0]["quantity"] = round(float(quantity), 3)
+        await anyio.to_thread.run_sync(recheck, store, bid, po, today)
+        po = await anyio.to_thread.run_sync(_save, store, bid, po)
+        if po["auto_send_allowed"]:
+            po = await anyio.to_thread.run_sync(_send, store, bid, po, True)
+        return {"status": "drafted", "order": po, "existing": True}
     if quantity:
         wanted = float(quantity)
     elif need["daily"]:
-        # Demand until the delivery lands, plus a week of cover, minus what is on the shelf.
-        wanted = max(0.0, need["daily"] * (COVER_DAYS + 2) - need["stock"])
+        # Demand until the delivery lands, plus a week of cover, minus what is on the shelf
+        # and what is already on its way.
+        wanted = max(0.0, need["daily"] * (COVER_DAYS + 2) - need["stock"] - coming["quantity"])
+        if not wanted and coming["quantity"]:
+            return {"status": "on_order", "item": target, "unit": unit, **coming}
+    elif coming["quantity"]:
+        return {"status": "on_order", "item": target, "unit": unit, **coming}
     else:
         wanted = 0.0
     candidates = await anyio.to_thread.run_sync(supplier_candidates, store, bid, target, currency)
@@ -551,6 +608,7 @@ async def draft_reorder(
             "method": need["method"],
             "wanted": round(wanted, 2),
             "owner_quantity": bool(quantity),
+            "on_order": coming["quantity"],
             "tier_min": best["tier_min"],
             "moq": best["moq"],
             "on_time": best["on_time"],

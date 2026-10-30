@@ -112,6 +112,8 @@ const en = {
   fromTo: (a: string, b: string) => `${a} → ${b}`,
   needsNow: (n: number) => (n === 1 ? '1 thing needs you now' : `${n} things need you now`),
   allQuiet: 'Partners: all on time',
+  noPartners: 'No partners yet',
+  noPartnersHint: 'Suppliers show here after your first order',
   beforeClose: 'Before you close',
   notSent: (n: number) => (n === 1 ? '1 document not sent yet' : `${n} documents not sent yet`),
   allSent: 'Everything is sent',
@@ -233,6 +235,8 @@ const hi: IoCopy = {
   fromTo: (a, b) => `${a} → ${b}`,
   needsNow: (n) => `${n} काम अभी आपके लिए`,
   allQuiet: 'साथी: सब समय पर',
+  noPartners: 'अभी कोई साथी नहीं',
+  noPartnersHint: 'पहले ऑर्डर के बाद सप्लायर यहाँ दिखेंगे',
   beforeClose: 'दुकान बंद करने से पहले',
   notSent: (n) => `${n} दस्तावेज़ अभी नहीं भेजे`,
   allSent: 'सब भेज दिया गया',
@@ -246,11 +250,16 @@ const hi: IoCopy = {
 // Hindi and English are complete; other languages show English until translated, except the
 // Grow tile (title, partner status and what is left to send), which every language has.
 const tables: Record<string, IoCopy> = { en, hi }
-type TileCopy = Pick<IoCopy, 'title' | 'allQuiet' | 'needsNow' | 'notSent'> & { sent: string }
+type TileCopy = Pick<
+  IoCopy,
+  'title' | 'allQuiet' | 'needsNow' | 'notSent' | 'noPartners' | 'noPartnersHint'
+> & { sent: string }
 const tileCopy: Record<string, TileCopy> = {
   'zh-Hans': {
     title: '供应链',
     allQuiet: '合作伙伴：全部准时',
+    noPartners: '还没有合作伙伴',
+    noPartnersHint: '首次下单后，供应商会显示在这里',
     needsNow: (n) => `${n} 件事需要你现在处理`,
     notSent: (n) => `${n} 份单据尚未发送`,
     sent: '所有内容均已发送。',
@@ -258,6 +267,8 @@ const tileCopy: Record<string, TileCopy> = {
   ms: {
     title: 'Rantaian bekalan',
     allQuiet: 'Rakan kongsi: semua tepat masa',
+    noPartners: 'Belum ada rakan kongsi',
+    noPartnersHint: 'Pembekal dipaparkan di sini selepas pesanan pertama',
     needsNow: (n) => `${n} perkara perlukan anda sekarang`,
     notSent: (n) => `${n} dokumen belum dihantar`,
     sent: 'Semua sudah dihantar.',
@@ -265,6 +276,8 @@ const tileCopy: Record<string, TileCopy> = {
   ta: {
     title: 'விநியோகச் சங்கிலி',
     allQuiet: 'கூட்டாளிகள்: அனைத்தும் சரியான நேரத்தில்',
+    noPartners: 'இன்னும் கூட்டாளிகள் இல்லை',
+    noPartnersHint: 'முதல் ஆர்டருக்குப் பிறகு சப்ளையர்கள் இங்கே தோன்றுவார்கள்',
     needsNow: (n) => `இப்போது உங்கள் கவனம் தேவை: ${n}`,
     notSent: (n) => `இன்னும் அனுப்பாத ஆவணங்கள்: ${n}`,
     sent: 'அனைத்தும் அனுப்பப்பட்டன.',
@@ -272,6 +285,8 @@ const tileCopy: Record<string, TileCopy> = {
   ja: {
     title: 'サプライチェーン',
     allQuiet: '取引先：すべて予定どおり',
+    noPartners: 'まだ取引先はありません',
+    noPartnersHint: '最初の注文後、仕入先がここに表示されます',
     needsNow: (n) => `今すぐ対応が必要：${n} 件`,
     notSent: (n) => `未送信の書類：${n} 件`,
     sent: 'すべて送信済みです。',
@@ -279,6 +294,8 @@ const tileCopy: Record<string, TileCopy> = {
   ko: {
     title: '공급망',
     allQuiet: '거래처: 모두 제시간',
+    noPartners: '아직 거래처가 없어요',
+    noPartnersHint: '첫 주문 후 공급업체가 여기에 표시돼요',
     needsNow: (n) => `지금 처리할 일: ${n}건`,
     notSent: (n) => `아직 보내지 않은 문서: ${n}건`,
     sent: '모두 보냈습니다.',
@@ -286,6 +303,8 @@ const tileCopy: Record<string, TileCopy> = {
   id: {
     title: 'Rantai pasok',
     allQuiet: 'Mitra: semua tepat waktu',
+    noPartners: 'Belum ada mitra',
+    noPartnersHint: 'Pemasok muncul di sini setelah pesanan pertama',
     needsNow: (n) => `${n} hal perlu Anda tangani sekarang`,
     notSent: (n) => `${n} dokumen belum dikirim`,
     sent: 'Semua sudah terkirim.',
@@ -293,6 +312,8 @@ const tileCopy: Record<string, TileCopy> = {
   th: {
     title: 'ห่วงโซ่อุปทาน',
     allQuiet: 'คู่ค้า: ตรงเวลาทั้งหมด',
+    noPartners: 'ยังไม่มีคู่ค้า',
+    noPartnersHint: 'ซัพพลายเออร์จะแสดงที่นี่หลังสั่งซื้อครั้งแรก',
     needsNow: (n) => `ต้องจัดการตอนนี้: ${n} รายการ`,
     notSent: (n) => `เอกสารที่ยังไม่ได้ส่ง: ${n} ฉบับ`,
     sent: 'ส่งครบทุกอย่างแล้ว',
@@ -300,6 +321,8 @@ const tileCopy: Record<string, TileCopy> = {
   vi: {
     title: 'Chuỗi cung ứng',
     allQuiet: 'Đối tác: tất cả đúng hạn',
+    noPartners: 'Chưa có đối tác',
+    noPartnersHint: 'Nhà cung cấp hiện ở đây sau đơn hàng đầu tiên',
     needsNow: (n) => `${n} việc cần bạn xử lý ngay`,
     notSent: (n) => `${n} chứng từ chưa gửi`,
     sent: 'Đã gửi tất cả.',
@@ -307,6 +330,8 @@ const tileCopy: Record<string, TileCopy> = {
   fil: {
     title: 'Supply chain',
     allQuiet: 'Mga partner: lahat ay nasa oras',
+    noPartners: 'Wala pang partner',
+    noPartnersHint: 'Lalabas dito ang mga supplier pagkatapos ng unang order',
     needsNow: (n) => `${n} bagay ang kailangan mo ngayon`,
     notSent: (n) => `${n} dokumento ang hindi pa naipapadala`,
     sent: 'Naipadala na ang lahat.',
@@ -314,6 +339,8 @@ const tileCopy: Record<string, TileCopy> = {
   hi: {
     title: hi.title,
     allQuiet: hi.allQuiet,
+    noPartners: hi.noPartners,
+    noPartnersHint: hi.noPartnersHint,
     needsNow: hi.needsNow,
     notSent: hi.notSent,
     sent: hi.empty.send,
@@ -321,6 +348,8 @@ const tileCopy: Record<string, TileCopy> = {
   bn: {
     title: 'সাপ্লাই চেইন',
     allQuiet: 'অংশীদার: সব সময়মতো',
+    noPartners: 'এখনো কোনো অংশীদার নেই',
+    noPartnersHint: 'প্রথম অর্ডারের পর সরবরাহকারীরা এখানে দেখাবে',
     needsNow: (n) => `এখনই আপনাকে দেখতে হবে: ${n}টি বিষয়`,
     notSent: (n) => `${n}টি নথি এখনও পাঠানো হয়নি`,
     sent: 'সব পাঠানো হয়েছে।',
@@ -328,6 +357,8 @@ const tileCopy: Record<string, TileCopy> = {
   te: {
     title: 'సరఫరా గొలుసు',
     allQuiet: 'భాగస్వాములు: అన్నీ సమయానికి',
+    noPartners: 'ఇంకా భాగస్వాములు లేరు',
+    noPartnersHint: 'మొదటి ఆర్డర్ తర్వాత సరఫరాదారులు ఇక్కడ కనిపిస్తారు',
     needsNow: (n) => `ఇప్పుడు మీరు చూడాల్సినవి: ${n}`,
     notSent: (n) => `ఇంకా పంపని పత్రాలు: ${n}`,
     sent: 'అన్నీ పంపబడ్డాయి.',
@@ -335,6 +366,8 @@ const tileCopy: Record<string, TileCopy> = {
   mr: {
     title: 'पुरवठा साखळी',
     allQuiet: 'भागीदार: सर्व वेळेवर',
+    noPartners: 'अजून भागीदार नाहीत',
+    noPartnersHint: 'पहिल्या ऑर्डरनंतर पुरवठादार इथे दिसतील',
     needsNow: (n) => `आता तुमचे लक्ष हवे: ${n}`,
     notSent: (n) => `अजून न पाठवलेले दस्तऐवज: ${n}`,
     sent: 'सर्व पाठवले आहे.',
@@ -342,6 +375,8 @@ const tileCopy: Record<string, TileCopy> = {
   kn: {
     title: 'ಪೂರೈಕೆ ಸರಪಳಿ',
     allQuiet: 'ಪಾಲುದಾರರು: ಎಲ್ಲವೂ ಸಮಯಕ್ಕೆ ಸರಿಯಾಗಿ',
+    noPartners: 'ಇನ್ನೂ ಪಾಲುದಾರರಿಲ್ಲ',
+    noPartnersHint: 'ಮೊದಲ ಆರ್ಡರ್ ನಂತರ ಪೂರೈಕೆದಾರರು ಇಲ್ಲಿ ಕಾಣಿಸುತ್ತಾರೆ',
     needsNow: (n) => `ಈಗ ನಿಮ್ಮ ಗಮನ ಬೇಕು: ${n}`,
     notSent: (n) => `ಇನ್ನೂ ಕಳುಹಿಸದ ದಾಖಲೆಗಳು: ${n}`,
     sent: 'ಎಲ್ಲವನ್ನೂ ಕಳುಹಿಸಲಾಗಿದೆ.',

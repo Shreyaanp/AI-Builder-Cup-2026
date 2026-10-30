@@ -1196,6 +1196,74 @@ def discard(store: MerchantRepository, uid: str, bid: str, oid: str, version: in
     return public_order(save(store, uid, bid, order, now))
 
 
+CANCEL_TEXT = "Sorry, please cancel this order."
+
+
+def cancel_sent(
+    store: MerchantRepository, uid: str, bid: str, oid: str, version: int
+) -> dict[str, Any]:
+    """The owner cancels a sent order from its detail (OB-225): the supplier is told at once and
+    the order is closed. A draft is discarded instead; nothing was sent."""
+    now = time.time()
+    order = get_order(store, uid, bid, oid, now)
+    if order["version"] != version:
+        raise HTTPException(409, "This order changed. Review it again.")
+    if order["status"] not in OPEN:
+        raise HTTPException(409, "Only a sent or confirmed order can be cancelled.")
+    deliver(store, uid, bid, order, CANCEL_TEXT, "cancel", now)
+    order["messages"].append(message("owner", CANCEL_TEXT, now, kind="cancel"))
+    order["pending"] = None
+    order["status"] = "cancelled"
+    return public_order(save(store, uid, bid, order, now))
+
+
+def change_text(changes: list[tuple[dict[str, Any], float]]) -> str:
+    parts = [
+        f"{line['name']} {quantity:g} {line['unit']} (was {line['quantity']:g} {line['unit']})"
+        for line, quantity in changes
+    ]
+    return f"Please change my order: {'; '.join(parts)}."[:500]
+
+
+def change_quantities(
+    store: MerchantRepository,
+    uid: str,
+    bid: str,
+    oid: str,
+    version: int,
+    quantities: dict[int, float],
+) -> dict[str, Any]:
+    """The owner changes quantities on a sent order (OB-225): the supplier is told what changed
+    and asked to confirm again; the order shows the new quantities and total."""
+    now = time.time()
+    order = get_order(store, uid, bid, oid, now)
+    if order["version"] != version:
+        raise HTTPException(409, "This order changed. Review it again.")
+    if order["status"] not in OPEN:
+        raise HTTPException(409, "Only a sent or confirmed order can be changed.")
+    if len(order["messages"]) >= MAX_MESSAGES:
+        raise HTTPException(409, "Conversation limit reached.")
+    changes = []
+    for index, quantity in quantities.items():
+        if not 0 <= index < len(order["lines"]):
+            raise HTTPException(422, "Pick a line of this order.")
+        line = order["lines"][index]
+        if line["price"] is not None and round(quantity, 3) != line["quantity"]:
+            changes.append((line, round(quantity, 3)))
+    if not changes:
+        raise HTTPException(422, "Nothing changed.")
+    text = change_text(changes)
+    deliver(store, uid, bid, order, text, "text", now)
+    for line, quantity in changes:
+        line["quantity"] = quantity
+        line["total"] = round(line["price"] * quantity)
+    order["total"] = sum(line["total"] or 0 for line in order["lines"])
+    order["messages"].append(message("owner", text, now))
+    order["pending"] = None
+    order["status"] = "sent"
+    return public_order(save(store, uid, bid, order, now))
+
+
 def owner_message(
     store: MerchantRepository, uid: str, bid: str, oid: str, text: str
 ) -> dict[str, Any]:

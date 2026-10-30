@@ -5,6 +5,7 @@ from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
 from google.adk.events import Event
 from google.adk.sessions import InMemorySessionService
@@ -361,3 +362,94 @@ def test_received_order_prepares_a_stock_update_for_review(ctx) -> None:
     assert store.inventory("alice", ctx.business_id)[0]["stock"] == 2
     store.commit("alice", result["proposal"]["id"], result["proposal"]["digest"])
     assert store.inventory("alice", ctx.business_id)[0]["stock"] == 22
+
+
+def test_ob222_an_edited_draft_retires_the_old_one_at_once(ctx) -> None:
+    """#593: "change onions to 30 kg" replaces draft A on the server right away, so A's card can
+    never offer a Send that is bound to fail, and only B can reach the supplier."""
+    found = asyncio.run(find_suppliers("onions"))
+    first = prepare_order(found["suppliers"][0]["id"], [{"name": "onions", "quantity": 20}])
+    old = ctx.cards[first["card_id"]][1]
+    second = prepare_order(
+        found["suppliers"][0]["id"],
+        [{"name": "onions", "quantity": 30, "unit": "kg"}],
+        replaces_order_id=first["order_id"],
+    )
+    new = ctx.cards[second["card_id"]][1]
+    assert new["replaces"] == old["id"]
+    stale = sourcing.get_order(ctx.store, "alice", ctx.business_id, old["id"])
+    assert stale["status"] == "replaced"
+    with pytest.raises(HTTPException) as error:
+        sourcing.confirm(ctx.store, "alice", ctx.business_id, old["id"], stale["version"])
+    assert error.value.status_code == 409
+    sent = sourcing.confirm(ctx.store, "alice", ctx.business_id, new["id"], new["version"])
+    assert sent["status"] == "sent"
+    assert [o["id"] for o in sourcing.orders(ctx.store, "alice", ctx.business_id)] == [new["id"]]
+
+
+def test_ob225_a_sent_order_can_be_cancelled_or_changed_over_http(settings, monkeypatch) -> None:  # noqa: F811
+    """#596: the Orders detail cancels a sent order or changes its quantity; the supplier is told
+    each time, and a draft or a cancelled order refuses both."""
+    import json
+
+    monkeypatch.setattr(sourcing, "DEMO_REPLY_SECONDS", 0.0)
+    app = create_app(settings, InMemorySessionService())
+
+    def stream(client: TestClient, body: dict[str, object]) -> list[dict[str, object]]:
+        response = client.post("/api/v1/coach/stream", json=body)
+        assert response.status_code == 200
+        return [
+            json.loads(line.removeprefix("data: "))
+            for line in response.text.splitlines()
+            if line.startswith("data: ")
+        ]
+
+    with TestClient(app) as client:
+        join(client)
+        proposal = client.post(
+            "/api/v1/proposals", json={"kind": "business", "business": {"name": "Kopi Corner"}}
+        ).json()
+        bid = approve(client, proposal)["business_id"]
+        base = f"/api/v1/businesses/{bid}/orders"
+        first = stream(client, {"message": "My flour is running low", "business_id": bid})
+        session = next(event["session_id"] for event in first if event["kind"] == "ready")
+        second = stream(
+            client,
+            {"message": "order 20 kg flour from them", "business_id": bid, "session_id": session},
+        )
+        draft: dict = next(event["data"] for event in second if event["kind"] == "order")
+        refused = client.post(f"{base}/{draft['id']}/cancel", json={"version": draft["version"]})
+        assert refused.status_code == 409
+        sent = client.post(f"{base}/{draft['id']}/send", json={"version": draft["version"]})
+        assert sent.status_code == 200, sent.text
+        confirmed = client.get(f"{base}/{draft['id']}").json()
+        assert confirmed["status"] == "confirmed"
+        price = confirmed["lines"][0]["price"]
+        changed = client.post(
+            f"{base}/{draft['id']}/change",
+            json={"version": confirmed["version"], "lines": [{"line": 0, "quantity": 30}]},
+        )
+        assert changed.status_code == 200, changed.text
+        body = changed.json()
+        assert body["status"] == "sent"
+        assert body["lines"][0]["quantity"] == 30 and body["total"] == round(price * 30)
+        told = body["messages"][-1]
+        assert told["author"] == "owner"
+        name = body["lines"][0]["name"]
+        assert told["text"] == f"Please change my order: {name} 30 kg (was 20 kg)."
+        reply = client.get(f"{base}/{draft['id']}").json()
+        assert reply["status"] == "confirmed" and reply["messages"][-1]["author"] == "supplier"
+        stale = client.post(f"{base}/{draft['id']}/cancel", json={"version": body["version"]})
+        assert stale.status_code == 409  # the supplier's reply moved the version on
+        cancelled = client.post(f"{base}/{draft['id']}/cancel", json={"version": reply["version"]})
+        assert cancelled.status_code == 200, cancelled.text
+        done = cancelled.json()
+        assert done["status"] == "cancelled"
+        assert done["messages"][-1] == {
+            **done["messages"][-1],
+            "author": "owner",
+            "kind": "cancel",
+            "text": sourcing.CANCEL_TEXT,
+        }
+        again = client.post(f"{base}/{draft['id']}/cancel", json={"version": done["version"]})
+        assert again.status_code == 409

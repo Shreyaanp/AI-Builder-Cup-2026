@@ -18,6 +18,18 @@ class OrderVersion(BaseModel):
     version: int = Field(ge=1)
 
 
+class LineQuantity(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    line: int = Field(ge=0, le=50)
+    quantity: float = Field(gt=0, le=1_000_000)
+
+
+class OrderChange(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    version: int = Field(ge=1)
+    lines: list[LineQuantity] = Field(min_length=1, max_length=50)
+
+
 class OrderMessage(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
     text: str = Field(min_length=1, max_length=500)
@@ -58,6 +70,37 @@ async def discard_order(
     uid = await consented_owner(request)
     return await anyio.to_thread.run_sync(
         sourcing.discard, store(request), uid, business_id, order_id, body.version
+    )
+
+
+@router.post("/businesses/{business_id}/orders/{order_id}/cancel")
+async def cancel_order(
+    business_id: str, order_id: str, body: OrderVersion, request: Request
+) -> dict[str, Any]:
+    """Cancel a sent order: the supplier gets the cancellation at once."""
+    uid = await consented_owner(request)
+    await enforce_limits(request, [("coach", uid)])
+    return await anyio.to_thread.run_sync(
+        sourcing.cancel_sent, store(request), uid, business_id, order_id, body.version
+    )
+
+
+@router.post("/businesses/{business_id}/orders/{order_id}/change")
+async def change_order(
+    business_id: str, order_id: str, body: OrderChange, request: Request
+) -> dict[str, Any]:
+    """New quantities on a sent order: the supplier is told what changed."""
+    uid = await consented_owner(request)
+    await enforce_limits(request, [("coach", uid)])
+    quantities = {row.line: row.quantity for row in body.lines}
+    return await anyio.to_thread.run_sync(
+        sourcing.change_quantities,
+        store(request),
+        uid,
+        business_id,
+        order_id,
+        body.version,
+        quantities,
     )
 
 

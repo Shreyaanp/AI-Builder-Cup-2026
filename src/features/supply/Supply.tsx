@@ -90,6 +90,7 @@ export function SupplySheet({ open, onClose }: { open: boolean; onClose: () => v
   const [view, setView] = useState<View>({ kind: 'list' })
   const [local, setLocal] = useState<Record<string, PurchaseOrder>>({})
   const [drafting, setDrafting] = useState(false)
+  const [note, setNote] = useState('')
   const draft = useDraftReorder()
   const orders = (data?.orders ?? []).map((order) => {
     const mine = local[order.id]
@@ -105,6 +106,7 @@ export function SupplySheet({ open, onClose }: { open: boolean; onClose: () => v
   }
   function close() {
     setView({ kind: 'list' })
+    setNote('')
     onClose()
   }
   const back = (
@@ -179,8 +181,10 @@ export function SupplySheet({ open, onClose }: { open: boolean; onClose: () => v
             disabled={drafting}
             onClick={async () => {
               setDrafting(true)
-              const order = await draft()
+              setNote('')
+              const { order, note } = await draft()
               setDrafting(false)
+              setNote(note)
               if (order) {
                 update(order)
                 void refresh()
@@ -191,7 +195,13 @@ export function SupplySheet({ open, onClose }: { open: boolean; onClose: () => v
           >
             {drafting ? s.drafting : s.draftReorder}
           </Button>
-          {data && all.length === 0 && (
+          {/* Why nothing was drafted, in the sheet itself rather than a toast over it (OB-227). */}
+          {note && (
+            <Typography role="status" variant="bodyLarge">
+              {note}
+            </Typography>
+          )}
+          {data && all.length === 0 && !note && (
             <Typography variant="bodyLarge" color="text.secondary">
               {s.noOrders}
             </Typography>

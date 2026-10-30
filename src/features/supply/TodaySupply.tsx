@@ -7,16 +7,18 @@ import { Sheet } from '../v1/Sheet'
 import { PurchaseOrderCard } from './supplyDeferred'
 import { useShowcaseCopy } from './showcaseCopy'
 import { useSupplyCopy } from './copy'
+import { useOrderChangeCopy } from './orderChangeCopy'
 import { dayLabel, useDraftReorder, useSupply } from './supplyData'
 import type { PurchaseOrder } from './types'
 import { productName } from '../../i18n/productNames'
 
 export function TodaySupply() {
-  const { products, active } = useWorkspace()
+  const { products, active, notify } = useWorkspace()
   const { data, refresh } = useSupply(true)
   const draft = useDraftReorder()
   const s = useShowcaseCopy()
   const copy = useSupplyCopy()
+  const c = useOrderChangeCopy()
   const locale = useLocale()
   const roles = useTheme().material
   const [order, setOrder] = useState<PurchaseOrder | null>(null)
@@ -58,6 +60,15 @@ export function TodaySupply() {
           {productName(item, locale)}{' '}
           {need ? `${s.runsOut} ${dayLabel(need.runs_out, locale)}` : s.restocked}
         </Typography>
+        {need?.on_order ? (
+          <Typography variant="bodyLarge">
+            {c.onOrderLine(
+              new Intl.NumberFormat(locale, { maximumFractionDigits: 2 }).format(need.on_order),
+              products.find((p) => p.name === need.item)?.unit ?? '',
+              dayLabel(need.arrives ?? '', locale),
+            )}
+          </Typography>
+        ) : null}
         <Box>
           <Button
             variant="contained"
@@ -73,7 +84,8 @@ export function TodaySupply() {
               setBusy(true)
               const next = await draft(need.item)
               setBusy(false)
-              if (next) setOrder(next)
+              if (next.order) setOrder(next.order)
+              else notify(next.note)
             }}
           >
             {need ? s.reorder : s.view}

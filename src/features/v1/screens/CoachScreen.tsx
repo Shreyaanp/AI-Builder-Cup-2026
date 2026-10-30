@@ -391,7 +391,13 @@ function CoachScreen({
       }
       if (event.kind === 'order') {
         const order = event.data as unknown as Order
-        setOrders((known) => ({ ...known, [order.id]: order }))
+        setOrders((known) => {
+          const old = order.replaces ? known[order.replaces] : undefined
+          // The edited draft replaces the old one on the server (OB-222): its card stops offering Send.
+          const replaced =
+            old?.status === 'draft' ? { [old.id]: { ...old, status: 'replaced' as const } } : {}
+          return { ...known, ...replaced, [order.id]: order }
+        })
         // One card per order, moved to the end when the coach updates it.
         setMessages((items) =>
           [
@@ -789,6 +795,12 @@ function CoachScreen({
       setError(
         cause instanceof ApiError && cause.code === 'ADD_SHOP_PHONE' ? s.addPhone : s.sendFailed,
       )
+      // A stale card (replaced, already sent) shows its real state instead of a dead Send.
+      const latest = await api<Order>(orderPath(order.id)).catch(() => null)
+      if (latest && latest.version !== order.version) {
+        setOrders((known) => ({ ...known, [latest.id]: latest }))
+        setError('')
+      }
       return false
     }
   }

@@ -172,11 +172,26 @@ async def draft_reorder(item: str = "", quantity: float | None = None) -> dict[s
             "status": "no_supplier",
             "instruction": "Say no supplier near them stocks this item; ask for another name.",
         }
+    if result["status"] == "on_order":
+        return {
+            "status": "already_on_order",
+            "item": result["item"],
+            "on_order": result["quantity"],
+            "unit": result["unit"],
+            "arrives": result["arrives"] or None,
+            "instruction": "Say this much is already on order and when it arrives; no new order "
+            "is needed. Offer to draft one anyway only if the owner names a quantity.",
+        }
     order = result["order"]
     return {
         **supply_chain.summary(order),
         "card_id": _card(ctx, "purchase_order", order),
         "status": "sent_automatically" if order.get("auto_sent") else "needs_owner_tap",
+        **(
+            {"instruction": "This draft was already waiting; say so and do not make another."}
+            if result.get("existing")
+            else {}
+        ),
     }
 
 
