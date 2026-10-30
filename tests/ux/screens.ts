@@ -60,6 +60,31 @@ export const SCREENS: Screen[] = [
       await settle(page)
     },
   },
+  {
+    // The production sign-in branch (Google, Try demo). Bootstrap is mocked: no Google call is made.
+    name: 'business-sign-in-firebase',
+    open: async (page) => {
+      await page.route('**/api/v1/bootstrap', (route) =>
+        route.fulfill({
+          json: {
+            auth_mode: 'firebase',
+            firebase: {
+              apiKey: 'test-key',
+              appId: 'test-app',
+              authDomain: 'localhost',
+              projectId: 'test-project',
+            },
+          },
+        }),
+      )
+      await page.goto('/?app=business', { waitUntil: 'domcontentloaded' })
+      await expect(page.getByRole('button', { name: 'Terms' })).toBeVisible({ timeout: 20_000 })
+      await expect(page.getByRole('link', { name: 'Try demo' }).first()).toBeVisible({
+        timeout: 20_000,
+      })
+      await settle(page)
+    },
+  },
   { name: 'demo-coach', open: (page) => demoTab(page, 'coach') },
   { name: 'demo-shop', open: (page) => demoTab(page, 'shop') },
   { name: 'demo-grow', open: (page) => demoTab(page, 'grow') },

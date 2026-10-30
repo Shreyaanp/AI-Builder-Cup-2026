@@ -1,4 +1,5 @@
 {
   "business-sign-in:primary": "OB-82",
-  "landing:primary": "OB-82"
+  "landing:primary": "OB-82",
+  "business-sign-in-firebase:primary": "OB-82"
 }
