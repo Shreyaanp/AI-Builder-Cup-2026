@@ -1,6 +1,7 @@
 # ruff: noqa: F811  (route fixtures are imported and requested by name)
 """OB-220: board reads and weeks follow the shop's clock. OB-221: legacy demo cards stay hidden."""
 
+import uuid
 from datetime import datetime
 from types import SimpleNamespace
 from typing import Any
@@ -10,7 +11,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 import app.passport_routes as routes
-from app.community import Community, SqliteDocuments
+from app.community import Community, SqliteDocuments, is_legacy_demo_update
 from app.games import reveal
 from app.passport import PassportState, ScratchTicket
 from tests.test_passport import DEMO, SG, app, at_shop, client, demo_key, sign_in  # noqa: F401
@@ -200,8 +201,9 @@ BASE = {
 
 def legacy_cards(community: Community, bid: str, count: int, newest: float) -> None:
     for n in range(count):
-        week = f"2026-W{30 + n // 4}"
         created = newest - n * 86_400
+        # The old seeder (2e880a33..#583): demo-{int(now // (7 * DAY))}-N.
+        week = int(created // (7 * 86_400))
         community.docs.put(
             "update",
             f"{bid}\0demo-{week}-{n % 4}",
@@ -215,6 +217,13 @@ def legacy_cards(community: Community, bid: str, count: int, newest: float) -> N
                 "demo": True,
             },
         )
+
+
+def test_ob221_legacy_id_pattern_matches_only_old_seeder_ids() -> None:
+    assert is_legacy_demo_update(True, "demo-2913-0")
+    assert not is_legacy_demo_update(False, "demo-2913-0")
+    assert not is_legacy_demo_update(True, str(uuid.uuid4()))  # rescue ids
+    assert not any(is_legacy_demo_update(True, f"demo-update-{n}") for n in range(4))
 
 
 def test_ob221_legacy_demo_cards_are_hidden_and_replaced(tmp_path, monkeypatch) -> None:

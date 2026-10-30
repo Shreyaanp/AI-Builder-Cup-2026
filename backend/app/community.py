@@ -417,7 +417,7 @@ DEMO_TIPS = [
 ]
 
 
-LEGACY_DEMO_UPDATE = re.compile(r"^demo-\d{4}-W\d{2}-\d+$")
+LEGACY_DEMO_UPDATE = re.compile(r"^demo-\d+-\d+$")
 DEMO_UPDATE_IDS = frozenset(f"demo-update-{n}" for n in range(4))
 
 
