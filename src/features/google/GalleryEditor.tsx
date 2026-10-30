@@ -5,6 +5,8 @@ import {
   Button,
   CircularProgress,
   IconButton,
+  Menu,
+  MenuItem,
   Stack,
   Typography,
   useMediaQuery,
@@ -36,6 +38,7 @@ export function GalleryEditor({ gallery }: { gallery: ReturnType<typeof useGalle
   const upload = useRef<HTMLInputElement>(null)
   const camera = useRef<HTMLInputElement>(null)
   const [kind, setKind] = useState<GalleryKind>('storefront')
+  const [moving, setMoving] = useState<{ id: string; anchor: HTMLElement } | null>(null)
   const pick = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     event.target.value = ''
@@ -121,6 +124,14 @@ export function GalleryEditor({ gallery }: { gallery: ReturnType<typeof useGalle
                         {groups.makeCoverLabel}
                       </Button>
                     )}
+                    <Button
+                      sx={{ minHeight: 48 }}
+                      aria-label={fill(groups.move, { n: index + 1 })}
+                      aria-haspopup="menu"
+                      onClick={(event) => setMoving({ id, anchor: event.currentTarget })}
+                    >
+                      {groups.moveLabel}
+                    </Button>
                   </Stack>
                 )
               })}
@@ -128,6 +139,21 @@ export function GalleryEditor({ gallery }: { gallery: ReturnType<typeof useGalle
           </Stack>
         )
       })}
+      <Menu anchorEl={moving?.anchor} open={Boolean(moving)} onClose={() => setMoving(null)}>
+        {GALLERY_KINDS.map((option) => (
+          <MenuItem
+            key={option}
+            sx={{ minHeight: 48 }}
+            selected={moving ? gallery.kinds[moving.id] === option : false}
+            onClick={() => {
+              if (moving) void gallery.moveTo(moving.id, option)
+              setMoving(null)
+            }}
+          >
+            {groups.kinds[option]}
+          </MenuItem>
+        ))}
+      </Menu>
       {gallery.ids.length > 0 && (
         <Typography variant="bodySmall" color="text.secondary">
           {groups.usedNote}

@@ -8,6 +8,7 @@ import re
 import secrets
 import sqlite3
 import time
+from collections.abc import Callable
 from pathlib import Path
 from typing import Annotated, Any, Literal, Protocol
 from uuid import NAMESPACE_URL, UUID, uuid4, uuid5
@@ -453,6 +454,16 @@ class MerchantRepository(Protocol):
     ) -> list[str]:
         """Replace the shop's gallery (photo IDs the owner chose to show customers). `kinds`
         (photo ID -> kind) is replaced with it when given and left alone when None."""
+        ...
+
+    def edit_gallery(
+        self,
+        uid: str,
+        bid: str,
+        edit: Callable[[list[str], dict[str, str]], tuple[list[str], dict[str, str]]],
+    ) -> list[str]:
+        """Change the gallery and its kinds from their current stored values, inside the
+        store's transaction, so parallel uploads/moves never overwrite each other."""
         ...
 
     def set_icon(self, uid: str, bid: str, icon: str | None) -> str | None:
@@ -1385,6 +1396,24 @@ class MerchantStore:
                 db.execute(
                     "UPDATE businesses SET photo_kinds=? WHERE id=?", (json.dumps(kinds), bid)
                 )
+            return photos
+
+    def edit_gallery(
+        self,
+        uid: str,
+        bid: str,
+        edit: Callable[[list[str], dict[str, str]], tuple[list[str], dict[str, str]]],
+    ) -> list[str]:
+        with self.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            row = self.owned(db, uid, bid)
+            photos, kinds = edit(
+                json.loads(row["gallery"] or "[]"), json.loads(row["photo_kinds"] or "{}")
+            )
+            db.execute(
+                "UPDATE businesses SET gallery=?, photo_kinds=? WHERE id=?",
+                (json.dumps(photos), json.dumps(kinds), bid),
+            )
             return photos
 
     def set_icon(self, uid: str, bid: str, icon: str | None) -> str | None:
