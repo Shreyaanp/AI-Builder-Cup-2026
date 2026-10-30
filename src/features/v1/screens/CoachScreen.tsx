@@ -395,7 +395,9 @@ function CoachScreen({
           const old = order.replaces ? known[order.replaces] : undefined
           // The edited draft replaces the old one on the server (OB-222): its card stops offering Send.
           const replaced =
-            old?.status === 'draft' ? { [old.id]: { ...old, status: 'replaced' as const } } : {}
+            old?.status === 'draft'
+              ? { [old.id]: { ...old, status: 'replaced' as const, replaced_by: order.id } }
+              : {}
           return { ...known, ...replaced, [order.id]: order }
         })
         // One card per order, moved to the end when the coach updates it.

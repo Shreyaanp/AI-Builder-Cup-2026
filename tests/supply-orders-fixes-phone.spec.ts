@@ -42,7 +42,7 @@ for (const size of WIDTHS) {
     await say(page, 'change onions to 30 kg')
     await expect(page.getByText('30 kg', { exact: true })).toBeVisible()
     // #593: the 20 kg card no longer offers a Send that can only fail.
-    await expect(page.getByText('Discarded. Nothing was sent.')).toBeVisible()
+    await expect(page.getByText('Replaced by your new order.')).toBeVisible()
     await expect(send).toHaveCount(1)
     await send.click()
     await expect(page.getByText(/replied: “Confirmed:/)).toBeVisible({ timeout: 30_000 })

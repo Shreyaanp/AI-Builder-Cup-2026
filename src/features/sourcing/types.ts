@@ -78,4 +78,6 @@ export interface Order {
   unread: boolean
   /** The draft this one replaced ("change it to 30 kg"); that draft can no longer be sent. */
   replaces?: string
+  /** The order that replaced this draft after an edit; unset when the owner discarded it. */
+  replaced_by?: string
 }

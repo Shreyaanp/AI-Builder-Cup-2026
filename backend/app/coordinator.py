@@ -1206,6 +1206,7 @@ def prepare_order(
         for old in ctx.store.supplier_orders(ctx.uid, ctx.business_id):
             if old["id"] == replaces_order_id and old["status"] == "draft":
                 old["status"] = "replaced"
+                old["replaced_by"] = order["id"]
                 sourcing.save(ctx.store, ctx.uid, ctx.business_id, old, now)
     ctx.store.save_supplier_order(ctx.uid, ctx.business_id, order)
     missing = [line["name"] for line in order["lines"] if line["price"] is None]

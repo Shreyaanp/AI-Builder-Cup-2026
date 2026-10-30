@@ -541,7 +541,7 @@ export function OrderCard({
           </Box>
         ) : order.status === 'replaced' ? (
           <Typography variant="bodyMedium" color="text.secondary" sx={{ mt: 3, ...fieldFade }}>
-            {s.discarded}
+            {order.replaced_by ? s.replacedByEdit : s.discarded}
           </Typography>
         ) : (
           <Box sx={{ mt: 3, ...enterRise }}>

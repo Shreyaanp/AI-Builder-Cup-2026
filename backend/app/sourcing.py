@@ -1164,6 +1164,7 @@ def confirm(
             for old in store.supplier_orders(uid, bid):
                 if old["id"] == order["replaces"] and old["status"] == "draft":
                     old["status"] = "replaced"
+                    old["replaced_by"] = order["id"]
                     save(store, uid, bid, old, now)
     elif order.get("pending"):
         pending = order["pending"]
@@ -1210,6 +1211,8 @@ def cancel_sent(
         raise HTTPException(409, "This order changed. Review it again.")
     if order["status"] not in OPEN:
         raise HTTPException(409, "Only a sent or confirmed order can be cancelled.")
+    if len(order["messages"]) >= MAX_MESSAGES:
+        raise HTTPException(409, "Conversation limit reached.")
     deliver(store, uid, bid, order, CANCEL_TEXT, "cancel", now)
     order["messages"].append(message("owner", CANCEL_TEXT, now, kind="cancel"))
     order["pending"] = None
@@ -1259,7 +1262,8 @@ def change_quantities(
         line["total"] = round(line["price"] * quantity)
     order["total"] = sum(line["total"] or 0 for line in order["lines"])
     order["messages"].append(message("owner", text, now))
-    order["pending"] = None
+    # A message the coach prepared stays waiting for the owner's tap; the change does not
+    # replace it.
     order["status"] = "sent"
     return public_order(save(store, uid, bid, order, now))
 

@@ -379,6 +379,8 @@ def test_ob222_an_edited_draft_retires_the_old_one_at_once(ctx) -> None:
     assert new["replaces"] == old["id"]
     stale = sourcing.get_order(ctx.store, "alice", ctx.business_id, old["id"])
     assert stale["status"] == "replaced"
+    # The old card says it was replaced by the edit, not that the owner discarded it (#603).
+    assert stale["replaced_by"] == new["id"]
     with pytest.raises(HTTPException) as error:
         sourcing.confirm(ctx.store, "alice", ctx.business_id, old["id"], stale["version"])
     assert error.value.status_code == 409
@@ -453,3 +455,38 @@ def test_ob225_a_sent_order_can_be_cancelled_or_changed_over_http(settings, monk
         }
         again = client.post(f"{base}/{draft['id']}/cancel", json={"version": done["version"]})
         assert again.status_code == 409
+
+
+def sent_onions(ctx: MerchantContext, quantity: float = 20) -> dict:
+    found = asyncio.run(find_suppliers("onions"))
+    made = prepare_order(found["suppliers"][0]["id"], [{"name": "onions", "quantity": quantity}])
+    order = sourcing.get_order(ctx.store, "alice", ctx.business_id, made["order_id"])
+    return sourcing.confirm(ctx.store, "alice", ctx.business_id, order["id"], order["version"])
+
+
+def test_603_a_quantity_change_keeps_the_message_waiting_for_the_owner(ctx) -> None:
+    """#603: changing quantities on a sent order must not drop a message the coach prepared and
+    the owner has not sent yet."""
+    sent = sent_onions(ctx)
+    order = sourcing.get_order(ctx.store, "alice", ctx.business_id, sent["id"])
+    waiting = {"kind": "text", "text": "Please deliver before 9 am.", "created": 1.0}
+    order["pending"] = waiting
+    order = sourcing.save(ctx.store, "alice", ctx.business_id, order, 1.0)
+    changed = sourcing.change_quantities(
+        ctx.store, "alice", ctx.business_id, order["id"], order["version"], {0: 30}
+    )
+    assert changed["lines"][0]["quantity"] == 30
+    assert changed["pending"] == waiting
+
+
+def test_603_cancelling_a_sent_order_respects_the_message_limit(ctx) -> None:
+    sent = sent_onions(ctx)
+    order = sourcing.get_order(ctx.store, "alice", ctx.business_id, sent["id"])
+    filler = order["messages"][-1]
+    order["messages"] = [filler] * sourcing.MAX_MESSAGES
+    order = sourcing.save(ctx.store, "alice", ctx.business_id, order, 1.0)
+    with pytest.raises(HTTPException) as error:
+        sourcing.cancel_sent(ctx.store, "alice", ctx.business_id, order["id"], order["version"])
+    assert error.value.status_code == 409
+    kept = sourcing.get_order(ctx.store, "alice", ctx.business_id, order["id"])
+    assert kept["status"] != "cancelled" and len(kept["messages"]) == sourcing.MAX_MESSAGES
