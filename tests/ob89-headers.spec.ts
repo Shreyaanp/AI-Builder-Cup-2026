@@ -34,7 +34,7 @@ for (const theme of THEMES)
   for (const viewport of VIEWPORTS)
     test.describe(`${viewport.width} ${theme}`, () => {
       test.use({ viewport, isMobile: viewport.width < 600, hasTouch: viewport.width < 600 })
-      test(`OB-89 shared headers ${viewport.width} ${theme}`, async ({ page }) => {
+      test(`OB-89 OB-172 shared headers ${viewport.width} ${theme}`, async ({ page }) => {
         test.setTimeout(120_000)
         await page.setViewportSize(viewport)
         await page.emulateMedia({ reducedMotion: 'reduce' })
@@ -70,9 +70,10 @@ for (const theme of THEMES)
             await expect(page.getByRole('navigation', { name: 'Main' }).first()).toBeVisible()
           await page.evaluate(() => document.fonts.ready)
           if (name === 'landing') {
+            // The theme's body size: 15px on phones since OB-198, 16px on larger windows.
             await expect(page.locator('.lp-hero-phone .lp-review small')).toHaveCSS(
               'font-size',
-              '16px',
+              viewport.width < 600 ? '15px' : '16px',
             )
             if (viewport.width === 360) {
               const firstView = await page.evaluate(measure, true)
@@ -82,7 +83,9 @@ for (const theme of THEMES)
               ).toBeLessThanOrEqual(6)
             }
           }
-          await expect(header, name).toHaveCSS('height', '64px')
+          // OB-88/OB-146: Ask keeps the area and controls on the shared single-row baseline.
+          const height = 64
+          await expect(header, name).toHaveCSS('height', `${height}px`)
           // The separator never contributes an extra pixel to the shared baseline.
           await expect(header, name).toHaveCSS('border-bottom-width', '0px')
           const strokes = await header
@@ -112,7 +115,7 @@ for (const theme of THEMES)
           await header.evaluate((el) =>
             (el as HTMLElement).style.setProperty('--app-header-safe-top', '24px'),
           )
-          await expect(header, `${name}: safe area`).toHaveCSS('height', '88px')
+          await expect(header, `${name}: safe area`).toHaveCSS('height', `${height + 24}px`)
           await header.evaluate((el) =>
             (el as HTMLElement).style.removeProperty('--app-header-safe-top'),
           )

@@ -50,7 +50,7 @@ export const gamesStrings = {
   odds_again: 'Try again tomorrow',
   oddsFirst: 'Your very first card always wins +25 points.',
   oddsNote:
-    'Chalkboard’s server decides each card when you earn it. Cards only come from verified stamps, never from money, and points never expire.',
+    'Each card is picked by chance the moment you earn it. Cards only come from verified stamps, never from money, and points never expire.',
   signInScratch: 'Signed-in neighbours get a scratch card with every stamp.',
   // Welcome stamps (endowed progress)
   welcomeStamps: 'Welcome stamps on us: {n}',
@@ -82,7 +82,7 @@ export const gamesStrings = {
   setDone: 'Set complete!',
   setComplete: 'Set complete: {set}!',
   setStops: 'Stops nearby',
-  setEnds: 'Until {date} (approximate)',
+  setEnds: 'Ends around {date}',
   // Neighbourhood goal (co-op)
   coopTitle: 'Neighbourhood goal',
   coopGoal: '{goal} visits in {area} this week',
@@ -102,6 +102,8 @@ export const gamesStrings = {
   // Social proof and shop thank-yous (reciprocity)
   tried: 'Neighbours who tried this in 30 days: {n}',
   perksHere: 'Thank-yous from this shop',
+  showMorePerks: 'Show more',
+  showFewerPerks: 'Show fewer',
   trigger_regular: 'When you become a Regular',
   trigger_full_card: 'When your card is full',
   trigger_quest_finale: 'When you finish a quest here',

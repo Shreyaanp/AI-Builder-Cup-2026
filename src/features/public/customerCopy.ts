@@ -59,7 +59,7 @@ export const customerEnglish = {
   factOtherPayment: 'Other payment',
   factBusy: 'Busy {hours}',
   // Seeded sample shops are always labelled.
-  demoShop: 'Demo shop',
+  demoShop: 'Sample shop',
   demoShopNote: 'Sample shop for this prototype — not a real business.',
 }
 

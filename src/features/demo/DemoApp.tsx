@@ -8,7 +8,7 @@ import {
   useState,
   useSyncExternalStore,
 } from 'react'
-import { Alert, Box, Button, Skeleton, Snackbar, Stack, Typography } from '@mui/material'
+import { Alert, Box, Button, Skeleton, Snackbar, Stack } from '@mui/material'
 import { IdentityContext } from '../../auth/context'
 import { hiddenFeatures } from '../../auth/features'
 import { useDemoCopy } from '../frontdoors/strings'
@@ -22,36 +22,16 @@ import { setCoachEndpoint } from '../../api/stream'
 import { DemoWelcome } from './DemoWelcome'
 import { DemoBrowse } from '../customer/DemoBrowse'
 import { currentPath, subscribePath, customerNavigate } from '../frontdoors/navigation'
+import { DemoBanner } from './DemoBanner'
+import {
+  exitDemo,
+  forgetSession,
+  rememberSession,
+  savedSession,
+  setCustomerTour,
+  type Session,
+} from './demoSession'
 
-type Session = { session_id: string; expires_at: number }
-const SESSION_KEY = 'chalkboard.demo.session'
-
-/** This tab's demo sandbox, while it has at least a minute left. */
-function savedSession(): Session | null {
-  try {
-    const value = JSON.parse(sessionStorage.getItem(SESSION_KEY) ?? 'null') as Session | null
-    return value && value.expires_at * 1000 - Date.now() > 60_000 ? value : null
-  } catch {
-    return null
-  }
-}
-function rememberSession(value: Session) {
-  try {
-    sessionStorage.setItem(SESSION_KEY, JSON.stringify(value))
-  } catch {
-    /* Without storage the next page simply opens a new sandbox. */
-  }
-}
-/** Forgets the stored sandbox, unless a newer one has replaced it since this one ended. */
-function forgetSession(id?: string) {
-  try {
-    const stored = JSON.parse(sessionStorage.getItem(SESSION_KEY) ?? 'null') as Session | null
-    if (id && stored?.session_id !== id && stored) return
-    sessionStorage.removeItem(SESSION_KEY)
-  } catch {
-    /* Nothing was stored. */
-  }
-}
 type DemoShop = { id: string; name: string }
 const PublicShop = lazy(() => import('../public/PublicShop'))
 const demoIdentity = {
@@ -223,21 +203,13 @@ export default function DemoApp() {
       .catch(() => undefined)
     return () => abort.abort()
   }, [session, customer, api])
-  const exit = useCallback(async () => {
-    forgetSession(session?.session_id)
-    try {
-      if (session)
-        await fetch(`/api/v1/demo/sessions/${session.session_id}`, {
-          method: 'DELETE',
-          credentials: 'omit',
-          signal: AbortSignal.timeout(5000),
-        })
-    } catch {
-      // An unreachable server must not trap the visitor; the fixture also expires on its own.
-    } finally {
-      location.assign(customer ? '/explore/' : '/')
-    }
-  }, [session, customer])
+  // The customer demo's steps open the real shop page and Passport: while this side is open they
+  // carry the demo banner too (CustomerApp reads this).
+  useEffect(() => setCustomerTour(customer), [customer])
+  const exit = useCallback(
+    () => exitDemo(session, customer ? '/explore/' : '/'),
+    [session, customer],
+  )
   return (
     <IdentityContext value={demoIdentity}>
       <Box
@@ -247,46 +219,12 @@ export default function DemoApp() {
           '--app-viewport': 'calc(100dvh - 48px - env(safe-area-inset-top))',
         }}
       >
-        <Box
-          component="header"
+        <DemoBanner
           ref={bannerRef}
-          sx={{
-            px: 4,
-            pt: 'env(safe-area-inset-top)',
-            bgcolor: (theme) => theme.material.secondaryContainer,
-            color: (theme) => theme.material.onSecondaryContainer,
-          }}
-        >
-          {/* Keep the whole notice readable; move actions below it when space is tight. */}
-          <Stack
-            direction="row"
-            sx={{ alignItems: 'center', flexWrap: 'wrap', columnGap: 2, minHeight: 48 }}
-          >
-            <Typography
-              variant="bodySmall"
-              sx={{ flex: '1 0 auto', maxWidth: '100%', py: 1, overflowWrap: 'anywhere' }}
-            >
-              {t.banner}
-            </Typography>
-            <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 2, ml: 'auto', maxWidth: '100%' }}>
-              <Button
-                size="small"
-                href={customer ? '/demo' : '/explore/demo'}
-                onClick={customerNavigate}
-                sx={{ minHeight: 48, minWidth: 0, px: 1, flexShrink: 0 }}
-              >
-                {customer ? t.owner : t.customer}
-              </Button>
-              <Button
-                size="small"
-                onClick={() => void exit()}
-                sx={{ minHeight: 48, minWidth: 0, px: 1, flexShrink: 0 }}
-              >
-                {t.exit}
-              </Button>
-            </Stack>
-          </Stack>
-        </Box>
+          customer={customer}
+          onSwitch={customerNavigate}
+          onExit={() => void exit()}
+        />
         {state === 'loading' ? (
           <Stack spacing={2} sx={{ p: 2 }} aria-busy="true">
             <Skeleton height={80} />

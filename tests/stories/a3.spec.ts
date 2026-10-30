@@ -1,5 +1,15 @@
 import { expect, test } from '@playwright/test'
-import { closeSheet, confirm, enter, localOnly, phone, seedShop, share, shot } from './support.js'
+import {
+  closeSheet,
+  confirm,
+  enter,
+  localOnly,
+  menuRow,
+  phone,
+  seedShop,
+  share,
+  shot,
+} from './support.js'
 
 test.use(phone)
 test.skip(({ isMobile }) => !isMobile, 'Phone evidence')
@@ -17,14 +27,14 @@ test('A3 · independent customer context polls visible prices and availability',
   try {
     await localOnly(customer)
     await customer.goto(url)
-    const kopi = customer.getByRole('listitem').filter({ hasText: 'Kopi' })
-    await expect(kopi).toContainText('₹18.00')
+    const kopi = menuRow(customer, 'Kopi')
+    await expect(kopi).toContainText('₹18')
     await page.getByRole('button', { name: /^Menu/ }).click()
     await page.getByRole('button', { name: /^Edit Kopi/ }).click()
     await page.getByLabel(/^Price/).fill('20')
     await page.getByRole('button', { name: 'Review', exact: true }).click()
     await confirm(page)
-    await expect(kopi).toContainText('₹20.00', { timeout: 5200 })
+    await expect(kopi).toContainText('₹20', { timeout: 5200 })
     await expect(kopi.locator('[data-price-changed]')).toBeVisible()
     await customer.screenshot({ path: 'docs/stories/S2-A3-price.png', animations: 'allow' })
     await expect(kopi.locator('[data-price-changed]')).toHaveCount(0)

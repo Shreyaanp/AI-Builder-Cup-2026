@@ -3,7 +3,7 @@ import type { PointerEvent } from 'react'
 import { Alert, Box, Button, Chip, Collapse, Stack, Typography, useTheme } from '@mui/material'
 import { gsap } from 'gsap'
 import { CalendarClock, Gift, Percent, Snowflake, Sparkles } from 'lucide-react'
-import { HAND_FONT } from '../../../design/theme'
+import { HAND_FONT, HAND_SIZE } from '../../../design/theme'
 import { useLocale } from '../../../state/hooks'
 import { fill } from '../copy'
 import { setPassport } from '../store'
@@ -264,7 +264,12 @@ export function ScratchCard({
               <Icon size={34} aria-hidden="true" />
               <Typography
                 component="p"
-                sx={{ fontFamily: HAND_FONT, fontWeight: 700, fontSize: 30, lineHeight: 1.1 }}
+                sx={{
+                  fontFamily: HAND_FONT,
+                  fontWeight: 700,
+                  fontSize: HAND_SIZE,
+                  lineHeight: 1.1,
+                }}
               >
                 {done ? prize.title : ''}
               </Typography>

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type RefObject } from 'react'
 import {
   Alert,
   CircularProgress,
@@ -16,9 +16,12 @@ export type FoundPlace = { lat: number; lng: number; label: string }
 /** Any city or neighbourhood in the world becomes the centre for discovery. */
 export function PlaceSearch({
   value,
+  inputRef,
   onFound,
 }: {
   value?: string
+  /** The field, so the area sheet can focus it once it has opened. */
+  inputRef?: RefObject<HTMLInputElement | null>
   onFound: (place: FoundPlace) => void
 }) {
   const t = discoverCopy(useLocale())
@@ -51,6 +54,7 @@ export function PlaceSearch({
         label={t.place}
         placeholder={t.placeHint}
         value={query}
+        inputRef={inputRef}
         autoComplete="address-level2"
         enterKeyHint="search"
         onChange={(event) => setQuery(event.target.value)}

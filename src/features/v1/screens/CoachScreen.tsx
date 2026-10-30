@@ -1,7 +1,8 @@
 import { chatBubbleStyle } from '../../coach/bubbleStyle'
+import { galleryKindOf, type GalleryKind } from '../../google/galleryGroups'
 import { AiInfo } from '../AiInfo'
 import { photoCopy } from '../../coach/photoCopy'
-import { photoHeaders, preparePhoto } from '../photoPrep'
+import { PHOTO_READ_TIMEOUT_MS, photoHeaders, preparePhoto } from '../photoPrep'
 import { PlainText } from '../../../design/PlainText'
 import { RichText } from '../../../design/LazyRichText'
 import { stripMarkdown } from '../../../design/markdownUtils'
@@ -11,7 +12,7 @@ import {
   photoRouteCopy,
   type PhotoRoute,
 } from '../../coach/photoRouteCopy'
-import { CloseDay, type Kind as DayKind } from '../../closeday/CloseDay'
+import type { Kind as DayKind } from '../../closeday/CloseDay'
 import {
   lazy,
   Suspense,
@@ -78,13 +79,10 @@ import { defaultCurrency } from '../format'
 import { useCopy } from '../strings'
 import { Sheet } from '../Sheet'
 import { useBackClose } from '../backStack'
-import { ConnectSheet } from '../../connect/ConnectSheet'
 import { useConnectCopy } from '../../connect/strings'
-import { SalesImportSheet } from '../ImportMenu'
 import { DOCUMENT_ACCEPT, useImport, type SalesImport } from '../useImport'
 import { StartCard } from '../ShopCard'
-import { TourOffer } from '../../tour/Tour'
-import { ShopSheets } from '../ShopTiles'
+import { TourOffer } from '../../tour/TourEntry'
 import { NeedsPill, TodayView, type TodayActions } from '../today/TodayView'
 import type { ShopSheetKind } from '../ShopTiles'
 import { useUnread } from '../useUnread'
@@ -98,12 +96,10 @@ import { OwnerJourney } from '../../frontdoors/OwnerJourney'
 import { LoadError } from '../LoadError'
 import { enterRise, shape } from '../../../design/theme'
 import { useSourcingCopy } from '../../sourcing/copy'
-import { OrdersSheet } from '../../sourcing/Orders'
 import { track } from '../../../app/analytics'
 import { useReceiveOrder } from '../../sourcing/orderData'
-import { OrderCard, SearchingSuppliers, SupplierCarousel } from '../../sourcing/SourcingCards'
 import type { Order, SupplierResult } from '../../sourcing/types'
-import { SupplyChatCard, type SupplyCardData } from '../../supply/SupplyEntry'
+import type { SupplyCardData } from '../../supply/SupplyEntry'
 import type { PurchaseOrder, Relationship } from '../../supply/types'
 import { utter } from '../phoneVoice'
 import { useLanguageSwitch } from '../languageSwitch'
@@ -113,7 +109,19 @@ import { asCoachAction, NEEDS_TAP, type CoachAction } from '../coachAction'
 import type { Destination } from '../workspaceContext'
 import { GuideChips } from '../../owner-tools/CoachGuide'
 import { openOwnerFeature } from '../../owner-tools/entry'
-import { PaymentCard } from '../../owner-tools/PaymentsScreen'
+import { OnceOpened } from '../../../app/OnceOpened'
+import {
+  CloseDay,
+  ConnectSheet,
+  OrderCard,
+  OrdersSheet,
+  PaymentCard,
+  SalesImportSheet,
+  SearchingSuppliers,
+  ShopSheets,
+  SupplierCarousel,
+  SupplyChatCard,
+} from './coachDeferred'
 import type { PaymentLink } from '../../owner-tools/links'
 
 // Charts, purchase orders and rules cards only appear mid-conversation; their code loads then.
@@ -187,7 +195,7 @@ const REPLY_POLL_MS = 1500
 const REPLY_WAIT_MS = 45_000
 
 /** A shop photo the owner may later choose to show customers (offered once, never automatic). */
-export type GalleryPhoto = { file: File; businessId: string }
+export type GalleryPhoto = { file: File; businessId: string; kind?: GalleryKind }
 
 // The extraction file survives a new shop's approval (the flow hands it over with the new ID).
 // It stays local to this coach workspace and never enters preference storage.
@@ -239,6 +247,8 @@ function CoachScreen({
   const s = useSourcingCopy()
   // Sourcing: the item being searched for, every order shown in the chat, the open thread.
   const [searching, setSearching] = useState<string | null>(null)
+  // Example requests a reply offers (the offline demo coach): one tap sends one.
+  const [prompts, setPrompts] = useState<string[]>([])
   const [orders, setOrders] = useState<Record<string, Order>>({})
   const [pos, setPos] = useState<Record<string, PurchaseOrder>>({})
   const [thread, setThread] = useState<string | null>(null)
@@ -252,6 +262,11 @@ function CoachScreen({
   const [menuFocus, setMenuFocus] = useState<string | null>(null)
   const next = useNextStepsCopy()
   const { unread, refresh: refreshUnread } = useUnread()
+  const closeShopSheet = () => {
+    if (shopSheet === 'messages') refreshUnread()
+    setShopSheet(null)
+    setMenuFocus(null)
+  }
   const messageInput = useRef<HTMLTextAreaElement>(null)
   const session = useRef<string | null>(null)
   const controller = useRef<AbortController | null>(null)
@@ -326,6 +341,14 @@ function CoachScreen({
       }
       if (event.kind === 'delta') setReply((text) => text + (event.text ?? ''))
       if (event.kind === 'reply' || event.kind === 'output_transcript') setReply(event.text ?? '')
+      if (event.kind === 'reply') {
+        const offered = event.data?.suggestions
+        setPrompts(
+          Array.isArray(offered)
+            ? offered.filter((item): item is string => typeof item === 'string').slice(0, 6)
+            : [],
+        )
+      }
       if (event.kind === 'input_transcript') {
         setShowToday(false)
         setMessages((items) => [...items, { role: 'user', text: event.text ?? '' }])
@@ -384,7 +407,7 @@ function CoachScreen({
             [...items, { role: 'action' as const, action, key: crypto.randomUUID() }].slice(-40),
           )
           // Screens open at once (everything by voice); pickers and Send wait for a tap.
-          if (!NEEDS_TAP.has(action.target)) {
+          if (!NEEDS_TAP.has(action.target) && !action.offer) {
             setShowToday(action.target === 'today')
             const sheet = SHEETS[action.target]
             if (action.target === 'games') go('grow')
@@ -641,6 +664,7 @@ function CoachScreen({
     setError('')
     setMessages((items) => [...items, { role: 'user' as const, text: message }].slice(-40))
     setNote('')
+    setPrompts([])
     let finalReply = ''
     let proposed = false
     try {
@@ -859,7 +883,7 @@ function CoachScreen({
         method: 'POST',
         body: file,
         headers: photoHeaders(photo),
-        signal: AbortSignal.any([operation.signal, AbortSignal.timeout(60_000)]),
+        signal: AbortSignal.any([operation.signal, AbortSignal.timeout(PHOTO_READ_TIMEOUT_MS)]),
       })
       if (!alive.current || operation.signal.aborted) return
       const uncertain = Array.isArray(result?.extraction?.uncertain)
@@ -872,7 +896,7 @@ function CoachScreen({
         businessId &&
         ['storefront', 'signboard', 'menu', 'price_list'].includes(result?.photo_kind ?? '')
       )
-        setGalleryPhoto({ file, businessId })
+        setGalleryPhoto({ file, businessId, kind: galleryKindOf(result?.photo_kind) })
       setMessages((items) =>
         [
           ...items,
@@ -1165,7 +1189,7 @@ function CoachScreen({
                   setError('')
                   try {
                     await api(
-                      `/businesses/${encodeURIComponent(galleryPhoto.businessId)}/gallery`,
+                      `/businesses/${encodeURIComponent(galleryPhoto.businessId)}/gallery?kind=${galleryPhoto.kind ?? 'other'}`,
                       {
                         method: 'POST',
                         body: galleryPhoto.file,
@@ -1311,7 +1335,9 @@ function CoachScreen({
                     )
                   ) : message.role === 'payment' ? (
                     <Box component="li" key={message.key}>
-                      <PaymentCard payment={message.payment} />
+                      <Suspense fallback={null}>
+                        <PaymentCard payment={message.payment} />
+                      </Suspense>
                     </Box>
                   ) : message.role === 'chart' ? (
                     <Box component="li" key={message.key} sx={{ display: 'flex' }}>
@@ -1320,17 +1346,18 @@ function CoachScreen({
                       </Suspense>
                     </Box>
                   ) : message.role === 'suppliers' ? (
-                    <SupplierCarousel
-                      key={message.key}
-                      result={message.result}
-                      onChoose={(card) => {
-                        const amount = message.result.quantity
-                          ? `${message.result.quantity} ${message.result.unit} `
-                          : ''
-                        setNote(s.chooseDraft(card.rank, `${amount}${message.result.item}`))
-                        messageInput.current?.focus()
-                      }}
-                    />
+                    <Suspense key={message.key} fallback={null}>
+                      <SupplierCarousel
+                        result={message.result}
+                        onChoose={(card) => {
+                          const amount = message.result.quantity
+                            ? `${message.result.quantity} ${message.result.unit} `
+                            : ''
+                          setNote(s.chooseDraft(card.rank, `${amount}${message.result.item}`))
+                          messageInput.current?.focus()
+                        }}
+                      />
+                    </Suspense>
                   ) : message.role === 'po' ? (
                     pos[message.poId] && (
                       <Box component="li" key={message.poId} sx={{ pl: { xs: 0, sm: 10 } }}>
@@ -1344,7 +1371,9 @@ function CoachScreen({
                     )
                   ) : message.role === 'supply' ? (
                     <Box component="li" key={message.key} sx={{ pl: { xs: 0, sm: 10 } }}>
-                      <SupplyChatCard data={message.data} />
+                      <Suspense fallback={null}>
+                        <SupplyChatCard data={message.data} />
+                      </Suspense>
                     </Box>
                   ) : message.role === 'rules' ? (
                     <Box component="li" key={message.key} sx={{ pl: { xs: 0, sm: 10 } }}>
@@ -1365,25 +1394,30 @@ function CoachScreen({
                     </Box>
                   ) : message.role === 'order' ? (
                     orders[message.orderId] && (
-                      <OrderCard
-                        key={message.orderId}
-                        order={orders[message.orderId]!}
-                        onSend={sendOrder}
-                        onDiscard={discardOrder}
-                        onOpen={(order) => setThread(order.id)}
-                        onReceived={(order) =>
-                          void receiveOrder(order).then((received) => {
-                            if (received)
-                              setOrders((known) => ({ ...known, [received.id]: received }))
-                          })
-                        }
-                      />
+                      <Suspense key={message.orderId} fallback={null}>
+                        <OrderCard
+                          order={orders[message.orderId]!}
+                          onSend={sendOrder}
+                          onDiscard={discardOrder}
+                          onOpen={(order) => setThread(order.id)}
+                          onReceived={(order) =>
+                            void receiveOrder(order).then((received) => {
+                              if (received)
+                                setOrders((known) => ({ ...known, [received.id]: received }))
+                            })
+                          }
+                        />
+                      </Suspense>
                     )
                   ) : (
                     <Bubble key={index} message={message} you={t.you} coach={t.coach} />
                   ),
                 )}
-                {searching !== null && <SearchingSuppliers item={searching} />}
+                {searching !== null && (
+                  <Suspense fallback={null}>
+                    <SearchingSuppliers item={searching} />
+                  </Suspense>
+                )}
                 {liveReply && (
                   <Bubble
                     message={{ role: 'assistant', text: liveReply }}
@@ -1399,38 +1433,70 @@ function CoachScreen({
                 )}
               </Stack>
             </Box>
-            {lastIsReply && <Box sx={{ pt: 4, pl: 10 }}>{chips}</Box>}
+            {lastIsReply && (
+              <Box sx={{ pt: 4, pl: 10 }}>
+                {prompts.length > 0 ? (
+                  <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 2 }}>
+                    {prompts.map((prompt) => (
+                      <Chip
+                        key={prompt}
+                        label={prompt}
+                        variant="outlined"
+                        onClick={() => void send(prompt)}
+                        sx={{
+                          height: 'auto',
+                          minHeight: 48,
+                          maxWidth: '100%',
+                          borderColor: roles.outlineVariant,
+                          '& .MuiChip-label': { whiteSpace: 'normal', py: 1 },
+                          ...enterRise,
+                        }}
+                      />
+                    ))}
+                  </Stack>
+                ) : (
+                  chips
+                )}
+              </Box>
+            )}
           </>
         )}
         <div ref={end} />
       </Box>
-      <SalesImportSheet imported={sales} onClose={() => setSales(null)} />
-      {dayPhoto && <CloseDay initial={dayPhoto} onClose={() => setDayPhoto(null)} />}
-      <OrdersSheet open={thread !== null} orderId={thread} onClose={() => setThread(null)} />
-      <ConnectSheet open={connectOpen} onClose={() => setConnectOpen(false)} />
-      <ShopSheets
-        kind={shopSheet}
-        menuFocus={menuFocus}
-        onClose={() => {
-          if (shopSheet === 'messages') refreshUnread()
-          setShopSheet(null)
-          setMenuFocus(null)
-        }}
-      />
+      <OnceOpened open={sales !== null} onClose={() => setSales(null)}>
+        <SalesImportSheet imported={sales} onClose={() => setSales(null)} />
+      </OnceOpened>
+      {dayPhoto && (
+        <Suspense fallback={null}>
+          <CloseDay initial={dayPhoto} onClose={() => setDayPhoto(null)} />
+        </Suspense>
+      )}
+      <OnceOpened open={thread !== null} onClose={() => setThread(null)}>
+        <OrdersSheet open={thread !== null} orderId={thread} onClose={() => setThread(null)} />
+      </OnceOpened>
+      <OnceOpened open={connectOpen} onClose={() => setConnectOpen(false)}>
+        <ConnectSheet open={connectOpen} onClose={() => setConnectOpen(false)} />
+      </OnceOpened>
+      <OnceOpened open={shopSheet !== null} onClose={closeShopSheet}>
+        <ShopSheets kind={shopSheet} menuFocus={menuFocus} onClose={closeShopSheet} />
+      </OnceOpened>
       {closeDayOpen && (
-        <CloseDay
-          onClose={() => {
-            setCloseDayOpen(false)
-            void ws.reload()
-          }}
-        />
+        <Suspense fallback={null}>
+          <CloseDay
+            onClose={() => {
+              setCloseDayOpen(false)
+              void ws.reload()
+            }}
+          />
+        </Suspense>
       )}
 
       <Box
         sx={{
           position: 'relative',
           flexShrink: 0,
-          pb: 2,
+          // Phones: the composer sits directly on the bottom navigation (OB-199).
+          pb: { xs: 0, sm: 2 },
           pt: 1,
           bgcolor: 'background.default',
           zIndex: 2,

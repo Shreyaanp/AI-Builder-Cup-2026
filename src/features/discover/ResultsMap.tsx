@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Box, Stack, Typography, useTheme } from '@mui/material'
 import type { Theme } from '@mui/material/styles'
 import { TrainFront } from 'lucide-react'
 import { loadMaps, type AdvancedMarker, type GoogleMap, type LatLng } from './mapsSdk'
 import type { MapCopy } from './mapCopy'
+import { framePoints } from './mapFrame'
 import './resultsMap.css'
 
 /** One place on the results map: our shops are numbered like their cards; Google places are not. */
@@ -111,8 +112,10 @@ function GoogleLayer({
     [pins],
   )
   const latest = useRef({ pins, center, anchor, copy, theme })
+  const chosen = useRef(selected)
   useEffect(() => {
     latest.current = { pins, center, anchor, copy, theme }
+    chosen.current = selected
   })
 
   useEffect(() => {
@@ -120,8 +123,22 @@ function GoogleLayer({
     const listeners: { remove: () => void }[] = []
     const placed = markers.current
     const container = node.current
-    void loadMaps()
-      .then((lib) => {
+    // The map is made only once its box has a size, so it never draws as a small grey tile with
+    // pins outside it, and it is framed on the results at that size (A-19).
+    const sized = new Promise<void>((resolve) => {
+      if (!container) return
+      const has = () => container.clientWidth > 0 && container.clientHeight > 0
+      if (has()) return resolve()
+      const watcher = new ResizeObserver(() => {
+        if (!has()) return
+        watcher.disconnect()
+        resolve()
+      })
+      watcher.observe(container)
+      listeners.push({ remove: () => watcher.disconnect() })
+    })
+    void Promise.all([loadMaps(), sized])
+      .then(([lib]) => {
         if (cancelled || !container) return
         const { pins, center, anchor, copy, theme } = latest.current
         const instance = new lib.Map(container, {
@@ -135,8 +152,24 @@ function GoogleLayer({
           gestureHandling: variant === 'full' ? 'greedy' : 'cooperative',
         })
         map.current = instance
-        const bounds = new lib.LatLngBounds()
-        bounds.extend(center)
+        const frame = () => {
+          const { pins, center, anchor } = latest.current
+          const bounds = new lib.LatLngBounds()
+          const { points } = framePoints(center, pins, anchor)
+          points.forEach((point) => bounds.extend(point))
+          // Never tighter than a few streets, so one pin does not zoom in to a rooftop.
+          const span = 0.0015
+          const mid = points.reduce(
+            (sum, p) => ({
+              lat: sum.lat + p.lat / points.length,
+              lng: sum.lng + p.lng / points.length,
+            }),
+            { lat: 0, lng: 0 },
+          )
+          bounds.extend({ lat: mid.lat - span, lng: mid.lng - span })
+          bounds.extend({ lat: mid.lat + span, lng: mid.lng + span })
+          instance.fitBounds(bounds, container.clientHeight < 240 ? 24 : 48)
+        }
         const you = document.createElement('div')
         you.className = 'rm-you'
         new lib.AdvancedMarkerElement({
@@ -155,7 +188,6 @@ function GoogleLayer({
             content: station,
             title: anchor.name,
           })
-          bounds.extend(anchor)
         }
         pins.forEach((pin) => {
           const el = document.createElement('div')
@@ -174,12 +206,21 @@ function GoogleLayer({
             gmpClickable: true,
             zIndex: pin.kind === 'ours' ? 2 : 1,
           })
-          listeners.push(marker.addListener('click', () => onSelectRef.current(pin.id)))
+          const select = () => onSelectRef.current(pin.id)
+          marker.addEventListener('gmp-click', select)
+          listeners.push({ remove: () => marker.removeEventListener('gmp-click', select) })
           placed.set(pin.id, { marker, el })
-          bounds.extend({ lat: pin.lat, lng: pin.lng })
         })
-        if (pins.length) instance.fitBounds(bounds, 48)
-        onStateRef.current('ready')
+        frame()
+        // The sketch stays up until the tiles are in: no grey box with pins floating over it.
+        listeners.push(instance.addListener('tilesloaded', () => onStateRef.current('ready')))
+        // A dialog or sheet that is still growing resizes the map: frame again, unless the
+        // customer has already picked a pin and the map has glided to it.
+        const resize = new ResizeObserver(() => {
+          if (!chosen.current) frame()
+        })
+        resize.observe(container)
+        listeners.push({ remove: () => resize.disconnect() })
       })
       .catch(() => {
         if (!cancelled) onStateRef.current('failed')
@@ -237,10 +278,13 @@ function SketchMap({ pins, center, anchor, selected, onSelect, copy, variant }: 
   // Drawn at the container's own size (1 unit = 1 px): pins stay finger-sized and in view on
   // a phone, a wide desktop column or the full-screen map.
   const svg = useRef<SVGSVGElement>(null)
-  const [size, setSize] = useState({ w: 360, h: variant === 'full' ? 560 : 220 })
-  useEffect(() => {
+  const [size, setSize] = useState<{ w: number; h: number } | null>(null)
+  useLayoutEffect(() => {
     const node = svg.current
     if (!node) return
+    const first = node.getBoundingClientRect()
+    if (first.width > 0 && first.height > 0)
+      setSize({ w: Math.round(first.width), h: Math.round(first.height) })
     const observer = new ResizeObserver(([entry]) => {
       const box = entry?.contentRect
       if (box && box.width > 0 && box.height > 0)
@@ -249,11 +293,12 @@ function SketchMap({ pins, center, anchor, selected, onSelect, copy, variant }: 
     observer.observe(node)
     return () => observer.disconnect()
   }, [])
-  const W = size.w
-  const H = size.h
+  const W = size?.w ?? 360
+  const H = size?.h ?? (variant === 'full' ? 560 : 220)
   const full = variant === 'full'
   // Room for the close button and the fallback label; pins never touch the edge.
   const pad = full ? 72 : 36
+  // The sketch has no tiles to zoom out of: every pin stays inside the drawing.
   const points = [center, ...(anchor ? [anchor] : []), ...pins]
   const cos = Math.cos((center.lat * Math.PI) / 180)
   const xs = points.map((p) => p.lng * cos)
@@ -273,6 +318,8 @@ function SketchMap({ pins, center, anchor, selected, onSelect, copy, variant }: 
   const you = at(center)
   const station = anchor ? at(anchor) : null
   const spots = spread(pins.map(at), W, H)
+  // Drawn only once measured: a first guess at the size left pins floating outside the map.
+  const measured = size !== null
   const chosen = pins.findIndex((p) => p.id === selected)
   return (
     <Box
@@ -323,12 +370,13 @@ function SketchMap({ pins, center, anchor, selected, onSelect, copy, variant }: 
         <circle cx={you.x} cy={you.y} r={14} fill="#1a73e8" opacity={0.2} className="c-ping" />
         <circle cx={you.x} cy={you.y} r={7} fill="#1a73e8" stroke="#ffffff" strokeWidth={2.5} />
       </g>
-      {order(spots.length, chosen).map((index) => {
+      {(measured ? order(spots.length, chosen) : []).map((index) => {
         const spot = spots[index]!
         const pin = pins[index]!
         const colors = pinColors(theme, pin)
         const on = index === chosen
-        const r = (on ? 16 : pin.kind === 'ours' ? 12 : 10) + (full ? 2 : 0)
+        // Finger-sized discs: 32 px and up (A-19).
+        const r = on ? 20 : 16
         return (
           <g
             key={pin.id}
@@ -362,7 +410,7 @@ function SketchMap({ pins, center, anchor, selected, onSelect, copy, variant }: 
               <text
                 y={4}
                 textAnchor="middle"
-                fontSize={on ? 14 : 12}
+                style={{ fontSize: theme.typography.labelMedium.fontSize }}
                 fontWeight={700}
                 fill={colors.fg}
               >
@@ -381,7 +429,7 @@ function SketchMap({ pins, center, anchor, selected, onSelect, copy, variant }: 
           textAnchor={
             spots[chosen]!.x > W - 80 ? 'end' : spots[chosen]!.x < 80 ? 'start' : 'middle'
           }
-          fontSize={13}
+          style={{ fontSize: theme.typography.labelMedium.fontSize }}
           fontWeight={600}
           fill={roles.onSurface}
           stroke={roles.surface}
@@ -410,14 +458,14 @@ function spread(points: { x: number; y: number }[], width: number, height: numbe
   const placed: { x: number; y: number }[] = []
   const clusters: { x: number; y: number; n: number }[] = []
   for (const point of points) {
-    const cluster = clusters.find((c) => Math.hypot(c.x - point.x, c.y - point.y) < 26)
+    const cluster = clusters.find((c) => Math.hypot(c.x - point.x, c.y - point.y) < 34)
     if (!cluster) {
       clusters.push({ ...point, n: 0 })
       placed.push(point)
       continue
     }
     cluster.n += 1
-    const radius = 30 * Math.sqrt(cluster.n)
+    const radius = 38 * Math.sqrt(cluster.n)
     const angle = cluster.n * 2.39996
     placed.push({
       x: Math.min(width - 18, Math.max(18, cluster.x + Math.cos(angle) * radius)),

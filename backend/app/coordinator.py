@@ -8,6 +8,7 @@ the tool returns `ask_owner` and the model must ask instead of guessing again.
 """
 
 import re
+import time
 from contextvars import ContextVar
 from dataclasses import dataclass, field
 from datetime import date
@@ -30,9 +31,11 @@ from .merchant import (
     ProposalRequest,
 )
 from .money import to_major, to_minor
+from .passport import local_now
 from .product_categories import suggest_category
 from .product_units import UNITS, normalize_unit
 from .recap import recap_facts
+from .region import shop_zone
 from .search_engine import SearchEngine
 from .sourcing import OrderItem, SupplierGenerator
 from .vendor_profile import (
@@ -58,6 +61,8 @@ ASK_ORDER = (
     "preorders",
     "busy_hours",
 )
+# A shop's map pin; cleared when the coach prepares a new location (see discover.prepare_pin).
+PIN_FIELDS = ("lat", "lng", "place_id", "pin_label", "pin_source", "pin_accuracy_m")
 # A price moving by more than this factor is flagged so the model confirms with the owner.
 SUSPICIOUS_PRICE_RATIO = 2.0
 
@@ -87,6 +92,8 @@ class MerchantContext:
     ended: bool = False
     # A Live voice conversation: tools never hold up the spoken reply (first audio).
     spoken: bool = False
+    # The app's maps service (discover.MapsService): pins the place a new shop's owner typed.
+    maps: Any = None
 
 
 current: ContextVar[MerchantContext | None] = ContextVar("merchant_context", default=None)
@@ -467,7 +474,8 @@ def get_insights() -> dict[str, Any]:
         return {"status": "needs_business"}
     signals = ctx.store.recap_signals(ctx.uid, ctx.business_id)
     sales = ctx.store.sales_history(ctx.uid, ctx.business_id)
-    year, week, _ = date.today().isocalendar()
+    shop = (ctx.store.context(ctx.uid, ctx.business_id) or {}).get("business") or {}
+    year, week, _ = local_now(shop_zone(shop.get("fields")), time.time()).date().isocalendar()
     facts = recap_facts(f"{year}-W{week:02d}", sales, signals)
     currency = facts["currency"]
     for key in ("revenue", "previous_revenue", "revenue_change"):
@@ -616,6 +624,12 @@ def _propose_shop(
         }
         # Saved prices are minor units of the saved currency, so it never changes on edit.
         given["currency"] = shop_currency(existing)
+        if location.strip() and location.strip() != existing["fields"].get("location"):
+            # OB-172 (#527): a new place never keeps the old pin. The review card finds the new
+            # pin (geocode, the owner's consent) exactly like the owner's own edit.
+            for key in PIN_FIELDS:
+                given.pop(key, None)
+            given["pin_demo"] = False
     else:
         draft = ctx.new_shop_draft.business if ctx.new_shop_draft else None
         if ctx.new_shop and draft:

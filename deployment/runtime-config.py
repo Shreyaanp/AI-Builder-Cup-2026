@@ -63,6 +63,9 @@ config = {
     "FIREBASE_WEB_APP_ID": os.environ["FIREBASE_WEB_APP_ID"].strip(),
     "FIREBASE_AUTH_DOMAIN": f"{target['projectId']}.firebaseapp.com",
     "RELEASE_COMMIT": os.environ.get("RELEASE_SHA", "local"),
+    # Rate limits per client IP (OB-90): chalkboard-https appends '<client>, <load balancer>'
+    # to X-Forwarded-For, so the client is two entries from the right; earlier ones are spoofable.
+    "TRUSTED_PROXY_HOPS": "2",
     "MAX_ACTIVE_RUNS": "8",
     "MAX_TURN_SECONDS": "30",
     "MAX_VOICE_SECONDS": "120",

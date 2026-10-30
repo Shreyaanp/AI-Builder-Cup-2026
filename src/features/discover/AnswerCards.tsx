@@ -3,13 +3,13 @@ import { Box, Stack, Typography, useTheme, type Theme } from '@mui/material'
 import { ExternalLink, Leaf, MapPinned } from 'lucide-react'
 import type { Locale } from '../../i18n/locales'
 import { dealIn } from '../../design/chalkMotion'
-import { HAND_FONT } from '../../design/theme'
 import { customerNavigate } from '../frontdoors/navigation'
 import { PlaceImage } from '../frontdoors/PlaceImage'
 import { accountCopyFor } from '../customer/copy'
 import { locallyMadeLabel } from '../public/locallyMade'
-import { formatPrice } from '../v1/format'
+import { formatShopPrice } from '../v1/format'
 import { askCopy } from './askStrings'
+import { cleanAreaText, plainModelText } from './areaText'
 import type { AreaAnswer, AskAnswer, AskPick } from './askThread'
 import { mapCopy } from './mapCopy'
 import { mapsLink } from './types'
@@ -156,6 +156,14 @@ function rowSx(roles: Theme['material'], selected = false) {
 
 /** One line, cut with an ellipsis rather than making the row taller. */
 const oneLine = { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } as const
+/** Two lines, then an ellipsis: a long place name or credit wraps instead of being cut at one. */
+const twoLines = {
+  display: '-webkit-box',
+  WebkitBoxOrient: 'vertical',
+  WebkitLineClamp: 2,
+  overflow: 'hidden',
+  overflowWrap: 'anywhere',
+} as const
 
 /**
  * One shop that answers the question, as a compact row: photo, name and the handwritten price
@@ -198,7 +206,9 @@ export function PickCard({
   const item = pick.matched[0] ?? pick.items.find((i) => i.available)
   const reason = pick.reasons?.[0]
   // Their own signal, in one line: Gemini's words for the top picks, else the app's own.
-  const personal = pick.why ?? (pick.because ? becauseLine(pick.because, searchCopy(locale)) : null)
+  const personal =
+    (pick.why ? plainModelText(pick.why) : null) ??
+    (pick.because ? becauseLine(pick.because, searchCopy(locale)) : null)
   const distance = formatDistance(pick.distance_m, locale)
   const deal = pick.deal
   // The meta line already says "Demo shop"; the name keeps its room for the name itself.
@@ -284,32 +294,23 @@ export function PickCard({
             </Typography>
             {item && pick.currency && (
               <Typography
+                // The theme's title size, not a size of its own (A-22: three sizes per screen).
+                // A span, not the theme's h3: the name beside it is the row's only heading.
+                variant="titleMedium"
+                component="span"
                 sx={{
-                  fontFamily: HAND_FONT,
-                  fontSize: '1.25rem',
-                  lineHeight: 1,
                   fontWeight: 700,
                   color: roles.primary,
                   flexShrink: 0,
+                  lineHeight: theme.typography.titleSmall.lineHeight,
                 }}
               >
-                {formatPrice(item.price, pick.currency)}
+                {formatShopPrice(item.price, pick.currency)}
               </Typography>
             )}
           </Stack>
-          {deal && pick.currency ? (
-            <Typography
-              variant="labelMedium"
-              sx={{ color: theme.chalk.coral.onContainer, fontWeight: 700, ...oneLine }}
-            >
-              {fillIn(copy.deal, {
-                item: deal.item,
-                price: formatPrice(deal.price, pick.currency),
-              })}{' '}
-              · {fillIn(copy.until, { time: time(deal.pickup_end, locale) })}
-            </Typography>
-          ) : item ? (
-            <Typography variant="bodySmall" sx={oneLine}>
+          {item && (
+            <Typography variant="bodySmall" sx={{ overflowWrap: 'anywhere' }}>
               {item.name}
               {pick.locally_made && (
                 <Box component="span" sx={{ color: theme.chalk.mint.main }}>
@@ -319,7 +320,23 @@ export function PickCard({
                 </Box>
               )}
             </Typography>
-          ) : null}
+          )}
+          {deal && pick.currency && (
+            <Typography
+              variant="labelMedium"
+              sx={{
+                color: theme.chalk.coral.onContainer,
+                fontWeight: 700,
+                overflowWrap: 'anywhere',
+              }}
+            >
+              {fillIn(copy.deal, {
+                item: deal.item,
+                price: formatShopPrice(deal.price, pick.currency),
+              })}{' '}
+              · {fillIn(copy.until, { time: time(deal.pickup_end, locale) })}
+            </Typography>
+          )}
           <Typography
             variant="bodySmall"
             color="text.secondary"
@@ -373,6 +390,32 @@ export function PickCard({
  * A same-size placeholder row while the area's shops load, so nothing below moves. It draws
  * the card's own shape (photo, name, details) so it never reads as an empty outline.
  */
+/** The carousel's empty state: one card the skeletons' size, so nothing below it moves. */
+export function PickEmpty({ note }: { note: string }) {
+  const roles = useTheme().material
+  return (
+    <Box
+      component="li"
+      sx={{
+        listStyle: 'none',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        textAlign: 'center',
+        p: 4,
+        flex: '0 0 min(72%, 264px)',
+        aspectRatio: '4/4.4',
+        borderRadius: '20px',
+        bgcolor: roles.surfaceContainerLow,
+        border: `1px dashed ${roles.outline}`,
+        color: roles.onSurfaceVariant,
+      }}
+    >
+      <Typography variant="bodyMedium">{note}</Typography>
+    </Box>
+  )
+}
+
 export function PickSkeleton({ tile = false }: { tile?: boolean }) {
   const roles = useTheme().material
   const bar = (width: string) => (
@@ -448,7 +491,7 @@ export function GoogleRows({
             >
               <Thumb pick={place} />
               <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 1 }}>
-                <Typography variant="titleSmall" component="h4" sx={oneLine}>
+                <Typography variant="titleSmall" component="h4" title={place.name} sx={twoLines}>
                   {place.name}
                 </Typography>
                 <Typography variant="bodySmall" color="text.secondary" sx={oneLine}>
@@ -466,24 +509,31 @@ export function GoogleRows({
                     sx={{
                       fontVariantNumeric: 'tabular-nums',
                       lineHeight: 1.25,
-                      minHeight: { xs: '2.5em', sm: 0 },
+                      minHeight: { xs: '2lh', sm: 0 },
                     }}
                   >
                     {ratingLine(place.rating, place.user_rating_count, locale, search)}
                   </Typography>
                 )}
-                {/* Google's attribution: the words "Google Maps", never translated, and the
-                    photo's author. */}
+                {/* Google's attribution: the words "Google Maps", never translated. The photo's
+                    author is a separate, labelled line, so a name never reads as the owner. */}
                 <Typography
                   variant="labelSmall"
                   translate="no"
                   sx={{ color: roles.onSurfaceVariant, ...oneLine }}
                 >
                   Google Maps
-                  {place.photo_url && place.photo_authors?.length
-                    ? ` · ${place.photo_authors.join(', ')}`
-                    : ''}
                 </Typography>
+                {place.photo_url && place.photo_authors?.length ? (
+                  <Typography
+                    variant="labelSmall"
+                    data-testid="photo-credit"
+                    title={fillIn(ask.photoBy, { name: place.photo_authors.join(', ') })}
+                    sx={{ color: roles.onSurfaceVariant, ...twoLines }}
+                  >
+                    {fillIn(ask.photoBy, { name: place.photo_authors.join(', ') })}
+                  </Typography>
+                ) : null}
               </Box>
               <ExternalLink size={18} aria-hidden="true" style={{ flexShrink: 0 }} />
             </Box>
@@ -527,7 +577,9 @@ export function AreaAnswerCard({ area, locale }: { area: AreaAnswer; locale: Loc
         border: `1px solid ${roles.outlineVariant}`,
       }}
     >
-      <Typography variant="bodyLarge">{area.text}</Typography>
+      <Typography variant="bodyLarge" sx={{ whiteSpace: 'pre-line', overflowWrap: 'anywhere' }}>
+        {cleanAreaText(area.text)}
+      </Typography>
       {area.sources.length > 0 && (
         <>
           <Typography

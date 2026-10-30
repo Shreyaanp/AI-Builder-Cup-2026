@@ -74,6 +74,7 @@ export const ja: Copy = {
   connectionOffline: 'オフライン',
   connectionReconnecting: '再接続中…',
   voiceFailed: '音声接続が終了しました。もう一度試すか、文字で入力してください。',
+  voiceOffline: '音声には接続が必要です。代わりに文字で入力してください。',
   voiceRestarted: '音声が再接続されました。もう一度お話しください。',
   voiceMicDenied:
     'マイクへのアクセスがブロックされています。ブラウザの設定でマイクを許可して再試行するか、文字で入力してください。',
@@ -166,7 +167,7 @@ export const ja: Copy = {
   suggestPrice: '価格を更新',
   suggestHours: '営業時間を変更',
   message: 'メッセージ',
-  messagePlaceholder: 'お店について教えてください…',
+  messagePlaceholder: 'お店について…',
   send: '送信',
   stop: '停止',
   photo: '写真を追加',
@@ -282,6 +283,7 @@ export const ja: Copy = {
   shopEmptyTitle: 'お店を追加しましょう',
   addShop: '店舗情報を追加',
   startPhoto: '写真から始める',
+  opening: '開いています…',
   editDetails: '情報を編集',
   details: '店舗情報',
   products: '商品と価格',
@@ -316,6 +318,8 @@ export const ja: Copy = {
   importing: 'ファイルを読み込んでいます…',
   importFailed:
     'ファイルを読み込めませんでした。商品名と価格を含む CSV または Excel を送ってください。',
+  importTooLarge:
+    'ファイルが大きすぎます。20 MB 未満の写真か PDF、または 5 MB 未満の表計算ファイルを送ってください。',
   salesSummary: '売上の概要',
   salesNotSaved: 'ファイルの内容です。何も保存していません。',
   salesCurrencyMismatch: '別の通貨の行は除外しました。',
@@ -403,6 +407,7 @@ export const ja: Copy = {
   dataSection: 'あなたのデータ',
   dataBody: 'Chalkboard からお店、商品、会話、記憶、写真、顔データを削除します。',
   deleteAll: 'すべてのデータを削除',
+  deleteDemo: 'デモではデータを削除できません。本物のアカウントなら、ここからすべて削除できます。',
   deleteTitle: 'すべて削除しますか？',
   deleteBody: 'お店、商品、会話、写真、顔データをすべて完全に削除します。元に戻せません。',
   deleteConfirm: '完全に削除',

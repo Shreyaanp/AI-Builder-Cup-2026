@@ -13,10 +13,13 @@ import {
   useTheme,
 } from '@mui/material'
 import { SeeAgain } from '../first-run/FirstRun'
-import { History, UserRound } from 'lucide-react'
+import { Eraser, History, LogOut, Trash2, UserRound } from 'lucide-react'
 import { Sheet } from '../v1/Sheet'
 import { useTabsCopy } from '../v1/tabsCopy'
 import { HoverTip } from '../frontdoors/HoverTip'
+import { AppearanceToggle } from '../frontdoors/AppearanceToggle'
+import { LanguagePicker } from '../frontdoors/LanguagePicker'
+import { settingsRowSx } from '../frontdoors/settingsRow'
 import { useCustomer } from './account'
 import { useGuestCopy } from './guestCopy'
 import type { Profile } from './types'
@@ -25,7 +28,12 @@ import { useAccountCopy } from './copy'
 import { SignInButton } from './SignIn'
 import { preferenceChips } from './preferences'
 import { forgetOpened } from '../discover/opened'
+import { forgetKeptPassport } from './offline'
+import { clearReceipts, refreshPassport } from '../passport/store'
+import { clearRewards } from '../rewards/storage'
 import type { PreferenceKey } from './preferences'
+import { samplePrice } from '../discover/conversationCopy'
+import { areaCurrency } from '../v1/format'
 
 /** Fixed beside the appearance switch on Ask, Chats and Saved. */
 /** `inline` sits in a page's own header row instead of floating top-right. */
@@ -64,7 +72,8 @@ export function ProfileButton({ inline = false }: { inline?: boolean }) {
               sx={{
                 width: 34,
                 height: 34,
-                fontSize: 16,
+                // The body size (16px, 15px on phones), so the initial adds no extra size to a screen.
+                typography: 'body1',
                 fontWeight: 700,
                 bgcolor: roles.primary,
                 color: roles.onPrimary,
@@ -82,6 +91,24 @@ export function ProfileButton({ inline = false }: { inline?: boolean }) {
   )
 }
 
+/** The area Ask last searched (shared with Ask, Rescue and Passport), for its currency. */
+function askedArea(): { lat: number; lng: number } | null {
+  try {
+    const place = (
+      JSON.parse(localStorage.getItem('chalkboard.discover.filters') || '{}') as {
+        place?: { lat: number; lng: number }
+      }
+    ).place
+    return place && Number.isFinite(place.lat) && Number.isFinite(place.lng) ? place : null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * The profile sheet (A-21): who you are, then one list of 48px rows on one left edge: language,
+ * look, what is remembered and how to clear it, help, sign out. Close is the sheet's own.
+ */
 export function ProfileSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const roles = useTheme().material
   const account = useCustomer()
@@ -96,8 +123,13 @@ export function ProfileSheet({ open, onClose }: { open: boolean; onClose: () => 
     retry?: () => void
   } | null>(null)
   const [clearing, setClearing] = useState(false)
+  const [confirming, setConfirming] = useState(false)
   const profile = account.profile
-  const chips = preferenceChips(profile, t, locale)
+  const identified = account.status === 'signed-in' || account.status === 'guest'
+  // Until the account is known, Delete could wrongly take the device-only branch for someone
+  // who is signed in: it waits (OB-96 review).
+  const loading = account.status === 'loading'
+  const chips = preferenceChips(profile, t, locale, areaCurrency(askedArea()))
   async function remove(key: PreferenceKey, label: string) {
     if (!profile) return
     const reset = { vegetarian: false, halal: false, budget: null, language: '' }[key]
@@ -134,66 +166,128 @@ export function ProfileSheet({ open, onClose }: { open: boolean; onClose: () => 
       setClearing(false)
     }
   }
+  /**
+   * OB-96 "Delete my data": with an account, everything the server keeps for it (chats and the
+   * shops' copies, passport, tips, follows, preferences, searches) and then a sign-out; on this
+   * phone, the stamps and follows it kept.
+   */
+  async function deleteMine() {
+    if (clearing || loading) return
+    setClearing(true)
+    setNotice(null)
+    try {
+      if (identified) {
+        const result = await account.api<{ status: 'erased' | 'partial' }>(
+          '/api/v1/customer/data',
+          { method: 'DELETE' },
+        )
+        if (result.status !== 'erased') throw new Error('partial')
+      } else {
+        for (const id of [...account.follows]) await account.setFollow(id, false)
+      }
+      clearReceipts()
+      clearRewards()
+      forgetKeptPassport()
+      forgetOpened()
+      refreshPassport()
+      setConfirming(false)
+      if (identified) {
+        // Clears the rest of this phone's customer data and says so on Ask, also when the
+        // sign-out itself fails (OB-96 review: the phone must not keep the session silently).
+        await account.signOut('data-deleted', { orIfItFails: 'data-deleted-signed-in' })
+        return
+      }
+      setNotice({ kind: 'success', text: t.deleteDataDone })
+    } catch {
+      setNotice({ kind: 'error', text: t.deleteDataFailed, retry: () => void deleteMine() })
+    } finally {
+      setClearing(false)
+    }
+  }
   return (
     <Sheet open={open} onClose={onClose} titleId="customer-profile-title" title={t.profile}>
-      {account.status !== 'signed-in' && account.status !== 'guest' ? (
-        <Stack spacing={3}>
-          <Typography variant="bodyLarge">{t.signInBody}</Typography>
-          <SignInButton />
-        </Stack>
-      ) : (
-        <Stack spacing={3}>
-          <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
-            <Avatar sx={{ bgcolor: roles.primary, color: roles.onPrimary, fontWeight: 700 }}>
-              {(account.name || '?').slice(0, 1).toUpperCase()}
-            </Avatar>
-            <Box sx={{ minWidth: 0 }}>
-              <Typography variant="titleMedium" noWrap>
-                {account.status === 'guest'
-                  ? account.name
-                  : t.signedInAs.replace('{name}', account.name)}
-              </Typography>
-              <Typography variant="bodySmall" color="text.secondary">
-                {t.followedCount(profile?.follows.length ?? 0)}
-              </Typography>
-            </Box>
+      <Stack spacing={3}>
+        {!identified ? (
+          <Stack spacing={3}>
+            <Typography variant="bodyMedium" color="text.secondary">
+              {t.signInBody}
+            </Typography>
+            <SignInButton />
           </Stack>
-          {account.status === 'guest' && (
-            <Typography variant="bodySmall" color="text.secondary">
-              {guest.privacy}
-            </Typography>
-          )}
-          <Divider />
-          <Box>
-            <Typography variant="titleSmall" component="h3">
-              {t.preferences}
-            </Typography>
-            <Typography variant="bodySmall" color="text.secondary" sx={{ mt: 0.5 }}>
-              {t.preferencesBody}
-            </Typography>
-            {chips.length === 0 ? (
-              <Typography variant="bodyMedium" sx={{ mt: 2 }}>
-                {t.nothingRemembered}
+        ) : (
+          <Stack spacing={1}>
+            <Stack direction="row" spacing={3} sx={{ alignItems: 'center' }}>
+              <Avatar sx={{ bgcolor: roles.primary, color: roles.onPrimary, fontWeight: 700 }}>
+                {(account.name || '?').slice(0, 1).toUpperCase()}
+              </Avatar>
+              <Box sx={{ minWidth: 0 }}>
+                <Typography variant="titleMedium" noWrap>
+                  {account.status === 'guest'
+                    ? account.name
+                    : t.signedInAs.replace('{name}', account.name)}
+                </Typography>
+                <Typography variant="bodySmall" color="text.secondary">
+                  {t.followedCount(profile?.follows.length ?? 0)}
+                </Typography>
+              </Box>
+            </Stack>
+            {account.status === 'guest' && (
+              <Typography variant="bodySmall" color="text.secondary">
+                {guest.privacy}
               </Typography>
-            ) : (
-              <Stack component="ul" direction="row" sx={{ mt: 2, p: 0, gap: 1, flexWrap: 'wrap' }}>
-                {chips.map((chip, index) => (
-                  <li key={chip.key} style={{ listStyle: 'none' }}>
-                    <Chip
-                      label={chip.label}
-                      className="c-rise"
-                      style={{ ['--i' as string]: index }}
-                      onDelete={() => void remove(chip.key, chip.label)}
-                      sx={{ bgcolor: roles.secondaryContainer, color: roles.onSecondaryContainer }}
-                    />
-                  </li>
-                ))}
-              </Stack>
             )}
-          </Box>
-          {(profile?.searches?.length ?? 0) > 0 && (
+          </Stack>
+        )}
+        <Divider />
+        <Stack>
+          <LanguagePicker variant="row" />
+          <AppearanceToggle row />
+        </Stack>
+        <Divider />
+        <Stack spacing={1}>
+          {identified && (
             <Box>
               <Typography variant="titleSmall" component="h3">
+                {t.preferences}
+              </Typography>
+              <Typography variant="bodySmall" color="text.secondary" sx={{ mt: 1 }}>
+                {/* The budget example is in the area's own money: S$ in Tiong Bahru (OB-148). */}
+                {t.preferencesBody.replace(
+                  '{price}',
+                  samplePrice(areaCurrency(askedArea()), locale),
+                )}
+              </Typography>
+              {chips.length === 0 ? (
+                <Typography variant="bodyMedium" sx={{ mt: 2 }}>
+                  {t.nothingRemembered}
+                </Typography>
+              ) : (
+                <Stack
+                  component="ul"
+                  direction="row"
+                  sx={{ mt: 2, p: 0, mb: 0, gap: 2, flexWrap: 'wrap' }}
+                >
+                  {chips.map((chip, index) => (
+                    <li key={chip.key} style={{ listStyle: 'none' }}>
+                      <Chip
+                        label={chip.label}
+                        className="c-rise"
+                        style={{ ['--i' as string]: index }}
+                        onDelete={() => void remove(chip.key, chip.label)}
+                        sx={{
+                          bgcolor: roles.secondaryContainer,
+                          color: roles.onSecondaryContainer,
+                        }}
+                      />
+                    </li>
+                  ))}
+                </Stack>
+              )}
+            </Box>
+          )}
+          {identified && (profile?.searches?.length ?? 0) > 0 && (
+            <Box>
+              <Typography variant="titleSmall" component="h3" sx={{ mt: 2 }}>
                 {t.recent}
               </Typography>
               <Stack component="ul" spacing={1} sx={{ mt: 1, p: 0 }}>
@@ -202,7 +296,7 @@ export function ProfileSheet({ open, onClose }: { open: boolean; onClose: () => 
                     component="li"
                     key={search.q}
                     direction="row"
-                    spacing={1}
+                    spacing={2}
                     sx={{ alignItems: 'center', color: 'text.secondary', listStyle: 'none' }}
                   >
                     <History size={16} aria-hidden="true" />
@@ -232,37 +326,74 @@ export function ProfileSheet({ open, onClose }: { open: boolean; onClose: () => 
               {notice.text}
             </Alert>
           )}
-          <Button
-            variant="outlined"
-            onClick={() => void clearAll()}
-            disabled={clearing || (chips.length === 0 && !(profile?.searches.length ?? 0))}
-            startIcon={clearing ? <CircularProgress size={16} color="inherit" /> : undefined}
-          >
-            {clearing ? t.clearing : t.clear}
-          </Button>
-          {account.status === 'signed-in' && (
+          {identified && (
             <Button
-              color="error"
-              onClick={() => {
-                void account.signOut()
-                onClose()
-              }}
+              onClick={() => void clearAll()}
+              disabled={clearing || (chips.length === 0 && !(profile?.searches.length ?? 0))}
+              startIcon={
+                clearing ? <CircularProgress size={20} color="inherit" /> : <Eraser size={20} />
+              }
+              sx={settingsRowSx}
             >
-              {t.signOut}
+              {clearing ? t.clearing : t.clear}
             </Button>
           )}
+          <Button
+            onClick={() => setConfirming(true)}
+            disabled={clearing || confirming || loading}
+            startIcon={
+              loading ? <CircularProgress size={20} color="inherit" /> : <Trash2 size={20} />
+            }
+            sx={settingsRowSx}
+          >
+            {loading ? t.deleteDataLoading : t.deleteData}
+          </Button>
+          {confirming && (
+            <Alert severity="warning" role="group" aria-label={t.deleteData}>
+              <Typography variant="bodyMedium">
+                {loading
+                  ? t.deleteDataLoading
+                  : identified
+                    ? t.deleteDataBody
+                    : t.deleteDataDeviceBody}
+              </Typography>
+              <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
+                <Button
+                  variant="contained"
+                  color="error"
+                  disabled={clearing || loading}
+                  onClick={() => void deleteMine()}
+                >
+                  {t.deleteDataDo}
+                </Button>
+                <Button disabled={clearing} onClick={() => setConfirming(false)}>
+                  {t.notNow}
+                </Button>
+              </Stack>
+            </Alert>
+          )}
         </Stack>
-      )}
-      {/* Help comes after the account: signing in stays the first thing in the sheet. */}
-      <Box component="section" aria-label={tabs.help} sx={{ mt: 3 }}>
-        <Typography component="h2" variant="titleSmall">
-          {tabs.help}
-        </Typography>
-        {/* Same full-width shape as Sign out above (OB-140). */}
-        <Box sx={{ '& > button': { width: '100%' } }}>
-          <SeeAgain app="customer" />
+        <Divider />
+        {/* Help comes after the account: signing in stays the first thing in the sheet. */}
+        <Box component="section" aria-label={tabs.help}>
+          <Typography component="h2" variant="titleSmall" sx={{ mb: 1 }}>
+            {tabs.help}
+          </Typography>
+          <SeeAgain app="customer" row />
         </Box>
-      </Box>
+        {account.status === 'signed-in' && (
+          <Button
+            startIcon={<LogOut size={20} />}
+            onClick={() => {
+              void account.signOut()
+              onClose()
+            }}
+            sx={settingsRowSx}
+          >
+            {t.signOut}
+          </Button>
+        )}
+      </Stack>
     </Sheet>
   )
 }

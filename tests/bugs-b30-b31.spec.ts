@@ -108,7 +108,7 @@ test('B31: QR only, once per shop day across timezone midnight, full card and st
   await page.clock.setSystemTime(new Date('2026-10-15T07:01:00Z'))
   await page.reload()
   await expect(card(page).getByRole('status')).toHaveText('4 stamps')
-  await expect(card(page)).toContainText('1 more for A free kopi')
+  await expect(card(page)).toContainText('1 more for a free kopi')
   await expect(card(page)).toContainText('This card is stored on this phone.')
   await page.clock.setSystemTime(new Date('2026-10-16T07:01:00Z'))
   await page.goto(`/explore/s/${id}`)
@@ -193,7 +193,7 @@ test('B31: card and redeem proof at 390×844', async ({ page }) => {
     },
     { key, id, today },
   )
-  await expect(card(page)).toContainText('3 more for A free kopi')
+  await expect(card(page)).toContainText('3 more for a free kopi')
   await axe(page)
   await mkdir('docs/bugs', { recursive: true })
   await page.screenshot({ path: 'docs/bugs/B31-card.png' })
@@ -277,7 +277,11 @@ for (const [locale, t] of Object.entries({ en: rewardCardEnglish, ...rewardCardT
       page.getByText(
         t.more
           .replace('{count}', new Intl.NumberFormat(locale).format(7))
-          .replace('{reward}', shop.reward_text),
+          // A-28: English "A free kopi" reads "a free kopi" mid-sentence; other languages keep it as typed.
+          .replace(
+            '{reward}',
+            t.more === rewardCardEnglish.more ? 'a free kopi' : shop.reward_text,
+          ),
         {
           exact: true,
         },

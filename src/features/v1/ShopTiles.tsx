@@ -34,7 +34,7 @@ import {
   UtensilsCrossed,
   ZapOff,
 } from 'lucide-react'
-import { formatPrice, shopCurrency } from './format'
+import { formatShopPrice, shopCurrency } from './format'
 import { FactList } from './FactList'
 import { PendingCard } from './PendingCard'
 import { MenuSheet } from '../shop/MenuSheet'
@@ -62,11 +62,15 @@ import { CategoryGroups } from '../shop/CategoryGroups'
 import { MapsHandoff } from './MapsHandoff'
 import { shopZone } from '../../region/region'
 import { ShopIcon } from '../google/ShopIcon'
+import { GalleryEditor } from '../google/GalleryEditor'
+import { useGallery } from '../google/useGallery'
 import { useLocale } from '../../state/hooks'
 import { productName } from '../../i18n/productNames'
+import { MapCard } from './MapCard'
+import type { Proposal } from './api'
 
 export type ShopSheetKind =
-  'details' | 'menu' | 'soldOut' | 'customer' | 'messages' | 'plan' | 'readiness'
+  'details' | 'menu' | 'soldOut' | 'customer' | 'messages' | 'plan' | 'readiness' | 'photos'
 
 /** A glanceable tile: icon + label, one big value, a little supporting detail. */
 export function Tile({
@@ -361,7 +365,7 @@ export function ShopTiles({
                     >
                       {product.available === false
                         ? t.soldOut
-                        : formatPrice(product.price, currency)}
+                        : formatShopPrice(product.price, currency)}
                     </Typography>
                   </Stack>
                 ))}
@@ -395,7 +399,8 @@ export function ShopTiles({
         icon={<Images size={20} />}
         label={tabs.photos}
         value={photos ? tabs.photoCount(photos) : tabs.addPhotos}
-        onClick={() => ws.go('google')}
+        // O-3: the shop's own photos sheet (the Google guide may be switched off, as in the demo).
+        onClick={() => onSheet('photos')}
       />
       <Tile
         icon={
@@ -410,6 +415,12 @@ export function ShopTiles({
       <ConnectTile />
     </Box>
   )
+}
+
+/** The Photos sheet's body: the gallery loads only while the sheet is open. */
+function ShopPhotos() {
+  const gallery = useGallery()
+  return <GalleryEditor gallery={gallery} />
 }
 
 /** Every My shop sheet. Also opened from coach suggestion chips. */
@@ -427,6 +438,7 @@ export function ShopSheets({
   const locale = useLocale()
   const rewards = useRewardCopy()
   const plan = usePlanCopy()
+  const tabs = useTabsCopy()
   const ws = useWorkspace()
   const roles = useTheme().material
   // Keep the last sheet's content while it slides away.
@@ -620,7 +632,13 @@ export function ShopSheets({
     case 'customer':
       return (
         <Sheet {...common} titleId="customer-sheet-title" title={t.customerPage}>
-          <CustomerPage />
+          <CustomerPage onReview={onClose} />
+        </Sheet>
+      )
+    case 'photos':
+      return (
+        <Sheet {...common} titleId="photos-sheet-title" title={tabs.photos}>
+          {kind === 'photos' && <ShopPhotos />}
         </Sheet>
       )
     case 'messages':
@@ -697,13 +715,35 @@ export function ShopSheets({
 }
 
 /** Customer page switch, link and share actions (moved from the old My shop page). */
-function CustomerPage() {
+function CustomerPage({ onReview }: { onReview: () => void }) {
   const t = useCopy()
   const ws = useWorkspace()
   const roles = useTheme().material
   const [busy, setBusy] = useState(false)
   const shop = ws.active
   if (!shop) return null
+  if (shop.fields.lat == null || shop.fields.lng == null)
+    return (
+      <MapCard
+        initial={null}
+        placeName={shop.fields.location}
+        done={null}
+        onConfirm={async (owner_location) => {
+          const proposal = await ws.api<Proposal>('/proposals', {
+            method: 'POST',
+            body: JSON.stringify({
+              kind: 'business',
+              business_id: shop.id,
+              revision: shop.revision,
+              business: shop.fields,
+              owner_location,
+            }),
+          })
+          onReview()
+          ws.review(proposal)
+        }}
+      />
+    )
   const url = ws.shareUrl
   return (
     <Box>

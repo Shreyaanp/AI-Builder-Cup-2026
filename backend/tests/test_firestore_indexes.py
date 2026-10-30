@@ -66,3 +66,18 @@ def test_ob53_every_scoped_kind_has_a_composite_index() -> None:
     kinds = scoped_kinds()
     assert {"trust_review", "tip", "supply_po"} <= kinds  # the scan itself still finds kinds
     assert kinds - declared == set(), "scoped() query without an index in firestore.indexes.json"
+
+
+def test_ob81_kinds_production_logged_as_missing_are_declared() -> None:
+    # OB-81: production logged community_index_missing for these lists. The file must keep their
+    # index (the owner creates them in Firestore with the commands in the PR), and each must still
+    # be a scoped list, or the index is not the one the query needs.
+    reported = {"demand_demo", "demand_real", "supply_po", "supply_rules", "supply_inbox"}
+    declared = {
+        index["collectionGroup"]
+        for index in json.loads((ROOT / "firestore.indexes.json").read_text())["indexes"]
+        if index["queryScope"] == "COLLECTION"
+        and [(f["fieldPath"], f["order"]) for f in index["fields"]] == QUERY
+    }
+    assert reported <= declared
+    assert reported <= scoped_kinds()

@@ -31,7 +31,7 @@ test('public demo walks the whole owner lifecycle at 390 px', async ({ page }, i
       realApi.push(path)
   })
   await page.goto('/demo')
-  await expect(page.getByText('Demo shop - nothing here is real', { exact: true })).toBeVisible({
+  await expect(page.getByText('Demo shop – nothing here is real', { exact: true })).toBeVisible({
     timeout: 30_000,
   })
 

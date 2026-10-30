@@ -102,6 +102,94 @@ async def test_reverse_address_never_moves_measured_point(tmp_path: Path, unavai
     assert body.business.location == ("" if unavailable else "Example Road, Bengaluru")
 
 
+# A live geocode answer that names a neighbourhood, as Google does for most Indian addresses.
+NAMED_AREA = {
+    "status": "OK",
+    "results": [
+        {
+            "place_id": "fixture-place",
+            "formatted_address": "12 Example Road, Ashok Nagar, Bengaluru",
+            "geometry": {"location": {"lat": 12.9718234, "lng": 77.6412345}},
+            "address_components": [
+                {"long_name": "12", "types": ["street_number"]},
+                {"long_name": "Ashok Nagar", "types": ["sublocality_level_1", "sublocality"]},
+            ],
+        }
+    ],
+}
+
+
+async def test_live_owner_location_with_a_named_area_saves(tmp_path: Path):
+    maps = MapsService(
+        settings(tmp_path, live=True),
+        httpx.MockTransport(lambda request: httpx.Response(200, json=NAMED_AREA)),
+    )
+    store = MerchantStore(str(tmp_path / "shops.sqlite"))
+    body = ProposalRequest(
+        kind="business",
+        business=BusinessFields(name="Tea"),
+        owner_location=OwnerLocation(lat=12.9718234, lng=77.6412345, accuracy_m=20),
+    )
+    try:
+        await prepare_pin(body, store, "alice", maps)
+    finally:
+        await maps.close()
+    assert body.business and body.business.place_id == "fixture-place"
+    assert body.business.location == "12 Example Road, Ashok Nagar, Bengaluru"
+    assert "locality" not in body.business.model_dump()
+    proposal = store.propose("alice", body)
+    receipt = store.commit("alice", proposal["id"], proposal["digest"])
+    saved = store.context("alice", receipt["business_id"])["business"]["fields"]
+    assert (saved["lat"], saved["lng"]) == (12.9718234, 77.6412345)
+    assert "locality" not in saved
+
+
+async def test_live_typed_address_with_a_named_area_saves(tmp_path: Path):
+    maps = MapsService(
+        settings(tmp_path, live=True),
+        httpx.MockTransport(lambda request: httpx.Response(200, json=NAMED_AREA)),
+    )
+    store = MerchantStore(str(tmp_path / "shops.sqlite"))
+    body = ProposalRequest(
+        kind="business",
+        business=BusinessFields(name="Tea", location="12 Example Road"),
+        geocode_confirmed=True,
+    )
+    try:
+        await prepare_pin(body, store, "alice", maps)
+    finally:
+        await maps.close()
+    assert body.business and body.business.place_id == "fixture-place"
+    assert "locality" not in body.business.model_dump()
+    proposal = store.propose("alice", body)
+    receipt = store.commit("alice", proposal["id"], proposal["digest"])
+    saved = store.context("alice", receipt["business_id"])["business"]["fields"]
+    assert saved["lat"] == 12.9718234 and "locality" not in saved
+
+
+async def test_live_spoken_place_with_a_named_area_is_pinned(tmp_path: Path):
+    from app.new_shop_tools import pin_typed_place
+
+    maps = MapsService(
+        settings(tmp_path, live=True),
+        httpx.MockTransport(lambda request: httpx.Response(200, json=NAMED_AREA)),
+    )
+    store = MerchantStore(str(tmp_path / "shops.sqlite"))
+    context = MerchantContext(
+        store, "alice", None, [], new_shop=True, new_shop_draft=NewShopDraft(), maps=maps
+    )
+    token = current.set(context)
+    try:
+        await pin_typed_place(context, "12 Example Road")
+    finally:
+        current.reset(token)
+        await maps.close()
+    business = context.new_shop_draft.business if context.new_shop_draft else None
+    assert business and business.place_id == "fixture-place"
+    assert business.lat == 12.9718234
+    assert "locality" not in business.model_dump()
+
+
 def test_guided_tools_accumulate_one_new_shop_without_writes(tmp_path: Path):
     store = MerchantStore(str(tmp_path / "shops.sqlite"))
     context = MerchantContext(

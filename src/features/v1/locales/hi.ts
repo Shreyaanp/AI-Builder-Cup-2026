@@ -75,6 +75,7 @@ export const hi: Copy = {
   connectionOffline: 'ऑफ़लाइन',
   connectionReconnecting: 'फिर जुड़ रहा है…',
   voiceFailed: 'आवाज़ का कनेक्शन बंद हो गया। फिर कोशिश करें या लिखें।',
+  voiceOffline: 'आवाज़ के लिए इंटरनेट चाहिए। इसके बजाय लिखें।',
   voiceRestarted: 'आवाज़ फिर जुड़ गई। दोबारा बोलें।',
   voiceMicDenied:
     'माइक्रोफ़ोन की अनुमति बंद है। ब्राउज़र सेटिंग में अनुमति देकर फिर कोशिश करें, या लिखें।',
@@ -169,7 +170,7 @@ export const hi: Copy = {
   suggestPrice: 'दाम अपडेट करें',
   suggestHours: 'खुलने का समय बदलें',
   message: 'संदेश',
-  messagePlaceholder: 'अपनी दुकान के बारे में बताएँ…',
+  messagePlaceholder: 'दुकान के बारे में…',
   send: 'भेजें',
   stop: 'रोकें',
   photo: 'फ़ोटो जोड़ें',
@@ -295,6 +296,7 @@ export const hi: Copy = {
   shopEmptyTitle: 'आपकी दुकान जोड़ें',
   addShop: 'दुकान की जानकारी जोड़ें',
   startPhoto: 'फ़ोटो से शुरू करें',
+  opening: 'Opening…',
   editDetails: 'जानकारी बदलें',
   details: 'जानकारी',
   products: 'सामान और दाम',
@@ -328,6 +330,8 @@ export const hi: Copy = {
   prepQuestion: 'कल कितनी तैयारी करूँ?',
   importing: 'आपकी फ़ाइल पढ़ रहे हैं…',
   importFailed: 'फ़ाइल पढ़ नहीं पाए। सामान के नाम और दाम वाली CSV या Excel फ़ाइल भेजें।',
+  importTooLarge:
+    'फ़ाइल बहुत बड़ी है। 20 MB से छोटी फ़ोटो या PDF, या 5 MB से छोटी स्प्रेडशीट भेजें।',
   salesSummary: 'बिक्री का सार',
   salesNotSaved: 'आपकी फ़ाइल से। कुछ सहेजा नहीं गया।',
   salesCurrencyMismatch: 'दूसरी मुद्रा वाली पंक्तियाँ छोड़ दी गईं।',
@@ -417,6 +421,7 @@ export const hi: Copy = {
   dataSection: 'आपका डेटा',
   dataBody: 'Chalkboard से दुकानें, सामान, बातचीत, यादें, फ़ोटो और चेहरे का डेटा मिटाएँ।',
   deleteAll: 'मेरा सारा डेटा मिटाएँ',
+  deleteDemo: 'डेमो में डेटा मिटाना उपलब्ध नहीं है। असली खाते में आप यहीं से सब मिटा सकते हैं।',
   deleteTitle: 'सब कुछ मिटाएँ?',
   deleteBody:
     'दुकानें, सामान, बातचीत, फ़ोटो और चेहरे का डेटा हमेशा के लिए मिट जाएगा। इसे वापस नहीं ला सकते।',

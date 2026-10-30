@@ -33,6 +33,8 @@ async function sharedShop(page: Page, phone = '+65 6123 4567') {
   const prepared = await page.request.post('/api/v1/proposals', {
     data: {
       kind: 'business',
+      // OB-168: a shared shop needs an owner-confirmed point, not only address text.
+      owner_location: { lat: 1.2847, lng: 103.832, accuracy_m: 0, source: 'pin' },
       business: {
         name: 'Tiong Bahru Kopi',
         location: 'Tiong Bahru, Singapore',
@@ -250,7 +252,8 @@ test('H09: changed facts clear an old answer; errors preserve input and offer re
   )
   await message.press('Control+Enter')
   await expect(
-    page.getByText('Could not send. Check your connection and try again, or contact the shop.'),
+    // A-17: a server error (503) is ours, never the customer's connection.
+    page.getByText('Something went wrong on our side. Try again in a moment.'),
   ).toBeVisible()
   await expect(message).toHaveValue('Hello')
   await page.unroute('**/customer/shops/*/threads')

@@ -933,9 +933,10 @@
     font-size: clamp(1.65rem, 1rem + 3vw, 2.1rem) !important;
     line-height: 1.15 !important;
   }
+  /* The phone body size (OB-198), so the intro adds no extra type size. */
   .lp-intro,
   .lp .MuiTypography-bodyLarge {
-    font-size: clamp(1rem, 0.9rem + 0.4vw, 1.1rem) !important;
+    font-size: 0.9375rem !important;
     line-height: 1.5;
   }
   .lp .MuiTypography-titleLarge,

@@ -16,11 +16,13 @@ import {
 import {
   Check,
   ChevronRight,
+  CircleHelp,
   Download,
   LogOut,
   MessageCircleQuestion,
   Plus,
   ShieldCheck,
+  Sparkles,
 } from 'lucide-react'
 import { openOwnerFeature } from '../../owner-tools/entry'
 import { useToolCopy } from '../../owner-tools/copy'
@@ -32,7 +34,7 @@ import type { ColorMode } from '../../../design/theme'
 import { isLanguagePref, LOCALE_NAMES, LOCALES, systemLocale } from '../../../i18n/locales'
 import { usePreferences, usePreferencesDispatch } from '../../../state/hooks'
 import { SeeAgain } from '../../first-run/FirstRun'
-import { TourMenuButton } from '../../tour/Tour'
+import { TourMenuButton } from '../../tour/TourEntry'
 import { Sheet } from '../Sheet'
 import { ReminderSettings } from '../ReminderSettings'
 import { useCopy } from '../strings'
@@ -171,8 +173,6 @@ export function YouScreen() {
       </Stack>
 
       <Stack spacing={4}>
-        <TrustCard compact />
-
         <Group title={t.settings}>
           <ReminderSettings />
           <Box sx={{ px: 3, py: 2 }}>
@@ -250,6 +250,9 @@ export function YouScreen() {
           <Row icon={<Plus size={20} />} label={t.newShop} onClick={ws.startNewShop} />
         </Group>
 
+        {/* Optional, so it follows settings and shops instead of leading the screen (OB-106). */}
+        <TrustCard compact />
+
         <Group>
           <Row
             icon={<ShieldCheck size={20} />}
@@ -260,8 +263,13 @@ export function YouScreen() {
         </Group>
 
         <Group title={tabs.help}>
-          <SeeAgain app="owner" />
-          <TourMenuButton onStart={() => undefined} />
+          {/* Every Help entry is a Row, so icons and labels share one edge (OB-71). */}
+          <SeeAgain app="owner">
+            {(open, label) => <Row icon={<CircleHelp size={20} />} label={label} onClick={open} />}
+          </SeeAgain>
+          <TourMenuButton onStart={() => undefined}>
+            {(start, label) => <Row icon={<Sparkles size={20} />} label={label} onClick={start} />}
+          </TourMenuButton>
           <Row
             icon={<MessageCircleQuestion size={20} />}
             label={tools.guideTitle}

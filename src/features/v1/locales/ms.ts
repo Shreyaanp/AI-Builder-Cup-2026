@@ -73,6 +73,7 @@ export const ms: Copy = {
   connectionOffline: 'Luar talian',
   connectionReconnecting: 'Menyambung semula…',
   voiceFailed: 'Sambungan suara tamat. Cuba lagi atau gunakan teks.',
+  voiceOffline: 'Suara perlukan sambungan. Taip mesej anda sebaliknya.',
   voiceRestarted: 'Suara disambung semula. Sila sebut sekali lagi.',
   voiceMicDenied:
     'Akses mikrofon disekat. Benarkan mikrofon dalam tetapan pelayar dan cuba lagi, atau gunakan teks.',
@@ -167,7 +168,7 @@ export const ms: Copy = {
   suggestPrice: 'Kemas kini harga',
   suggestHours: 'Ubah waktu operasi',
   message: 'Mesej',
-  messagePlaceholder: 'Ceritakan tentang kedai anda…',
+  messagePlaceholder: 'Tentang kedai…',
   send: 'Hantar',
   stop: 'Henti',
   photo: 'Tambah foto',
@@ -286,6 +287,7 @@ export const ms: Copy = {
   shopEmptyTitle: 'Mari tambah kedai anda',
   addShop: 'Tambah butiran kedai',
   startPhoto: 'Mula dengan foto',
+  opening: 'Membuka…',
   editDetails: 'Sunting butiran',
   details: 'Butiran',
   products: 'Produk & harga',
@@ -320,6 +322,7 @@ export const ms: Copy = {
   importing: 'Membaca fail anda…',
   importFailed:
     'Fail itu tidak dapat dibaca. Hantar eksport CSV atau Excel dengan nama item dan harga.',
+  importTooLarge: 'Fail terlalu besar. Hantar foto atau PDF bawah 20 MB, atau hamparan bawah 5 MB.',
   salesSummary: 'Ringkasan jualan',
   salesNotSaved: 'Daripada fail anda. Tiada apa-apa disimpan.',
   salesCurrencyMismatch: 'Baris dalam mata wang lain telah diketepikan.',
@@ -408,6 +411,8 @@ export const ms: Copy = {
   dataSection: 'Data anda',
   dataBody: 'Padam kedai, produk, perbualan, ingatan, foto dan data wajah daripada Chalkboard.',
   deleteAll: 'Padam semua data saya',
+  deleteDemo:
+    'Padam data tidak tersedia dalam demo. Dalam akaun sebenar, anda boleh padam semuanya di sini.',
   deleteTitle: 'Padam semuanya?',
   deleteBody:
     'Semua kedai, produk, perbualan, foto dan data wajah dipadam kekal. Tidak boleh dibatalkan.',

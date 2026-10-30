@@ -2,8 +2,8 @@ import { useRef, useState } from 'react'
 import { Alert, Box, Button, Stack, Typography, useTheme } from '@mui/material'
 import { gsap } from 'gsap'
 import { Check, Snowflake } from 'lucide-react'
-import { dealIn, useChalkTimeline } from '../../../design/chalkMotion'
-import { HAND_FONT } from '../../../design/theme'
+import { dealIn, hits, useChalkTimeline } from '../../../design/chalkMotion'
+import { HAND_FONT, HAND_SIZE } from '../../../design/theme'
 import { useLocale } from '../../../state/hooks'
 import { fill, usePassportCopy } from '../copy'
 import type { PassportView } from '../store'
@@ -74,13 +74,14 @@ export function StreakFlame({
   useChalkTimeline(
     scope,
     (root) => {
-      if (!weeks) return
+      const flame = hits(root, '.flame')
+      if (!weeks || !flame.length) return
       gsap.fromTo(
-        root.querySelector('.flame'),
+        flame,
         { scaleY: 0.4, opacity: 0 },
         { scaleY: 1, opacity: 1, duration: 0.5, ease: 'back.out(2)' },
       )
-      gsap.to(root.querySelector('.flame-core'), {
+      gsap.to(hits(root, '.flame-core'), {
         scaleY: 1.12,
         scaleX: 0.94,
         duration: 0.35,
@@ -110,6 +111,9 @@ export function StreakFlame({
       setBusy(false)
     }
   }
+  // A running streak warms the card in light. In dark the coral container is a loud brick red on
+  // the dark page (OB-145), so the card stays calm and the lit flame carries the colour.
+  const warm = weeks > 0 && theme.palette.mode === 'light'
   const labels = {
     done: p.weekDone,
     rain: t.weekCovered,
@@ -125,8 +129,8 @@ export function StreakFlame({
       sx={{
         p: { xs: 2, sm: 4 },
         borderRadius: { xs: '20px', sm: '24px' },
-        bgcolor: weeks ? coral.container : roles.surfaceContainerLow,
-        color: weeks ? coral.onContainer : roles.onSurface,
+        bgcolor: warm ? coral.container : roles.surfaceContainerLow,
+        color: warm ? coral.onContainer : roles.onSurface,
       }}
     >
       {/* The help button drops to its own line when the title would otherwise wrap (OB-99). */}
@@ -144,7 +148,7 @@ export function StreakFlame({
               sx={{
                 fontFamily: HAND_FONT,
                 fontWeight: 700,
-                fontSize: { xs: 36, sm: 44 },
+                fontSize: HAND_SIZE,
                 lineHeight: 1,
               }}
             >
@@ -219,8 +223,10 @@ export function StreakFlame({
                 border:
                   mark === 'done' || cold
                     ? 'none'
-                    : `2px ${mark === 'current' ? 'dashed' : 'solid'} ${
-                        mark === 'current' ? coral.main : roles.outlineVariant
+                    : // This week is not over: a dashed outline in the neutral line colour, not an
+                      // alarm red (A-29); it is named under the row.
+                      `2px ${mark === 'current' ? 'dashed' : 'solid'} ${
+                        mark === 'current' ? roles.outline : roles.outlineVariant
                       }`,
                 ...(mark === 'done' && { ...dealIn, '--deal-index': index, '--deal-tilt': '0deg' }),
               }}
@@ -234,6 +240,14 @@ export function StreakFlame({
           )
         })}
       </Box>
+      <Stack
+        direction="row"
+        aria-hidden="true"
+        sx={{ mt: 1, justifyContent: 'space-between', gap: 2 }}
+      >
+        <Typography variant="bodySmall">{p.weekRow}</Typography>
+        <Typography variant="bodySmall">{p.weekCurrent}</Typography>
+      </Stack>
       {view.games?.nudge && (
         <Typography variant="bodyMedium" sx={{ mt: { xs: 2, sm: 3 }, fontWeight: 500 }}>
           {t.nudge}

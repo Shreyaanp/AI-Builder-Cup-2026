@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 from google.adk.sessions import InMemorySessionService
 from starlette.websockets import WebSocketDisconnect
 
-from app.limits import JSON_BODY_BYTES, LIMITS, Bucket, RateLimiter
+from app.limits import JSON_BODY_BYTES, LIMITS, Bucket, RateLimiter, fallback_limiter
 from app.main import create_app
 from app.settings import Settings
 from tests.test_customer import create_shop
@@ -108,6 +108,35 @@ def test_public_ask_ip_is_shared_between_shops_and_daily_shop_limit(app: FastAPI
             ).status_code
             == 200
         )
+
+
+def test_ob90_spoofed_forwarded_for_cannot_change_public_ask_bucket(app: FastAPI) -> None:
+    with TestClient(app) as client:
+        app.state.v1_settings.trusted_proxy_hops = 2
+        first = create_shop(app.state.merchant)
+        app.state.merchant.share("alice", first, True)
+        fill(app, "ask:ip", "192.0.2.99", remaining=1)
+        path = f"/api/v1/public/shops/{first}/ask"
+
+        first_request = client.post(
+            path,
+            json={"question": "Hours?"},
+            headers={"X-Forwarded-For": "203.0.113.44, 192.0.2.99, 198.51.100.1"},
+        )
+        changed_spoof = client.post(
+            path,
+            json={"question": "Hours?"},
+            headers={"X-Forwarded-For": "198.51.100.88, 192.0.2.99, 198.51.100.1"},
+        )
+
+        assert first_request.status_code == 200
+        assert_limited(changed_spoof)
+        different_client = client.post(
+            path,
+            json={"question": "Hours?"},
+            headers={"X-Forwarded-For": "203.0.113.44, 192.0.2.100, 198.51.100.1"},
+        )
+        assert different_client.status_code == 200
 
 
 def test_voice_limit_and_disconnect_cleanup(app: FastAPI) -> None:
@@ -250,7 +279,7 @@ def test_sse_resume_does_not_consume_another_message_quota(app: FastAPI) -> None
         assert "turn_complete" in resumed.text
 
 
-def test_ob91_store_outage_owner_and_public_closed_then_recover(app: FastAPI) -> None:
+def test_store_outage_owner_open_public_closed(app: FastAPI) -> None:
     with TestClient(app) as client:
         join(client)
         bid = create_shop(app.state.merchant)
@@ -258,15 +287,38 @@ def test_ob91_store_outage_owner_and_public_closed_then_recover(app: FastAPI) ->
         failing = Mock(spec=RateLimiter)
         failing.take.side_effect = RuntimeError("Store unavailable")
         app.state.rate_limiter = failing
-        with pytest.MonkeyPatch.context() as patch:
-            run = Mock(side_effect=AssertionError("OB-91: blocked calls must not run the coach"))
-            patch.setattr(app.state.services.runtime, "text_events", run)
-            assert_limited(client.post("/api/v1/coach/stream", json={"message": "Hello"}))
-            run.assert_not_called()
-        assert not app.state.services.registry.active
+        assert client.post("/api/v1/coach/stream", json={"message": "Hello"}).status_code == 200
         assert_limited(client.post(f"/api/v1/public/shops/{bid}/ask", json={"question": "Hours?"}))
         assert_limited(client.get("/api/v1/bootstrap"))
-        failing.take.side_effect = None
-        failing.take.return_value = 0
+
+
+def test_ob91_store_outage_caps_paid_owner_routes_and_never_blocks_the_rest(app: FastAPI) -> None:
+    with TestClient(app) as client:
+        join(client)
+        uid = app.state.services.identity.local_principal(
+            client.cookies.get("ogoogle_preview_session")
+        ).uid
+        failing = Mock(spec=RateLimiter)
+        failing.take.side_effect = RuntimeError("Store unavailable")
+        app.state.rate_limiter = failing
+        maximum, seconds = LIMITS["coach"][0]
+        now = time.time()
+        for _ in range(maximum - 1):
+            fallback_limiter(app.state).take([Bucket("coach", uid, maximum, seconds)], now)
+
+        # Before OB-91 a store outage let a scripted loop call the paid model without limit.
         assert client.post("/api/v1/coach/stream", json={"message": "Hello"}).status_code == 200
-        assert not app.state.services.registry.active
+        assert_limited(client.post("/api/v1/coach/stream", json={"message": "Hello"}))
+        # Cheap owner reads are never refused because the store is down.
+        for _ in range(LIMITS["me"][0][0] + 1):
+            assert client.get("/api/v1/me").status_code == 200
+        # Voice is paid too: past the per-instance limit it is refused, not unlimited.
+        for _ in range(LIMITS["voice"][0][0]):
+            fallback_limiter(app.state).take(
+                [Bucket("voice", uid, *window) for window in LIMITS["voice"]], now
+            )
+        with client.websocket_connect(
+            "/api/v1/voice", headers={"origin": "http://127.0.0.1:3200"}
+        ) as socket:
+            event = socket.receive_json()
+            assert event["kind"] == "error" and event["code"] == "RATE_LIMITED"

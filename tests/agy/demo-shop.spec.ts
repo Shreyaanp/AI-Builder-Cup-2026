@@ -11,7 +11,7 @@ test.beforeEach(async ({ page }) => {
 })
 
 test.describe('Try the demo shop flow', () => {
-  test('OB-137: unauthenticated visitor opens /demo, browses a demo shop, and exits demo', async ({
+  test('OB-118 / OB-137: unauthenticated visitor opens /demo, browses a demo shop, and exits demo', async ({
     page,
   }) => {
     test.setTimeout(90_000)
@@ -34,7 +34,7 @@ test.describe('Try the demo shop flow', () => {
     await page.goto('/demo')
 
     // 1. Labelled demo banner
-    const banner = 'Demo shop - nothing here is real'
+    const banner = 'Demo shop – nothing here is real'
     await expect(page.getByText(banner, { exact: true })).toBeVisible({ timeout: 30_000 })
     await expect(page).toHaveURL(/\/demo$/)
 
@@ -60,6 +60,7 @@ test.describe('Try the demo shop flow', () => {
     const demoShop = page.locator('main a[href^="/explore/demo/"]').first()
     await expect(demoShop).toBeVisible({ timeout: 15_000 })
     await demoShop.click()
+    await expect(page).toHaveURL(/\/explore\/demo\/demo-[a-z0-9-]+\/?$/)
 
     // Demo shop detail page opens with hero banner
     await expect(page.getByTestId('shop-hero-banner')).toBeVisible({ timeout: 15_000 })
@@ -70,8 +71,26 @@ test.describe('Try the demo shop flow', () => {
       true,
     )
 
-    // 6. Exit demo button
-    await page.getByRole('button', { name: 'Exit demo', exact: true }).click()
+    // 6. OB-118: the shared demo header must provide an accessible way out of shop details.
+    const exit = page.getByRole('button', { name: 'Exit demo', exact: true })
+    await expect(exit).toBeVisible()
+    await expect(exit).toBeEnabled()
+    expect(unauthorizedCalls).toEqual([])
+    const deleted = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'DELETE' &&
+        /^\/api\/v1\/demo\/sessions\/[^/]+$/.test(new URL(response.url()).pathname),
+    )
+    if (test.info().project.name === 'desktop') {
+      await exit.focus()
+      await expect(exit).toBeFocused()
+      await page.keyboard.press('Enter')
+    } else await exit.click()
+    expect((await deleted).ok()).toBe(true)
     await expect(page).toHaveURL(/\/explore\/$/)
+    expect(
+      await page.evaluate(() => sessionStorage.getItem('chalkboard.demo.session') === null),
+    ).toBe(true)
+    await expect(page.getByRole('button', { name: 'Exit demo', exact: true })).toHaveCount(0)
   })
 })

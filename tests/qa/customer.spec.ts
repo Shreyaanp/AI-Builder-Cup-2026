@@ -14,7 +14,7 @@ test('public menu keeps local prices, hides private stock, and updates across co
     await localOnly(customer)
     await customer.goto(path)
     const kopi = customer.getByRole('listitem').filter({ hasText: 'Kopi' })
-    await expect(kopi).toContainText('₹18.00')
+    await expect(kopi).toContainText('₹18')
     const publicShop = await (await customer.request.get(`/api/v1/public/shops/${id}`)).json()
     expect(publicShop.products[0]).not.toHaveProperty('stock')
     const products = await (await page.request.get(`/api/v1/businesses/${id}/inventory`)).json()
@@ -123,7 +123,7 @@ test('Tamil public facts and prices remain consistent with owner data', async ({
   await publish(page, id)
   await page.goto(`/s/${id}`)
   await expect(page.locator('html')).toHaveAttribute('lang', /^ta/)
-  await expect(page.getByRole('listitem').filter({ hasText: 'Kopi' })).toContainText('₹18.00')
+  await expect(page.getByRole('listitem').filter({ hasText: 'Kopi' })).toContainText('₹18')
   await audit(page)
 })
 
@@ -146,5 +146,7 @@ test('actual offline public question preserves input and reconnect retry works',
     await context.setOffline(false)
   }
   await page.getByRole('button', { name: 'Ask the shop assistant' }).click()
-  await expect(page.getByRole('status').filter({ hasText: 'Listed price' })).toContainText('₹18.00')
+  await expect(page.getByRole('status').filter({ hasText: 'Listed price' })).toContainText(
+    /₹18(?![.\d])/,
+  )
 })

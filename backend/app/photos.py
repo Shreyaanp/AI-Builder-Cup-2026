@@ -20,7 +20,7 @@ from PIL import Image, ImageOps
 from pydantic import BaseModel, Field, field_validator
 
 from .gemini_schema import to_number
-from .product_units import UNITS, normalize_unit
+from .product_units import UNITS, clean_category, normalize_unit
 from .reply_language import reply_language, written_language
 from .settings import Settings
 
@@ -39,6 +39,10 @@ BLOCK_AT = {"adult": 3, "racy": 4, "violence": 4}
 # shows, so tests can pick each kind. Any other width reads as a menu.
 FIXTURE_KIND_WIDTHS = {21: "shop_photo", 22: "product", 23: "receipt", 24: "till", 25: "other"}
 PhotoKind = Literal["shop_photo", "menu", "product", "receipt", "till", "other"]
+# OB-194: reading a menu needs little reasoning; unbounded thinking made each read take 25-40 s
+# in production (and could spend the output limit before the menu rows were written).
+# OB-211: Gemini rejects a thinking budget on image + JSON calls, so reads use a level instead.
+READ_THINKING_LEVEL = "LOW"
 
 
 Unit = Literal[UNITS]  # type: ignore[valid-type]
@@ -111,7 +115,7 @@ def to_extraction(spec: _PhotoSpec) -> PhotoExtraction:
                     else None
                 ),
                 unit=product.unit,
-                category=product.category[:80],
+                category=clean_category(product.category, spec.business.name)[:80],
             )
             for product in spec.products[:200]
             if product.name.strip()
@@ -142,8 +146,10 @@ Copy only text that is clearly visible; never guess. Keep the original language/
 Prices: a plain number in the local currency, only when printed next to the item.
 Give every product a category: the visible menu section it sits under, otherwise a short
 section a customer would expect (for example Drinks, Mains, Desserts, Services), in the
-board's language. Categories are suggestions the owner reviews.
-Give every product a unit from the allowed list; use "item" when none fits.
+board's language. Categories are suggestions the owner reviews. A title such as "MENU" or
+the shop's name is never a category; use a real section or leave it empty.
+Give every product a unit from the allowed list; use "item" when none fits. A currency
+symbol or word (Rs, ₹, INR, $) is never a unit.
 List every field or item you are unsure about in "uncertain".
 Write the "uncertain" notes for the owner in {language}."""
 # The offline note in the owner's language (live notes follow the prompt above).
@@ -286,6 +292,13 @@ class PhotoPipeline:
                         # The model thinks first and its thinking counts against this limit
                         # (75-100 tokens on menus and receipts); 200 left too little room.
                         max_output_tokens=1024,
+                        # OB-194: unbounded thinking made this one-word answer take 39 s in
+                        # production before the owner even saw "Is this your menu?".
+                        # OB-211: a level, not a budget; Gemini rejects a thinking budget on
+                        # image + JSON calls.
+                        thinking_config=types.ThinkingConfig(
+                            thinking_level=types.ThinkingLevel.MINIMAL
+                        ),
                     ),
                 )
             except Exception as error:
@@ -330,6 +343,9 @@ class PhotoPipeline:
                         response_schema=_PhotoSpec,
                         temperature=0,
                         max_output_tokens=16000,
+                        thinking_config=types.ThinkingConfig(
+                            thinking_level=types.ThinkingLevel[READ_THINKING_LEVEL]
+                        ),
                     ),
                 )
             except Exception as error:

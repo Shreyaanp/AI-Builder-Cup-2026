@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test'
 import {
   closeSheet,
+  menuRow,
   confirm,
   enter,
   liveOnly,
@@ -27,8 +28,8 @@ test('S2 · daily upkeep and customer-page connection', async ({ page, context }
   const customer = await context.newPage()
   await localOnly(customer)
   await customer.goto(url)
-  const kopi = customer.getByRole('listitem').filter({ hasText: 'Kopi' })
-  await expect(kopi).toContainText('₹18.00')
+  const kopi = menuRow(customer, 'Kopi')
+  await expect(kopi).toContainText(/₹18(?![.0-9])/)
   await test.step('1 · natural text and voice path', async () => {
     await page.getByRole('button', { name: 'Coach', exact: true }).click()
     await expect(page.getByRole('button', { name: 'Press to talk' })).toBeVisible()
@@ -43,13 +44,13 @@ test('S2 · daily upkeep and customer-page connection', async ({ page, context }
   })
   await test.step('2 · one review card for both changes, one tap to confirm', async () => {
     const review = page.getByRole('dialog', { name: reviewName })
-    await expect(review).toContainText('₹20.00 / cup')
+    await expect(review).toContainText('₹20 / cup')
     await expect(review).toContainText(/Kaya toast/i)
     await shot(page, 2, 2)
     await confirm(page)
   })
   await test.step('3 · already-open customer page updates within five seconds', async () => {
-    await expect(kopi).toContainText('₹20.00', { timeout: 5200 })
+    await expect(kopi).toContainText(/₹20(?![.0-9])/, { timeout: 5200 })
     await shot(customer, 2, 3)
   })
   await test.step('4 · sold-out switch reaches customer page', async () => {
@@ -81,14 +82,16 @@ test('S2 · daily upkeep and customer-page connection', async ({ page, context }
   await test.step('6 · tap a price, review inline and save', async () => {
     await page.getByRole('button', { name: 'Shop', exact: true }).click()
     await page.getByRole('button', { name: /^Menu/ }).click()
-    await page.getByRole('button', { name: 'Edit price: Kopi, ₹20.00' }).click()
+    await page.getByRole('button', { name: 'Edit price: Kopi, ₹20', exact: true }).click()
     const price = page.getByRole('textbox', { name: 'Edit price: Kopi' })
     await expect(price).toBeFocused()
     await price.fill('22')
     await price.press('Enter')
     await shot(page, 2, 6)
-    await page.getByRole('button', { name: 'Save ₹22.00' }).click()
-    await expect(page.getByRole('button', { name: 'Edit price: Kopi, ₹22.00' })).toBeVisible()
+    await page.getByRole('button', { name: 'Save ₹22', exact: true }).click()
+    await expect(
+      page.getByRole('button', { name: 'Edit price: Kopi, ₹22', exact: true }),
+    ).toBeVisible()
   })
   await test.step('7 · document import uses exact review before saving', async () => {
     await page.getByRole('button', { name: 'Import sales or menu (Excel, photo, notes)' }).click()
@@ -97,12 +100,12 @@ test('S2 · daily upkeep and customer-page connection', async ({ page, context }
       mimeType: 'text/csv',
       buffer: Buffer.from('Item Name,Price\nMasala chai,35\n'),
     })
-    await expect(page.getByRole('dialog', { name: reviewName })).toContainText('₹35.00')
+    await expect(page.getByRole('dialog', { name: reviewName })).toContainText(/₹35(?![.\d])/)
     await shot(page, 2, 7)
     await confirm(page)
     await customer.getByRole('button', { name: 'Refresh', exact: true }).click()
     await expect(customer.getByRole('listitem').filter({ hasText: 'Masala chai' })).toContainText(
-      '₹35.00',
+      /₹35(?![.0-9])/,
     )
     liveOnly('Photo/PDF extraction requires live AI; CSV review is the offline import path')
   })

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Alert, Box, Button, CircularProgress, Stack, Typography, useTheme } from '@mui/material'
-import { LockKeyhole } from 'lucide-react'
+import { LockKeyhole, RotateCw } from 'lucide-react'
 import { Sheet } from '../v1/Sheet'
 import { useCustomer } from './account'
 import { useAccountCopy } from './copy'
@@ -32,13 +32,34 @@ function GoogleMark() {
 export function SignInButton({
   onSignedIn,
   fullWidth = true,
+  variant = 'contained',
 }: {
   onSignedIn?: () => void
   fullWidth?: boolean
+  /** A page that already has its one filled button (the shop page's chat bar) asks quietly. */
+  variant?: 'contained' | 'outlined'
 }) {
   const account = useCustomer()
   const t = useAccountCopy()
   const [busy, setBusy] = useState(false)
+  // A-5: the configuration could not be read. Never fall back to the local preview; offer a
+  // retry instead (sign-in cannot work until the server answers).
+  if (account.mode === 'pending' && account.error === 'unavailable')
+    return (
+      <>
+        <Alert severity="error">{t.signInUnavailable}</Alert>
+        <Button
+          variant="contained"
+          size="large"
+          fullWidth={fullWidth}
+          startIcon={<RotateCw size={18} />}
+          onClick={account.retry}
+          sx={{ minHeight: 52 }}
+        >
+          {t.retry}
+        </Button>
+      </>
+    )
   return (
     <>
       {account.error && (
@@ -47,7 +68,7 @@ export function SignInButton({
         </Alert>
       )}
       <Button
-        variant="contained"
+        variant={variant}
         size="large"
         fullWidth={fullWidth}
         disabled={busy || account.status === 'loading'}

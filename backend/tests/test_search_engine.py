@@ -350,7 +350,7 @@ def test_cold_start_then_own_signals_reorder_and_explain(client: TestClient) -> 
     assert bakery["why"] is None  # offline: the app words the reason itself
 
 
-def test_similar_nearby_for_a_shop_and_an_item(client: TestClient) -> None:
+def test_ob160_similar_nearby_for_a_shop_and_an_item(client: TestClient) -> None:
     response = client.get(
         "/api/v1/discover/similar", params={"shop": CAFE, "radius": 8000, **INDIRANAGAR}
     )

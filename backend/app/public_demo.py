@@ -13,7 +13,7 @@ import json
 import re
 import sqlite3
 import time
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Sequence
 from dataclasses import dataclass, field, replace
 from datetime import date
 from pathlib import Path
@@ -34,7 +34,8 @@ from .auth import Principal
 from .demo_chains import CHAINS
 from .demo_data import SHOPS
 from .demo_sessions import KIND, repository, restore_files, save
-from .limits import Bucket, client_ip, local_test_rate_limit_bypass
+from .demo_uploads import demo_upload, is_upload
+from .limits import Bucket, RateLimiter, client_ip, local_test_rate_limit_bypass
 from .merchant import MerchantStore
 from .merchant_routes import LEGAL_VERSION
 from .tour_catalogue import TOUR_SHOPS
@@ -56,6 +57,9 @@ MAX_SESSIONS = 128
 OPEN_PER_MINUTE = 10
 OPEN_PER_HOUR = 200
 MAX_COACH_TURNS = 40
+# Grow reloads several tiles per sheet. These reads use offline services, so allow normal
+# exploration without consuming the live owner's hourly budget; still bound sandbox traffic.
+READ_PER_MINUTE = 600
 CHAIN_OWNER = "demo-world-owner"
 
 _ID = r"[A-Za-z0-9_.-]{1,120}"
@@ -69,6 +73,9 @@ ALLOWED: tuple[tuple[str, re.Pattern[str]], ...] = tuple(
         ("GET", rf"demo/chain/{_ID}"),
         ("GET", "reminders/?"),
         ("GET", "trust"),
+        # O-4: the address under a map pin. The demo's maps service has no key, so these are
+        # answered offline from the area list (never a paid Maps call).
+        ("GET", "places/(?:reverse|pin)"),
         ("POST", "proposals"),
         ("POST", rf"proposals/{_ID}/approve"),
         ("POST", rf"{_BIZ}/inventory/{_ID}/availability"),
@@ -329,6 +336,28 @@ def demo_secret(app: Any) -> bytes:
     return hmac.new(key, b"public-demo", hashlib.sha256).digest()
 
 
+class DemoReadLimiter:
+    """A session's offline reads get their own budget; all other limits pass through."""
+
+    def __init__(self, delegate: RateLimiter) -> None:
+        self.delegate = delegate
+
+    def take(self, buckets: Sequence[Bucket], now: float) -> int:
+        # Both live owner windows become one sandbox window. Deduplicate so each request
+        # consumes one read, and keep the sandbox owner UID as the session-specific subject.
+        scoped = dict.fromkeys(
+            Bucket("public-demo-read", bucket.subject, READ_PER_MINUTE, 60)
+            if bucket.action == "owner:read"
+            else bucket
+            for bucket in buckets
+        )
+        return self.delegate.take(list(scoped), now)
+
+    def close(self) -> None:
+        # The app lifespan owns the shared delegate; a sandbox must never close it.
+        pass
+
+
 class SandboxApp:
     """The real app with the sandbox state: routes read `request.app.state` from here."""
 
@@ -467,12 +496,19 @@ async def owner_api(
         if method != "GET":
             await anyio.to_thread.run_sync(save, repository(request), session_id, entry)
         return result
+    if is_upload(method, path):
+        # O-1: menu photos and files get a labelled sample read; the file is never read by AI.
+        await limit(request, "public-demo-write", 120)
+        result = await demo_upload(request, entry, path)
+        await anyio.to_thread.run_sync(save, repository(request), session_id, entry)
+        return result
     if not allowed(method, path):
         raise HTTPException(403, "DEMO_NOT_SENT")
     if method != "GET":
         await limit(request, "public-demo-write", 120)
     app = request.scope["app"]
     state = State({**app.state._state, **offline(app)})
+    state.rate_limiter = DemoReadLimiter(app.state.rate_limiter)
     state.merchant = entry.store
     state.services = replace(app.state.services, identity=DemoIdentity(entry.uid, demo_secret(app)))
     inner = dict(request.scope)

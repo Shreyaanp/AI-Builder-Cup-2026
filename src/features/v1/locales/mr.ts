@@ -74,6 +74,7 @@ export const mr: Copy = {
   connectionOffline: 'ऑफलाइन',
   connectionReconnecting: 'पुन्हा जोडत आहे…',
   voiceFailed: 'आवाजाची जोडणी बंद झाली. पुन्हा प्रयत्न करा किंवा लिहा.',
+  voiceOffline: 'आवाजासाठी इंटरनेट हवे. त्याऐवजी लिहा.',
   voiceRestarted: 'आवाज पुन्हा जोडला. पुन्हा बोला.',
   voiceMicDenied:
     'मायक्रोफोनची परवानगी बंद आहे. ब्राउझर सेटिंगमध्ये परवानगी देऊन पुन्हा प्रयत्न करा किंवा लिहा.',
@@ -167,7 +168,7 @@ export const mr: Copy = {
   suggestPrice: 'दर अपडेट करा',
   suggestHours: 'उघडण्याची वेळ बदला',
   message: 'संदेश',
-  messagePlaceholder: 'तुमच्या दुकानाबद्दल सांगा…',
+  messagePlaceholder: 'दुकानाबद्दल…',
   send: 'पाठवा',
   stop: 'थांबवा',
   photo: 'फोटो जोडा',
@@ -293,6 +294,7 @@ export const mr: Copy = {
   shopEmptyTitle: 'तुमचे दुकान जोडूया',
   addShop: 'दुकानाची माहिती जोडा',
   startPhoto: 'फोटोपासून सुरू करा',
+  opening: 'उघडत आहे…',
   editDetails: 'माहिती बदला',
   details: 'माहिती',
   products: 'उत्पादने आणि दर',
@@ -326,6 +328,8 @@ export const mr: Copy = {
   prepQuestion: 'उद्या किती तयारी करू?',
   importing: 'तुमची फाइल वाचत आहोत…',
   importFailed: 'फाइल वाचता आली नाही. उत्पादनांची नावे आणि दर असलेली CSV किंवा Excel फाइल पाठवा.',
+  importTooLarge:
+    'फाइल खूप मोठी आहे. 20 MB पेक्षा लहान फोटो किंवा PDF, किंवा 5 MB पेक्षा लहान स्प्रेडशीट पाठवा.',
   salesSummary: 'विक्रीचा सारांश',
   salesNotSaved: 'तुमच्या फाइलमधून. काहीही जतन झाले नाही.',
   salesCurrencyMismatch: 'वेगळ्या चलनाच्या ओळी वगळल्या आहेत.',
@@ -415,6 +419,7 @@ export const mr: Copy = {
   dataSection: 'तुमचा डेटा',
   dataBody: 'Chalkboard मधून दुकाने, उत्पादने, गप्पा, स्मृती, फोटो आणि चेहऱ्याचा डेटा मिटवा.',
   deleteAll: 'माझा सर्व डेटा मिटवा',
+  deleteDemo: 'डेमोमध्ये डेटा मिटवता येत नाही. खऱ्या खात्यात तुम्ही इथून सर्व मिटवू शकता.',
   deleteTitle: 'सर्व काही मिटवायचे?',
   deleteBody:
     'दुकाने, उत्पादने, गप्पा, फोटो आणि चेहऱ्याचा डेटा कायमचा मिटेल. हे पूर्ववत करता येणार नाही.',

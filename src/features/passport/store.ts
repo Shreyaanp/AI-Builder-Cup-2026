@@ -3,6 +3,7 @@ import type { components } from '../../api/generated'
 import { useCustomer } from '../customer/account'
 import { useRewards } from '../rewards/storage'
 import { useLocale } from '../../state/hooks'
+import { keepPassport, keptPassport, whenOnline } from '../customer/offline'
 
 type Schemas = components['schemas']
 export type PassportView = Schemas['PassportView']
@@ -63,7 +64,7 @@ export function keepReceipt(receipt: string) {
 export function refreshPassport() {
   window.dispatchEvent(new Event(change))
 }
-function clearReceipts() {
+export function clearReceipts() {
   try {
     localStorage.removeItem(RECEIPTS)
   } catch {
@@ -185,12 +186,27 @@ export function usePassport(place?: { lat: number; lng: number } | null) {
   const cardKey = JSON.stringify(cards)
   const key = `${account.status}|${query}|${cardKey}`
   const refresh = useCallback(() => {
-    if (account.status === 'loading') return
+    // A-18: offline, the Passport kept on this phone opens at once (it is refreshed when the
+    // phone is back online).
+    const kept = () => state.view ?? safePassport(keptPassport(query))
+    if (account.status === 'loading') {
+      const view = navigator.onLine ? null : kept()
+      if (view) emit({ view, status: 'error' })
+      return
+    }
     const ticket = ++loads
     emit({ status: 'loading', key })
     load(account.api, identified, JSON.parse(cardKey) as Record<string, number>, query)
-      .then((view) => ticket === loads && emit({ view, status: 'ready' }))
-      .catch(() => ticket === loads && emit({ status: 'error' }))
+      .then((view) => {
+        if (ticket !== loads) return
+        keepPassport(query, view)
+        emit({ view, status: 'ready' })
+      })
+      .catch(() => {
+        if (ticket !== loads) return
+        const view = kept()
+        emit(view ? { view, status: 'error' } : { status: 'error' })
+      })
   }, [account.api, account.status, identified, cardKey, query, key])
   useEffect(() => {
     if (state.key !== key) refresh()
@@ -198,7 +214,11 @@ export function usePassport(place?: { lat: number; lng: number } | null) {
   useEffect(() => {
     const again = () => refresh()
     window.addEventListener(change, again)
-    return () => window.removeEventListener(change, again)
+    const stop = whenOnline(again)
+    return () => {
+      window.removeEventListener(change, again)
+      stop()
+    }
   }, [refresh])
   return { ...current, refresh, signedIn }
 }

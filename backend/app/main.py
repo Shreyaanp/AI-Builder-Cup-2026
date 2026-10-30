@@ -75,7 +75,7 @@ from .merchant import MerchantRepository, MerchantStore, NewShopDraft
 from .merchant_firestore import FirestoreMerchantStore
 from .merchant_routes import router as merchant_router
 from .new_shop_resume import is_empty, merge_drafts
-from .new_shop_tools import go_live
+from .new_shop_tools import go_live, pin_typed_place
 from .owner_routes import router as owner_router
 from .passport_routes import router as passport_router
 from .photos import PhotoPipeline
@@ -112,6 +112,7 @@ from .today import router as today_router
 from .trust_routes import router as trust_router
 from .tts import Speech
 from .voice import serve_voice
+from .warmup import firestore_clients, warm_firestore
 
 log = structlog.get_logger()
 SSE_HEARTBEAT_SECONDS = 15
@@ -189,6 +190,8 @@ def create_app(
         )
         app.state.photos = PhotoPipeline(settings) if settings.v1_enabled else None
         app.state.customer_answers = CustomerAnswers(settings)
+        # A-17: the first shop-chat question must not pay for building the model client.
+        await app.state.customer_answers.warm()
         app.state.shop_translator = ShopTranslator(settings)
         app.state.community = (
             await anyio.to_thread.run_sync(community_service, settings)
@@ -221,6 +224,14 @@ def create_app(
             app.state.maps.shared = shared_places(client, settings)
         app.state.grounding = AreaGrounding(settings)
         app.state.rate_limiter = await anyio.to_thread.run_sync(rate_limiter, settings)
+        # OB-78: the first visitor after a deploy no longer opens these connections.
+        await anyio.to_thread.run_sync(
+            warm_firestore,
+            firestore_clients(
+                app.state.merchant, app.state.recall, app.state.community, app.state.rate_limiter
+            ),
+            settings.firestore_namespace,
+        )
         retail = (
             RetailClient(settings.google_cloud_project)
             if (settings.recs_enabled or settings.recs_events_enabled)
@@ -445,6 +456,7 @@ def create_app(
                             body.message,
                             new_shop=body.new_shop,
                             new_shop_draft=body.new_shop_draft,
+                            maps=app.state.maps,
                         )
                         token = current.set(merchant)
                         if body.new_shop:
@@ -596,6 +608,7 @@ def create_app(
         merchant.last_question = asked
         # Only a socket that comes back is "resumed"; text turns read the whole history anyway.
         merchant.resumed = voice and has_turns
+        await pin_typed_place(merchant)
         await anyio.to_thread.run_sync(go_live, merchant)
         return has_turns or adopted
 
@@ -644,6 +657,7 @@ def create_app(
                     [],
                     new_shop=new_shop,
                     new_shop_draft=draft,
+                    maps=app.state.maps,
                 )
                 context_token = current.set(merchant)
             sid, adopted = await new_shop_session(principal, requested, bid, new_shop, draft)

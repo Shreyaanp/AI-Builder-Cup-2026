@@ -129,7 +129,7 @@ test('B3: the composer is one line (even with a long translated hint), grows for
   await page.getByRole('combobox').tap()
   await page.getByRole('option', { name: 'English', exact: true }).tap()
   await page.locator('[data-tour="nav-coach"]').tap()
-  await expect(field).toHaveAttribute('placeholder', 'Tell me about your shop…')
+  await expect(field).toHaveAttribute('placeholder', 'Your shop…')
   // Multi-line text grows the field a line at a time; clearing it goes back to one line.
   await field.fill('Kopi\nTeh\nMilo')
   expect(await height()).toBe(104)

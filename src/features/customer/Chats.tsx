@@ -23,7 +23,7 @@ import { useCustomer } from './account'
 import { clockTime, useAccountCopy } from './copy'
 import type { AccountCopy } from './copy'
 import { PlainText } from '../../design/PlainText'
-import { RichText } from '../../design/RichText'
+import { RichText } from '../../design/LazyRichText'
 import { SignInButton } from './SignIn'
 import { fill } from '../passport/copy'
 import { useRescueCopy } from '../rescue/copy'
@@ -31,6 +31,8 @@ import type { RescueStrings } from '../rescue/copy'
 import { rescueMarker } from '../rescue/marker'
 import { formatMoneyText } from '../inquiries/formatMoneyText'
 import { chatPath, reduceMotion } from './paths'
+import { CollectionEmptyState, CollectionPage } from './CollectionEmptyState'
+import { plainShopName } from '../discover/sampleShop'
 import './customer.css'
 
 import type { ChatSummary, Message, ShopCard, Thread } from './types'
@@ -86,7 +88,8 @@ function preview(message: Message | undefined, t: AccountCopy, r: RescueStrings)
 
 /** The Chats tab: one row per shop, newest first, like a messaging app. */
 export function ChatList() {
-  const roles = useTheme().material
+  const theme = useTheme()
+  const roles = theme.material
   const locale = useLocale()
   const account = useCustomer()
   const t = useAccountCopy()
@@ -119,37 +122,15 @@ export function ChatList() {
   }, [signedIn, load])
 
   return (
-    <Box component="main" sx={{ maxWidth: 720, mx: 'auto', px: 2, pb: 14 }}>
-      <Typography
-        component="h1"
-        variant="headlineMedium"
-        sx={{ pt: 1, pb: 2, px: 2, fontWeight: 600 }}
-      >
-        {t.chatsTitle}
-      </Typography>
+    <CollectionPage title={t.chatsTitle}>
       {account.status === 'loading' ? null : !signedIn ? (
-        <Stack spacing={3} className="c-rise" sx={{ px: 2, pt: 4, textAlign: 'center' }}>
-          <Box
-            aria-hidden="true"
-            sx={{
-              mx: 'auto',
-              width: 88,
-              height: 88,
-              borderRadius: '28px',
-              display: 'grid',
-              placeItems: 'center',
-              bgcolor: roles.secondaryContainer,
-              color: roles.onSecondaryContainer,
-            }}
-          >
-            <MessageCircle size={40} />
-          </Box>
-          <Typography component="h2" variant="titleLarge">
-            {t.chatsSignedOut}
-          </Typography>
-          <Typography color="text.secondary">{t.signInBody}</Typography>
-          <SignInButton />
-        </Stack>
+        // The one filled button sits above the navigation, in thumb reach (A-43).
+        <CollectionEmptyState
+          title={t.chatsSignedOut}
+          body={t.signInBody}
+          icon={<MessageCircle size={40} />}
+          action={<SignInButton />}
+        />
       ) : failed && !chats ? (
         <Alert
           severity="error"
@@ -179,26 +160,7 @@ export function ChatList() {
           ))}
         </Stack>
       ) : chats.length === 0 ? (
-        <Stack
-          spacing={2}
-          className="c-rise"
-          // Stack's spacing resets child margins, so mx:auto on the tile did nothing: centre the column (OB-102).
-          sx={{ px: 2, pt: 4, textAlign: 'center', alignItems: 'center' }}
-        >
-          <Typography component="h2" variant="titleLarge">
-            {t.noChats}
-          </Typography>
-          <Typography color="text.secondary">{t.noChatsBody}</Typography>
-          <Button
-            component="a"
-            href="/explore/"
-            onClick={customerNavigate}
-            variant="contained"
-            sx={{ alignSelf: 'center' }}
-          >
-            {t.findShops}
-          </Button>
-        </Stack>
+        <CollectionEmptyState title={t.noChats} body={t.noChatsBody} />
       ) : (
         <Box component="ul" aria-label={t.chatsTitle} sx={{ listStyle: 'none', m: 0, p: 0 }}>
           {chats.map((chat, index) => {
@@ -238,11 +200,11 @@ export function ChatList() {
                         noWrap
                         sx={{ flex: 1, fontWeight: chat.unread ? 700 : 500 }}
                       >
-                        {chat.shop.name}
+                        {plainShopName(chat.shop.name)}
                       </Typography>
                       {last && (
                         <Typography
-                          variant="labelSmall"
+                          variant="bodySmall"
                           sx={{
                             color: chat.unread ? roles.primary : 'text.secondary',
                             fontWeight: chat.unread ? 700 : 400,
@@ -252,14 +214,12 @@ export function ChatList() {
                         </Typography>
                       )}
                     </Stack>
-                    <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mt: 0.25 }}>
+                    <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mt: 1 }}>
                       {chat.shop.demo && (
                         <Chip
                           label={t.demoShop}
                           size="small"
                           sx={{
-                            height: 20,
-                            fontSize: 11,
                             bgcolor: roles.tertiaryContainer,
                             color: roles.onTertiaryContainer,
                           }}
@@ -289,7 +249,7 @@ export function ChatList() {
                             borderRadius: 999,
                             bgcolor: roles.primary,
                             color: roles.onPrimary,
-                            fontSize: 12,
+                            fontSize: theme.typography.labelMedium.fontSize,
                             fontWeight: 700,
                             display: 'grid',
                             placeItems: 'center',
@@ -306,7 +266,7 @@ export function ChatList() {
           })}
         </Box>
       )}
-    </Box>
+    </CollectionPage>
   )
 }
 
@@ -555,7 +515,7 @@ export function ChatThread({ shop: shopId, thread: threadId }: { shop: string; t
             <ShopAvatar shop={shop} size={40} name="chat-avatar" />
             <Box sx={{ minWidth: 0 }}>
               <Typography component="h1" variant="titleMedium" noWrap sx={{ fontWeight: 600 }}>
-                {shop.name}
+                {plainShopName(shop.name)}
               </Typography>
               <Typography variant="labelSmall" color="text.secondary" noWrap component="p">
                 {shop.demo ? `${t.demoShop} · ` : ''}

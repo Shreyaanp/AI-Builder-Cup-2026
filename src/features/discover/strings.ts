@@ -3,7 +3,7 @@ import type { Locale } from '../../i18n/locales.ts'
 export const english = {
   title: 'What’s around me?',
   search: 'Search nearby',
-  hint: 'teh tarik near me, open now',
+  hint: 'coffee near me, open now',
   submit: 'Search',
   open: 'Open now',
   closed: 'Closed now',
@@ -50,7 +50,7 @@ export const english = {
   place: 'City or area',
   placeHint: 'Search any city or neighbourhood',
   placeError: 'Couldn’t find that place. Try a city or neighbourhood name.',
-  demoShop: 'Demo shop',
+  demoShop: 'Sample shop',
   changeArea: 'Change area',
 }
 type Copy = typeof english
@@ -60,7 +60,7 @@ const translated: Record<Exclude<Locale, 'en'>, string[]> = {
   hi: [
     'आस-पास क्या है?',
     'आस-पास खोजें',
-    'आस-पास तेह तारिक, अभी खुला',
+    'आस-पास कॉफ़ी, अभी खुला',
     'खोजें',
     'अभी खुला है',
     'अभी बंद है',
@@ -113,7 +113,7 @@ const translated: Record<Exclude<Locale, 'en'>, string[]> = {
   bn: [
     'আশেপাশে কী আছে?',
     'আশেপাশে খুঁজুন',
-    'কাছাকাছি তেহ তারিক, এখন খোলা',
+    'কাছাকাছি কফি, এখন খোলা',
     'খুঁজুন',
     'এখন খোলা',
     'এখন বন্ধ',
@@ -166,7 +166,7 @@ const translated: Record<Exclude<Locale, 'en'>, string[]> = {
   te: [
     'నా చుట్టూ ఏముంది?',
     'దగ్గరలో వెతకండి',
-    'దగ్గరలో తే తారిక్, ఇప్పుడు తెరిచి ఉన్నవి',
+    'దగ్గరలో కాఫీ, ఇప్పుడు తెరిచి ఉన్నవి',
     'వెతకండి',
     'ఇప్పుడు తెరిచి ఉంది',
     'ఇప్పుడు మూసి ఉంది',
@@ -219,7 +219,7 @@ const translated: Record<Exclude<Locale, 'en'>, string[]> = {
   mr: [
     'जवळपास काय आहे?',
     'जवळपास शोधा',
-    'जवळ तेह तारिक, आत्ता उघडे',
+    'जवळ कॉफी, आत्ता उघडे',
     'शोधा',
     'आत्ता उघडे',
     'आत्ता बंद',
@@ -272,7 +272,7 @@ const translated: Record<Exclude<Locale, 'en'>, string[]> = {
   kn: [
     'ಸುತ್ತಮುತ್ತ ಏನಿದೆ?',
     'ಹತ್ತಿರ ಹುಡುಕಿ',
-    'ಹತ್ತಿರ ತೇಹ್ ತಾರಿಕ್, ಈಗ ತೆರೆದಿರುವುದು',
+    'ಹತ್ತಿರ ಕಾಫಿ, ಈಗ ತೆರೆದಿರುವುದು',
     'ಹುಡುಕಿ',
     'ಈಗ ತೆರೆದಿದೆ',
     'ಈಗ ಮುಚ್ಚಿದೆ',
@@ -326,7 +326,7 @@ const translated: Record<Exclude<Locale, 'en'>, string[]> = {
   'zh-Hans': [
     '附近有什么？',
     '搜索附近',
-    '附近的拉茶，现在营业',
+    '附近的咖啡，现在营业',
     '搜索',
     '营业中',
     '已打烊',
@@ -379,7 +379,7 @@ const translated: Record<Exclude<Locale, 'en'>, string[]> = {
   ms: [
     'Apa yang berdekatan?',
     'Cari berdekatan',
-    'teh tarik berdekatan, buka sekarang',
+    'kopi berdekatan, buka sekarang',
     'Cari',
     'Buka sekarang',
     'Tutup sekarang',
@@ -432,7 +432,7 @@ const translated: Record<Exclude<Locale, 'en'>, string[]> = {
   ta: [
     'அருகில் என்ன இருக்கிறது?',
     'அருகில் தேடுங்கள்',
-    'அருகில் தே தாரிக், இப்போது திறந்துள்ளது',
+    'அருகில் காபி, இப்போது திறந்துள்ளது',
     'தேடு',
     'இப்போது திறந்துள்ளது',
     'இப்போது மூடியுள்ளது',
@@ -485,7 +485,7 @@ const translated: Record<Exclude<Locale, 'en'>, string[]> = {
   ja: [
     '近くには何がある？',
     '近くを検索',
-    '近くのテータリック、営業中',
+    '近くのコーヒー、営業中',
     '検索',
     '営業中',
     '営業時間外',
@@ -538,7 +538,7 @@ const translated: Record<Exclude<Locale, 'en'>, string[]> = {
   ko: [
     '주변에 무엇이 있나요?',
     '주변 검색',
-    '근처 테 타릭, 영업 중',
+    '근처 커피, 영업 중',
     '검색',
     '영업 중',
     '영업 종료',
@@ -591,7 +591,7 @@ const translated: Record<Exclude<Locale, 'en'>, string[]> = {
   id: [
     'Ada apa di sekitar saya?',
     'Cari di sekitar',
-    'teh tarik di dekat saya, buka sekarang',
+    'kopi di dekat saya, buka sekarang',
     'Cari',
     'Buka sekarang',
     'Tutup sekarang',
@@ -644,7 +644,7 @@ const translated: Record<Exclude<Locale, 'en'>, string[]> = {
   th: [
     'รอบตัวมีอะไรบ้าง?',
     'ค้นหาใกล้เคียง',
-    'ชาชักใกล้ฉัน เปิดอยู่',
+    'กาแฟใกล้ฉัน เปิดอยู่',
     'ค้นหา',
     'เปิดอยู่',
     'ปิดอยู่',
@@ -697,7 +697,7 @@ const translated: Record<Exclude<Locale, 'en'>, string[]> = {
   vi: [
     'Quanh tôi có gì?',
     'Tìm gần đây',
-    'teh tarik gần tôi, đang mở cửa',
+    'cà phê gần tôi, đang mở cửa',
     'Tìm kiếm',
     'Đang mở cửa',
     'Đang đóng cửa',
@@ -750,7 +750,7 @@ const translated: Record<Exclude<Locale, 'en'>, string[]> = {
   fil: [
     'Ano ang malapit sa akin?',
     'Maghanap sa malapit',
-    'teh tarik malapit sa akin, bukas ngayon',
+    'kape malapit sa akin, bukas ngayon',
     'Hanapin',
     'Bukas ngayon',
     'Sarado ngayon',

@@ -12,6 +12,7 @@ import {
   Stack,
   Tooltip,
   Typography,
+  useMediaQuery,
   useTheme,
 } from '@mui/material'
 import {
@@ -27,9 +28,10 @@ import {
   WifiOff,
 } from 'lucide-react'
 import { useLocale } from '../../state/hooks'
+import { useKeyboardViewport } from '../../hooks/useKeyboardViewport'
 import type { Locale } from '../../i18n/locales'
 import { chalkWrite, dealIn } from '../../design/chalkMotion'
-import { RichText } from '../../design/RichText'
+import { RichText } from '../../design/LazyRichText'
 import { motion } from '../../design/theme'
 import { sentenceSummary } from './summary'
 import { customerNavigate, goTo } from '../frontdoors/navigation'
@@ -42,10 +44,17 @@ import { openedShops } from './opened'
 import { ProfileButton, ProfileSheet } from '../customer/Profile'
 import { AppearanceToggle } from '../frontdoors/AppearanceToggle'
 import { LanguagePicker } from '../frontdoors/LanguagePicker'
-import { useDemoCopy, useFrontCopy } from '../frontdoors/strings'
+import { useDemoCopy } from '../frontdoors/strings'
 import { usePassportCopy } from '../passport/copy'
 import { TodayDeck } from '../passport/TodayDeck'
-import { AreaAnswerCard, GoogleRows, PickCard, PickList, PickSkeleton } from './AnswerCards'
+import {
+  AreaAnswerCard,
+  GoogleRows,
+  PickCard,
+  PickEmpty,
+  PickList,
+  PickSkeleton,
+} from './AnswerCards'
 import type { AskPick } from './askThread'
 import { AnswerMap, type MapSelection } from './AnswerMap'
 import { askCopy } from './askStrings'
@@ -66,14 +75,19 @@ import { ensureDemoWorld, isIndianArea } from './demoWorld'
 import { localRankShops, prefetchAreaShops } from './shopCache'
 import { recsEvent } from '../recs/events'
 import { PlaceSearch, type FoundPlace } from './PlaceSearch'
+import { areaLabel } from './areaLabel'
+import { Sheet } from '../v1/Sheet'
 import { areaCurrency, defaultCurrency } from '../v1/format'
+import { countryArea } from '../../region/region'
 import '../customer/customer.css'
 
 const FILTERS = 'chalkboard.discover.filters'
 
 function fallbackPlace(): FoundPlace {
   const currency = defaultCurrency()
-  if (currency === 'INR') return { lat: 12.9716, lng: 77.5946, label: 'Indiranagar' }
+  // The label names the place the search measures from (OB-104: it said "Indiranagar" while
+  // searching the city centre, which missed Indiranagar's shops).
+  if (currency === 'INR') return { ...countryArea('IN'), label: 'Indiranagar' }
   if (currency === 'MYR') return { lat: 3.1319, lng: 101.6841, label: 'Bangsar' }
   if (currency === 'JPY') return { lat: 35.658, lng: 139.7016, label: 'Shibuya' }
   if (currency === 'KRW') return { lat: 37.5665, lng: 126.978, label: 'Hongdae' }
@@ -90,16 +104,16 @@ function fallbackPlace(): FoundPlace {
 const DOCK_ESTIMATE = 200
 /** The navigation bar under the dock (hidden while typing on a phone). */
 const NAV = 80
+/** The sticky app bar's height plus a little air: where a new turn lands when scrolled to. */
+const SCROLL_MARGIN = 80
 
 function savedPlace(): FoundPlace | null {
   try {
     const place = (JSON.parse(localStorage.getItem(FILTERS) || '{}') as { place?: FoundPlace })
       .place
     if (!place || !Number.isFinite(place.lat) || !Number.isFinite(place.lng)) return null
-    if (place.label?.toLowerCase() === 'you') {
-      return { ...place, label: 'Nearby' }
-    }
-    return place
+    // A label saved before neighbourhood names ("67/1, KG Halli, ...") shows as "Nearby".
+    return { ...place, label: areaLabel(place.label, 'Nearby') }
   } catch {
     return null
   }
@@ -156,7 +170,6 @@ export default function AskHome({
 }) {
   const locale = useLocale()
   const t = askCopy(locale)
-  const front = useFrontCopy()
   const demo = useDemoCopy()
   const discover = discoverCopy(locale)
   const passport = usePassportCopy()
@@ -169,10 +182,7 @@ export default function AskHome({
         : initialLocation?.place) ??
       savedPlace() ??
       fallbackPlace()
-    if (initial.label?.toLowerCase() === 'you') {
-      return { ...initial, label: t.here }
-    }
-    return initial
+    return { ...initial, label: areaLabel(initial.label, t.here) }
   })
 
   useEffect(() => {
@@ -182,23 +192,22 @@ export default function AskHome({
         .then((res) => (res.ok ? res.json() : null))
         .then((data: { label?: string; lat: number; lng: number } | null) => {
           if (data?.label && data.label.toLowerCase() !== 'you') {
-            setPlace((current) => ({ ...current, lat, lng, label: data.label! }))
+            setPlace((current) => ({ ...current, lat, lng, label: areaLabel(data.label, t.here) }))
           }
         })
         .catch(() => undefined)
     }
-  }, [initialLocation?.gps])
+  }, [initialLocation?.gps, t.here])
 
   const currency = areaCurrency(place)
   const c = useConversationCopy(currency)
-  // A first visit has not said where yet: the page asks inline, never a wizard before it.
-  const [located, setLocated] = useState(() => !!initialLocation || savedPlace() !== null)
   const [locating, setLocating] = useState(false)
   const [denied, setDenied] = useState(false)
   const [nearby, setNearby] = useState<{ key: string; shops: AskPick[] } | null>(null)
   const [turns, setTurns] = useState<Turn[]>(loadTurns)
   const [draft, setDraft] = useState('')
   const [changing, setChanging] = useState(false)
+  const areaField = useRef<HTMLInputElement>(null)
   const [listening, setListening] = useState(false)
   // The example on the opening page; in a conversation the composer is narrower, so plain words.
   const placeholderText = useMemo(() => {
@@ -230,6 +239,8 @@ export default function AskHome({
   const requests = useRef(new Map<string, AbortController>())
   const Speech = speechRecognition()
   const busy = turns.some((turn) => turn.status === 'thinking')
+  // A tap fires a mouse hover that never ends on a touch screen, which left the tooltip stuck (A-34).
+  const noHover = useMediaQuery('(hover: none)')
 
   useEffect(() => {
     document.title = `${c.hello} · Chalkboard`
@@ -259,9 +270,11 @@ export default function AskHome({
     return () => clearInterval(timer)
   }, [busy, t.thinking.length])
 
-  // Route chunk prefetch: prefetch PublicShop and RescueScreen chunks during idle
+  // Route chunk prefetch: prefetch PublicShop and RescueScreen chunks during idle. The answer's
+  // markdown renderer comes first, so the first answer is formatted as it streams (OB-165).
   useEffect(() => {
     const prefetch = () => {
+      void import('../../design/RichText')
       void import('../public/PublicShop')
       void import('../rescue/RescueScreen')
     }
@@ -561,11 +574,12 @@ export default function AskHome({
     requestAnimationFrame(() => input.current?.focus())
   }
 
-  function choosePlace(found: FoundPlace, gps: [number, number] | null = null) {
+  function choosePlace(typed: FoundPlace, gps: [number, number] | null = null) {
+    // A neighbourhood name, never a house number or full address (A-9).
+    const found = { ...typed, label: areaLabel(typed.label, t.here) }
     setPlace(found)
     onLocationChange?.({ gps, place: gps ? null : found })
     rememberPlace(found)
-    setLocated(true)
     setChanging(false)
     setDenied(false)
     // An open question is asked again for the new area.
@@ -597,10 +611,11 @@ export default function AskHome({
         choosePlace({ lat, lng, label: t.here }, [lat, lng])
         void placeLabel(lat, lng).then((label) => {
           if (!label) return
+          const name = areaLabel(label, t.here)
           setPlace((current) =>
-            current.lat === lat && current.lng === lng ? { ...current, label } : current,
+            current.lat === lat && current.lng === lng ? { ...current, label: name } : current,
           )
-          rememberPlace({ lat, lng, label })
+          rememberPlace({ lat, lng, label: name })
         })
       },
       () => {
@@ -665,31 +680,7 @@ export default function AskHome({
     return () => observer.disconnect()
   }, [])
 
-  // Typing on a phone: the navigation bar steps aside so the composer sits on the keyboard.
-  // Browsers that cover the page with the keyboard (iOS) report it through visualViewport.
-  const [typing, setTyping] = useState(false)
-  useEffect(() => {
-    const root = document.documentElement
-    root.toggleAttribute('data-typing', typing)
-    return () => root.removeAttribute('data-typing')
-  }, [typing])
-  useEffect(() => {
-    const view = window.visualViewport
-    if (!view) return
-    const root = document.documentElement
-    const sync = () => {
-      const covered = view.scale > 1.01 ? 0 : innerHeight - view.height - view.offsetTop
-      root.style.setProperty('--c-keyboard', `${Math.max(0, Math.round(covered))}px`)
-    }
-    sync()
-    view.addEventListener('resize', sync)
-    view.addEventListener('scroll', sync)
-    return () => {
-      view.removeEventListener('resize', sync)
-      view.removeEventListener('scroll', sync)
-      root.style.removeProperty('--c-keyboard')
-    }
-  }, [])
+  const typing = useKeyboardViewport()
 
   const chips = startChips(suggestions, interests, c, t, discover, new Date().getHours())
   const last = turns.at(-1)
@@ -747,13 +738,23 @@ export default function AskHome({
             sx={{
               minHeight: 48,
               minWidth: 0,
-              px: 3,
+              px: { xs: 2, sm: 3 },
               ml: -2,
               borderRadius: 999,
               color: roles.onSurface,
               bgcolor: roles.surfaceContainerLow,
               typography: 'titleSmall',
-              '& .MuiButton-startIcon': { color: roles.primary },
+              // Leave the decorative icons' room for the area name on phones (OB-146),
+              // without shrinking text or the touch target.
+              '& .MuiButton-startIcon': {
+                display: { xs: 'none', sm: 'inline-flex' },
+                color: roles.primary,
+                mr: 1,
+              },
+              '& .MuiButton-endIcon': {
+                display: { xs: 'none', sm: 'inline-flex' },
+                ml: 1,
+              },
               '&:hover': { bgcolor: roles.surfaceContainer },
             }}
           >
@@ -761,7 +762,7 @@ export default function AskHome({
               component="span"
               sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
             >
-              {place.label.split(',')[0]?.trim() || place.label}
+              {place.label}
             </Box>
           </Button>
           <Stack direction="row" sx={{ ml: 'auto', flexShrink: 0, alignItems: 'center' }}>
@@ -773,11 +774,29 @@ export default function AskHome({
             <AppearanceToggle inline />
           </Stack>
         </AppHeader>
-        {changing && (
-          <Box className="c-rise" sx={{ mb: 4 }}>
-            <PlaceSearch value={place.label} onFound={(found) => choosePlace(found)} />
-          </Box>
-        )}
+        <Sheet
+          open={changing}
+          onClose={() => setChanging(false)}
+          titleId="ask-area-title"
+          title={discover.place}
+          // The sheet's own focus trap runs first: the field takes focus once it is in place.
+          onEntered={() => areaField.current?.focus()}
+        >
+          <Stack spacing={3} sx={{ pb: 2 }}>
+            {denied && <Alert severity="info">{discover.gpsError}</Alert>}
+            <Button
+              variant="outlined"
+              fullWidth
+              disabled={locating}
+              onClick={locate}
+              startIcon={<LocateFixed size={18} aria-hidden="true" />}
+              sx={{ minHeight: 48 }}
+            >
+              {discover.gps}
+            </Button>
+            <PlaceSearch inputRef={areaField} onFound={(found) => choosePlace(found)} />
+          </Stack>
+        </Sheet>
 
         {/* One purpose: ask for what you want nearby. */}
         <Box component="section" aria-labelledby="ask-hello" sx={{ pt: opening ? 4 : 0 }}>
@@ -812,42 +831,6 @@ export default function AskHome({
                   ? fillIn(c.helloBody, { count: suggestions.shops, place: place.label })
                   : fillIn(c.helloBodyEmpty, { place: place.label })}
               </Typography>
-              {!located && (
-                <Box
-                  component="section"
-                  aria-labelledby="ask-where"
-                  className="c-rise"
-                  sx={{
-                    mt: 5,
-                    p: 4,
-                    borderRadius: '20px',
-                    bgcolor: roles.secondaryContainer,
-                    color: roles.onSecondaryContainer,
-                  }}
-                >
-                  <Typography id="ask-where" component="h2" variant="titleMedium">
-                    {front.location}
-                  </Typography>
-                  {denied && (
-                    <Alert severity="info" sx={{ mt: 3 }}>
-                      {discover.gpsError}
-                    </Alert>
-                  )}
-                  <Button
-                    variant="contained"
-                    fullWidth
-                    disabled={locating}
-                    onClick={locate}
-                    startIcon={<LocateFixed size={18} aria-hidden="true" />}
-                    sx={{ mt: 3, minHeight: 48 }}
-                  >
-                    {discover.gps}
-                  </Button>
-                  <Box sx={{ mt: 3 }}>
-                    <PlaceSearch onFound={(found) => choosePlace(found)} />
-                  </Box>
-                </Box>
-              )}
               <NearbyShops shops={nearbyShops} copy={c} locale={locale} browse={t.browse} />
               <TodayEntry
                 copy={c}
@@ -920,7 +903,14 @@ export default function AskHome({
               id={`turn-${turn.id}`}
               component="article"
               aria-label={turn.q}
-              sx={{ scrollMarginTop: 80 }}
+              // The newest turn is tall enough to scroll to the top (just under the app bar), so a
+              // follow-up's first card is never left behind the sticky header (A-35).
+              sx={{
+                scrollMarginTop: SCROLL_MARGIN,
+                ...(turn === last && {
+                  minHeight: `calc(100dvh - ${SCROLL_MARGIN + dockHeight + NAV + 24}px - env(safe-area-inset-bottom, 0px))`,
+                }),
+              }}
             >
               <UserBubble text={turn.q} copy={c} />
               <AssistantTurn
@@ -971,7 +961,7 @@ export default function AskHome({
           pl: 'max(16px, env(safe-area-inset-left))',
           pr: 'max(16px, env(safe-area-inset-right))',
           pt: 3,
-          pb: typing ? 'max(12px, env(safe-area-inset-bottom))' : 3,
+          pb: 3,
           // Solid, so a suggestion chip is never half-hidden behind a fading edge.
           bgcolor: roles.surface,
           borderTop: `1px solid ${roles.outlineVariant}`,
@@ -981,7 +971,7 @@ export default function AskHome({
         <Box sx={{ maxWidth: 720, mx: 'auto', position: 'relative' }}>
           <Stack direction="row" sx={{ alignItems: 'flex-end', gap: 2 }}>
             {!opening && (
-              <Tooltip title={c.newChat}>
+              <Tooltip title={c.newChat} disableHoverListener={noHover} disableTouchListener>
                 <IconButton
                   aria-label={c.newChat}
                   onClick={restart}
@@ -1038,8 +1028,6 @@ export default function AskHome({
                     submit()
                   }
                 }}
-                onFocus={() => setTyping(matchMedia('(pointer: coarse)').matches)}
-                onBlur={() => setTyping(false)}
                 placeholder={placeholderText}
                 inputProps={{ 'aria-label': c.composer, enterKeyHint: 'send', maxLength: 300 }}
                 sx={{
@@ -1168,8 +1156,9 @@ function NearbyShops({
       {browse}
     </Button>
   )
-  // Skeleton cards hold the carousel's height while it loads, so the Today card below never jumps.
-  if (shops && shops.length === 0) return <Box sx={{ mt: 3 }}>{all}</Box>
+  // Skeleton cards hold the carousel's height while it loads. With no shops here the same room
+  // holds a plain note, so the Today card below never jumps when the answer arrives (A-24).
+  const empty = shops !== null && shops.length === 0
   return (
     <Box component="section" aria-labelledby="ask-nearby" sx={{ mt: 6 }}>
       <Typography id="ask-nearby" component="h2" variant="titleMedium">
@@ -1177,20 +1166,24 @@ function NearbyShops({
       </Typography>
       {/* Big photos first: the neighbourhood's shops as cards the thumb swipes through. */}
       <PickList label={copy.nearbyNow} busy={shops === null} carousel>
-        {shops
-          ? shops.map((pick, index) => (
-              <PickCard
-                key={pick.id}
-                pick={pick}
-                index={index}
-                anchor={null}
-                copy={copy}
-                locale={locale}
-                numbered={false}
-                tile
-              />
-            ))
-          : [0, 1, 2].map((n) => <PickSkeleton key={n} tile />)}
+        {empty ? (
+          <PickEmpty note={copy.nearbyEmpty} />
+        ) : shops ? (
+          shops.map((pick, index) => (
+            <PickCard
+              key={pick.id}
+              pick={pick}
+              index={index}
+              anchor={null}
+              copy={copy}
+              locale={locale}
+              numbered={false}
+              tile
+            />
+          ))
+        ) : (
+          [0, 1, 2].map((n) => <PickSkeleton key={n} tile />)
+        )}
       </PickList>
       {all}
     </Box>
@@ -1602,7 +1595,7 @@ function AssistantTurn({
           <Typography variant="labelLarge" color="text.secondary">
             {accountCopy.remembered.replace(
               '{items}',
-              preferenceChips(account.profile, accountCopy, locale)
+              preferenceChips(account.profile, accountCopy, locale, areaCurrency(turn.place))
                 .filter((chip) => answer.personal!.saved.includes(chip.key))
                 .map((chip) => chip.label)
                 .join(' · ') || answer.personal!.saved.join(' · '),

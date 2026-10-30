@@ -79,6 +79,7 @@ export const en = {
   connectionOffline: 'Offline',
   connectionReconnecting: 'Reconnecting…',
   voiceFailed: 'Voice connection ended. Try again or use text.',
+  voiceOffline: 'Voice needs a connection. Type your message instead.',
   voiceRestarted: 'Voice reconnected. Please say that again.',
   voiceMicDenied:
     'Microphone access is blocked. Allow the microphone in browser settings and try again, or use text.',
@@ -175,7 +176,7 @@ export const en = {
   suggestPrice: 'Update a price',
   suggestHours: 'Change opening hours',
   message: 'Message',
-  messagePlaceholder: 'Tell me about your shop…',
+  messagePlaceholder: 'Your shop…',
   send: 'Send',
   stop: 'Stop',
   photo: 'Add photo',
@@ -301,6 +302,7 @@ export const en = {
   shopEmptyTitle: 'Let’s add your shop',
   addShop: 'Add shop details',
   startPhoto: 'Start from a photo',
+  opening: 'Opening…',
   editDetails: 'Edit details',
   details: 'Details',
   products: 'Products & prices',
@@ -334,6 +336,8 @@ export const en = {
   prepQuestion: 'How much should I prep tomorrow?',
   importing: 'Reading your file…',
   importFailed: 'Couldn’t read that file. Send a CSV or Excel export with item names and prices.',
+  importTooLarge:
+    'That file is too large. Send a photo or PDF under 20 MB, or a spreadsheet under 5 MB.',
   salesSummary: 'Sales summary',
   salesNotSaved: 'From your file. Nothing was saved.',
   salesCurrencyMismatch: 'Rows in another currency were left out.',
@@ -425,6 +429,8 @@ export const en = {
   dataBody:
     'Erase your shops, products, conversations, memory, photos and face data from Chalkboard.',
   deleteAll: 'Delete all my data',
+  deleteDemo:
+    "Deleting data isn't available in the demo. In a real account you can erase everything here.",
   deleteTitle: 'Delete everything?',
   deleteBody:
     'This permanently removes all your shops, products, conversations, photos and face data. It cannot be undone.',

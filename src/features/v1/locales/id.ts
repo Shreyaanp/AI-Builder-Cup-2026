@@ -75,6 +75,7 @@ export const id: Copy = {
   connectionOffline: 'Offline',
   connectionReconnecting: 'Menghubungkan kembali…',
   voiceFailed: 'Koneksi suara berakhir. Coba lagi atau gunakan teks.',
+  voiceOffline: 'Suara butuh koneksi. Ketik pesan Anda saja.',
   voiceRestarted: 'Suara terhubung kembali. Silakan ucapkan lagi.',
   voiceMicDenied:
     'Akses mikrofon diblokir. Izinkan mikrofon di pengaturan browser dan coba lagi, atau gunakan teks.',
@@ -167,7 +168,7 @@ export const id: Copy = {
   suggestPrice: 'Ubah harga',
   suggestHours: 'Ubah jam buka',
   message: 'Pesan',
-  messagePlaceholder: 'Ceritakan tentang toko Anda…',
+  messagePlaceholder: 'Tentang toko…',
   send: 'Kirim',
   stop: 'Hentikan',
   photo: 'Tambah foto',
@@ -286,6 +287,7 @@ export const id: Copy = {
   shopEmptyTitle: 'Tambahkan toko Anda',
   addShop: 'Tambah info toko',
   startPhoto: 'Mulai dari foto',
+  opening: 'Membuka…',
   editDetails: 'Edit detail',
   details: 'Detail',
   products: 'Produk & harga',
@@ -320,6 +322,8 @@ export const id: Copy = {
   importing: 'Membaca file Anda…',
   importFailed:
     'File itu tidak bisa dibaca. Kirim ekspor CSV atau Excel dengan nama item dan harga.',
+  importTooLarge:
+    'File terlalu besar. Kirim foto atau PDF di bawah 20 MB, atau spreadsheet di bawah 5 MB.',
   salesSummary: 'Ringkasan penjualan',
   salesNotSaved: 'Dari file Anda. Tidak ada yang disimpan.',
   salesCurrencyMismatch: 'Baris dengan mata uang lain tidak disertakan.',
@@ -408,6 +412,8 @@ export const id: Copy = {
   dataSection: 'Data Anda',
   dataBody: 'Hapus toko, produk, percakapan, memori, foto, dan data wajah dari Chalkboard.',
   deleteAll: 'Hapus semua data saya',
+  deleteDemo:
+    'Hapus data tidak tersedia di demo. Di akun asli, Anda bisa menghapus semuanya di sini.',
   deleteTitle: 'Hapus semuanya?',
   deleteBody:
     'Semua toko, produk, percakapan, foto, dan data wajah dihapus permanen. Tidak dapat dibatalkan.',

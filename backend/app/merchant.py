@@ -8,6 +8,7 @@ import re
 import secrets
 import sqlite3
 import time
+from collections.abc import Callable
 from pathlib import Path
 from typing import Annotated, Any, Literal, Protocol
 from uuid import NAMESPACE_URL, UUID, uuid4, uuid5
@@ -30,11 +31,13 @@ from .customer import Inquiry, InquiryInput, InquiryReceipt
 from .money import exponent
 from .playbook import migrate_stored
 from .region import (
+    country_at,
     country_of_timezone,
     new_shop_currency,
     new_shop_zone,
+    phone_country,
+    profile,
     shop_currency,
-    shop_region,
     shop_zone,
 )
 from .sales import check_import, prepare_import, sales_days, today_for, validate_capacity
@@ -446,8 +449,21 @@ class MerchantRepository(Protocol):
         """Replace the coach's private notes for a shop (owner-only, never public)."""
         ...
 
-    def set_gallery(self, uid: str, bid: str, photos: list[str]) -> list[str]:
-        """Replace the shop's gallery (photo IDs the owner chose to show customers)."""
+    def set_gallery(
+        self, uid: str, bid: str, photos: list[str], kinds: dict[str, str] | None = None
+    ) -> list[str]:
+        """Replace the shop's gallery (photo IDs the owner chose to show customers). `kinds`
+        (photo ID -> kind) is replaced with it when given and left alone when None."""
+        ...
+
+    def edit_gallery(
+        self,
+        uid: str,
+        bid: str,
+        edit: Callable[[list[str], dict[str, str]], tuple[list[str], dict[str, str]]],
+    ) -> list[str]:
+        """Change the gallery and its kinds from their current stored values, inside the
+        store's transaction, so parallel uploads/moves never overwrite each other."""
         ...
 
     def set_icon(self, uid: str, bid: str, icon: str | None) -> str | None:
@@ -499,6 +515,10 @@ class MerchantRepository(Protocol):
         """UIDs that own this shop (trust checks only; never shown to customers)."""
         ...
 
+    def sealed_shops(self) -> list[str]:
+        """Shops marked as being deleted (or removed by hand) whose records still exist."""
+        ...
+
     def seed_demo_shop(
         self,
         uid: str,
@@ -530,6 +550,9 @@ class MerchantRepository(Protocol):
     def thread_action(
         self, uid: str | None, bid: str, iid: str, token: str, action: str, text: str = ""
     ) -> Inquiry: ...
+    def thread_exists(self, bid: str, iid: str) -> bool:
+        """Whether this chat is still stored, whatever state its shop is in (erasure checks)."""
+        ...
 
     # Connect your system: saved column and field mappings per shop and source
     def get_connector_mapping(
@@ -601,6 +624,11 @@ class ConsentRequest(BaseModel):
 
 
 NAME_REQUIRED = "Add your shop's name before opening it."
+PIN_REQUIRED = "Add your location so customers can find you."
+
+
+def has_pin(fields: dict[str, Any]) -> bool:
+    return fields.get("lat") is not None and fields.get("lng") is not None
 
 
 def require_name(data: dict[str, Any]) -> None:
@@ -621,22 +649,32 @@ def validate_proposal(request: ProposalRequest) -> None:
         place_new_shop(request)
 
 
-def place_new_shop(request: ProposalRequest) -> None:
+def place_new_shop(request: ProposalRequest, legacy_utc: bool = False) -> None:
     """A new shop takes its money and clock from where its pin is (an Indian pin is INR and
     Asia/Kolkata even from a phone set to Singapore), else from the owner's phone (the model
     validator). Its prices were typed in that same money, so only the minor unit is rescaled."""
     business = request.business
     assert business is not None
-    pinned = shop_region({"lat": business.lat, "lng": business.lng})
-    if business.lat is None or not pinned.known:
+    pin_country = country_at(business.lat, business.lng)
+    pinned = profile(pin_country or phone_country())
+    if not pinned.known:
         return
-    if business.currency != pinned.currency:
+    # A pin decides the money. Without one, only the accidental USD default follows the phone
+    # (OB-168); a currency the owner or their app chose stays until the pin is confirmed.
+    if business.currency != pinned.currency and (pin_country or business.currency == "USD"):
         scale = 10 ** (exponent(pinned.currency) - exponent(business.currency))
         for product in request.products:
             product.price = round(product.price * scale)
         business.currency = pinned.currency
-    # A zone of another known country came from the phone; UTC or a far zone was chosen.
-    if country_of_timezone(business.timezone) not in (None, pinned.country):
+    # A zone of another known country came from the phone; UTC or a far zone was chosen. An
+    # unpinned shop's UTC, and a legacy USD/UTC record's first pin (legacy_utc), were the
+    # accidental defaults (OB-168): they follow the shop's region.
+    zone_country = country_of_timezone(business.timezone)
+    if (
+        (business.lat is not None and zone_country not in (None, pinned.country))
+        or (business.lat is None and business.timezone == "UTC")
+        or legacy_utc
+    ):
         business.timezone = new_shop_zone(business.lat, business.lng)
 
 
@@ -732,6 +770,8 @@ class MerchantStore:
                 db.execute("ALTER TABLE businesses ADD COLUMN gallery TEXT")
             if "icon" not in columns:
                 db.execute("ALTER TABLE businesses ADD COLUMN icon TEXT")
+            if "photo_kinds" not in columns:
+                db.execute("ALTER TABLE businesses ADD COLUMN photo_kinds TEXT")
             # Lazy schema migration: older databases gain the column; rows stay NULL until a
             # playbook is first generated for that shop (never a bulk backfill).
             if "playbook" not in columns:
@@ -798,9 +838,10 @@ class MerchantStore:
             "last_confirmed": row["last_confirmed"],
             "coach_notes": json.loads(row["coach_notes"] or "[]"),
             "gallery": json.loads(row["gallery"] or "[]"),
+            "photo_kinds": json.loads(row["photo_kinds"] or "{}"),
             "icon": row["icon"],
             "registration": row["status"],
-            "public": bool(shared),
+            "public": bool(shared) and has_pin(json.loads(row["fields"])),
             "google_publication": "not_connected",
         }
 
@@ -893,6 +934,8 @@ class MerchantStore:
             if data["kind"] == "business":
                 # Only the record is migrated; the exact approved snapshot stays immutable.
                 data["business"] = migrate_profile(data["business"])
+                if not has_pin(data["business"]):
+                    db.execute("DELETE FROM shares WHERE business_id=?", (bid,))
                 if exists:
                     db.execute(
                         "UPDATE businesses SET fields=?,revision=revision+1 WHERE id=?",
@@ -1084,7 +1127,10 @@ class MerchantStore:
 
     def share(self, uid: str, bid: str, public: bool) -> dict[str, Any]:
         with self.connect() as db:
-            self.owned(db, uid, bid)
+            db.execute("BEGIN IMMEDIATE")
+            row = self.owned(db, uid, bid)
+            if public and not has_pin(json.loads(row["fields"])):
+                raise HTTPException(422, PIN_REQUIRED)
             if public:
                 db.execute("INSERT INTO shares VALUES(?) ON CONFLICT DO NOTHING", (bid,))
             else:
@@ -1097,6 +1143,10 @@ class MerchantStore:
                 "SELECT uid FROM memberships WHERE business_id=? AND role='owner'", (bid,)
             ).fetchall()
         return [row[0] for row in rows]
+
+    def sealed_shops(self) -> list[str]:
+        # SQLite erases a shop in one transaction: there is never a half-deleted one.
+        return []
 
     def shared_shops(self) -> list[dict[str, Any]]:
         with self.connect() as db:
@@ -1204,7 +1254,7 @@ class MerchantStore:
                 "WHERE b.id=?",
                 (bid,),
             ).fetchone()
-            if not row:
+            if not row or not has_pin(json.loads(row[0])):
                 return None
             products = [
                 json.loads(item[0])
@@ -1346,11 +1396,35 @@ class MerchantStore:
             db.execute("UPDATE businesses SET coach_notes=? WHERE id=?", (json.dumps(notes), bid))
             return notes
 
-    def set_gallery(self, uid: str, bid: str, photos: list[str]) -> list[str]:
+    def set_gallery(
+        self, uid: str, bid: str, photos: list[str], kinds: dict[str, str] | None = None
+    ) -> list[str]:
         with self.connect() as db:
             db.execute("BEGIN IMMEDIATE")
             self.owned(db, uid, bid)
             db.execute("UPDATE businesses SET gallery=? WHERE id=?", (json.dumps(photos), bid))
+            if kinds is not None:
+                db.execute(
+                    "UPDATE businesses SET photo_kinds=? WHERE id=?", (json.dumps(kinds), bid)
+                )
+            return photos
+
+    def edit_gallery(
+        self,
+        uid: str,
+        bid: str,
+        edit: Callable[[list[str], dict[str, str]], tuple[list[str], dict[str, str]]],
+    ) -> list[str]:
+        with self.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            row = self.owned(db, uid, bid)
+            photos, kinds = edit(
+                json.loads(row["gallery"] or "[]"), json.loads(row["photo_kinds"] or "{}")
+            )
+            db.execute(
+                "UPDATE businesses SET gallery=?, photo_kinds=? WHERE id=?",
+                (json.dumps(photos), json.dumps(kinds), bid),
+            )
             return photos
 
     def set_icon(self, uid: str, bid: str, icon: str | None) -> str | None:
@@ -1488,6 +1562,13 @@ class MerchantStore:
 
     def complete_inquiry(self, uid: str, bid: str, iid: str) -> Inquiry:
         return self.thread_action(uid, bid, iid, "", "close")
+
+    def thread_exists(self, bid: str, iid: str) -> bool:
+        with self.connect() as db:
+            row = db.execute(
+                "SELECT 1 FROM inquiries WHERE business_id=? AND id=?", (bid, iid)
+            ).fetchone()
+        return row is not None
 
     def thread_action(
         self, uid: str | None, bid: str, iid: str, token: str, action: str, text: str = ""

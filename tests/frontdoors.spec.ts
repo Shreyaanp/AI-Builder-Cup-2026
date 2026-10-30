@@ -169,7 +169,9 @@ test('first customer visit: the Ask page asks where inline, then shows nearby ca
   )
   await expect(page.getByRole('textbox', { name: 'Ask about anything nearby' })).toBeVisible()
   await expect(page.getByText('Step 1 of 2', { exact: true })).toHaveCount(0)
-  const where = page.getByRole('region', { name: 'Start with your neighbourhood' })
+  // One input on the page (the Ask bar); the area chip opens the area sheet (A-7, A-33).
+  await page.getByRole('button', { name: /^Area: / }).click()
+  const where = page.getByRole('dialog', { name: 'City or area' })
   await where.getByRole('button', { name: 'Use my location' }).click()
   await expect(where.getByText('Location unavailable. Please choose an area.')).toBeVisible()
   await where.getByRole('textbox', { name: 'City or area' }).fill('Tiong Bahru')

@@ -12,7 +12,7 @@ import {
 import { ExternalLink, X } from 'lucide-react'
 import type { Locale } from '../../i18n/locales'
 import { customerNavigate } from '../frontdoors/navigation'
-import { formatPrice } from '../v1/format'
+import { formatShopPrice } from '../v1/format'
 import { askCopy } from './askStrings'
 import { fillIn } from './conversationCopy'
 import type { MapCopy } from './mapCopy'
@@ -27,6 +27,8 @@ export type ExplorerPlace = MapPin & {
   item?: { name: string; price: number; currency: string } | null
   rating?: number | null
   href?: string | null
+  /** A sample shop: its row says so, the same way its card does. */
+  demo?: boolean
 }
 
 // Bottom sheet stops, as the share of the sheet that shows: peek, half, nearly full.
@@ -350,7 +352,7 @@ function ExplorerRow({
           </Typography>
           {place.item && (
             <Typography variant="bodyMedium" noWrap>
-              {place.item.name} · {formatPrice(place.item.price, place.item.currency)}
+              {place.item.name} · {formatShopPrice(place.item.price, place.item.currency)}
             </Typography>
           )}
           <Typography variant="bodySmall" color="text.secondary" noWrap>
@@ -358,6 +360,7 @@ function ExplorerRow({
               place.open === null ? null : place.open ? ask.openNow : ask.closed,
               formatDistance(place.distance_m, locale),
               place.rating ? `★ ${place.rating.toFixed(1)}` : null,
+              place.demo ? ask.demo : null,
               ours ? null : copy.google,
             ]
               .filter(Boolean)

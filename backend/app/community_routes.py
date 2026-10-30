@@ -18,6 +18,7 @@ from fastapi import APIRouter, HTTPException, Request, Response
 from pydantic import BaseModel, Field
 from sse_starlette import EventSourceResponse
 
+from . import erasure
 from .auth import CUSTOMER_COOKIE, IdentityService, Principal
 from .community import Community, Preferences, Profile, Tip, TipInput, Update, basic_filter
 from .customer import (
@@ -152,6 +153,17 @@ async def local_guest(request: Request, response: Response) -> Me:
 async def local_sign_out(response: Response) -> dict[str, bool]:
     response.delete_cookie(CUSTOMER_COOKIE)
     return {"signed_out": True}
+
+
+@router.delete("/customer/data")
+async def erase_my_data(request: Request) -> dict[str, Any]:
+    """OB-96 "Delete my data": chats (and the shops' copies), passport, tips, follows,
+    preferences, searches and the profile. Only this customer's; Try again repeats every step."""
+    principal = await customer(request)
+    # Generous: a real deletion and its retries never meet it; a scripted loop does. When the
+    # limit store errors, the deletion still runs (signed-in, no paid AI).
+    await enforce_limits(request, [("customer:erase", principal.uid)])
+    return await erasure.erase_customer(request, principal.uid)
 
 
 # --- Follows and preferences ---

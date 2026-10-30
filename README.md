@@ -95,6 +95,24 @@ What the production configuration (`deployment/runtime-config.py`) turns on:
 | Artifact Registry, Cloud Build, Secret Manager | Images, the face-worker build (`scripts/ship-face.ps1`) and tokens                                                     |
 | Workload Identity Federation                   | GitHub Actions deploys without a service-account key (`.github/workflows/deploy.yml`)                                  |
 
+### Rate limits
+
+**Client IP (OB-90).** Behind the Google external HTTPS load balancer (`chalkboard-https`),
+`X-Forwarded-For` reads `<caller-supplied...>, <client>, <load balancer>`. Production sets
+`TRUSTED_PROXY_HOPS=2` (in `deployment/runtime-config.py`), so HTTP routes and the voice
+WebSocket key per-IP limits on the client entry and ignore anything a caller put in front of
+it. The default `0` keeps local and test runs on the first entry. Direct `*.run.app` requests
+skip the load balancer, so their forwarded header stays spoofable until Cloud Run ingress is
+limited to the load balancer.
+
+**When the limit store (Firestore) errors (OB-91).**
+
+| Routes                                                                                                                                            | Store down                                                         |
+| ------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| Anonymous (discover, ask, demo, bootstrap, public stock)                                                                                          | Closed: `429`, retry in 60 s                                       |
+| Signed-in, paid AI/voice/Maps (`coach`, `voice`, `voice:resume`, `photo`, `import`, `tts`, `recap`, `playbook`, `playbook:regenerate`, `reverse`) | Same limits, counted per instance: a normal owner is never refused |
+| Every other signed-in route (reads, saves, reminders, gallery, icons)                                                                             | Open                                                               |
+
 Built with Google tools: **Antigravity** (also the advisory PR reviewer in
 `.github/workflows/agy-review.yml`) and **Gemini CLI** (`GEMINI.md`).
 
@@ -184,7 +202,8 @@ cd backend && uv run ruff check . && uv run mypy && uv run pytest -q
 
 CI ([`checks.yml`](.github/workflows/checks.yml)) runs on every pull request and on pushes to main:
 product rules; backend lint, format, types, tests against the Firestore emulator and a dependency
-audit; the API contract (`backend/openapi.json` and `src/api/generated.d.ts` must match the
+audit; the owner coach evals ([`backend/evals/coach`](backend/evals/coach/README.md), offline);
+the API contract (`backend/openapi.json` and `src/api/generated.d.ts` must match the
 code); frontend lint, build and formatting; Playwright on phone and desktop; the UX gate; and a
 check that the Docker image starts and answers. [`review-impact.yml`](.github/workflows/review-impact.yml)
 comments which areas a pull request can affect. Releases are manual

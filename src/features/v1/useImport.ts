@@ -3,6 +3,11 @@ import type { Proposal } from './api'
 import { ApiError } from './api'
 import { useCopy } from './strings'
 import { useWorkspace } from './workspaceContext'
+import { preparePhoto } from './photoPrep'
+
+const PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp']
+/** Longer than the server's own limits (upload, then a read with one retry). */
+const IMPORT_TIMEOUT_MS = 240_000
 
 /** Menu or sales documents the import endpoint reads (spreadsheets, PDFs, notes, photos). */
 export const IMPORT_ACCEPT =
@@ -41,7 +46,15 @@ export interface SalesImport {
 }
 
 type ImportResult =
-  | { kind: 'menu'; proposal: Proposal; items: number; skipped: number; flags?: ImportFlag[] }
+  | {
+      kind: 'menu'
+      proposal: Proposal
+      items: number
+      skipped: number
+      flags?: ImportFlag[]
+      /** The public demo's fixed sample read (O-1): the review says so. */
+      sample_note?: string
+    }
   | SalesImport
 
 /**
@@ -69,22 +82,34 @@ export function useImport({
     setBusy(true)
     setFailed('')
     try {
+      // OB-194: a phone original is megabytes on mobile data; only a shrunk copy is sent.
+      const sent = PHOTO_TYPES.includes(file.type) ? (await preparePhoto(file)).file : file
       const result = await ws.api<ImportResult>(
         `/businesses/${encodeURIComponent(shop.id)}/import`,
         {
           method: 'POST',
-          body: file,
-          headers: { 'Content-Type': file.type || 'text/csv' },
+          body: sent,
+          headers: { 'Content-Type': sent.type || 'text/csv' },
+          // OB-194: reading a menu photo or PDF takes 25-40 s in production; the default 25 s
+          // wait gave up first, so a real menu import "failed" while the server was reading it.
+          signal: AbortSignal.timeout(IMPORT_TIMEOUT_MS),
         },
       )
       onBeforeReview?.()
-      if (result.kind === 'menu') ws.review({ ...result.proposal, import_flags: result.flags })
+      if (result.kind === 'menu')
+        ws.review({
+          ...result.proposal,
+          import_flags: result.flags,
+          ...(result.sample_note ? { photo_notes: [result.sample_note] } : {}),
+        })
       else onSales(result)
     } catch (cause) {
       const message =
         cause instanceof ApiError && cause.code === 'EXTRACTION_UNAVAILABLE'
           ? t.importUnavailable
-          : t.importFailed
+          : cause instanceof ApiError && cause.status === 413
+            ? t.importTooLarge
+            : t.importFailed
       setFailed(message)
       ws.notify(message)
     } finally {

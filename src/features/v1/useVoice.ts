@@ -43,6 +43,8 @@ export type VoiceProblem =
   | { kind: 'mic-blocked' }
   | { kind: 'no-mic' }
   | { kind: 'connection' }
+  /** The phone is offline when the owner taps the mic: say so and stay idle (OB-230). */
+  | { kind: 'offline' }
   | { kind: 'rate-limited'; seconds: number }
   | { kind: 'unavailable' }
   /** The reply took too long (no word from the server): thinking stops, Retry is offered. */
@@ -205,11 +207,13 @@ export function useVoice(
     setError(
       next.kind === 'mic-blocked'
         ? t.voiceMicDenied
-        : next.kind === 'rate-limited'
-          ? t.voiceRateLimited(next.seconds)
-          : next.kind === 'slow'
-            ? o.tooSlow
-            : t.voiceFailed,
+        : next.kind === 'offline'
+          ? t.voiceOffline
+          : next.kind === 'rate-limited'
+            ? t.voiceRateLimited(next.seconds)
+            : next.kind === 'slow'
+              ? o.tooSlow
+              : t.voiceFailed,
     )
   }
   /** No reply in time: the "thinking" state ends with Retry instead of staying on. */
@@ -251,6 +255,10 @@ export function useVoice(
   /** `listening`: a conversation the coach has already opened, so the mic opens at once. */
   async function start(sessionId: string | null = null, listening = false) {
     if (owner.current) return
+    if (!navigator.onLine) {
+      fail({ kind: 'offline' })
+      return
+    }
     const operation = new AbortController()
     owner.current = operation
     awake.current ??= keepScreenAwake()

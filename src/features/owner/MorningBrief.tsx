@@ -2,9 +2,17 @@ import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Box, Button, Chip, IconButton, Link, Stack, Typography, useTheme } from '@mui/material'
 import { gsap } from 'gsap'
-import { CloudSun, PackageMinus, Sparkles, Sunrise, UtensilsCrossed, X } from 'lucide-react'
+import {
+  CloudSun,
+  ExternalLink,
+  PackageMinus,
+  Sparkles,
+  Sunrise,
+  UtensilsCrossed,
+  X,
+} from 'lucide-react'
 import type { components } from '../../api/generated'
-import { useChalkTimeline } from '../../design/chalkMotion'
+import { hits, useChalkTimeline } from '../../design/chalkMotion'
 import { scrollArea, shape } from '../../design/theme'
 import { useLocale } from '../../state/hooks'
 import { CloseDay } from '../closeday/CloseDay'
@@ -77,7 +85,9 @@ export function MorningBrief({
   useChalkTimeline(
     scope,
     (root) => {
-      gsap.from(root.querySelectorAll('.brief-line'), {
+      const lines = hits(root, '.brief-line')
+      if (!lines.length) return
+      gsap.from(lines, {
         y: 6,
         opacity: 0,
         duration: 0.35,
@@ -192,11 +202,12 @@ export function MorningBrief({
                     target="_blank"
                     rel="noopener"
                     color="inherit"
-                    sx={{ display: 'inline-flex', alignItems: 'center', minHeight: 48 }}
+                    sx={{ display: 'inline-flex', alignItems: 'center', gap: 1, minHeight: 48 }}
                   >
                     {fill(brief.weather.demo ? t.weatherDemoCredit : t.weatherCredit, {
                       source: 'Open-Meteo (CC BY 4.0)',
                     })}
+                    <ExternalLink size={14} aria-hidden="true" />
                   </Link>
                 </Typography>
               </Stack>

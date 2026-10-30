@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useOfflineCopy, useOnline } from '../customer/offline'
 import {
   Alert,
   Box,
@@ -13,7 +14,7 @@ import {
 import { gsap } from 'gsap'
 import { Check, Gift, Leaf, Trophy } from 'lucide-react'
 import { useChalkTimeline, dealIn } from '../../design/chalkMotion'
-import { HAND_FONT } from '../../design/theme'
+import { HAND_FONT, HAND_SIZE } from '../../design/theme'
 import { useLocale } from '../../state/hooks'
 import type { CustomerLocation } from '../frontdoors/CustomerApp'
 import { useCustomer } from '../customer/account'
@@ -21,7 +22,7 @@ import { useAccountCopy } from '../customer/copy'
 import { SignInSheet } from '../customer/SignIn'
 import { customerNavigate } from '../frontdoors/navigation'
 import { useRewardCopy } from '../rewards/strings'
-import { formatPrice } from '../v1/format'
+import { formatShopPrice } from '../v1/format'
 import { LevelRing, Sticker } from './art'
 import { FESTIVAL_ART } from './artData'
 import { fill, requirementText, usePassportCopy } from './copy'
@@ -96,6 +97,8 @@ export function Passport({ initialLocation }: { initialLocation?: CustomerLocati
       : (initialLocation?.place ?? lastPlace()),
   )
   const { view, status, refresh, signedIn } = usePassport(place)
+  const online = useOnline()
+  const offline = useOfflineCopy()
   const [signIn, setSignIn] = useState(false)
   useEffect(() => {
     document.title = `${t.title} · Chalkboard`
@@ -126,7 +129,7 @@ export function Passport({ initialLocation }: { initialLocation?: CustomerLocati
           sx={{
             fontFamily: HAND_FONT,
             fontWeight: 700,
-            fontSize: { xs: 32, sm: 38 },
+            fontSize: HAND_SIZE,
             lineHeight: 1.1,
             overflowWrap: 'break-word',
           }}
@@ -146,7 +149,13 @@ export function Passport({ initialLocation }: { initialLocation?: CustomerLocati
           />
         )}
       </Stack>
-      {status === 'error' && (
+      {status === 'error' && !online && (
+        // A-18: offline is not a failure; the Passport comes back by itself when online.
+        <Alert severity="info" sx={{ mt: 4 }}>
+          {view ? offline.offlineKept : offline.offlineBody}
+        </Alert>
+      )}
+      {status === 'error' && online && (
         <Alert
           severity="error"
           sx={{ mt: 4 }}
@@ -203,7 +212,7 @@ export function Passport({ initialLocation }: { initialLocation?: CustomerLocati
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <Box component="section" aria-label={title}>
-      <Typography component="h2" variant="titleLarge" sx={{ mb: 2 }}>
+      <Typography component="h2" variant="titleMedium" sx={{ mb: 2, fontWeight: 700 }}>
         {title}
       </Typography>
       {children}
@@ -247,7 +256,7 @@ function LevelCard({ view }: { view: PassportView }) {
           sx={{
             fontFamily: HAND_FONT,
             fontWeight: 700,
-            fontSize: { xs: 28, sm: 34 },
+            fontSize: HAND_SIZE,
             lineHeight: 1.15,
           }}
         >
@@ -320,7 +329,7 @@ function PendingScratch({
       aria-label={t.scratchTitle}
       sx={{ p: 4, borderRadius: '24px', bgcolor: theme.material.surfaceContainerLow }}
     >
-      <Typography component="h2" variant="titleLarge" sx={{ mb: 2 }}>
+      <Typography component="h2" variant="titleMedium" sx={{ mb: 2, fontWeight: 700 }}>
         {fill(t.scratchWaiting, { n: new Intl.NumberFormat(locale).format(waiting.length || 1) })}
       </Typography>
       <ScratchCard key={card.id} card={card} place={place} onOpened={setShown} />
@@ -375,7 +384,7 @@ function StampBook({ view }: { view: PassportView }) {
                   sx={{
                     fontFamily: HAND_FONT,
                     fontWeight: 700,
-                    fontSize: 28,
+                    fontSize: HAND_SIZE,
                     overflowWrap: 'break-word',
                   }}
                 >
@@ -451,7 +460,7 @@ function StampBook({ view }: { view: PassportView }) {
                           {shop.name.replace(/\s*\(Demo\)$/, '')}
                         </Typography>
                       </a>
-                      <Typography variant="labelSmall" color="text.secondary">
+                      <Typography variant="labelLarge" color="text.secondary">
                         {/* A shop with a stamp card: the same count as its shop page. */}
                         {shop.slots
                           ? rewards.progress
@@ -633,6 +642,7 @@ function Impact({ view }: { view: PassportView }) {
   const locale = useLocale()
   const theme = useTheme()
   const coral = theme.chalk.coral
+  const calm = theme.palette.mode === 'dark'
   const meals = view.impact.meals
   const growth = [0, 1, 5, 12, 25, 50].filter((m) => meals >= m).length
   return (
@@ -641,8 +651,9 @@ function Impact({ view }: { view: PassportView }) {
         sx={{
           p: 4,
           borderRadius: '20px',
-          bgcolor: coral.container,
-          color: coral.onContainer,
+          // Soft coral in light; in dark the coral container is a loud brick red (OB-215/OB-145).
+          bgcolor: calm ? theme.material.surfaceContainerLow : coral.container,
+          color: calm ? theme.material.onSurface : coral.onContainer,
           display: 'flex',
           gap: 4,
           alignItems: 'center',
@@ -657,7 +668,7 @@ function Impact({ view }: { view: PassportView }) {
         <Box sx={{ minWidth: 0 }}>
           {meals ? (
             <>
-              <Typography variant="titleLarge" sx={{ fontWeight: 700 }}>
+              <Typography variant="titleMedium" sx={{ fontWeight: 700 }}>
                 {fill(t.meals, { n: new Intl.NumberFormat(locale).format(meals) })}
               </Typography>
               <Typography variant="bodyMedium" title={t.co2Note}>
@@ -665,7 +676,7 @@ function Impact({ view }: { view: PassportView }) {
               </Typography>
               {Object.entries(view.impact.saved).map(([currency, minor]) => (
                 <Typography key={currency} variant="bodyMedium">
-                  {fill(t.moneySaved, { amount: formatPrice(minor, currency, locale) })}
+                  {fill(t.moneySaved, { amount: formatShopPrice(minor, currency, locale) })}
                 </Typography>
               ))}
               <Typography variant="bodySmall" sx={{ mt: 1, opacity: 0.8 }}>
@@ -849,19 +860,32 @@ function Leaderboard({
                     }}
                   >
                     <Typography
-                      sx={{ width: 32, fontFamily: HAND_FONT, fontSize: 22, fontWeight: 700 }}
+                      sx={{
+                        width: 32,
+                        fontFamily: HAND_FONT,
+                        fontSize: HAND_SIZE,
+                        fontWeight: 700,
+                      }}
                     >
                       {new Intl.NumberFormat(locale).format(row.rank)}
                     </Typography>
-                    <Typography variant="bodyLarge" sx={{ flex: 1, fontWeight: 'inherit' }}>
-                      {row.name}
-                    </Typography>
+                    {/* The level is the person's overall one; the points are this week's, so
+                        they read "+230 points", never "Regular 230" beside a 300-point level (OB-104). */}
+                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                      <Typography variant="bodyLarge" sx={{ fontWeight: 'inherit' }}>
+                        {row.name}
+                      </Typography>
+                      <Typography variant="bodySmall" color="text.secondary">
+                        {t[row.level]}
+                      </Typography>
+                    </Box>
                     {row.demo && <Chip size="small" label={t.demo} />}
-                    <Typography variant="labelLarge" color="text.secondary">
-                      {t[row.level]}
-                    </Typography>
-                    <Typography variant="labelLarge" sx={{ fontVariantNumeric: 'tabular-nums' }}>
-                      {new Intl.NumberFormat(locale).format(row.points)}
+                    <Typography
+                      variant="labelLarge"
+                      data-board-points
+                      sx={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}
+                    >
+                      {fill(t.plus, { n: new Intl.NumberFormat(locale).format(row.points) })}
                     </Typography>
                   </Stack>
                 ))}

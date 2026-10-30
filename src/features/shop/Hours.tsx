@@ -244,7 +244,7 @@ export function HoursEditor({
   )
 }
 
-export function HoursList({ hours }: { hours?: DayHours[] }) {
+export function HoursList({ hours, heading = true }: { hours?: DayHours[]; heading?: boolean }) {
   const t = useShopCopy()
   const locale = useLocale()
   if (!hours?.length) return null
@@ -255,14 +255,17 @@ export function HoursList({ hours }: { hours?: DayHours[] }) {
     hours.every((item) => !item.closed && item.open === first?.open && item.close === first?.close)
   return (
     <Box component="section" aria-label={t.weeklyHours}>
-      <Typography component="h3" variant="titleSmall">
-        {t.weeklyHours}
-      </Typography>
+      {/* A caller that already shows the title (a "Weekly hours" toggle) turns the heading off. */}
+      {heading && (
+        <Typography component="h3" variant="titleSmall">
+          {t.weeklyHours}
+        </Typography>
+      )}
       <Box
         component="dl"
         sx={{
           m: 0,
-          mt: 1,
+          mt: heading ? 1 : 0,
           display: 'grid',
           gridTemplateColumns: 'minmax(0,1fr) auto',
           columnGap: 2,

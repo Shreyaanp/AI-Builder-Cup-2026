@@ -197,3 +197,31 @@ def test_multimodal_truncation_rejects_partial_sales(app, monkeypatch):  # noqa:
         response = upload(client, bid, jpeg(), "image/jpeg")
         assert response.status_code == 503
         assert client.get(f"/api/v1/businesses/{bid}/sales").json() == []
+
+
+# OB-213 (#570): the model read "Rs" as the unit and the "MENU" title as the category.
+def test_ob213_currency_unit_and_heading_category_are_cleaned() -> None:
+    from app.ingestion import ExtractedRow
+
+    for unit in ("Rs", "Rs.", "₹", "INR", "$", "S$", "Rp", "Rs 50", "rupees", "null", "", "None"):
+        assert ExtractedRow(name="Tea", price=10, unit=unit).unit == "item", unit
+    for unit in ("plate", "250 g", "cup", "item", "kg"):
+        assert ExtractedRow(name="Tea", price=10, unit=unit).unit == unit
+    for category in ("MENU", "Menu Card", "PRICE LIST", "menu:", "null"):
+        assert ExtractedRow(name="Tea", category=category).category == "", category
+    assert ExtractedRow(name="Tea", category="Drinks").category == "Drinks"
+
+
+def test_ob213_photo_category_equal_to_shop_name_is_empty() -> None:
+    from app.photos import ExtractedBusiness, _PhotoSpec, _ProductSpec, to_extraction
+
+    spec = _PhotoSpec(
+        photo_kind="menu",
+        business=ExtractedBusiness(name="Raju's Tea Stall"),
+        products=[
+            _ProductSpec(name="Chai", price="10", category="MENU"),
+            _ProductSpec(name="Vada", price="12", category="RAJU'S TEA STALL"),
+            _ProductSpec(name="Coffee", price="15", category="Drinks"),
+        ],
+    )
+    assert [p.category for p in to_extraction(spec).products] == ["", "", "Drinks"]

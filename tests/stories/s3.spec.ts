@@ -35,11 +35,12 @@ test('S3 · nearby discovery, facts, owner reply and QR stamps', async ({ page, 
     await localOnly(customer)
     await test.step('1 · open customer entry', async () => {
       await customer.goto(`http://127.0.0.1:${process.env.WEB_PORT ?? 3200}/explore/`)
-      await expect(customer.getByRole('button', { name: 'Use my location' })).toBeVisible()
+      await expect(customer.getByRole('button', { name: /^Area: / })).toBeVisible()
       await shot(customer, 3, 1)
     })
     await test.step('2 · GPS discovery and typed city fallback', async () => {
-      await customer.getByRole('button', { name: 'Use my location' }).click()
+      await customer.getByRole('button', { name: /^Area: / }).click()
+      await customer.getByRole('dialog').getByRole('button', { name: 'Use my location' }).click()
       // The front door is an AI ask; browsing everything nearby is one tap away.
       await expect(
         customer.getByRole('heading', { name: 'What are you looking for nearby?' }),
@@ -86,15 +87,13 @@ test('S3 · nearby discovery, facts, owner reply and QR stamps', async ({ page, 
       const card = customer.getByRole('list').getByRole('link').filter({ hasText: shopName })
       await expect(card).toBeVisible()
       // Cards show the first dish only; the full menu is checked on the shop page.
-      await expect(card).toContainText('₹15.00')
+      await expect(card).toContainText(/₹15(?![.\d])/)
       await shot(customer, 3, 3)
       await card.click()
     })
     await test.step('4 · shop menu categories, hours and customer facts', async () => {
       await expect(customer.getByRole('heading', { name: shopName })).toBeVisible()
-      await expect(customer.getByRole('listitem').filter({ hasText: /^Kopi/ })).toContainText(
-        '₹18.00',
-      )
+      await expect(customer.getByRole('listitem').filter({ hasText: /^Kopi/ })).toContainText('₹18')
       await expect(customer.getByText('UPI', { exact: true })).toBeVisible()
       await expect(customer.getByText('Locally made', { exact: true })).toBeVisible()
       await expect(customer.getByRole('heading', { name: 'Drinks', exact: true })).toBeVisible()
@@ -109,7 +108,7 @@ test('S3 · nearby discovery, facts, owner reply and QR stamps', async ({ page, 
         route.fulfill({ json: sample }),
       )
       await customer.goto(`http://127.0.0.1:${process.env.WEB_PORT ?? 3200}/explore/s/${sample.id}`)
-      await expect(customer.getByText('Demo shop', { exact: true })).toBeVisible()
+      await expect(customer.getByText('Sample shop', { exact: true })).toBeVisible()
       await expect(
         customer.getByText('Sample shop for this prototype — not a real business.'),
       ).toBeVisible()

@@ -49,14 +49,14 @@ import { RateLimitError, streamCoach, TooSlowError, TURN_IDLE_MS } from '../../a
 import type { CoachEvent } from '../../api/stream'
 import { useIdentity } from '../../auth/useIdentity'
 import { useLocale } from '../../state/hooks'
-import { useChalkTimeline } from '../../design/chalkMotion'
+import { hits, useChalkTimeline } from '../../design/chalkMotion'
 import { enterRise, fieldFade, HAND_FONT, motion, shape } from '../../design/theme'
 import { discoverCopy } from '../discover/strings'
 import { HoursList } from '../shop/Hours'
 import { useShopCopy } from '../shop/strings'
 import { unitLabel } from '../shop/units'
 import { ApiError } from './api'
-import { photoHeaders, preparePhoto } from './photoPrep'
+import { PHOTO_READ_TIMEOUT_MS, photoHeaders, preparePhoto } from './photoPrep'
 import type { Business, PhotoResult, Product, Proposal } from './api'
 import { CameraCard, type Shot } from './CameraCard'
 import { LocationPin } from './CurrentLocation'
@@ -65,7 +65,7 @@ import { useInChatCopy } from './inChatCopy'
 import { readablePlace, type OwnerLocation } from './location'
 import { MapCard, type PinChoice } from './MapCard'
 import { FactList } from './FactList'
-import { defaultCurrency, formatPrice } from './format'
+import { defaultCurrency, formatShopPrice } from './format'
 import { NewShopReady } from './NewShopStage'
 import { useNewShopCopy } from './newShopCopy'
 import { useNameSuggestion, useOnboardingCopy } from './onboardingCopy'
@@ -169,7 +169,7 @@ function withServerDraft(previous: Draft, server: Draft): Draft {
 }
 
 const hasPlace = (draft: Draft) =>
-  Boolean(draft.business && (draft.business.lat != null || draft.business.location))
+  Boolean(draft.business && draft.business.lat != null && draft.business.lng != null)
 /** Everything onboarding asks is answered or skipped (owner decision, 17 Oct). */
 function complete(draft: Draft) {
   const b = draft.business
@@ -599,7 +599,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
   }
   /** The coach opened a card of the flow (show_step): it appears at once. */
   function showStep(step: string) {
-    if (step === 'location') openMap(true)
+    if (step === 'location') openMap(!draftRef.current.business?.location)
     else if (step === 'camera') openCamera()
     else if (step === 'review') setReviewOpen(true)
     else if (step === 'summary' || step === 'face_check') offerSummary()
@@ -675,7 +675,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
   function answerMissing(field: ListingField) {
     setListOpen(false)
     if (endedRef.current) continueConversation()
-    if (field === 'location') openMap(true)
+    if (field === 'location') openMap(!draftRef.current.business?.location)
     else void say(g.ask[field])
   }
   /** Done: the live shop opens (and the face check, when the owner chose it). */
@@ -946,6 +946,11 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
     return () => observer.disconnect()
   }, [phase])
   const missing = missingForListing(draft)
+  const unconfirmedPlace = !hasPlace(draft) ? (draft.business?.location ?? '') : ''
+  const showPlaceConfirmation = useEffectEvent(() => openMap(false))
+  useEffect(() => {
+    if (unconfirmedPlace) showPlaceConfirmation()
+  }, [unconfirmedPlace])
   const summaryDue = complete(draft) && Boolean(draft.live_id)
   const showSummary = useEffectEvent(() => offerSummary())
   useEffect(() => {
@@ -991,7 +996,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
         method: 'POST',
         body: photo.file,
         headers: photoHeaders(photo),
-        signal: AbortSignal.timeout(60_000),
+        signal: AbortSignal.timeout(PHOTO_READ_TIMEOUT_MS),
       })
       // OB-153: an unreadable menu needs recovery. A shopfront can have no text, and a
       // readable menu may propose no new fields; both still follow the normal photo path.
@@ -1515,6 +1520,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
                 ) : line.role === 'map' ? (
                   <Box component="li" key={line.id} sx={{ ml: { xs: 0, sm: 6 } }}>
                     <MapCard
+                      placeName={draft.business?.location}
                       initial={
                         draft.business?.lat != null && draft.business.lng != null
                           ? { lat: draft.business.lat, lng: draft.business.lng }
@@ -1943,26 +1949,37 @@ function Hero({ onBegin, onCancel }: { onBegin: () => void; onCancel: () => void
   useEffect(() => {
     heading.current?.focus()
   }, [])
-  useChalkTimeline(root, () => {
-    const strokes = gsap.utils.toArray<SVGPathElement>('[data-hero-stroke]')
+  useChalkTimeline(root, (scope) => {
+    const strokes = hits<SVGPathElement>(scope, '[data-hero-stroke]')
     strokes.forEach((path) => {
       const length = path.getTotalLength()
       gsap.set(path, { strokeDasharray: length, strokeDashoffset: length })
     })
-    gsap
-      .timeline()
-      .to(strokes, { strokeDashoffset: 0, duration: 0.9, ease: 'power2.inOut', stagger: 0.14 })
-      .from(
-        '[data-hero-title]',
+    const timeline = gsap.timeline()
+    if (strokes.length)
+      timeline.to(strokes, {
+        strokeDashoffset: 0,
+        duration: 0.9,
+        ease: 'power2.inOut',
+        stagger: 0.14,
+      })
+    const title = hits(scope, '[data-hero-title]')
+    if (title.length)
+      timeline.from(
+        title,
         { clipPath: 'inset(0 100% 0 0)', duration: 0.8, ease: 'power2.out' },
         '-=0.6',
       )
-      .from(
-        '[data-hero-spark]',
+    const sparks = hits(scope, '[data-hero-spark]')
+    if (sparks.length)
+      timeline.from(
+        sparks,
         { scale: 0, rotate: -40, opacity: 0, duration: 0.45, stagger: 0.1, ease: 'back.out(2.2)' },
         '-=0.4',
       )
-      .from('[data-hero-rise]', { opacity: 0, y: 18, duration: 0.5, stagger: 0.12 }, '-=0.3')
+    const rise = hits(scope, '[data-hero-rise]')
+    if (rise.length)
+      timeline.from(rise, { opacity: 0, y: 18, duration: 0.5, stagger: 0.12 }, '-=0.3')
   })
   return (
     <Box
@@ -2441,7 +2458,8 @@ function Review({
                       {product.name}
                     </Typography>
                     <Typography sx={{ flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>
-                      {formatPrice(product.price, currency)} / {unitLabel(product.unit, shopCopy)}
+                      {formatShopPrice(product.price, currency)} /{' '}
+                      {unitLabel(product.unit, shopCopy)}
                     </Typography>
                   </Box>
                 ))}

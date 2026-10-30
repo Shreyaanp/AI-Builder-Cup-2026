@@ -73,6 +73,7 @@ export const ko: Copy = {
   connectionOffline: '오프라인',
   connectionReconnecting: '다시 연결 중…',
   voiceFailed: '음성 연결이 종료되었습니다. 다시 시도하거나 텍스트를 사용하세요.',
+  voiceOffline: '음성에는 연결이 필요해요. 대신 텍스트로 입력하세요.',
   voiceRestarted: '음성이 다시 연결되었습니다. 다시 말씀해 주세요.',
   voiceMicDenied:
     '마이크 접근이 차단되었습니다. 브라우저 설정에서 마이크를 허용하고 다시 시도하거나 텍스트를 입력하세요.',
@@ -164,7 +165,7 @@ export const ko: Copy = {
   suggestPrice: '가격 변경',
   suggestHours: '영업시간 변경',
   message: '메시지',
-  messagePlaceholder: '가게 이야기를 들려주세요…',
+  messagePlaceholder: '가게 이야기…',
   send: '보내기',
   stop: '중지',
   photo: '사진 추가',
@@ -280,6 +281,7 @@ export const ko: Copy = {
   shopEmptyTitle: '가게를 추가해 볼까요',
   addShop: '가게 정보 추가',
   startPhoto: '사진으로 시작',
+  opening: '여는 중…',
   editDetails: '정보 수정',
   details: '정보',
   products: '상품과 가격',
@@ -313,6 +315,8 @@ export const ko: Copy = {
   prepQuestion: '내일 얼마나 준비해야 하나요?',
   importing: '파일을 읽는 중…',
   importFailed: '파일을 읽지 못했어요. 상품명과 가격이 있는 CSV나 Excel 파일을 보내 주세요.',
+  importTooLarge:
+    '파일이 너무 커요. 20MB 미만의 사진이나 PDF, 또는 5MB 미만의 스프레드시트를 보내 주세요.',
   salesSummary: '판매 요약',
   salesNotSaved: '파일 내용이에요. 아무것도 저장하지 않았어요.',
   salesCurrencyMismatch: '다른 통화의 행은 제외했어요.',
@@ -399,6 +403,8 @@ export const ko: Copy = {
   dataSection: '내 데이터',
   dataBody: 'Chalkboard에서 가게, 상품, 대화, 기억, 사진, 얼굴 데이터를 삭제해요.',
   deleteAll: '내 데이터 모두 삭제',
+  deleteDemo:
+    '데모에서는 데이터를 삭제할 수 없습니다. 실제 계정에서는 여기서 모두 삭제할 수 있습니다.',
   deleteTitle: '모두 삭제할까요?',
   deleteBody: '모든 가게, 상품, 대화, 사진, 얼굴 데이터를 영구 삭제해요. 되돌릴 수 없어요.',
   deleteConfirm: '영구 삭제',

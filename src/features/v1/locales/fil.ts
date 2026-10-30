@@ -79,6 +79,7 @@ export const fil: Copy = {
   connectionOffline: 'Offline',
   connectionReconnecting: 'Muling kumokonekta…',
   voiceFailed: 'Natapos ang koneksyon sa boses. Subukan muli o gumamit ng teksto.',
+  voiceOffline: 'Kailangan ng koneksyon ang boses. Mag-type na lang.',
   voiceRestarted: 'Nakakonekta muli ang boses. Pakisabi iyon muli.',
   voiceMicDenied:
     'Naka-block ang mikropono. Payagan ito sa mga setting ng browser at subukang muli, o mag-type.',
@@ -174,7 +175,7 @@ export const fil: Copy = {
   suggestPrice: 'Baguhin ang presyo',
   suggestHours: 'Baguhin ang oras',
   message: 'Mensahe',
-  messagePlaceholder: 'Ikuwento ang tindahan mo…',
+  messagePlaceholder: 'Shop mo…',
   send: 'Ipadala',
   stop: 'Ihinto',
   photo: 'Magdagdag ng litrato',
@@ -293,6 +294,7 @@ export const fil: Copy = {
   shopEmptyTitle: 'Idagdag natin ang tindahan mo',
   addShop: 'Magdagdag ng detalye',
   startPhoto: 'Magsimula sa litrato',
+  opening: 'Binubuksan…',
   editDetails: 'I-edit ang detalye',
   details: 'Mga detalye',
   products: 'Mga produkto at presyo',
@@ -327,6 +329,8 @@ export const fil: Copy = {
   importing: 'Binabasa ang file…',
   importFailed:
     'Hindi mabasa ang file. Magpadala ng CSV o Excel na may pangalan ng item at presyo.',
+  importTooLarge:
+    'Masyadong malaki ang file. Magpadala ng larawan o PDF na wala pang 20 MB, o spreadsheet na wala pang 5 MB.',
   salesSummary: 'Buod ng benta',
   salesNotSaved: 'Mula sa file mo. Walang na-save.',
   salesCurrencyMismatch: 'Hindi isinama ang mga row na ibang currency.',
@@ -418,6 +422,8 @@ export const fil: Copy = {
   dataBody:
     'Burahin ang tindahan, produkto, usapan, memorya, litrato at data ng mukha sa Chalkboard.',
   deleteAll: 'Burahin lahat ng data ko',
+  deleteDemo:
+    'Hindi available ang pagbura ng data sa demo. Sa totoong account, mabubura mo rito ang lahat.',
   deleteTitle: 'Burahin ang lahat?',
   deleteBody:
     'Permanente nitong buburahin ang lahat ng tindahan, produkto, usapan, litrato at data ng mukha. Hindi na maibabalik.',

@@ -7,12 +7,18 @@ import { mkdirSync, writeFileSync } from 'node:fs'
 
 test.use({ reducedMotion: 'reduce' })
 
-test('OB-156 conversation and photo recovery keep three type sizes and grid spacing', async ({
+test('OB-156 / OB-192 conversation and photo recovery keep three type sizes and grid spacing', async ({
   page,
 }) => {
   test.setTimeout(120_000)
   await localOnly(page)
   await page.addInitScript(() => {
+    // OB-195: the app starts light; this owner picked System, so the phone's setting below
+    // switches the page between light and dark.
+    localStorage.setItem(
+      'chalkboard.owner.preferences',
+      JSON.stringify({ appearance: 'system', appearanceChosen: true }),
+    )
     navigator.mediaDevices.getUserMedia = async () => {
       throw new DOMException('Permission denied', 'NotAllowedError')
     }

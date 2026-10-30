@@ -1,4 +1,5 @@
 import { AppHeader } from '../../design/AppHeader'
+import { keepShop, keptShop, whenOnline } from '../customer/offline'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   Alert,
@@ -29,7 +30,7 @@ import { AppearanceToggle } from '../frontdoors/AppearanceToggle'
 import { LanguagePicker } from '../frontdoors/LanguagePicker'
 import { discoverCopy } from '../discover/strings'
 import { loadScriptFont } from '../../i18n/fonts'
-import { formatPrice } from '../v1/format'
+import { formatShopPrice } from '../v1/format'
 import { factName } from '../v1/factNames'
 import { Sheet } from '../v1/Sheet'
 import type { Api, ShopFacts } from '../v1/api'
@@ -54,6 +55,7 @@ import { CategoryGroups } from '../shop/CategoryGroups'
 import { useShopCopy } from '../shop/strings'
 import { useDemoCopy } from '../frontdoors/strings'
 import { VerifiedBadge } from '../trust/VerifiedBadge'
+import { plainShopName } from '../discover/sampleShop'
 import { unitLabel } from '../shop/units'
 import { rememberOpened } from '../discover/opened'
 import { SimilarNearby } from '../discover/SimilarNearby'
@@ -89,7 +91,7 @@ interface PublicShopData {
   /** Owner-confirmed customer facts; absent keys are simply not listed. */
   facts?: ShopFacts
   open_now?: boolean | null
-  /** A seeded sample shop; always labelled "Demo shop". */
+  /** A seeded sample shop; always labelled "Sample shop", never "Verified owner". */
   demo?: boolean
   /** The owner passed the optional live face check (when; never who). */
   verified_owner?: { checked?: number | null }
@@ -192,6 +194,7 @@ const en = {
   soldOut: 'Sold out',
   available: 'Available',
   directions: 'Directions',
+  sampleAddress: 'Sample address',
   call: 'Call',
   refresh: 'Refresh',
   updated: 'Updated just now',
@@ -467,6 +470,22 @@ const publicTranslations: Record<Locale, Partial<Omit<typeof en, keyof CustomerC
   },
 }
 
+/** Equal-width action tile on a phone (icon over label); the usual inline button beside it on a wider screen. */
+const tile = {
+  minHeight: 48,
+  minWidth: 0,
+  width: '100%',
+  height: '100%',
+  px: 1,
+  py: 1,
+  lineHeight: 1.25,
+  textAlign: 'center',
+  flexDirection: { xs: 'column', sm: 'row' },
+  gap: { xs: 1, sm: 0 },
+  '& .MuiButton-startIcon': { m: { xs: 0, sm: '0 8px 0 -4px' } },
+  '&.MuiButton-root': { width: { xs: '100%', sm: 'auto' } },
+} as const
+
 /** Customer-facing, read-only page for a shop the owner chose to share. No sign-in. */
 export default function PublicShop({ id, previewApi }: { id: string; previewApi?: Api }) {
   const locale = useLocale()
@@ -486,6 +505,7 @@ export default function PublicShop({ id, previewApi }: { id: string; previewApi?
   const [state, setState] = useState<'loading' | 'ready' | 'missing' | 'error'>('loading')
   // Data shown may be older than the last attempt when a refresh failed (network/server).
   const [stale, setStale] = useState(false)
+  const [attempt, setAttempt] = useState(0)
   const [refreshing, setRefreshing] = useState(false)
   const [chatOpen, setChatOpen] = useState(false)
   // A counter QR scan, read once: a shop without stamps has no stamp moment to answer it.
@@ -534,12 +554,16 @@ export default function PublicShop({ id, previewApi }: { id: string; previewApi?
       if (changed.length) setChangedPrices(changed.map((product) => product.name + product.unit))
       previous.current = data
       // A personal signal for this person's own search and Today's 7, kept on this device.
-      if (!previewApi) rememberOpened(data.id)
+      if (!previewApi) {
+        rememberOpened(data.id)
+        // A-18: a shop opened once opens again offline.
+        keepShop(id, locale, data)
+      }
       setShop(data)
       setStale(false)
       setState('ready')
     },
-    [previewApi],
+    [previewApi, id, locale],
   )
   const failRefresh = useCallback((error: unknown) => {
     if (error instanceof Error && error.message === 'missing') {
@@ -555,17 +579,36 @@ export default function PublicShop({ id, previewApi }: { id: string; previewApi?
         apply(data)
         const country = shopRegion(data).country
         track('shop_opened', { region: country === 'SG' ? 'SG' : 'IN' })
-        document.title = `${data.name} · ${t.menu}`
+        document.title = `${plainShopName(data.name)} · ${t.menu}`
         if (!previewApi) recsEvent({ kind: 'shop_open', shop_id: data.id })
       })
       .catch((error: unknown) => {
-        if (!abort.signal.aborted)
-          setState(error instanceof Error && error.message === 'missing' ? 'missing' : 'error')
+        if (abort.signal.aborted) return
+        if (error instanceof Error && error.message === 'missing') {
+          setState('missing')
+          return
+        }
+        // A-18: offline or a failed load shows the copy kept from the last visit, marked as
+        // possibly out of date; the regular refresh replaces it once the shop answers.
+        const kept = previewApi ? null : keptShop(id, locale)
+        if (kept && typeof kept === 'object') {
+          const data = safePublicShop(kept)
+          previous.current = data
+          setShop(data)
+          setStale(true)
+          setState('ready')
+          document.title = `${data.name} · ${t.menu}`
+        } else setState('error')
       })
     return () => {
       abort.abort()
     }
-  }, [fetchShop, t.menu, apply, failRefresh, previewApi])
+  }, [fetchShop, t.menu, apply, failRefresh, previewApi, id, locale, attempt])
+  useEffect(() => {
+    // Back online after a failed first load: try again by itself.
+    if (state !== 'error') return
+    return whenOnline(() => setAttempt((n) => n + 1))
+  }, [state])
   useEffect(() => {
     let pending: AbortController | null = null
     const refresh = () => {
@@ -614,7 +657,14 @@ export default function PublicShop({ id, previewApi }: { id: string; previewApi?
         <Typography variant="bodyLarge" color="text.secondary">
           {t.errorBody}
         </Typography>
-        <Button variant="contained" onClick={() => location.reload()} sx={{ alignSelf: 'center' }}>
+        <Button
+          variant="contained"
+          onClick={() => {
+            setState('loading')
+            setAttempt((n) => n + 1)
+          }}
+          sx={{ alignSelf: 'center' }}
+        >
           {t.retry}
         </Button>
       </Stack>
@@ -642,6 +692,8 @@ export default function PublicShop({ id, previewApi }: { id: string; previewApi?
     )
 
   const currency = shop.currency ?? shopRegion(shop).currency
+  // The "Sample shop" chip says what "(Demo)" in the stored name said.
+  const shopName = plainShopName(shop.name)
   // The public API names owner-written facts `custom` (owner records use `custom_facts`).
   const customValue =
     (shop.facts as (ShopFacts & { custom?: ShopFacts['custom_facts'] }) | undefined)?.custom ??
@@ -679,13 +731,15 @@ export default function PublicShop({ id, previewApi }: { id: string; previewApi?
   const actions = previewApi
     ? []
     : ([
-        shop.location && {
-          label: t.directions,
-          icon: <MapPin size={20} />,
-          href:
-            'https://www.google.com/maps/search/?api=1&query=' +
-            encodeURIComponent(`${shop.name} ${shop.location}`),
-        },
+        // A sample shop's address is made up: no Directions to a place that does not exist.
+        shop.location &&
+          !shop.demo && {
+            label: t.directions,
+            icon: <MapPin size={20} />,
+            href:
+              'https://www.google.com/maps/search/?api=1&query=' +
+              encodeURIComponent(`${shop.name} ${shop.location}`),
+          },
         phone && {
           label: t.call,
           icon: <Phone size={20} />,
@@ -698,6 +752,7 @@ export default function PublicShop({ id, previewApi }: { id: string; previewApi?
         },
       ].filter(Boolean) as { label: string; icon: ReactNode; href: string }[])
 
+  const tileCount = Number(!previewApi) + Number(showStamps) + actions.length
   return (
     <Box
       component="main"
@@ -744,8 +799,10 @@ export default function PublicShop({ id, previewApi }: { id: string; previewApi?
           // Full-bleed on phones: the shop's photo is the first thing you see.
           width: { xs: 'calc(100% + 32px)', sm: '100%' },
           mx: { xs: -4, sm: 0 },
-          aspectRatio: '16/10',
-          maxHeight: { xs: 300, sm: 260 },
+          // One ratio per width: a phone's tall banner, a desktop's 16:9. A fixed max height used to
+          // crop the desktop art to a strip.
+          aspectRatio: { xs: '16/10', sm: '16/9' },
+          maxHeight: { xs: 300, sm: 400 },
           borderRadius: { xs: 0, sm: `${shape.xl}px` },
           overflow: 'hidden',
           bgcolor: roles.surfaceContainerHigh,
@@ -757,12 +814,16 @@ export default function PublicShop({ id, previewApi }: { id: string; previewApi?
         <PlaceImage
           id={id}
           category={shop.category}
+          // A sample shop's bundled picture is a screenshot of its menu with its own price text
+          // ("INR 20"), which disagrees with the live menu below it; its category art says "sample".
           photo={
-            shop.gallery?.[0]
-              ? `/api/v1/public/shops/${id}/photos/${shop.gallery[0]}.jpg`
-              : shop.icon
-                ? `/api/v1/public/shops/${id}/icon/${shop.icon}.jpg`
-                : undefined
+            shop.demo
+              ? undefined
+              : shop.gallery?.[0]
+                ? `/api/v1/public/shops/${id}/photos/${shop.gallery[0]}.jpg`
+                : shop.icon
+                  ? `/api/v1/public/shops/${id}/icon/${shop.icon}.jpg`
+                  : undefined
           }
           eager
           transition
@@ -796,14 +857,10 @@ export default function PublicShop({ id, previewApi }: { id: string; previewApi?
             lineHeight: 1.2,
           }}
         >
-          {shop.name}
+          {shopName}
         </Typography>
 
-        <Stack
-          direction="row"
-          spacing={1.5}
-          sx={{ alignItems: 'center', flexWrap: 'wrap', mt: 1.5 }}
-        >
+        <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', flexWrap: 'wrap', mt: 2 }}>
           {openLabel && (
             <Typography
               variant="labelLarge"
@@ -841,14 +898,17 @@ export default function PublicShop({ id, previewApi }: { id: string; previewApi?
           {shop.verified_owner && !shop.demo && (
             <VerifiedBadge checked={shop.verified_owner.checked} />
           )}
-          {shop.demo &&
-            !previewApi &&
-            (custom.some((fact) => fact.key === 'demo_verified') ? (
-              <VerifiedBadge demoLabel={t.demoShop} />
-            ) : (
-              // Honest but quiet: one outlined label, not a second accent colour.
-              <Chip label={t.demoShop} size="small" variant="outlined" sx={{ height: 24 }} />
-            ))}
+          {shop.demo && !previewApi && (
+            // Honest but quiet: one plain outlined label (never "Verified owner"), not a second
+            // accent colour. The same chip reads the same in Browse, the map list and Ask.
+            <Chip
+              label={t.demoShop}
+              size="small"
+              variant="outlined"
+              data-testid="sample-shop-chip"
+              sx={{ height: 24 }}
+            />
+          )}
         </Stack>
       </Box>
       {/* One line a neighbour would say about the place, in chalk. */}
@@ -873,20 +933,24 @@ export default function PublicShop({ id, previewApi }: { id: string; previewApi?
           {t.demoShopNote}
         </Typography>
       )}
-      {/* Follow, stamps and how to get there wrap onto a second line, never cut at the edge. */}
-      <Stack
-        direction="row"
+      {/* Follow, stamps and how to get there: equal-width tiles in a grid on a phone (up to three
+          to a row), one row on a wider screen. No filled button here: the page's one primary is
+          the chat bar. */}
+      <Box
+        data-testid="shop-actions"
         sx={{
           mt: 3,
-          gap: 1.5,
-          alignItems: 'center',
+          py: 1,
+          display: { xs: 'grid', sm: 'flex' },
+          gridTemplateColumns: `repeat(${Math.min(3, Math.max(1, tileCount))}, minmax(0, 1fr))`,
+          gap: 2,
           flexWrap: 'wrap',
-          py: 0.5,
+          alignItems: 'stretch',
           '& > *': { minWidth: 0, maxWidth: '100%' },
         }}
       >
-        {!previewApi && <FollowButton id={id} name={shop.name} />}
-        {showStamps && <StampPeek shop={id} needed={shop.stamps_needed ?? 8} />}
+        {!previewApi && <FollowButton id={id} name={shopName} sx={tile} />}
+        {showStamps && <StampPeek shop={id} needed={shop.stamps_needed ?? 8} sx={tile} />}
         {actions.map((action) => (
           <Button
             key={action.label}
@@ -896,12 +960,12 @@ export default function PublicShop({ id, previewApi }: { id: string; previewApi?
             href={action.href}
             target={action.href.startsWith('http') ? '_blank' : undefined}
             rel={action.href.startsWith('http') ? 'noopener noreferrer' : undefined}
-            sx={{ minHeight: 48 }}
+            sx={tile}
           >
             {action.label}
           </Button>
         ))}
-      </Stack>
+      </Box>
       {chips.length > 0 && (
         <Box
           component="ul"
@@ -938,7 +1002,22 @@ export default function PublicShop({ id, previewApi }: { id: string; previewApi?
           ))}
         </Box>
       )}
-      {/* Hours and address on demand; freshness stays in view (trust). */}
+      {/* The address is on the page, not tucked into the hours. A sample shop's is made up. */}
+      {shop.location && (
+        <Stack
+          direction="row"
+          data-testid="shop-address"
+          sx={{ mt: 2, gap: 2, alignItems: 'flex-start', color: 'text.secondary' }}
+        >
+          <MapPin size={18} aria-hidden="true" style={{ flexShrink: 0, marginTop: 3 }} />
+          <Typography variant="bodyMedium" sx={{ overflowWrap: 'anywhere', minWidth: 0 }}>
+            {shop.demo
+              ? `${shop.location.replace(/\s*\(fictional address\)\s*$/i, '')} · ${t.sampleAddress}`
+              : shop.location}
+          </Typography>
+        </Stack>
+      )}
+      {/* Weekly hours on demand; freshness stays in view (trust). */}
       <Stack direction="row" sx={{ mt: 1, alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
         <Button
           variant="text"
@@ -988,181 +1067,183 @@ export default function PublicShop({ id, previewApi }: { id: string; previewApi?
       </Stack>
       <Collapse in={detailsOpen} unmountOnExit>
         <Box sx={{ mt: 1 }}>
-          <HoursList hours={shop.weekly_hours} />
+          {/* The toggle above already says "Weekly hours": the list does not say it again. */}
+          <HoursList hours={shop.weekly_hours} heading={false} />
         </Box>
-        {shop.location && (
-          <Typography variant="bodySmall" color="text.secondary" sx={{ mt: 2 }}>
-            {shop.location}
-          </Typography>
-        )}
       </Collapse>
-      {/* Menu: dense, aligned prices, readable at a glance. */}
-      <Stack
-        direction="row"
-        sx={{
-          alignItems: 'center',
-          mt: 3,
-          py: 1,
-          position: 'sticky',
-          top: 'calc(64px + env(safe-area-inset-top, 0px))',
-          zIndex: 1,
-          bgcolor: 'background.default',
-        }}
-      >
-        <Typography component="h2" variant="titleMedium" sx={{ flex: 1 }}>
-          {t.menu}
-          <Typography
-            component="span"
-            variant="bodyMedium"
-            color="text.secondary"
-            sx={{ whiteSpace: 'nowrap' }}
-          >
-            {' '}
-            ·&nbsp;{shop.products.length}
-          </Typography>
-        </Typography>
-        <IconButton
-          aria-label={t.refresh}
-          onClick={() => {
-            setRefreshing(true)
-            void fetchShop()
-              .then(apply)
-              .catch(failRefresh)
-              .finally(() => setRefreshing(false))
+      {/* Menu: dense, aligned prices, readable at a glance. Its heading stays pinned under the app
+          bar while the menu scrolls, and leaves with the section: it never labels the stamp card,
+          perks and tips below. */}
+      <Box data-testid="shop-menu">
+        <Stack
+          direction="row"
+          sx={{
+            alignItems: 'center',
+            mt: 3,
+            py: 1,
+            position: 'sticky',
+            top: 'calc(64px + env(safe-area-inset-top, 0px))',
+            zIndex: 1,
+            bgcolor: 'background.default',
           }}
         >
-          {refreshing ? <CircularProgress size={18} /> : <RefreshCw size={18} />}
-        </IconButton>
-      </Stack>
-      {scannedQr && !stampsEnabled && (
-        <Alert severity="info" data-testid="qr-no-stamps" sx={{ mb: 2 }}>
-          {t.qrNoStamps.replace('{name}', shop.name)}
-        </Alert>
-      )}
-      {stale && (
-        <Alert severity="warning" sx={{ mb: 2 }}>
-          {t.stale}
-        </Alert>
-      )}
-      {shop.products.length === 0 ? (
-        // A new shop goes live before its menu (owner decision, 17 Oct): customers can already
-        // talk to it.
-        <Alert
-          severity="info"
-          data-testid="menu-coming-soon"
-          action={
-            <Button color="inherit" size="small" onClick={() => setChatOpen(true)}>
-              {o.chatShop}
-            </Button>
-          }
-        >
-          {o.menuSoon}
-        </Alert>
-      ) : (
-        <CategoryGroups products={shop.products}>
-          {(items) => (
-            <List
-              disablePadding
-              sx={{
-                bgcolor: roles.surfaceContainerLow,
-                borderRadius: `${shape.md}px`,
-                border: `1px solid ${roles.outlineVariant}`,
-              }}
+          <Typography id="shop-menu-title" component="h2" variant="titleMedium" sx={{ flex: 1 }}>
+            {t.menu}
+            <Typography
+              component="span"
+              variant="bodyMedium"
+              color="text.secondary"
+              sx={{ whiteSpace: 'nowrap' }}
             >
-              {items.map((product, index) => (
-                <ListItem
-                  key={product.name + product.unit}
-                  divider={index < items.length - 1}
-                  sx={{ py: 2, px: 2, gap: 2 }}
-                >
-                  <ListItemText
-                    primary={
-                      product.name_local ? (
-                        <>
-                          {productName(product.name, locale)}
-                          {/* The owner's name stays; the customer's language is a subtitle. */}
-                          <Typography
-                            component="span"
-                            variant="bodyMedium"
-                            color="text.secondary"
-                            sx={{ display: 'block' }}
-                          >
-                            {product.name_local}
-                          </Typography>
-                        </>
-                      ) : (
-                        productName(product.name, locale)
-                      )
-                    }
-                    secondary={
-                      product.available
-                        ? `/ ${unitLabel(product.unit, shopCopy)}`
-                        : !previewApi && (
-                            <StockReminder shop={id} name={product.name} unit={product.unit} />
-                          )
-                    }
-                    slotProps={{
-                      primary: {
-                        variant: 'bodyLarge',
-                        sx: product.available ? undefined : { color: 'text.secondary' },
-                      },
-                      secondary: { variant: 'bodySmall', component: 'div' },
-                    }}
-                  />
-                  {product.available ? (
-                    <Typography
-                      key={product.price}
-                      data-price-changed={
-                        changedPrices.includes(product.name + product.unit) || undefined
+              {' '}
+              ·&nbsp;{shop.products.length}
+            </Typography>
+          </Typography>
+          <IconButton
+            aria-label={t.refresh}
+            onClick={() => {
+              setRefreshing(true)
+              void fetchShop()
+                .then(apply)
+                .catch(failRefresh)
+                .finally(() => setRefreshing(false))
+            }}
+          >
+            {refreshing ? <CircularProgress size={18} /> : <RefreshCw size={18} />}
+          </IconButton>
+        </Stack>
+        {scannedQr && !stampsEnabled && (
+          <Alert severity="info" data-testid="qr-no-stamps" sx={{ mb: 2 }}>
+            {t.qrNoStamps.replace('{name}', shop.name)}
+          </Alert>
+        )}
+        {stale && (
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            {t.stale}
+          </Alert>
+        )}
+        {shop.products.length === 0 ? (
+          // A new shop goes live before its menu (owner decision, 17 Oct): customers can already
+          // talk to it.
+          <Alert
+            severity="info"
+            data-testid="menu-coming-soon"
+            action={
+              <Button color="inherit" size="small" onClick={() => setChatOpen(true)}>
+                {o.chatShop}
+              </Button>
+            }
+          >
+            {o.menuSoon}
+          </Alert>
+        ) : (
+          <CategoryGroups products={shop.products}>
+            {(items) => (
+              <List
+                disablePadding
+                sx={{
+                  bgcolor: roles.surfaceContainerLow,
+                  borderRadius: `${shape.md}px`,
+                  border: `1px solid ${roles.outlineVariant}`,
+                }}
+              >
+                {items.map((product, index) => (
+                  <ListItem
+                    key={product.name + product.unit}
+                    divider={index < items.length - 1}
+                    sx={{ py: 2, px: 2, gap: 2 }}
+                  >
+                    <ListItemText
+                      // 4px above and below, not MUI's 6px: the page stays on the 4px grid.
+                      sx={{ my: 1 }}
+                      primary={
+                        product.name_local ? (
+                          <>
+                            {productName(product.name, locale)}
+                            {/* The owner's name stays; the customer's language is a subtitle. */}
+                            <Typography
+                              component="span"
+                              variant="bodyMedium"
+                              color="text.secondary"
+                              sx={{ display: 'block' }}
+                            >
+                              {product.name_local}
+                            </Typography>
+                          </>
+                        ) : (
+                          productName(product.name, locale)
+                        )
                       }
-                      variant="titleMedium"
-                      sx={{
-                        whiteSpace: 'nowrap',
-                        fontVariantNumeric: 'tabular-nums',
-                        position: 'relative',
-                        '&[data-price-changed]::before': {
-                          content: '""',
-                          position: 'absolute',
-                          inset: -4,
-                          borderRadius: 1,
-                          bgcolor: roles.primaryContainer,
-                          zIndex: -1,
-                          animation: 'price-change 1.8s ease-out both',
-                          '@media (prefers-reduced-motion: reduce)': {
-                            animation: 'none',
-                            opacity: 1,
-                          },
+                      secondary={
+                        product.available
+                          ? `/ ${unitLabel(product.unit, shopCopy)}`
+                          : !previewApi && (
+                              <StockReminder shop={id} name={product.name} unit={product.unit} />
+                            )
+                      }
+                      slotProps={{
+                        primary: {
+                          variant: 'bodyLarge',
+                          sx: product.available ? undefined : { color: 'text.secondary' },
                         },
-                        isolation: 'isolate',
-                        '@keyframes price-change': { from: { opacity: 1 }, to: { opacity: 0 } },
+                        secondary: { variant: 'bodySmall', component: 'div' },
                       }}
-                    >
-                      {/* The phone's full locale (en-SG → $15.00), not just the UI language. */}
-                      {formatPrice(product.price, currency)}
-                    </Typography>
-                  ) : (
-                    // Sold out: label + muted text, not colour alone.
-                    <Box
-                      component="span"
-                      sx={{
-                        px: 1,
-                        py: 0.25,
-                        borderRadius: `${shape.xs}px`,
-                        bgcolor: roles.errorContainer,
-                        color: roles.onErrorContainer,
-                        typography: 'labelMedium',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      {t.soldOut}
-                    </Box>
-                  )}
-                </ListItem>
-              ))}
-            </List>
-          )}
-        </CategoryGroups>
-      )}
+                    />
+                    {product.available ? (
+                      <Typography
+                        key={product.price}
+                        data-price-changed={
+                          changedPrices.includes(product.name + product.unit) || undefined
+                        }
+                        variant="titleMedium"
+                        sx={{
+                          whiteSpace: 'nowrap',
+                          fontVariantNumeric: 'tabular-nums',
+                          position: 'relative',
+                          '&[data-price-changed]::before': {
+                            content: '""',
+                            position: 'absolute',
+                            inset: -4,
+                            borderRadius: 1,
+                            bgcolor: roles.primaryContainer,
+                            zIndex: -1,
+                            animation: 'price-change 1.8s ease-out both',
+                            '@media (prefers-reduced-motion: reduce)': {
+                              animation: 'none',
+                              opacity: 1,
+                            },
+                          },
+                          isolation: 'isolate',
+                          '@keyframes price-change': { from: { opacity: 1 }, to: { opacity: 0 } },
+                        }}
+                      >
+                        {/* The currency's own form: S$15.00, ₹20 (whole rupees without ".00"). */}
+                        {formatShopPrice(product.price, currency)}
+                      </Typography>
+                    ) : (
+                      // Sold out: label + muted text, not colour alone.
+                      <Box
+                        component="span"
+                        sx={{
+                          px: 1,
+                          py: 0.25,
+                          borderRadius: `${shape.xs}px`,
+                          bgcolor: roles.errorContainer,
+                          color: roles.onErrorContainer,
+                          typography: 'labelMedium',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {t.soldOut}
+                      </Box>
+                    )}
+                  </ListItem>
+                ))}
+              </List>
+            )}
+          </CategoryGroups>
+        )}
+      </Box>
       {/* Rewards after the menu: earned, not in the way. */}
       {stampsEnabled && previewApi && (
         <Link
@@ -1175,7 +1256,7 @@ export default function PublicShop({ id, previewApi }: { id: string; previewApi?
       {showStamps && (
         <StampCard
           shop={id}
-          name={shop.name}
+          name={shopName}
           timezone={shopZone(shop)}
           reward={shop.reward_text}
           needed={shop.stamps_needed ?? 8}
@@ -1186,7 +1267,7 @@ export default function PublicShop({ id, previewApi }: { id: string; previewApi?
         <ShopStamp
           shop={{
             id,
-            name: shop.name,
+            name: shopName,
             category: shop.category,
             demo: shop.demo,
             timezone: shopZone(shop),

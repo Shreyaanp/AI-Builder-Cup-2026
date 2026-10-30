@@ -3,7 +3,7 @@ import { Alert, Box, Button, Stack, TextField, Typography, useTheme } from '@mui
 import type { components } from '../../api/generated'
 import { useLocale } from '../../state/hooks'
 import { PlainText } from '../../design/PlainText'
-import { RichText } from '../../design/RichText'
+import { RichText } from '../../design/LazyRichText'
 import { chatBubbleStyle } from '../coach/bubbleStyle'
 import { fill, useOwnerCopy } from '../owner/copy'
 import { useRescueCopy } from '../rescue/copy'
@@ -151,7 +151,13 @@ function MessageBubble({
         sx={{ ...chatBubbleStyle(roles), ...(mine ? {} : { bgcolor: roles.surfaceContainerLow }) }}
       >
         <Typography variant="labelMedium">
-          {mine ? t.you : message.author === 'owner' ? t.shop : t.customer}
+          {message.kind === 'ai'
+            ? t.aiAnswer
+            : mine
+              ? t.you
+              : message.author === 'owner'
+                ? t.shop
+                : t.customer}
         </Typography>
         {visible || generated ? (
           <RichText content={generated ? formatMoneyText(displayed, locale) : displayed} />

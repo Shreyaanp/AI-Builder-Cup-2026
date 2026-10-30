@@ -1,10 +1,10 @@
-import { useState } from 'react'
+import { Suspense, useState } from 'react'
 import { Box, Button, CircularProgress, Stack, Typography, useTheme } from '@mui/material'
 import { useLocale } from '../../state/hooks'
 import { shape } from '../../design/theme'
 import { useWorkspace } from '../v1/workspaceContext'
 import { Sheet } from '../v1/Sheet'
-import { PurchaseOrderCard } from './PurchaseOrderCard'
+import { PurchaseOrderCard } from './supplyDeferred'
 import { useShowcaseCopy } from './showcaseCopy'
 import { useSupplyCopy } from './copy'
 import { dayLabel, useDraftReorder, useSupply } from './supplyData'
@@ -81,7 +81,11 @@ export function TodaySupply() {
         </Box>
       </Stack>
       <Sheet open={order !== null} onClose={close} titleId="today-supply-title" title={copy.title}>
-        {order && <PurchaseOrderCard order={order} onChange={setOrder} />}
+        {order && (
+          <Suspense fallback={null}>
+            <PurchaseOrderCard order={order} onChange={setOrder} />
+          </Suspense>
+        )}
       </Sheet>
     </>
   )

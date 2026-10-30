@@ -1,7 +1,7 @@
 import { AppHeader } from '../../design/AppHeader'
 import { useState } from 'react'
 import type { ReactNode } from 'react'
-import { Alert, Box, Button, Link, Stack, Typography, useTheme } from '@mui/material'
+import { Alert, Box, Button, Stack, Typography, useTheme } from '@mui/material'
 import { Languages, MapPin, MessageCircle, Search, ShieldCheck, Trash2 } from 'lucide-react'
 import { useIdentity } from '../../auth/useIdentity'
 import { BrandLogo } from '../../design/BrandLogo'
@@ -103,23 +103,23 @@ export function Landing({ onPreview }: { onPreview: () => void }) {
         sx={{ ...section, pb: 'calc(24px + env(safe-area-inset-bottom))', textAlign: 'center' }}
       >
         <Typography variant="bodySmall" color="text.secondary">
-          <Link
-            component="button"
+          <Button
             type="button"
-            variant="bodySmall"
+            variant="text"
+            sx={{ typography: 'bodySmall', py: 2 }}
             onClick={() => setLegal('terms')}
           >
             {t.viewTerms}
-          </Link>{' '}
+          </Button>{' '}
           ·{' '}
-          <Link
-            component="button"
+          <Button
             type="button"
-            variant="bodySmall"
+            variant="text"
+            sx={{ typography: 'bodySmall', py: 2 }}
             onClick={() => setLegal('privacy')}
           >
             {t.viewPrivacy}
-          </Link>
+          </Button>
         </Typography>
       </Box>
       <LegalDialog open={legal} onClose={() => setLegal(null)} />

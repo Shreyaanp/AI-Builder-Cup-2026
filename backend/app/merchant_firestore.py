@@ -12,6 +12,7 @@ import json
 import re
 import secrets
 import time
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from threading import Lock, Thread
 from typing import Any, cast
@@ -26,6 +27,7 @@ from .customer import Inquiry, InquiryInput, InquiryReceipt
 from .merchant import (
     CHALLENGE_SECONDS,
     DEMO_ID,
+    PIN_REQUIRED,
     PROPOSAL_SECONDS,
     SUPPLY_KINDS,
     BusinessFields,
@@ -33,6 +35,7 @@ from .merchant import (
     ProposalRequest,
     challenge_prompts,
     check_demo_seed,
+    has_pin,
     preserve_profile,
     public_projection,
     require_name,
@@ -133,9 +136,10 @@ class FirestoreMerchantStore:
             "last_confirmed": data.get("last_confirmed"),
             "coach_notes": data.get("coach_notes") or [],
             "gallery": data.get("gallery") or [],
+            "photo_kinds": data.get("photo_kinds") or {},
             "icon": data.get("icon"),
             "registration": data["status"],
-            "public": bool(data.get("public")),
+            "public": bool(data.get("public")) and has_pin(data["fields"]),
             "google_publication": "not_connected",
         }
 
@@ -269,7 +273,12 @@ class FirestoreMerchantStore:
                 data["business"] = migrate_profile(data["business"])
             if data["kind"] == "business" and business.exists:
                 transaction.update(
-                    business_ref, {"fields": data["business"], "revision": data["revision"] + 1}
+                    business_ref,
+                    {
+                        "fields": data["business"],
+                        "revision": data["revision"] + 1,
+                        **({"public": False} if not has_pin(data["business"]) else {}),
+                    },
                 )
             elif data["kind"] == "business":
                 transaction.create(
@@ -479,8 +488,15 @@ class FirestoreMerchantStore:
 
     def share(self, uid: str, bid: str, public: bool) -> dict[str, Any]:
         ref = self.businesses.document(document_id(bid, "Business not found."))
-        self.owned(ref.get(), uid)
-        ref.update({"public": public})
+
+        @firestore.transactional
+        def run(transaction: Any) -> None:
+            data = self.owned(ref.get(transaction=transaction), uid)
+            if public and not has_pin(data["fields"]):
+                raise HTTPException(422, PIN_REQUIRED)
+            transaction.update(ref, {"public": public})
+
+        run(self.client.transaction())
         self.forget_shared()
         return {"business_id": ref.id, "public": public}
 
@@ -633,6 +649,11 @@ class FirestoreMerchantStore:
         snapshot = ref.get()
         return list((snapshot.to_dict() or {}).get("owners") or []) if snapshot.exists else []
 
+    def sealed_shops(self) -> list[str]:
+        # An erasure that stopped half way, or a shop hidden by hand (OB-136).
+        query = self.businesses.where(filter=FieldFilter("deleting", "==", True))
+        return [snapshot.id for snapshot in query.select(["owners"]).stream()]
+
     def public_shop(self, bid: str) -> dict[str, Any] | None:
         try:
             ref = self.businesses.document(document_id(bid, "Not found."))
@@ -642,7 +663,7 @@ class FirestoreMerchantStore:
         return self.shop_view(ref, snapshot.to_dict() if snapshot.exists else None)
 
     def shop_view(self, ref: Any, data: dict[str, Any] | None) -> dict[str, Any] | None:
-        if not data or not data.get("public"):
+        if not data or not data.get("public") or not has_pin(data["fields"]):
             return None
         rows = [s.to_dict() or {} for s in ref.collection("inventory").limit(500).stream()]
         rows.sort(key=lambda row: row.get("created", 0))
@@ -843,13 +864,39 @@ class FirestoreMerchantStore:
         self.forget_shared()
         return result
 
-    def set_gallery(self, uid: str, bid: str, photos: list[str]) -> list[str]:
+    def set_gallery(
+        self, uid: str, bid: str, photos: list[str], kinds: dict[str, str] | None = None
+    ) -> list[str]:
         ref = self.businesses.document(document_id(bid, "Business not found."))
 
         @firestore.transactional
         def run(transaction: Any) -> list[str]:
             self.owned(ref.get(transaction=transaction), uid)
-            transaction.update(ref, {"gallery": photos})
+            transaction.update(
+                ref,
+                {"gallery": photos} if kinds is None else {"gallery": photos, "photo_kinds": kinds},
+            )
+            return photos
+
+        result = cast(list[str], run(self.client.transaction()))
+        self.forget_shared()
+        return result
+
+    def edit_gallery(
+        self,
+        uid: str,
+        bid: str,
+        edit: Callable[[list[str], dict[str, str]], tuple[list[str], dict[str, str]]],
+    ) -> list[str]:
+        ref = self.businesses.document(document_id(bid, "Business not found."))
+
+        @firestore.transactional
+        def run(transaction: Any) -> list[str]:
+            data = self.owned(ref.get(transaction=transaction), uid)
+            photos, kinds = edit(
+                list(data.get("gallery") or []), dict(data.get("photo_kinds") or {})
+            )
+            transaction.update(ref, {"gallery": photos, "photo_kinds": kinds})
             return photos
 
         result = cast(list[str], run(self.client.transaction()))
@@ -963,6 +1010,14 @@ class FirestoreMerchantStore:
     def complete_inquiry(self, uid: str, bid: str, iid: str) -> Inquiry:
         return self.thread_action(uid, bid, iid, "", "close")
 
+    def thread_exists(self, bid: str, iid: str) -> bool:
+        try:
+            business = self.businesses.document(document_id(bid, "Business not found."))
+            iid = document_id(iid, "Conversation not found.")
+        except HTTPException:
+            return False  # Not a name any stored chat can have.
+        return bool(business.collection("inquiries").document(iid).get().exists)
+
     def thread_action(
         self, uid: str | None, bid: str, iid: str, token: str, action: str, text: str = ""
     ) -> Inquiry:
@@ -974,7 +1029,9 @@ class FirestoreMerchantStore:
             shop = business.get(transaction=transaction)
             if uid is not None:
                 self.owned(shop, uid)
-            elif not shop.exists or (shop.to_dict() or {}).get("deleting"):
+            elif action != "delete" and (not shop.exists or (shop.to_dict() or {}).get("deleting")):
+                # A sealed shop takes no new writes; the customer's own delete is the erasure
+                # itself (OB-96), so it still removes the chat if it is stored.
                 raise HTTPException(404, "Conversation not found.")
             data = ref.get(transaction=transaction).to_dict()
             if data is None:

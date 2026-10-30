@@ -12,7 +12,7 @@ import {
   Stack,
 } from '@mui/material'
 import { Camera, FileSpreadsheet, Keyboard, RotateCcw } from 'lucide-react'
-import { formatPrice, shopCurrency, toMinor } from './format'
+import { formatShopPrice, shopCurrency, toMinor } from './format'
 import { Sheet } from './Sheet'
 import { AiInfo } from './AiInfo'
 import { track } from '../../app/analytics'
@@ -265,7 +265,7 @@ export function SalesImportSheet({
             </Alert>
           )}
           <Typography variant="headlineSmall" sx={{ mt: 3 }}>
-            {formatPrice(toMinor(sales.total_revenue, currency), currency)}
+            {formatShopPrice(toMinor(sales.total_revenue, currency), currency)}
           </Typography>
           <Typography variant="bodyMedium" color="text.secondary">
             {t.salesRange(sales.days, sales.first_day ?? '', sales.last_day ?? '')}
@@ -278,7 +278,7 @@ export function SalesImportSheet({
               <ListItem key={item.name} disableGutters divider>
                 <ListItemText
                   primary={item.name}
-                  secondary={`${item.quantity} · ${formatPrice(toMinor(item.revenue, currency), currency)}`}
+                  secondary={`${item.quantity} · ${formatShopPrice(toMinor(item.revenue, currency), currency)}`}
                 />
               </ListItem>
             ))}
@@ -291,7 +291,7 @@ export function SalesImportSheet({
               <ListItem key={`${row.date}-${row.item}`} disableGutters divider>
                 <ListItemText
                   primary={`${row.date} · ${row.item}`}
-                  secondary={`${row.quantity} · ${formatPrice(row.revenue, currency)}`}
+                  secondary={`${row.quantity} · ${formatShopPrice(row.revenue, currency)}`}
                 />
               </ListItem>
             ))}

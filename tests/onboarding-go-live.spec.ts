@@ -6,7 +6,7 @@ import { missingForListing } from '../src/features/v1/goLive.js'
 // Issue #180: finishing the conversation leads to Review my shop → List my shop → the
 // congratulations page with the shop link and QR. Phone first.
 test.describe('what a shop needs before it is listed', () => {
-  test('name, what it sells and a place', () => {
+  test('OB-168 / OB-188 name, what it sells and a confirmed pin', () => {
     expect(missingForListing({ business: null })).toEqual(['name', 'category', 'location'])
     expect(missingForListing({ business: { name: 'Chai', category: ' ', location: '' } })).toEqual([
       'category',
@@ -14,11 +14,14 @@ test.describe('what a shop needs before it is listed', () => {
     ])
     expect(
       missingForListing({ business: { name: 'Chai', category: 'Tea', location: 'MG Road' } }),
+    ).toEqual(['location'])
+    // Both coordinates are required for a map pin.
+    expect(missingForListing({ business: { name: 'Chai', category: 'Tea', lat: 12.9 } })).toEqual([
+      'location',
+    ])
+    expect(
+      missingForListing({ business: { name: 'Chai', category: 'Tea', lat: 12.9, lng: 77.6 } }),
     ).toEqual([])
-    // A map pin counts as a place.
-    expect(missingForListing({ business: { name: 'Chai', category: 'Tea', lat: 12.9 } })).toEqual(
-      [],
-    )
   })
 })
 

@@ -5,6 +5,8 @@ import json
 import re
 from typing import Any, Literal
 
+import anyio
+import structlog
 from fastapi import HTTPException
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -13,6 +15,9 @@ from .money import to_major
 from .region import region_rule, shop_currency, shop_region
 from .reply_language import written_language
 from .settings import Settings
+from .text_model import generate
+
+log = structlog.get_logger()
 
 
 class Question(BaseModel):
@@ -484,6 +489,36 @@ class CustomerAnswers:
         self.settings = settings
         self.client: Any = None
         self.active = asyncio.Semaphore(4)
+        self.building = asyncio.Lock()
+
+    def build(self) -> Any:
+        from google import genai
+
+        if self.settings.gemini_backend == "vertex":
+            return genai.Client(
+                vertexai=True,
+                project=self.settings.google_cloud_project,
+                location=self.settings.google_cloud_location,
+            )
+        return genai.Client(api_key=self.settings.google_api_key.get_secret_value())
+
+    async def ready(self) -> Any:
+        """The model client, built once and off the event loop (credential lookup blocks)."""
+        if self.client is None:
+            async with self.building:
+                if self.client is None:
+                    self.client = await anyio.to_thread.run_sync(self.build)
+        return self.client
+
+    async def warm(self) -> None:
+        """Build the client at startup, so the first customer question is not the cold one."""
+        if self.settings.coach_mode != "gemini":
+            return
+        try:
+            await self.ready()
+        except Exception:
+            # No provider error details in logs.
+            log.warning("shop_ask_warm_failed")
 
     async def answer(self, shop: dict[str, Any], question: Question) -> Answer:
         halal = halal_answer(shop, question)
@@ -491,21 +526,14 @@ class CustomerAnswers:
             return halal
         if self.settings.coach_mode != "gemini":
             return fixture_answer(shop, question)
-        from google import genai
         from google.genai import types
 
         try:
+            # A-17: the first question on an instance used to build the client (a blocking
+            # credential lookup) inside the answer's 20 s budget, and a busy model failed at
+            # once, so the first chip question of a session returned 503.
+            client = await self.ready()
             async with asyncio.timeout(20), self.active:
-                if self.client is None:
-                    self.client = (
-                        genai.Client(
-                            vertexai=True,
-                            project=self.settings.google_cloud_project,
-                            location=self.settings.google_cloud_location,
-                        )
-                        if self.settings.gemini_backend == "vertex"
-                        else genai.Client(api_key=self.settings.google_api_key.get_secret_value())
-                    )
                 # Only a public whitelist reaches this new client; no ADK sessions or tools.
                 currency = shop_currency(shop)
                 facts = {
@@ -519,8 +547,10 @@ class CustomerAnswers:
                     {**product, "price": to_major(product["price"], currency)}
                     for product in shop["products"]
                 ]
-                response = await self.client.aio.models.generate_content(
-                    model=self.settings.google_text_model,
+                response = await generate(
+                    client,
+                    self.settings,
+                    "shop_ask",
                     contents=json.dumps(question.model_dump(), ensure_ascii=False),
                     config=types.GenerateContentConfig(
                         system_instruction=RULES
@@ -551,22 +581,12 @@ class CustomerAnswers:
         if self.settings.coach_mode != "gemini":
             # Preserves the original; not evidence of translation accuracy.
             return Translation(text=f"[{language}] {text}", mode="fixture")
-        from google import genai
         from google.genai import types
 
         try:
+            client = await self.ready()
             async with asyncio.timeout(20), self.active:
-                if self.client is None:
-                    self.client = (
-                        genai.Client(
-                            vertexai=True,
-                            project=self.settings.google_cloud_project,
-                            location=self.settings.google_cloud_location,
-                        )
-                        if self.settings.gemini_backend == "vertex"
-                        else genai.Client(api_key=self.settings.google_api_key.get_secret_value())
-                    )
-                response = await self.client.aio.models.generate_content(
+                response = await client.aio.models.generate_content(
                     model=self.settings.google_text_model,
                     contents=json.dumps(
                         {"text": text, "language": written_language(language)}, ensure_ascii=False

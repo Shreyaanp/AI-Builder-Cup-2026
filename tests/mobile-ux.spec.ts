@@ -38,12 +38,14 @@ for (const width of WIDTHS) {
     }
   })
 
-  test(`OB-140 (#448): ${width}px profile See again is as wide as Sign out`, async ({ page }) => {
+  test(`OB-140 (#448): ${width}px profile Replay the intro is as wide as Sign out`, async ({
+    page,
+  }) => {
     await open(page, width, '/explore/')
     await page.getByRole('button', { name: 'Profile and preferences' }).first().click()
     const sheet = page.getByRole('dialog')
     const signOut = await sheet.getByRole('button', { name: 'Sign out' }).boundingBox()
-    const again = await sheet.getByRole('button', { name: 'See again' }).boundingBox()
+    const again = await sheet.getByRole('button', { name: 'Replay the intro' }).boundingBox()
     expect(Math.abs(again!.width - signOut!.width)).toBeLessThan(2)
   })
 }
@@ -64,6 +66,7 @@ test('OB-141 (#449): 360px Hindi neighbourhood goal title stays on one line', as
         total: 284,
         demo_visits: 200,
         you: 1,
+        helped: true,
         helpers: 12,
         reached: false,
         claimed: false,

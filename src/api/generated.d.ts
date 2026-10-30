@@ -360,7 +360,8 @@ export interface paths {
         /**
          * Add Gallery Photo
          * @description An explicit owner action ("Add photo"), like the sold-out switch: no AI, no proposal.
-         *     The photo is re-encoded (metadata stripped) and safety-checked before it is kept.
+         *     The photo is re-encoded (metadata stripped) and safety-checked before it is kept. `kind`
+         *     (shop front, inside, menu, product, other) is what the Photos sheet groups by.
          */
         post: operations["add_gallery_photo_api_v1_businesses__business_id__gallery_post"];
         delete?: never;
@@ -381,6 +382,46 @@ export interface paths {
         post?: never;
         /** Remove Gallery Photo */
         delete: operations["remove_gallery_photo_api_v1_businesses__business_id__gallery__photo_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/businesses/{business_id}/gallery/{photo_id}/cover": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Make Cover Photo
+         * @description The first gallery photo is the one customers see on the shop page and in search.
+         */
+        post: operations["make_cover_photo_api_v1_businesses__business_id__gallery__photo_id__cover_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/businesses/{business_id}/gallery/{photo_id}/kind": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Move Gallery Photo
+         * @description Move a photo to another group (shop front, inside, menu, product, other). Owner-only.
+         */
+        post: operations["move_gallery_photo_api_v1_businesses__business_id__gallery__photo_id__kind_post"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -1177,6 +1218,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/customer/data": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Erase My Data
+         * @description OB-96 "Delete my data": chats (and the shops' copies), passport, tips, follows,
+         *     preferences, searches and the profile. Only this customer's; Try again repeats every step.
+         */
+        delete: operations["erase_my_data_api_v1_customer_data_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/customer/follows/{business_id}": {
         parameters: {
             query?: never;
@@ -1417,6 +1479,26 @@ export interface paths {
          * @description A typed city or area anywhere in the world, or coordinates reverse-geocoded to an area.
          */
         get: operations["find_place_api_v1_discover_place_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/places/pin": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Suggest Owner Pin
+         * @description Suggest a country-biased point; the owner must confirm it before it is saved.
+         */
+        get: operations["suggest_owner_pin_api_v1_places_pin_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3972,6 +4054,8 @@ export interface components {
             demo_visits: number;
             /** You */
             you: number;
+            /** Helped */
+            helped: boolean;
             /** Helpers */
             helpers: number;
             /** Reached */
@@ -5108,6 +5192,11 @@ export interface components {
              * @default []
              */
             saved: string[];
+        };
+        /** PhotoKind */
+        PhotoKind: {
+            /** Kind */
+            kind: string;
         };
         /** Pick */
         Pick: {
@@ -7699,7 +7788,9 @@ export interface operations {
     };
     add_gallery_photo_api_v1_businesses__business_id__gallery_post: {
         parameters: {
-            query?: never;
+            query?: {
+                kind?: string;
+            };
             header?: never;
             path: {
                 business_id: string;
@@ -7741,6 +7832,78 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    make_cover_photo_api_v1_businesses__business_id__gallery__photo_id__cover_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+                photo_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    move_gallery_photo_api_v1_businesses__business_id__gallery__photo_id__kind_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+                photo_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PhotoKind"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -9386,6 +9549,28 @@ export interface operations {
             };
         };
     };
+    erase_my_data_api_v1_customer_data_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
     follow_api_v1_customer_follows__business_id__put: {
         parameters: {
             query?: never;
@@ -9926,6 +10111,37 @@ export interface operations {
                 q?: string | null;
                 lat?: number | null;
                 lng?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlaceMatch"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    suggest_owner_pin_api_v1_places_pin_get: {
+        parameters: {
+            query: {
+                q: string;
             };
             header?: never;
             path?: never;

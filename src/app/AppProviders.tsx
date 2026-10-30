@@ -15,6 +15,7 @@ import { useIdentity } from '../auth/useIdentity'
 import { isLanguagePref, resolveLocale } from '../i18n/locales'
 import { loadScriptFont } from '../i18n/fonts'
 import { configureAnalytics, watchRouteChanges } from './analytics'
+import { loadBootstrap } from '../api/appConfig'
 import { sideKey } from '../auth/appSide'
 
 /** Kept apart from the preferences object, which older code and tests overwrite whole. */
@@ -34,14 +35,26 @@ function adoptLegacy(legacy: string, name: string) {
   localStorage.setItem(seen, value)
 }
 
+type SavedPreferences = Partial<Preferences> & { appearanceChosen?: boolean }
+
+/**
+ * OB-195: everyone starts in light, even on a phone set to dark. Dark, or System (follow the
+ * phone), only when the person picked it. Older builds saved "system" as the silent default, so
+ * "system" counts only with the marker written when it is picked.
+ */
+function savedAppearance(saved: SavedPreferences): Preferences['appearance'] {
+  if (saved?.appearance === 'dark' || saved?.appearance === 'light') return saved.appearance
+  return saved?.appearance === 'system' && saved.appearanceChosen === true ? 'system' : 'light'
+}
+
 function readPreferences(): Preferences {
-  let saved: Partial<Preferences> = {}
+  let saved: SavedPreferences = {}
   let chosen = false
   try {
     adoptLegacy('niva.language.chosen', 'language.chosen')
     adoptLegacy('niva.starter.preferences', 'preferences')
     chosen = localStorage.getItem(languageChosenKey()) === '1'
-    saved = JSON.parse(localStorage.getItem(preferencesKey()) ?? '{}') as Partial<Preferences>
+    saved = JSON.parse(localStorage.getItem(preferencesKey()) ?? '{}') as SavedPreferences
   } catch {
     /* Storage may be disabled. */
   }
@@ -49,9 +62,7 @@ function readPreferences(): Preferences {
   return {
     language,
     languageChosen: chosen || language !== 'system',
-    // Nothing chosen yet: follow the phone's light or dark setting (OB-126).
-    appearance:
-      saved?.appearance === 'dark' || saved?.appearance === 'light' ? saved.appearance : 'system',
+    appearance: savedAppearance(saved),
     destination: 'coach',
   }
 }
@@ -119,6 +130,8 @@ function Providers({
       const display = JSON.stringify({
         language: preferences.language,
         appearance: preferences.appearance,
+        // Light is the default, so "system" in state was always picked (see savedAppearance).
+        ...(preferences.appearance === 'system' ? { appearanceChosen: true } : {}),
       })
       localStorage.setItem(preferencesKey(), display)
       if (preferences.languageChosen) localStorage.setItem(languageChosenKey(), '1')
@@ -131,9 +144,10 @@ function Providers({
     if (!analyticsApp) return
     const stopWatching = watchRouteChanges()
     const abort = new AbortController()
-    void fetch('/api/v1/bootstrap', { signal: abort.signal })
-      .then((response) => (response.ok ? response.json() : null))
-      .then((config: { ga_measurement_id?: string } | null) => {
+    // One shared read per page (A-4): the account and maps use the same answer.
+    void loadBootstrap()
+      .catch(() => null)
+      .then((config) => {
         if (!abort.signal.aborted) {
           const region = navigator.languages.some((language) => /-SG(?:-|$)/i.test(language))
             ? 'SG'
