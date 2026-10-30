@@ -474,8 +474,8 @@ def get_insights() -> dict[str, Any]:
         return {"status": "needs_business"}
     signals = ctx.store.recap_signals(ctx.uid, ctx.business_id)
     sales = ctx.store.sales_history(ctx.uid, ctx.business_id)
-    shop = ctx.store.context(ctx.uid, ctx.business_id)["business"]
-    year, week, _ = local_now(shop_zone(shop), time.time()).date().isocalendar()
+    shop = (ctx.store.context(ctx.uid, ctx.business_id) or {}).get("business") or {}
+    year, week, _ = local_now(shop_zone(shop.get("fields")), time.time()).date().isocalendar()
     facts = recap_facts(f"{year}-W{week:02d}", sales, signals)
     currency = facts["currency"]
     for key in ("revenue", "previous_revenue", "revenue_change"):

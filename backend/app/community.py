@@ -417,12 +417,18 @@ DEMO_TIPS = [
 ]
 
 
+LEGACY_DEMO_UPDATE = re.compile(r"^demo-\d{4}-W\d{2}-\d+$")
 DEMO_UPDATE_IDS = frozenset(f"demo-update-{n}" for n in range(4))
 
 
 def is_demo_update(doc: dict[str, Any]) -> bool:
     """A current demo card; the older demo-<week>-N cards are ignored (OB-221)."""
     return bool(doc.get("demo")) and doc.get("id") in DEMO_UPDATE_IDS
+
+
+def is_legacy_demo_update(demo: bool, update_id: str) -> bool:
+    """The old demo-<week>-N cards; rescue deals and every other demo card stay."""
+    return demo and LEGACY_DEMO_UPDATE.match(update_id) is not None
 
 
 def update_key(bid: str, update_id: str) -> str:
@@ -758,7 +764,7 @@ class Community:
         rows = [
             Update.model_validate(u) for bid in bids for u in self.docs.scoped("update", bid, 20)
         ]
-        rows = [r for r in rows if not r.demo or r.id in DEMO_UPDATE_IDS]
+        rows = [r for r in rows if not is_legacy_demo_update(r.demo, r.id)]
         rows.sort(key=lambda u: -u.created)
         active = []
         for row in rows:

@@ -303,3 +303,48 @@ def test_ob221_demo_world_is_not_reachable_from_the_sandbox(live_parent_demo, mo
     response = owner(client, session, "demo/world", "POST", json={"lat": 12.9, "lng": 77.6})
     assert response.status_code == 403, response.text
     generate.assert_not_called()
+
+
+def test_ob221_order_flag_playbook_item_and_other_supply_actions_stay_offline(live_parent_demo):
+    """Routes the allow-list admits but the tests above skip: each must reach its handler (never
+    the sandbox's 403) and finish without a paid or network call (no_paid_calls guards that)."""
+    client, _, session, bid = live_parent_demo
+    base = f"businesses/{bid}"
+    assert owner(client, session, f"{base}/supply/reorder", "POST", json={}).status_code == 200
+
+    def settled(path: str, method: str, body: dict | None = None) -> int:
+        response = owner(client, session, path, method, **({"json": body} if body else {}))
+        assert response.status_code not in {403, 405} and response.status_code < 500, (
+            path,
+            response.status_code,
+            response.text,
+        )
+        return response.status_code
+
+    def newest() -> dict:
+        orders = owner(client, session, f"{base}/supply").json()["orders"]
+        return next(o for o in orders if o["status"] in {"dispatched", "invoiced"})
+
+    order = newest()
+    path = f"{base}/supply/orders/{order['id']}"
+    line = {"line": 1, "quantity": 1.0}
+    for action, body in (
+        ("simulate", {"variant": "partial"}),
+        ("inbound", {"text": "PO acknowledged: all lines confirmed for delivery"}),
+        ("asn", {"shipped": [line]}),
+        ("receipt", {"received": [line], "note": "ok"}),
+        ("change", {"accept": True}),
+        ("fix", {"fix": {"kind": "cash", "value": 10}}),
+        ("accept", {}),
+        ("approve", {}),
+        ("cancel", {}),
+    ):
+        order = owner(client, session, path).json()
+        settled(f"{path}/{action}", "POST", {"version": order["version"], **body})
+    order = owner(client, session, path).json()
+    flag_id = next((f["id"] for f in order.get("flags", []) if "id" in f), "flag-1")
+    settled(f"{path}/flags/{flag_id}", "POST", {"version": order["version"], "value": "ok"})
+    # Buyer-side sourcing orders: a missing order answers 404 from the handler itself.
+    for action in ("read", "received", "discard"):
+        settled(f"{base}/orders/order-x/{action}", "POST", {"version": 1})
+    settled(f"{base}/playbook/items/item-x", "PATCH", {"text": "A sample note for the shop."})

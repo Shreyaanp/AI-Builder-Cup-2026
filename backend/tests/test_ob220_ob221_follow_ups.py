@@ -18,12 +18,12 @@ from tests.test_passport import DEMO, SG, app, at_shop, client, demo_key, sign_i
 MONDAY_1AM_SG = datetime(2026, 10, 19, 1, tzinfo=SG)  # still Sunday 17:00 in UTC
 
 
-def test_ob220_scratch_freeze_win_counts_for_the_shop_local_week() -> None:
+def test_ob220_scratch_freeze_win_counts_for_the_shop_local_scratch_week() -> None:
     ticket = ScratchTicket(
         id="t1", shop_id="s", shop_name="Kopi", day="2026-10-19", at=0.0, prize="freeze"
     )
     state = PassportState(scratch=[ticket])
-    reveal(state, "t1", MONDAY_1AM_SG.timestamp())
+    reveal(state, "t1", MONDAY_1AM_SG.timestamp(), "Asia/Singapore")
     assert state.freeze_wins == ["2026-W43"]  # UTC would have credited 2026-W42
 
 
@@ -86,22 +86,30 @@ def test_ob220_post_board_reads_the_cached_shared_shops_not_each_shop() -> None:
 
 
 def test_ob220_owner_insights_week_is_the_shops_not_the_servers(
-    monkeypatch: pytest.MonkeyPatch,
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Any
 ) -> None:
     import app.coordinator as coordinator
+    from app.merchant import BusinessFields, MerchantStore, ProductFields, ProposalRequest
 
+    # A real store: context()["business"] is {"id", "fields": {...}}, not a flat shop.
+    store = MerchantStore(str(tmp_path / "m.sqlite3"))
+    proposal = store.propose(
+        "u",
+        ProposalRequest(
+            kind="business",
+            business=BusinessFields(
+                name="Kopi",
+                category="Cafe",
+                location="Los Angeles",
+                hours="7-21",
+                timezone="America/Los_Angeles",
+            ),
+            products=[ProductFields(name="Kopi", price=180, unit="cup", stock=10)],
+        ),
+    )
+    bid = store.commit("u", proposal["id"], proposal["digest"])["business_id"]
+    assert store.context("u", bid)["business"]["fields"]["timezone"] == "America/Los_Angeles"
     seen: list[str] = []
-
-    class Store:
-        def context(self, uid: str, bid: str) -> dict[str, Any]:
-            return {"business": {"timezone": "Asia/Singapore"}}
-
-        def recap_signals(self, uid: str, bid: str) -> dict[str, Any]:
-            return {"questions": [], "sold_out": 0}
-
-        def sales_history(self, uid: str, bid: str) -> list[dict[str, Any]]:
-            return []
-
     real_facts = coordinator.recap_facts
 
     def spy(week: str, sales: Any, signals: Any) -> dict[str, Any]:
@@ -113,16 +121,69 @@ def test_ob220_owner_insights_week_is_the_shops_not_the_servers(
         coordinator, "time", SimpleNamespace(time=lambda: MONDAY_1AM_SG.timestamp())
     )
     token = coordinator.current.set(
-        coordinator.MerchantContext(store=Store(), uid="u", business_id="b", recalled=[])  # type: ignore[arg-type]
+        coordinator.MerchantContext(store=store, uid="u", business_id=bid, recalled=[])
     )
     try:
-        try:
-            coordinator.get_insights()
-        except Exception:
-            pass  # only the week handed to the recap matters here
+        coordinator.get_insights()
     finally:
         coordinator.current.reset(token)
-    assert seen == ["2026-W43"]  # server date.today() in UTC would say W42
+    # Sunday 10:00 in Los Angeles is W42; the unread real shape fell back to Singapore's W43.
+    assert seen == ["2026-W42"]
+
+
+def test_ob221_live_demo_rescue_card_still_shows(tmp_path, monkeypatch) -> None:
+    from app.rescue import publish_update
+
+    community = Community(SqliteDocuments(str(tmp_path / "c.db")))
+    now = 1_760_000_000.0
+    monkeypatch.setattr("app.community.time", SimpleNamespace(time=lambda: now))
+    community.docs.put(
+        "rescue",
+        "demo-shop",
+        "demo-shop",
+        now,
+        {
+            "deals": [
+                {"id": "deal-1", "data": {"status": "live", "ends": now + 3600}},
+            ]
+        },
+    )
+    store = SimpleNamespace(feature_docs=community.docs)
+    publish_update(
+        store,  # type: ignore[arg-type]
+        {
+            "id": "deal-1",
+            "shop_id": "demo-shop",
+            "ends": now + 3600,
+            "starts": now - 60,
+            "currency": "SGD",
+            "demo": True,
+            "items": [{"name": "Kopi", "price": 100, "was": 180, "unit": "cup"}],
+        },
+    )
+    legacy_cards(community, "demo-shop", 3, now - 86_400)
+    assert [u.id for u in community.updates(["demo-shop"])] == ["deal-1"]
+
+
+def test_ob220_old_ticket_freeze_never_rewrites_past_weeks() -> None:
+    from app.passport import streak, week_of
+
+    # Visits W38-W40, ticket earned W40 (day below), scratched much later in W45.
+    visits = ["2026-09-14", "2026-09-21", "2026-09-28"]
+    state = PassportState(
+        weeks=[week_of(datetime.fromisoformat(d).date()) for d in visits],
+        scratch=[
+            ScratchTicket(
+                id="t1", shop_id="s", shop_name="Kopi", day="2026-09-28", at=0.0, prize="freeze"
+            )
+        ],
+    )
+    before = streak(state, "2026-W45")
+    scratched = datetime(2026, 11, 2, 12, tzinfo=SG)  # Monday of W45 in Singapore
+    reveal(state, "t1", scratched.timestamp(), "Asia/Singapore")
+    assert state.freeze_wins == ["2026-W45"]
+    after = streak(state, "2026-W45")
+    assert after.row[:-1] == before.row[:-1]  # every earlier week is unchanged
 
 
 # --- OB-221 ---
