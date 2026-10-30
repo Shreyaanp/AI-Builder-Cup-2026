@@ -3422,6 +3422,27 @@
         }
       }
     },
+    "/api/v1/customer/data": {
+      "delete": {
+        "summary": "Erase My Data",
+        "description": "OB-96 \"Delete my data\": chats (and the shops' copies), passport, tips, follows,\npreferences, searches and the profile. Only this customer's; Try again repeats every step.",
+        "operationId": "erase_my_data_api_v1_customer_data_delete",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Erase My Data Api V1 Customer Data Delete"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/customer/follows/{business_id}": {
       "put": {
         "summary": "Follow",

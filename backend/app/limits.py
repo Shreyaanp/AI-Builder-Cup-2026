@@ -82,6 +82,8 @@ LIMITS: dict[str, tuple[tuple[int, int], ...]] = {
     "bootstrap": ((300, 60),),
     "consent": ((120, 60),),
     "me": ((300, 60),),
+    # Customer "Delete my data" (OB-96): up to ~600 Firestore operations a call, no paid AI.
+    "customer:erase": ((5, 3_600),),
 }
 
 # When the limit store errors (OB-91), signed-in actions that spend paid AI, voice or Maps

@@ -515,6 +515,10 @@ class MerchantRepository(Protocol):
         """UIDs that own this shop (trust checks only; never shown to customers)."""
         ...
 
+    def sealed_shops(self) -> list[str]:
+        """Shops marked as being deleted (or removed by hand) whose records still exist."""
+        ...
+
     def seed_demo_shop(
         self,
         uid: str,
@@ -546,6 +550,9 @@ class MerchantRepository(Protocol):
     def thread_action(
         self, uid: str | None, bid: str, iid: str, token: str, action: str, text: str = ""
     ) -> Inquiry: ...
+    def thread_exists(self, bid: str, iid: str) -> bool:
+        """Whether this chat is still stored, whatever state its shop is in (erasure checks)."""
+        ...
 
     # Connect your system: saved column and field mappings per shop and source
     def get_connector_mapping(
@@ -1137,6 +1144,10 @@ class MerchantStore:
             ).fetchall()
         return [row[0] for row in rows]
 
+    def sealed_shops(self) -> list[str]:
+        # SQLite erases a shop in one transaction: there is never a half-deleted one.
+        return []
+
     def shared_shops(self) -> list[dict[str, Any]]:
         with self.connect() as db:
             bids = [row[0] for row in db.execute("SELECT business_id FROM shares").fetchall()]
@@ -1551,6 +1562,13 @@ class MerchantStore:
 
     def complete_inquiry(self, uid: str, bid: str, iid: str) -> Inquiry:
         return self.thread_action(uid, bid, iid, "", "close")
+
+    def thread_exists(self, bid: str, iid: str) -> bool:
+        with self.connect() as db:
+            row = db.execute(
+                "SELECT 1 FROM inquiries WHERE business_id=? AND id=?", (bid, iid)
+            ).fetchone()
+        return row is not None
 
     def thread_action(
         self, uid: str | None, bid: str, iid: str, token: str, action: str, text: str = ""

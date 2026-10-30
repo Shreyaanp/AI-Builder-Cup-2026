@@ -90,7 +90,7 @@ function save(data: Rewards) {
   window.dispatchEvent(new Event(change))
   return !unavailable
 }
-/** Forget every stamp card kept on this phone (the profile's "clear stamps and follows"). */
+/** Forget every stamp card kept on this phone (the profile's "Delete my data"). */
 export function clearRewards() {
   try {
     localStorage.removeItem(key)

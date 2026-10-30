@@ -126,6 +126,9 @@ export function ProfileSheet({ open, onClose }: { open: boolean; onClose: () => 
   const [confirming, setConfirming] = useState(false)
   const profile = account.profile
   const identified = account.status === 'signed-in' || account.status === 'guest'
+  // Until the account is known, Delete could wrongly take the device-only branch for someone
+  // who is signed in: it waits (OB-96 review).
+  const loading = account.status === 'loading'
   const chips = preferenceChips(profile, t, locale, areaCurrency(askedArea()))
   async function remove(key: PreferenceKey, label: string) {
     if (!profile) return
@@ -163,22 +166,40 @@ export function ProfileSheet({ open, onClose }: { open: boolean; onClose: () => 
       setClearing(false)
     }
   }
-  /** Stamps and follows: the account's when there is one, always what this phone kept. */
-  async function clearMine() {
-    if (clearing) return
+  /**
+   * OB-96 "Delete my data": with an account, everything the server keeps for it (chats and the
+   * shops' copies, passport, tips, follows, preferences, searches) and then a sign-out; on this
+   * phone, the stamps and follows it kept.
+   */
+  async function deleteMine() {
+    if (clearing || loading) return
     setClearing(true)
     setNotice(null)
     try {
-      if (identified) await account.api('/api/v1/customer/passport', { method: 'DELETE' })
-      for (const id of [...account.follows]) await account.setFollow(id, false)
+      if (identified) {
+        const result = await account.api<{ status: 'erased' | 'partial' }>(
+          '/api/v1/customer/data',
+          { method: 'DELETE' },
+        )
+        if (result.status !== 'erased') throw new Error('partial')
+      } else {
+        for (const id of [...account.follows]) await account.setFollow(id, false)
+      }
       clearReceipts()
       clearRewards()
       forgetKeptPassport()
+      forgetOpened()
       refreshPassport()
       setConfirming(false)
-      setNotice({ kind: 'success', text: t.clearDeviceDone })
+      if (identified) {
+        // Clears the rest of this phone's customer data and says so on Ask, also when the
+        // sign-out itself fails (OB-96 review: the phone must not keep the session silently).
+        await account.signOut('data-deleted', { orIfItFails: 'data-deleted-signed-in' })
+        return
+      }
+      setNotice({ kind: 'success', text: t.deleteDataDone })
     } catch {
-      setNotice({ kind: 'error', text: t.clearDeviceFailed, retry: () => void clearMine() })
+      setNotice({ kind: 'error', text: t.deleteDataFailed, retry: () => void deleteMine() })
     } finally {
       setClearing(false)
     }
@@ -319,23 +340,31 @@ export function ProfileSheet({ open, onClose }: { open: boolean; onClose: () => 
           )}
           <Button
             onClick={() => setConfirming(true)}
-            disabled={clearing || confirming}
-            startIcon={<Trash2 size={20} />}
+            disabled={clearing || confirming || loading}
+            startIcon={
+              loading ? <CircularProgress size={20} color="inherit" /> : <Trash2 size={20} />
+            }
             sx={settingsRowSx}
           >
-            {t.clearDevice}
+            {loading ? t.deleteDataLoading : t.deleteData}
           </Button>
           {confirming && (
-            <Alert severity="warning" role="group" aria-label={t.clearDevice}>
-              <Typography variant="bodyMedium">{t.clearDeviceBody}</Typography>
+            <Alert severity="warning" role="group" aria-label={t.deleteData}>
+              <Typography variant="bodyMedium">
+                {loading
+                  ? t.deleteDataLoading
+                  : identified
+                    ? t.deleteDataBody
+                    : t.deleteDataDeviceBody}
+              </Typography>
               <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
                 <Button
                   variant="contained"
                   color="error"
-                  disabled={clearing}
-                  onClick={() => void clearMine()}
+                  disabled={clearing || loading}
+                  onClick={() => void deleteMine()}
                 >
-                  {t.clearDeviceDo}
+                  {t.deleteDataDo}
                 </Button>
                 <Button disabled={clearing} onClick={() => setConfirming(false)}>
                   {t.notNow}
