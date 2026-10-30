@@ -322,3 +322,30 @@ def test_ob91_store_outage_caps_paid_owner_routes_and_never_blocks_the_rest(app:
         ) as socket:
             event = socket.receive_json()
             assert event["kind"] == "error" and event["code"] == "RATE_LIMITED"
+
+
+def test_ob91_store_outage_caps_brief_route_but_not_cached_reads(app: FastAPI) -> None:
+    with TestClient(app) as client:
+        join(client)
+        uid = app.state.services.identity.local_principal(
+            client.cookies.get("ogoogle_preview_session")
+        ).uid
+        bid = create_shop(app.state.merchant, uid)
+        path = f"/api/v1/businesses/{bid}/brief"
+        failing = Mock(spec=RateLimiter)
+        failing.take.side_effect = RuntimeError("Store unavailable")
+        app.state.rate_limiter = failing
+        now = time.time()
+        # A normal owner is served, and the result is cached.
+        assert client.get(path).status_code == 200
+        # Cache hits make no model call: not counted against the capped key.
+        assert client.get(path).status_code == 200
+        maximum, seconds = LIMITS["brief"][0]
+        used = fallback_limiter(app.state).take([Bucket("brief", uid, maximum, seconds)], now)
+        assert used == 0
+        for _ in range(maximum - 2):
+            fallback_limiter(app.state).take([Bucket("brief", uid, maximum, seconds)], now)
+        # Drop the cache so every call is a miss: past the per-instance cap the route is refused.
+        app.state.merchant.feature_docs.put("brief", bid, bid, time.time(), {"key": "stale"})
+        refused = client.get(path)
+        assert refused.status_code == 429 and "retry-after" in refused.headers

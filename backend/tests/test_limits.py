@@ -241,7 +241,7 @@ OUTAGE_MODE: dict[str, Literal["capped", "open", "closed"]] = {
         (
             "coach", "voice", "voice:resume", "tts", "photo", "import", "recap", "playbook",
             "playbook:regenerate", "reverse", "forecast", "proposal", "icon",
-            "gallery",
+            "gallery", "brief",
         ),
         "capped",
     ),

@@ -50,6 +50,8 @@ LIMITS: dict[str, tuple[tuple[int, int], ...]] = {
     # The Prep plan tile loads with My shop; repeats are answered from the forecast cache.
     "forecast": ((120, 3_600), (1_000, 86_400)),
     "owner:read": ((120, 3_600), (1_000, 86_400)),
+    # Morning brief wording: one Gemini call per shop per day at most, only on a cache miss.
+    "brief": ((30, 3_600), (200, 86_400)),
     "owner:write": ((30, 60), (200, 86_400)),
     "rescue:write": ((30, 60), (200, 86_400)),
     "rescue:public": ((30, 60),),
@@ -107,6 +109,8 @@ PAID_OWNER_ACTIONS = frozenset(
         "forecast",
         "proposal",
         "icon",
+        # The morning brief's Gemini wording (cache misses only).
+        "brief",
         # Every upload is moderated with paid Vision before it is saved.
         "gallery",
     }
