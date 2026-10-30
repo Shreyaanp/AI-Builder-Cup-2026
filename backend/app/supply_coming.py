@@ -21,10 +21,13 @@ from .supply_chain import (
     relationship,
     rules_of,
 )
+from .supply_io import direction_of
 from .supply_rules import item_rule, round_quantity
 
-# Ordered but not here yet: a reorder counts it before asking for more (OB-226).
-ON_ITS_WAY = {"sent", "changed", "confirmed", "dispatched"}
+# Ordered but not here yet: a reorder counts it before asking for more (OB-226). An invoice can
+# come before the goods, so "invoiced" counts until the order is received. The frontend's
+# ON_THE_WAY (ioFormat.ts) is the same list; a pytest keeps the two equal.
+ON_ITS_WAY = {"sent", "changed", "confirmed", "dispatched", "invoiced"}
 CHAT_ON_ITS_WAY = {"sent", "confirmed"}
 
 
@@ -71,8 +74,10 @@ def on_order(
         row["arrives"] = earliest(row["arrives"], day)
 
     for po in pos:
-        if po.get("direction", "in") != "in":
+        if direction_of(po) != "in":
             continue  # a buyer's order the shop must ship is stock going out, not coming
+        if po.get("received"):
+            continue  # the goods are on the shelf: stock, not on order, whatever the status
         lines = [line for line in po["lines"] if same(line["item"])]
         if not lines and not same(str((po.get("reason") or {}).get("item", ""))):
             continue

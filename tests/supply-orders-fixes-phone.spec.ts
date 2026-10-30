@@ -393,3 +393,42 @@ for (const size of WIDTHS) {
     await noSideScroll(page)
   })
 }
+
+for (const size of WIDTHS) {
+  test(`#603 at ${size.width}: an invoiced order that has not arrived is still on order`, async ({
+    page,
+  }) => {
+    test.setTimeout(150_000)
+    await startShop(page, size)
+    await page.getByRole('button', { name: 'Grow', exact: true }).click()
+    await page.getByRole('button', { name: /^Purchase orders/ }).click()
+    await page.getByRole('button', { name: 'Try supply demo', exact: true }).click()
+    await expect(page.getByRole('region', { name: 'Supply chain' })).toContainText(/Milk runs out/)
+
+    // The supplier's invoice arrives before the goods (demo simulate), up to "invoiced".
+    const shops = await (await page.request.get('/api/v1/businesses')).json()
+    const list = shops.businesses ?? shops
+    const last = list[list.length - 1]
+    const bid = last.id ?? last.business_id
+    const supply = async () => (await page.request.get(`/api/v1/businesses/${bid}/supply`)).json()
+    for (let step = 0; step < 6; step++) {
+      const po = (await supply()).orders.find((o: { number: string }) => o.number === '4500012345')
+      if (po.status === 'invoiced') break
+      const path = po.status === 'changed' ? 'accept' : 'simulate'
+      const res = await page.request.post(
+        `/api/v1/businesses/${bid}/supply/orders/${po.id}/${path}`,
+        { data: { version: po.version } },
+      )
+      expect(res.ok()).toBe(true)
+    }
+    const po = (await supply()).orders.find((o: { number: string }) => o.number === '4500012345')
+    expect([po.status, !!po.received]).toEqual(['invoiced', false])
+
+    await page.getByRole('button', { name: 'Coach', exact: true }).click()
+    await page.getByRole('button', { name: 'Grow', exact: true }).click()
+    const tile = page.getByRole('button', { name: /^Milk runs out/ })
+    await expect(tile).toContainText(/12 l on order, arriving/)
+    await expect(tile).toContainText('Find suppliers')
+    await noSideScroll(page)
+  })
+}

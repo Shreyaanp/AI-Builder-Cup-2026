@@ -416,3 +416,72 @@ def test_603_a_buyers_order_the_shop_must_ship_is_not_stock_coming(dairy_shop) -
     assert again["status"] == "drafted"
     after = supply_coming.on_order(store, "alice", bid, "Sugar", "kg")
     assert (after["quantity"], after["arrives"]) == (before["quantity"], before["arrives"])
+
+
+# Every status a purchase order can be in, and whether its goods count as on order (#603).
+ON_ORDER_BY_STATUS = [
+    ("draft", False, False),
+    ("sent", False, True),
+    ("changed", False, True),
+    ("confirmed", False, True),
+    ("dispatched", False, True),
+    ("invoiced", False, True),  # the invoice can come before the goods
+    ("invoiced", True, False),  # received: on the shelf now
+    ("received", True, False),
+    ("closed", True, False),
+    ("cancelled", False, False),
+    ("declined", False, False),
+]
+
+
+def test_603_every_order_status_has_an_on_order_answer() -> None:
+    """A new status must be added to the table above: none may slip through unanswered."""
+    from typing import get_args
+
+    known = set(get_args(supply_chain.Status)) | {"declined"}
+    assert {status for status, _, _ in ON_ORDER_BY_STATUS} == known
+    assert supply_coming.ON_ITS_WAY == {s for s, rcv, on in ON_ORDER_BY_STATUS if on}
+
+
+@pytest.mark.parametrize(("status", "received", "counts"), ON_ORDER_BY_STATUS)
+def test_603_on_order_by_status(dairy_shop, status: str, received: bool, counts: bool) -> None:
+    store, bid = dairy_shop
+    send_po(store, bid, draft(store, bid, "sugar", 2)["order"])
+    po = next(o for o in supply_chain.all_orders(store, bid) if o["status"] == "sent")
+    supply_chain._save(store, bid, {**po, "status": status, "received": received})
+    po = next(o for o in supply_chain.all_orders(store, bid) if o["id"] == po["id"])
+    coming = supply_coming.on_order(store, "alice", bid, "Sugar", "kg")
+    assert bool(coming["quantity"]) is counts
+    if counts:
+        need = {"daily": 3.0, "stock": 9.0}
+        assert supply_coming.cover(need, coming) in {"full", "partly"}
+    # Out direction never counts, in any status.
+    supply_chain._save(
+        store, bid, {**po, "status": status, "received": received, "direction": "out"}
+    )
+    assert not supply_coming.on_order(store, "alice", bid, "Sugar", "kg")["quantity"]
+
+
+def test_603_an_invoice_before_the_goods_is_still_on_order_and_no_duplicate_is_drafted(
+    dairy_shop,
+) -> None:
+    store, bid = dairy_shop
+    send_po(store, bid, draft(store, bid, "sugar")["order"])
+    before = supply_coming.on_order(store, "alice", bid, "Sugar", "kg")
+    po = next(o for o in supply_chain.all_orders(store, bid) if o["status"] == "sent")
+    supply_chain._save(store, bid, {**po, "status": "invoiced", "received": False})
+    invoiced = supply_coming.on_order(store, "alice", bid, "Sugar", "kg")
+    assert invoiced["quantity"] == before["quantity"] > 0
+    assert draft(store, bid, "sugar")["status"] == "on_order"
+    po = next(o for o in supply_chain.all_orders(store, bid) if o["id"] == po["id"])
+    supply_chain._save(store, bid, {**po, "received": True})
+    assert supply_coming.on_order(store, "alice", bid, "Sugar", "kg")["quantity"] == 0
+
+
+def test_603_backend_and_frontend_agree_on_what_is_on_its_way() -> None:
+    import re
+
+    text = (Path(__file__).parents[2] / "src/features/supply/ioFormat.ts").read_text("utf-8")
+    found = re.search(r"ON_THE_WAY = new Set\(\[([^\]]*)\]\)", text)
+    assert found
+    assert set(re.findall(r"'(\w+)'", found.group(1))) == supply_coming.ON_ITS_WAY
