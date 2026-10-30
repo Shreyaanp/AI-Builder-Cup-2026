@@ -572,6 +572,34 @@ def test_tour_chain_follows_one_order_on_seeded_records(app) -> None:  # noqa: F
         assert stranger.get(f"/api/v1/demo/chain/{bid}").status_code == 404
 
 
+def test_demo_chain_never_calls_the_paid_forecast_and_is_limited(app, monkeypatch) -> None:  # noqa: F811
+    """OB-232: the tour chain reads seeded records with the weekday average, and is rate limited."""
+    from unittest.mock import AsyncMock, MagicMock
+
+    from app import demo_workspace
+
+    paid = MagicMock()
+    paid.query = AsyncMock(side_effect=AssertionError("paid forecast called"))
+    limited: list[list[tuple[str, str]]] = []
+    real = demo_workspace.enforce_limits
+
+    async def spy(request, subjects, **kwargs):
+        limited.append(list(subjects))
+        return await real(request, subjects, **kwargs)
+
+    monkeypatch.setattr(demo_workspace, "enforce_limits", spy)
+    with TestClient(app) as client:
+        join(client)
+        bid = client.post("/api/v1/demo/workspace?zone=Asia/Kolkata").json()["business_id"]
+        settings = app.state.forecaster.settings.model_copy(update={"forecast_backend": "bigquery"})
+        app.state.forecaster = ForecastService(settings, client=paid)
+        limited.clear()
+        response = client.get(f"/api/v1/demo/chain/{bid}")
+        assert response.status_code == 200, response.text
+    assert paid.query.await_count == 0
+    assert any(subject[0] == "forecast" for call in limited for subject in call)
+
+
 @pytest.mark.parametrize("city", CENTRES)
 async def test_today_reorder_on_the_tour_shop_drafts_from_its_wholesaler(
     world, seeded_day, city
