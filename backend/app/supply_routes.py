@@ -6,7 +6,7 @@ import anyio
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, ConfigDict, Field
 
-from . import coordinator, supply_chain, supply_io, supply_outbound
+from . import coordinator, supply_chain, supply_coming, supply_io, supply_outbound
 from .forecast import ForecastService
 from .limits import enforce_limits
 from .merchant_routes import consented_owner, owner, store
@@ -107,16 +107,19 @@ async def overview(business_id: str, request: Request) -> dict[str, Any]:
     # What is already on its way, so Today does not ask for the same milk twice (OB-226); the
     # orders are read once for every need.
     known = (
-        await anyio.to_thread.run_sync(supply_chain.coming_orders, store(request), uid, business_id)
+        await anyio.to_thread.run_sync(
+            supply_coming.coming_orders, store(request), uid, business_id
+        )
         if needs
         else ([], [])
     )
     for need in needs:
         need["supplied"] = await anyio.to_thread.run_sync(supplied, need["item"])
         unit = (
-            next(p for p in context["inventory"] if p["name"] == need["item"]).get("unit") or "kg"
+            next((p.get("unit") for p in context["inventory"] if p["name"] == need["item"]), None)
+            or "kg"
         )
-        coming = supply_chain.on_order(store(request), uid, business_id, need["item"], unit, known)
+        coming = supply_coming.on_order(store(request), uid, business_id, need["item"], unit, known)
         need["on_order"], need["arrives"] = coming["quantity"], coming["arrives"]
     # Today leads with what a linked supplier can bring: chai runs out because tea dust does.
     needs.sort(key=lambda need: (not need["supplied"], need["runs_out"]))
