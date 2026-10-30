@@ -42,7 +42,7 @@ LIMITS: dict[str, tuple[tuple[int, int], ...]] = {
     "voice": ((30, 600), (300, 86_400)),
     "voice:resume": ((90, 600), (600, 86_400)),
     "photo": ((10, 60), (60, 86_400)),
-    # Shop gallery uploads (moderated, no AI extraction).
+    # Shop gallery uploads (Vision-moderated, no AI extraction).
     "gallery": ((20, 60), (100, 86_400)),
     "import": ((10, 3_600), (30, 86_400)),
     # Shop icon from a photo or the gallery (moderated, no AI), and AI generations per shop.
@@ -50,6 +50,8 @@ LIMITS: dict[str, tuple[tuple[int, int], ...]] = {
     # The Prep plan tile loads with My shop; repeats are answered from the forecast cache.
     "forecast": ((120, 3_600), (1_000, 86_400)),
     "owner:read": ((120, 3_600), (1_000, 86_400)),
+    # Morning brief wording: one Gemini call per shop per day at most, only on a cache miss.
+    "brief": ((30, 3_600), (200, 86_400)),
     "owner:write": ((30, 60), (200, 86_400)),
     "rescue:write": ((30, 60), (200, 86_400)),
     "rescue:public": ((30, 60),),
@@ -102,6 +104,18 @@ PAID_OWNER_ACTIONS = frozenset(
         "playbook",
         "playbook:regenerate",
         "reverse",
+        # Model-backed or moderated: forecast provider, proposal extraction, icon and gallery
+        # upload moderation.
+        "forecast",
+        "proposal",
+        "icon",
+        # The morning brief's Gemini wording (cache misses only).
+        "brief",
+        # Today, rescue suggestions and the brief reach the paid forecast model (AI.FORECAST),
+        # and analytics reads BigQuery. A normal owner is never refused; loops are bounded.
+        "owner:read",
+        # Every upload is moderated with paid Vision before it is saved.
+        "gallery",
     }
 )
 
