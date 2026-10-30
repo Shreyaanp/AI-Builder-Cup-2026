@@ -856,7 +856,7 @@
     "/api/v1/businesses/{business_id}/gallery": {
       "post": {
         "summary": "Add Gallery Photo",
-        "description": "An explicit owner action (\"Add photo\"), like the sold-out switch: no AI, no proposal.\nThe photo is re-encoded (metadata stripped) and safety-checked before it is kept.",
+        "description": "An explicit owner action (\"Add photo\"), like the sold-out switch: no AI, no proposal.\nThe photo is re-encoded (metadata stripped) and safety-checked before it is kept. `kind`\n(shop front, inside, menu, product, other) is what the Photos sheet groups by.",
         "operationId": "add_gallery_photo_api_v1_businesses__business_id__gallery_post",
         "parameters": [
           {
@@ -866,6 +866,16 @@
             "schema": {
               "type": "string",
               "title": "Business Id"
+            }
+          },
+          {
+            "name": "kind",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "other",
+              "title": "Kind"
             }
           }
         ],
@@ -928,6 +938,118 @@
                   "type": "object",
                   "additionalProperties": true,
                   "title": "Response Remove Gallery Photo Api V1 Businesses  Business Id  Gallery  Photo Id  Delete"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/businesses/{business_id}/gallery/{photo_id}/cover": {
+      "post": {
+        "summary": "Make Cover Photo",
+        "description": "The first gallery photo is the one customers see on the shop page and in search.",
+        "operationId": "make_cover_photo_api_v1_businesses__business_id__gallery__photo_id__cover_post",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          },
+          {
+            "name": "photo_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Photo Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Make Cover Photo Api V1 Businesses  Business Id  Gallery  Photo Id  Cover Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/businesses/{business_id}/gallery/{photo_id}/kind": {
+      "post": {
+        "summary": "Move Gallery Photo",
+        "description": "Move a photo to another group (shop front, inside, menu, product, other). Owner-only.",
+        "operationId": "move_gallery_photo_api_v1_businesses__business_id__gallery__photo_id__kind_post",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          },
+          {
+            "name": "photo_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Photo Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PhotoKind"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Move Gallery Photo Api V1 Businesses  Business Id  Gallery  Photo Id  Kind Post"
                 }
               }
             }
@@ -14249,6 +14371,21 @@
         "type": "object",
         "title": "Personal",
         "description": "What the signed-in customer's profile changed: never applied when signed out."
+      },
+      "PhotoKind": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "maxLength": 20,
+            "title": "Kind"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind"
+        ],
+        "title": "PhotoKind"
       },
       "Pick": {
         "properties": {

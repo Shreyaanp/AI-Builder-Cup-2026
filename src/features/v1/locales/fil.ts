@@ -293,6 +293,7 @@ export const fil: Copy = {
   shopEmptyTitle: 'Idagdag natin ang tindahan mo',
   addShop: 'Magdagdag ng detalye',
   startPhoto: 'Magsimula sa litrato',
+  opening: 'Binubuksan…',
   editDetails: 'I-edit ang detalye',
   details: 'Mga detalye',
   products: 'Mga produkto at presyo',

@@ -1,4 +1,5 @@
 import { chatBubbleStyle } from '../../coach/bubbleStyle'
+import { galleryKindOf, type GalleryKind } from '../../google/galleryGroups'
 import { AiInfo } from '../AiInfo'
 import { photoCopy } from '../../coach/photoCopy'
 import { PHOTO_READ_TIMEOUT_MS, photoHeaders, preparePhoto } from '../photoPrep'
@@ -194,7 +195,7 @@ const REPLY_POLL_MS = 1500
 const REPLY_WAIT_MS = 45_000
 
 /** A shop photo the owner may later choose to show customers (offered once, never automatic). */
-export type GalleryPhoto = { file: File; businessId: string }
+export type GalleryPhoto = { file: File; businessId: string; kind?: GalleryKind }
 
 // The extraction file survives a new shop's approval (the flow hands it over with the new ID).
 // It stays local to this coach workspace and never enters preference storage.
@@ -261,6 +262,11 @@ function CoachScreen({
   const [menuFocus, setMenuFocus] = useState<string | null>(null)
   const next = useNextStepsCopy()
   const { unread, refresh: refreshUnread } = useUnread()
+  const closeShopSheet = () => {
+    if (shopSheet === 'messages') refreshUnread()
+    setShopSheet(null)
+    setMenuFocus(null)
+  }
   const messageInput = useRef<HTMLTextAreaElement>(null)
   const session = useRef<string | null>(null)
   const controller = useRef<AbortController | null>(null)
@@ -890,7 +896,7 @@ function CoachScreen({
         businessId &&
         ['storefront', 'signboard', 'menu', 'price_list'].includes(result?.photo_kind ?? '')
       )
-        setGalleryPhoto({ file, businessId })
+        setGalleryPhoto({ file, businessId, kind: galleryKindOf(result?.photo_kind) })
       setMessages((items) =>
         [
           ...items,
@@ -1183,7 +1189,7 @@ function CoachScreen({
                   setError('')
                   try {
                     await api(
-                      `/businesses/${encodeURIComponent(galleryPhoto.businessId)}/gallery`,
+                      `/businesses/${encodeURIComponent(galleryPhoto.businessId)}/gallery?kind=${galleryPhoto.kind ?? 'other'}`,
                       {
                         method: 'POST',
                         body: galleryPhoto.file,
@@ -1457,7 +1463,7 @@ function CoachScreen({
         )}
         <div ref={end} />
       </Box>
-      <OnceOpened open={sales !== null}>
+      <OnceOpened open={sales !== null} onClose={() => setSales(null)}>
         <SalesImportSheet imported={sales} onClose={() => setSales(null)} />
       </OnceOpened>
       {dayPhoto && (
@@ -1465,22 +1471,14 @@ function CoachScreen({
           <CloseDay initial={dayPhoto} onClose={() => setDayPhoto(null)} />
         </Suspense>
       )}
-      <OnceOpened open={thread !== null}>
+      <OnceOpened open={thread !== null} onClose={() => setThread(null)}>
         <OrdersSheet open={thread !== null} orderId={thread} onClose={() => setThread(null)} />
       </OnceOpened>
-      <OnceOpened open={connectOpen}>
+      <OnceOpened open={connectOpen} onClose={() => setConnectOpen(false)}>
         <ConnectSheet open={connectOpen} onClose={() => setConnectOpen(false)} />
       </OnceOpened>
-      <OnceOpened open={shopSheet !== null}>
-        <ShopSheets
-          kind={shopSheet}
-          menuFocus={menuFocus}
-          onClose={() => {
-            if (shopSheet === 'messages') refreshUnread()
-            setShopSheet(null)
-            setMenuFocus(null)
-          }}
-        />
+      <OnceOpened open={shopSheet !== null} onClose={closeShopSheet}>
+        <ShopSheets kind={shopSheet} menuFocus={menuFocus} onClose={closeShopSheet} />
       </OnceOpened>
       {closeDayOpen && (
         <Suspense fallback={null}>

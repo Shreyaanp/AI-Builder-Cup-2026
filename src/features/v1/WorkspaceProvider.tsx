@@ -377,7 +377,7 @@ export function WorkspaceProvider({
   return (
     <WorkspaceContext value={value}>
       {children}
-      <OnceOpened open={proposal !== null}>
+      <OnceOpened open={proposal !== null} onClose={() => setProposal(null)}>
         <ReviewDialog
           proposal={proposal}
           onClose={() => setProposal(null)}

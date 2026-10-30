@@ -286,6 +286,7 @@ export const ms: Copy = {
   shopEmptyTitle: 'Mari tambah kedai anda',
   addShop: 'Tambah butiran kedai',
   startPhoto: 'Mula dengan foto',
+  opening: 'Membuka…',
   editDetails: 'Sunting butiran',
   details: 'Butiran',
   products: 'Produk & harga',

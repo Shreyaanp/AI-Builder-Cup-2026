@@ -44,10 +44,10 @@ export function TodaySupplyNeeds() {
           {c.action.open}: {c.title}
         </Button>
       </Stack>
-      <OnceOpened open={open}>
+      <OnceOpened open={open} onClose={() => setOpen(false)}>
         <SupplyHub open={open} onClose={() => setOpen(false)} />
       </OnceOpened>
-      <OnceOpened open={order !== null}>
+      <OnceOpened open={order !== null} onClose={() => setOrderId(null)}>
         <OrderSheet order={order} open={order !== null} onClose={() => setOrderId(null)} />
       </OnceOpened>
     </>
@@ -134,7 +134,7 @@ export function SupplyChatCard({ data }: { data: SupplyCardData }) {
     return (
       <>
         <OrderCard order={latest} onOpen={() => setOpen(true)} />
-        <OnceOpened open={open}>
+        <OnceOpened open={open} onClose={() => setOpen(false)}>
           <OrderSheet
             order={latest}
             open={open}
@@ -150,7 +150,7 @@ export function SupplyChatCard({ data }: { data: SupplyCardData }) {
       <Button variant="outlined" onClick={() => setOpen(true)} sx={{ minHeight: 48 }}>
         {c.action.open}: {c.tabs[view]}
       </Button>
-      <OnceOpened open={open}>
+      <OnceOpened open={open} onClose={() => setOpen(false)}>
         <SupplyHub open={open} onClose={() => setOpen(false)} initial={view} />
       </OnceOpened>
     </>

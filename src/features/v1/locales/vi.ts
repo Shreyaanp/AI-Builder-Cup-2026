@@ -284,6 +284,7 @@ export const vi: Copy = {
   shopEmptyTitle: 'Hãy thêm cửa hàng của bạn',
   addShop: 'Thêm thông tin cửa hàng',
   startPhoto: 'Bắt đầu từ ảnh',
+  opening: 'Đang mở…',
   editDetails: 'Sửa thông tin',
   details: 'Thông tin',
   products: 'Sản phẩm và giá',

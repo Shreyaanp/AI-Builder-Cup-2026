@@ -293,6 +293,7 @@ export const mr: Copy = {
   shopEmptyTitle: 'तुमचे दुकान जोडूया',
   addShop: 'दुकानाची माहिती जोडा',
   startPhoto: 'फोटोपासून सुरू करा',
+  opening: 'उघडत आहे…',
   editDetails: 'माहिती बदला',
   details: 'माहिती',
   products: 'उत्पादने आणि दर',

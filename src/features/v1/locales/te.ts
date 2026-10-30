@@ -297,6 +297,7 @@ export const te: Copy = {
   shopEmptyTitle: 'మీ దుకాణం జోడిద్దాం',
   addShop: 'దుకాణం వివరాలు జోడించండి',
   startPhoto: 'ఫోటోతో మొదలుపెట్టండి',
+  opening: 'తెరుస్తోంది…',
   editDetails: 'వివరాలు మార్చండి',
   details: 'వివరాలు',
   products: 'ఉత్పత్తులు, ధరలు',

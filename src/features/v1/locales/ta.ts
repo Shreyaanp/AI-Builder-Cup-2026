@@ -297,6 +297,7 @@ export const ta: Copy = {
   shopEmptyTitle: 'உங்கள் கடையைச் சேர்ப்போம்',
   addShop: 'கடை விவரங்களைச் சேருங்கள்',
   startPhoto: 'படத்திலிருந்து தொடங்குங்கள்',
+  opening: 'திறக்கிறது…',
   editDetails: 'விவரங்களைத் திருத்துங்கள்',
   details: 'விவரங்கள்',
   products: 'பொருட்களும் விலைகளும்',
