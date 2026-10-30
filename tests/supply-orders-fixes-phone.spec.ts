@@ -329,4 +329,35 @@ for (const size of WIDTHS) {
     await expect(tile).toContainText('Find suppliers')
     await noSideScroll(page)
   })
+
+  test(`#603 at ${size.width}: the Grow tile follows a goods receipt on the Supply chain sheet`, async ({
+    page,
+  }) => {
+    test.setTimeout(150_000)
+    await startShop(page, size)
+    await page.getByRole('button', { name: 'Grow', exact: true }).click()
+    await page.getByRole('button', { name: /^Purchase orders/ }).click()
+    await page.getByRole('button', { name: 'Try supply demo', exact: true }).click()
+    await expect(page.getByRole('region', { name: 'Supply chain' })).toContainText(/Milk runs out/)
+    await page.getByRole('button', { name: 'Grow', exact: true }).click()
+    const tile = page.getByRole('button', { name: /^Milk runs out/ })
+    await expect(tile).toContainText(/12 l on order, arriving/)
+
+    // Receive the whole order from the Supply chain sheet, close it: no stale "on order".
+    await page.getByRole('button', { name: /^Supply chain/ }).click()
+    const hub = page.getByRole('dialog', { name: 'Supply chain' })
+    await hub.getByRole('button', { name: /^Coming in/ }).click()
+    await hub.getByRole('button', { name: /^Fresh Dairy \(Demo\)/ }).click()
+    const dairy = page.getByRole('dialog', { name: 'Fresh Dairy (Demo)' })
+    await dairy.getByRole('button', { name: 'Goods arrived', exact: true }).click()
+    await dairy.getByRole('button', { name: 'All received', exact: true }).click()
+    const review = page.getByRole('dialog', { name: 'Check before saving' })
+    await review.getByRole('button', { name: 'Confirm and save', exact: true }).click()
+    await expect(review).toHaveCount(0)
+    await dairy.getByRole('button', { name: 'Close', exact: true }).click()
+    await hub.getByRole('button', { name: 'Close', exact: true }).click()
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+    await expect(page.getByText(/on order, arriving/)).toHaveCount(0)
+    await noSideScroll(page)
+  })
 }
