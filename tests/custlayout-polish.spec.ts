@@ -222,7 +222,7 @@ for (const size of WIDTHS) {
       const text = page.getByText('No rescues yet', { exact: false })
       await expect(text).toBeVisible({ timeout: 30_000 })
       const fill = await text.evaluate((el) => {
-        let node: HTMLElement | null = el
+        let node: Element | null = el
         while (node && getComputedStyle(node).backgroundColor === 'rgba(0, 0, 0, 0)')
           node = node.parentElement
         return getComputedStyle(node!).backgroundColor
