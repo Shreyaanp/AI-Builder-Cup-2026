@@ -5785,6 +5785,11 @@ export interface components {
              * @default
              */
             supplier_id: string;
+            /**
+             * Anyway
+             * @default false
+             */
+            anyway: boolean;
         };
         /** Requirement */
         Requirement: {

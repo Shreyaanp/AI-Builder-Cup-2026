@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useWorkspace } from '../v1/workspaceContext'
 import type { Proposal } from '../v1/api'
 import type { Order } from './types'
+import { supplyChanged } from '../supply/supplyEvents'
 
 const POLL_MS = 2000
 
@@ -57,6 +58,7 @@ export function useReceiveOrder() {
           { method: 'POST', body: JSON.stringify({ version: order.version }) },
         )
         if (result.proposal) review(result.proposal)
+        supplyChanged()
         return result.order
       } catch (cause) {
         notify(cause instanceof Error ? cause.message : String(cause))

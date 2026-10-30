@@ -30,6 +30,7 @@ import { useSupplyCopy } from './copy'
 import { orderTotal, poNumber, termsLabel } from './orderFormat'
 import { PurchaseOrderCard } from './PurchaseOrderCard'
 import { useDraftReorder, useRulesActions, useSupply } from './supplyData'
+import { useOrderChangeCopy } from './orderChangeCopy'
 import type { ItemRule, PurchaseOrder, Relationship, RuleSet, SystemFormat } from './types'
 
 const OPEN = new Set([
@@ -91,7 +92,10 @@ export function SupplySheet({ open, onClose }: { open: boolean; onClose: () => v
   const [local, setLocal] = useState<Record<string, PurchaseOrder>>({})
   const [drafting, setDrafting] = useState(false)
   const [note, setNote] = useState('')
+  // Some is on order in a unit that does not compare: the item, until the owner answers (#603).
+  const [ask, setAsk] = useState('')
   const draft = useDraftReorder()
+  const change = useOrderChangeCopy()
   const orders = (data?.orders ?? []).map((order) => {
     const mine = local[order.id]
     return mine && mine.version > order.version ? mine : order
@@ -107,6 +111,7 @@ export function SupplySheet({ open, onClose }: { open: boolean; onClose: () => v
   function close() {
     setView({ kind: 'list' })
     setNote('')
+    setAsk('')
     onClose()
   }
   const back = (
@@ -182,12 +187,12 @@ export function SupplySheet({ open, onClose }: { open: boolean; onClose: () => v
             onClick={async () => {
               setDrafting(true)
               setNote('')
-              const { order, note } = await draft()
+              const { order, note, ask } = await draft()
               setDrafting(false)
               setNote(note)
+              setAsk(ask ?? '')
               if (order) {
                 update(order)
-                void refresh()
                 setView({ kind: 'order', id: order.id })
               }
             }}
@@ -200,6 +205,26 @@ export function SupplySheet({ open, onClose }: { open: boolean; onClose: () => v
             <Typography role="status" variant="bodyLarge">
               {note}
             </Typography>
+          )}
+          {ask && (
+            <Button
+              variant="outlined"
+              disabled={drafting}
+              sx={{ alignSelf: 'flex-start', minHeight: 48 }}
+              onClick={async () => {
+                setDrafting(true)
+                const { order, note } = await draft(ask, true)
+                setDrafting(false)
+                setAsk('')
+                setNote(note)
+                if (order) {
+                  update(order)
+                  setView({ kind: 'order', id: order.id })
+                }
+              }}
+            >
+              {change.orderMore}
+            </Button>
           )}
           {data && all.length === 0 && !note && (
             <Typography variant="bodyLarge" color="text.secondary">

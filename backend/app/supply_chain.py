@@ -415,13 +415,16 @@ async def draft_reorder(
     generator: Any,
     demo_owner: str,
     supplier_id: str = "",
+    anyway: bool = False,
 ) -> dict[str, Any]:
-    """Draft the purchase order the forecast and rules call for (nothing is sent)."""
+    """Draft the purchase order the forecast and rules call for (nothing is sent). When some is
+    on order in a unit that does not convert, it asks first: `anyway` is the owner's yes."""
     import anyio
 
     from . import sourcing
     from .supply_coming import (
         coming_orders,
+        cover,
         covered,
         on_order,
         resize,
@@ -443,7 +446,7 @@ async def draft_reorder(
     def is_covered(product: dict[str, Any], need: dict[str, Any]) -> bool:
         unit = product.get("unit") or "kg"
         coming = on_order(store, uid, bid, product["name"], unit, known)
-        return covered(need, coming["quantity"])
+        return cover(need, coming) in {"full", "units"}
 
     target = await anyio.to_thread.run_sync(
         lambda: pick_item(
@@ -507,6 +510,10 @@ async def draft_reorder(
         return {"status": "drafted", "order": waiting, "existing": True}
     if done:
         return {"status": "on_order", "item": target, "unit": unit, **coming}
+    if not quantity and not anyway and coming["other"]:
+        # 2 pack is on its way and the shop counts litres: the app cannot tell if it is enough,
+        # so the owner says before a second order goes out (#603).
+        return {"status": "on_order_units", "item": target, "unit": unit, **coming}
     candidates = await anyio.to_thread.run_sync(supplier_candidates, store, bid, target, currency)
     if not candidates:
         found = await sourcing.find(

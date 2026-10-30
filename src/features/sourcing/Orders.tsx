@@ -23,6 +23,7 @@ import { Sheet } from '../v1/Sheet'
 import { Supporting, Tile } from '../v1/ShopTiles'
 import { useWorkspace } from '../v1/workspaceContext'
 import { ConfirmUndo } from '../supply/ConfirmUndo'
+import { supplyChanged } from '../supply/supplyEvents'
 import { useOrderChangeCopy } from '../supply/orderChangeCopy'
 import { useSourcingCopy } from './copy'
 import { deliveryLabel, useOrders, useReceiveOrder } from './orderData'
@@ -413,6 +414,7 @@ function ChangeSentOrder({
         body: JSON.stringify({ version: version.current, ...body }),
       })
       setMode('idle')
+      supplyChanged()
     } catch {
       setError(c.failed)
     }

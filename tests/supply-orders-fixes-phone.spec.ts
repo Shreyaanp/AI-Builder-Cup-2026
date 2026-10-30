@@ -20,6 +20,65 @@ async function noSideScroll(page: Page) {
   )
 }
 
+/** A kirana with onions (kg) and milk (l), 12 of each and four weeks of sales: both run out
+ * within the week (#603: more than one need). */
+async function kirana(page: Page, size: { width: number; height: number }) {
+  await page.setViewportSize(size)
+  await localOnly(page)
+  await enter(page)
+  const name = 'Corner Store'
+  const prepared = await (
+    await page.request.post('/api/v1/proposals', {
+      data: {
+        kind: 'business',
+        revision: 0,
+        business: {
+          name,
+          category: 'Grocery',
+          location: 'Indiranagar, Bengaluru',
+          currency: 'INR',
+          timezone: 'Asia/Kolkata',
+          phone: '+919876543210',
+          weekly_hours: [{ day: 'thu', open: '07:00', close: '20:00', closed: false }],
+          stamps_needed: 8,
+          reward_text: 'Your tenth bag is free',
+        },
+        owner_location: { lat: 12.9716, lng: 77.6412, accuracy_m: 0, source: 'pin' },
+        products: [
+          { name: 'Onions', price: 4000, unit: 'kg', category: 'Veg', stock: 12 },
+          { name: 'Milk', price: 6000, unit: 'l', category: 'Dairy', stock: 12 },
+        ],
+      },
+    })
+  ).json()
+  const approved = await page.request.post(`/api/v1/proposals/${prepared.id}/approve`, {
+    data: { digest: prepared.digest },
+  })
+  const { business_id: id } = await approved.json()
+  const shopDay = (back: number) =>
+    new Date(Date.now() + 5.5 * 3600e3 - back * 86400e3).toISOString().slice(0, 10)
+  for (let back = 28; back >= 1; back--) {
+    const v = 3 + (back % 3)
+    const day = await page.request.post(`/api/v1/businesses/${id}/day/prepare`, {
+      data: {
+        date: shopDay(back),
+        sales: [
+          { item: 'Onions', quantity: v, amount: v * 40 },
+          { item: 'Milk', quantity: v, amount: v * 60 },
+        ],
+      },
+    })
+    const { sales } = await day.json()
+    await page.request.post(`/api/v1/businesses/${id}/import/${sales.import_id}/approve`, {
+      data: { digest: sales.digest },
+    })
+  }
+  await page.reload()
+  await page.getByRole('button', { name: 'Continue local preview' }).click()
+  await expect(page.getByRole('button', { name: `Choose shop: ${name}` })).toBeVisible()
+  await page.keyboard.press('Escape')
+}
+
 async function startShop(page: Page, size: { width: number; height: number }) {
   await page.setViewportSize(size)
   await localOnly(page)
@@ -119,6 +178,9 @@ for (const size of WIDTHS) {
       for (const need of body.needs ?? []) {
         delete need.on_order
         delete need.arrives
+        need.covered = false
+        need.cover = 'none'
+        need.on_order_other = []
       }
       await route.fulfill({ json: body })
     })
@@ -175,6 +237,96 @@ for (const size of WIDTHS) {
     await expect(page.getByRole('alert').filter({ hasText: 'No purchase orders yet' })).toHaveCount(
       0,
     )
+    await noSideScroll(page)
+  })
+
+  test(`#603 at ${size.width}: a covered item never hides the next one that runs out, on Today and Grow`, async ({
+    page,
+  }) => {
+    test.setTimeout(180_000)
+    await kirana(page, size)
+    const today = page.getByRole('region', { name: 'Supply chain' })
+    await expect(today).toContainText(/(Onions|Milk) runs out/, { timeout: 30_000 })
+    await expect(today).toContainText('1 more item runs out')
+    const first = (await today.innerText()).includes('Onions runs out') ? 'Onions' : 'Milk'
+    const other = first === 'Onions' ? 'Milk' : 'Onions'
+    await today.getByRole('button', { name: 'Reorder', exact: true }).click()
+    const card = page.getByRole('article')
+    await card
+      .getByRole('button', { name: 'Approve and send', exact: true })
+      .click({ timeout: 30_000 })
+    await expect(card).toContainText('Marked Sent')
+    await page.getByRole('dialog').getByRole('button', { name: 'Close', exact: true }).click()
+    // Same screen, no navigation: the item still to order leads, with its own Reorder.
+    await expect(today).toContainText(`${other} runs out`)
+    await expect(today).not.toContainText('on order')
+    await expect(today).not.toContainText('more item')
+    await expect(today.getByRole('button', { name: 'Reorder', exact: true })).toBeVisible()
+    await noSideScroll(page)
+
+    // Grow reads the same needs: the same item and day, with Find suppliers for it.
+    const day = (await today.innerText()).match(new RegExp(`${other} runs out (.+)`))?.[1]
+    await page.getByRole('button', { name: 'Grow', exact: true }).click()
+    const tile = page.getByRole('button', { name: new RegExp(`^${other} runs out`) })
+    await expect(tile).toContainText('Find suppliers')
+    await expect(tile).toContainText(day?.trim() ?? '')
+    await expect(page.getByRole('button', { name: new RegExp(`^${first} runs out`) })).toHaveCount(
+      0,
+    )
+    await noSideScroll(page)
+
+    // Grow has no "runs out" rule of its own: when the needs say nothing runs out, it shows
+    // nothing, whatever the forecast its prep plan reads.
+    await page.route(/\/businesses\/[^/]+\/supply$/, async (route) => {
+      const body = await (await route.fetch()).json()
+      await route.fulfill({ json: { ...body, needs: [] } })
+    })
+    await page.getByRole('button', { name: 'Coach', exact: true }).click()
+    await page.getByRole('button', { name: 'Grow', exact: true }).click()
+    await expect(page.getByRole('button', { name: /^Prep plan/ })).toContainText(/Onions|Milk/)
+    await expect(page.getByRole('button', { name: /runs out|running low/ })).toHaveCount(0)
+  })
+
+  test(`#603 at ${size.width}: the Grow tile follows its own Purchase orders sheet`, async ({
+    page,
+  }) => {
+    test.setTimeout(150_000)
+    await startShop(page, size)
+    await page.getByRole('button', { name: 'Grow', exact: true }).click()
+    await page.getByRole('button', { name: /^Purchase orders/ }).click()
+    await page.getByRole('button', { name: 'Try supply demo', exact: true }).click()
+    await expect(page.getByRole('region', { name: 'Supply chain' })).toContainText(/Milk runs out/)
+    await page.getByRole('button', { name: 'Grow', exact: true }).click()
+    const tile = page.getByRole('button', { name: /^Milk runs out/ })
+    // 12 l on its way is short of the week's 25 l: still to order, with what is coming shown.
+    await expect(tile).toContainText('Find suppliers')
+    await expect(tile).toContainText(/12 l on order, arriving/)
+
+    // Draft and approve on Grow's own sheet, close it: the tile reads covered at once.
+    await page.getByRole('button', { name: /^Purchase orders/ }).click()
+    const sheet = page.getByRole('dialog', { name: /^Purchase orders/ })
+    await sheet.getByRole('button', { name: 'Draft a reorder' }).click()
+    const card = page.getByRole('article')
+    await card.getByRole('button', { name: 'Approve and send', exact: true }).click()
+    await expect(card).toContainText('Marked Sent')
+    await sheet.getByRole('button', { name: 'Close', exact: true }).click()
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+    await expect(tile).toContainText(/24 l on order, arriving/)
+    await expect(tile).not.toContainText('Find suppliers')
+
+    // Cancel one sent order on the same sheet, close it: no stale "24 l on order".
+    await page.getByRole('button', { name: /^Purchase orders/ }).click()
+    await sheet.getByRole('list', { name: 'Purchase orders' }).getByRole('button').first().click()
+    const detail = page.getByRole('dialog', { name: /^Purchase orders PO \d+$/ })
+    await detail.getByRole('button', { name: 'Cancel order' }).click()
+    await detail.getByRole('button', { name: 'Cancel order' }).click()
+    await expect(detail).toContainText('Cancelled. Fresh Dairy (Demo) was told.', {
+      timeout: 15_000,
+    })
+    await detail.getByRole('button', { name: 'Close', exact: true }).click()
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+    await expect(tile).toContainText(/12 l on order, arriving/)
+    await expect(tile).toContainText('Find suppliers')
     await noSideScroll(page)
   })
 }

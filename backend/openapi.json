@@ -15970,6 +15970,11 @@
             "maxLength": 120,
             "title": "Supplier Id",
             "default": ""
+          },
+          "anyway": {
+            "type": "boolean",
+            "title": "Anyway",
+            "default": false
           }
         },
         "additionalProperties": false,

@@ -28,6 +28,11 @@ ON_ITS_WAY = {"sent", "changed", "confirmed", "dispatched"}
 CHAT_ON_ITS_WAY = {"sent", "confirmed"}
 
 
+def earliest(one: str, other: str) -> str:
+    """The sooner of two ISO days; an unknown one does not count."""
+    return min(one, other) if one and other else one or other
+
+
 def coming_orders(
     store: MerchantRepository, uid: str, bid: str
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
@@ -56,6 +61,15 @@ def on_order(
 
     pos, chats = known or coming_orders(store, uid, bid)
     quantity, arrives, draft = 0.0, "", None
+    # Lines in a unit that does not convert (2 pack against a shop counting litres) are still
+    # on their way: they are kept apart, never counted as nothing (#603).
+    other: dict[str, dict[str, Any]] = {}
+
+    def elsewhere(amount: float, line_unit: str, day: str) -> None:
+        row = other.setdefault(line_unit, {"quantity": 0.0, "unit": line_unit, "arrives": ""})
+        row["quantity"] = round(row["quantity"] + float(amount), 3)
+        row["arrives"] = earliest(row["arrives"], day)
+
     for po in pos:
         lines = [line for line in po["lines"] if same(line["item"])]
         if not lines and not same(str((po.get("reason") or {}).get("item", ""))):
@@ -68,9 +82,11 @@ def on_order(
         for line in lines:
             amount = sourcing.convert(line["quantity"], line["unit"], unit)
             day = str(po.get("delivery") or "")
-            if amount:
+            if amount is None:
+                elsewhere(line["quantity"], line["unit"], day)
+            elif amount:
                 quantity += amount
-                arrives = min(arrives, day) if arrives and day else arrives or day
+                arrives = earliest(arrives, day)
     for order in chats:
         if order["status"] not in CHAT_ON_ITS_WAY:
             continue
@@ -78,11 +94,18 @@ def on_order(
             if line["price"] is None or line.get("available") is False or not same(line["name"]):
                 continue
             amount = sourcing.convert(line["quantity"], line["unit"], unit)
-            if amount:
+            day = str(order.get("delivery_at") or "")[:10]
+            if amount is None:
+                elsewhere(line["quantity"], line["unit"], day)
+            elif amount:
                 quantity += amount
-                day = str(order.get("delivery_at") or "")[:10]
-                arrives = min(arrives, day) if arrives and day else arrives or day
-    return {"quantity": round(quantity, 3), "arrives": arrives, "draft": draft}
+                arrives = earliest(arrives, day)
+    return {
+        "quantity": round(quantity, 3),
+        "arrives": arrives,
+        "draft": draft,
+        "other": list(other.values()),
+    }
 
 
 def still_wanted(need: dict[str, Any], coming: float) -> float:
@@ -94,6 +117,17 @@ def still_wanted(need: dict[str, Any], coming: float) -> float:
 def covered(need: dict[str, Any], coming: float) -> bool:
     """What is on its way already meets this need: a reorder has nothing to add."""
     return bool(coming) and (not need["daily"] or not still_wanted(need, coming))
+
+
+def cover(need: dict[str, Any], coming: dict[str, Any]) -> str:
+    """How far what is on its way meets this need: "full" (nothing to add), "units" (some is
+    on order in a unit that does not convert, so ask before ordering more), "partly" (some, but
+    not enough) or "none". Today, Grow and a reorder all read this one answer (#603)."""
+    if covered(need, coming["quantity"]):
+        return "full"
+    if coming.get("other"):
+        return "units"
+    return "partly" if coming["quantity"] else "none"
 
 
 def resize(

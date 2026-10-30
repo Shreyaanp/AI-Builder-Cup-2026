@@ -8,7 +8,7 @@ import { PurchaseOrderCard } from './supplyDeferred'
 import { useShowcaseCopy } from './showcaseCopy'
 import { useSupplyCopy } from './copy'
 import { useOrderChangeCopy } from './orderChangeCopy'
-import { dayLabel, useDraftReorder, useSupply } from './supplyData'
+import { dayLabel, leadNeed, useDraftReorder, useOnOrderText, useSupply } from './supplyData'
 import type { PurchaseOrder } from './types'
 import { productName } from '../../i18n/productNames'
 
@@ -23,7 +23,11 @@ export function TodaySupply() {
   const roles = useTheme().material
   const [order, setOrder] = useState<PurchaseOrder | null>(null)
   const [busy, setBusy] = useState(false)
-  const need = data?.needs?.[0]
+  // "2 pack Milk is already on order… Order more anyway?", with the item to order (#603).
+  const [ask, setAsk] = useState<{ item: string; note: string } | null>(null)
+  const onOrderText = useOnOrderText()
+  // The first need not yet covered leads, the same one the Grow tile shows (#603).
+  const { need, more } = leadNeed(data?.needs)
   const received = data?.orders.find(
     (po) =>
       po.received &&
@@ -60,16 +64,38 @@ export function TodaySupply() {
           {productName(item, locale)}{' '}
           {need ? `${s.runsOut} ${dayLabel(need.runs_out, locale)}` : s.restocked}
         </Typography>
-        {need?.on_order ? (
-          <Typography variant="bodyLarge">
-            {c.onOrderLine(
-              new Intl.NumberFormat(locale, { maximumFractionDigits: 2 }).format(need.on_order),
-              products.find((p) => p.name === need.item)?.unit ?? '',
-              dayLabel(need.arrives ?? '', locale),
-            )}
-          </Typography>
+        {need && onOrderText(need) ? (
+          <Typography variant="bodyLarge">{onOrderText(need)}</Typography>
         ) : null}
-        <Box>
+        {more > 0 && <Typography variant="bodyMedium">{c.moreRunOut(more)}</Typography>}
+        {ask ? (
+          <Stack spacing={2} role="group" aria-label={ask.note}>
+            <Typography variant="bodyLarge" role="status">
+              {ask.note}
+            </Typography>
+            <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 2 }}>
+              <Button
+                variant="contained"
+                disabled={busy}
+                sx={{ minHeight: 48 }}
+                onClick={async () => {
+                  setBusy(true)
+                  const next = await draft(ask.item, true)
+                  setBusy(false)
+                  setAsk(null)
+                  if (next.order) setOrder(next.order)
+                  else notify(next.note)
+                }}
+              >
+                {c.orderMore}
+              </Button>
+              <Button sx={{ minHeight: 48 }} onClick={() => setAsk(null)}>
+                {c.notNow}
+              </Button>
+            </Stack>
+          </Stack>
+        ) : null}
+        <Box hidden={Boolean(ask)}>
           <Button
             variant="contained"
             data-tour="reorder"
@@ -85,6 +111,7 @@ export function TodaySupply() {
               const next = await draft(need.item)
               setBusy(false)
               if (next.order) setOrder(next.order)
+              else if (next.ask) setAsk({ item: next.ask, note: next.note })
               else notify(next.note)
             }}
           >

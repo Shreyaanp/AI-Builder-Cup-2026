@@ -1,45 +1,114 @@
 import { useCallback, useEffect, useState } from 'react'
-import { ApiError, type Proposal } from '../v1/api'
+import { ApiError, type Api, type Proposal } from '../v1/api'
 import { useWorkspace } from '../v1/workspaceContext'
 import { useLocale } from '../../state/hooks'
 import { productName } from '../../i18n/productNames'
 import { useSupplyCopy } from './copy'
 import { useOrderChangeCopy } from './orderChangeCopy'
+import { supplyBus, supplyChanged } from './supplyEvents'
 import type { PurchaseOrder, Relationship, RuleSet } from './types'
+
+/** One supply need from `GET /supply`: the backend is the only "runs out" and "on order" rule. */
+export interface SupplyNeed {
+  item: string
+  runs_out: string
+  stock: number
+  supplied?: boolean
+  /** Already ordered and on its way, in the item's unit, and the earliest arrival. */
+  on_order?: number
+  arrives?: string
+  /** On its way in a unit that does not convert (2 pack against litres): never nothing. */
+  on_order_other?: { quantity: number; unit: string; arrives: string }[]
+  /** full: nothing to add; units: on order in another unit, ask first; partly; none. */
+  cover?: 'full' | 'units' | 'partly' | 'none'
+  /** Handled already (full or units): such needs come after the ones still to order. */
+  covered?: boolean
+}
 
 interface SupplyOverview {
   suppliers: Relationship[]
   orders: PurchaseOrder[]
-  needs?: {
-    item: string
-    runs_out: string
-    stock: number
-    supplied?: boolean
-    /** Already ordered and on its way, in the item's unit, and the earliest arrival. */
-    on_order?: number
-    arrives?: string
-  }[]
+  needs?: SupplyNeed[]
 }
 
-/** The shop's supplier relationships and purchase orders (newest first). */
+/**
+ * The need to show first: the first one not yet covered (the backend sorts those first), else
+ * the first need; and how many more still need ordering. Today and Grow both read this (#603).
+ */
+export function leadNeed(needs: SupplyNeed[] | undefined) {
+  const open = (needs ?? []).filter((need) => !need.covered)
+  return { need: open[0] ?? needs?.[0], more: Math.max(0, open.length - 1) }
+}
+
+// One shop's supply, shared by every view of it (Today, the Grow tile, the Purchase orders
+// sheet): a load anywhere shows everywhere, and any order change loads it again, so a tile never
+// says "on order" after a cancel or "Find suppliers" after an approve on the same screen (#603).
+let shared: { id: string; data: SupplyOverview; generation: number } | null = null
+let inflight: { key: string; generation: number; promise: Promise<void> } | null = null
+let generation = 0
+// A change makes any answer already on its way old: the next load asks again.
+supplyBus.addEventListener('changed', () => {
+  generation += 1
+})
+
+function load(api: Api, id: string, fresh: boolean, revision?: number): Promise<void> {
+  if (fresh) generation += 1
+  // Views opening together share one request; a new shop revision (a stock edit) asks again.
+  const key = `${id}:${revision ?? ''}`
+  if (inflight && inflight.key === key && inflight.generation === generation)
+    return inflight.promise
+  const mine = generation
+  const promise = api<SupplyOverview>(`/businesses/${encodeURIComponent(id)}/supply`).then(
+    (data) => {
+      // An older answer landing after a newer one must not bring the old state back.
+      if (shared && shared.id === id && shared.generation > mine) return
+      shared = { id, data, generation: mine }
+      supplyBus.dispatchEvent(new Event('loaded'))
+    },
+  )
+  inflight = { key, generation: mine, promise }
+  // Shared while on its way only: a view opening later asks again.
+  const done = () => {
+    if (inflight?.promise === promise) inflight = null
+  }
+  promise.then(done, done)
+  return promise
+}
+
+/** The shop's supplier relationships, purchase orders (newest first) and supply needs. */
 export function useSupply(open: boolean) {
   const { api, activeId, active } = useWorkspace()
-  const [loaded, setLoaded] = useState<{ id: string; data: SupplyOverview } | null>(null)
+  const [loaded, setLoaded] = useState(shared)
+  const revision = active?.revision
   const refresh = useCallback(async () => {
     if (!activeId) return
     try {
-      const data = await api<SupplyOverview>(`/businesses/${encodeURIComponent(activeId)}/supply`)
-      setLoaded({ id: activeId, data })
+      await load(api, activeId, true, revision)
     } catch {
       // Keep what is shown; the next refresh tries again.
     }
-  }, [api, activeId])
+  }, [api, activeId, revision])
   useEffect(() => {
-    if (!open) return
+    const show = () => setLoaded(shared)
+    const reload = () => {
+      if (open && activeId) load(api, activeId, false, revision).catch(() => undefined)
+    }
+    supplyBus.addEventListener('loaded', show)
+    supplyBus.addEventListener('changed', reload)
+    return () => {
+      supplyBus.removeEventListener('loaded', show)
+      supplyBus.removeEventListener('changed', reload)
+    }
+  }, [api, activeId, open, revision])
+  useEffect(() => {
+    if (!open || !activeId) return
     // Async on purpose: the list arrives after this effect, never synchronously inside it.
-    const first = window.setTimeout(() => void refresh(), 0)
+    const first = window.setTimeout(
+      () => load(api, activeId, false, revision).catch(() => undefined),
+      0,
+    )
     return () => window.clearTimeout(first)
-  }, [open, refresh, active?.revision])
+  }, [open, api, activeId, revision])
   return { data: loaded?.id === activeId ? loaded.data : null, refresh }
 }
 
@@ -76,6 +145,7 @@ export function usePoActions(onChange: (order: PurchaseOrder) => void) {
         )
         const next = 'order' in result ? result.order : result
         onChange(next)
+        supplyChanged()
         if ('proposal' in result && result.proposal) review(result.proposal)
         return next
       } catch (cause) {
@@ -106,17 +176,20 @@ export function usePoActions(onChange: (order: PurchaseOrder) => void) {
 }
 
 interface ReorderResult {
-  status: 'drafted' | 'needs_item' | 'no_supplier' | 'on_order'
+  status: 'drafted' | 'needs_item' | 'no_supplier' | 'on_order' | 'on_order_units'
   order?: PurchaseOrder
   item?: string
   unit?: string
   quantity?: number
   arrives?: string
+  other?: { quantity: number; unit: string; arrives: string }[]
 }
 
 /**
  * Drafts the reorder. When nothing is drafted, `note` says why and what to do next (nothing runs
  * out, no supplier, or it is already on order: OB-226, OB-227); the caller shows it in place.
+ * Some on order in a unit that does not convert sets `ask` to the item: the caller offers
+ * "Order more", which drafts again with `anyway` (#603).
  */
 export function useDraftReorder() {
   const { api, activeId } = useWorkspace()
@@ -124,15 +197,31 @@ export function useDraftReorder() {
   const c = useOrderChangeCopy()
   const locale = useLocale()
   return useCallback(
-    async (item = ''): Promise<{ order: PurchaseOrder | null; note: string }> => {
+    async (
+      item = '',
+      anyway = false,
+    ): Promise<{ order: PurchaseOrder | null; note: string; ask?: string }> => {
       try {
         const result = await api<ReorderResult>(
           `/businesses/${encodeURIComponent(activeId ?? '')}/supply/reorder`,
-          { method: 'POST', body: JSON.stringify(item ? { item } : {}) },
+          { method: 'POST', body: JSON.stringify({ ...(item ? { item } : {}), anyway }) },
         )
+        supplyChanged()
         if (result.order) return { order: result.order, note: '' }
         const name = productName(result.item ?? item, locale)
         const quantity = new Intl.NumberFormat(locale, { maximumFractionDigits: 2 })
+        if (result.status === 'on_order_units')
+          return {
+            order: null,
+            ask: result.item ?? item,
+            note: c.unitsAsk(
+              (result.other ?? [])
+                .map((row) => `${quantity.format(row.quantity)} ${row.unit}`)
+                .join(', '),
+              name,
+              dayLabel(result.other?.[0]?.arrives ?? '', locale),
+            ),
+          }
         const note =
           result.status === 'on_order'
             ? c.onOrder(
@@ -202,4 +291,27 @@ export function dayLabel(iso: string, locale: string): string {
     day: 'numeric',
     month: 'short',
   }).format(day)
+}
+
+/** What is on its way for a need, each in its own unit: "12 l on order, arriving Sat, Oct 31"
+ * or "2 pack on order", joined when both (#603). Empty when nothing is. */
+export function useOnOrderText() {
+  const c = useOrderChangeCopy()
+  const locale = useLocale()
+  const { products } = useWorkspace()
+  return useCallback(
+    (need: SupplyNeed) => {
+      const number = new Intl.NumberFormat(locale, { maximumFractionDigits: 2 })
+      const unit = products.find((p) => p.name === need.item)?.unit ?? ''
+      return [
+        ...(need.on_order ? [{ quantity: need.on_order, unit, arrives: need.arrives ?? '' }] : []),
+        ...(need.on_order_other ?? []),
+      ]
+        .map((row) =>
+          c.onOrderLine(number.format(row.quantity), row.unit, dayLabel(row.arrives, locale)),
+        )
+        .join(' · ')
+    },
+    [c, locale, products],
+  )
 }

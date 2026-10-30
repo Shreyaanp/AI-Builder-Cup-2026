@@ -8,11 +8,12 @@ from pathlib import Path
 import pytest
 
 from app import supply_chain, supply_coming
-from app.coordinator import MerchantContext, current
+from app.coordinator import DEMO_OWNER_UID, MerchantContext, SupplierGenerator, current
+from app.forecast import ForecastService
 from app.merchant import BusinessFields, MerchantStore, ProductFields, ProposalRequest
 from app.sales import today_for
 from tests.test_merchant_routes import approve, settings  # noqa: F401 - shared fixture
-from tests.test_supply_chain import BENGALURU, client, draft  # noqa: F401 - shared fixtures
+from tests.test_supply_chain import BENGALURU, client, draft, offline  # noqa: F401 - shared fixtures
 
 # --- #603: a shop with more than one need ---------------------------------------------------------
 
@@ -238,3 +239,160 @@ def test_603_a_covered_item_that_reorder_skips_loses_its_open_draft(dairy_shop) 
     assert [
         o["id"] for o in supply_chain.orders(store, "alice", bid) if o["status"] == "draft"
     ] == [second["order"]["id"]]
+
+
+def kirana_client(client) -> str:  # noqa: F811
+    """Milk (litres) and Sugar (kg) both run out within the week, over the API."""
+    proposal = client.post(
+        "/api/v1/proposals",
+        json={
+            "kind": "business",
+            "business": {"name": "Lakshmi Kirana", "currency": "INR", "timezone": "Asia/Kolkata"},
+            "products": [
+                {"name": "Milk", "price": 6000, "unit": "litre", "stock": 8},
+                {"name": "Sugar", "price": 4800, "unit": "kg", "stock": 9},
+                {"name": "Atta (wheat flour)", "price": 5500, "unit": "kg", "stock": 200},
+            ],
+        },
+    ).json()
+    bid = approve(client, proposal)["business_id"]
+    today = date.fromisoformat(client.get(f"/api/v1/businesses/{bid}/freshness").json()["today"])
+    rows = "\n".join(
+        f"{(today - timedelta(days=i)).isoformat()},{item},{qty},{qty * 60}"
+        for i in range(1, 29)
+        for item, qty in (("Milk", 6), ("Sugar", 3), ("Atta (wheat flour)", 3))
+    )
+    imported = client.post(
+        f"/api/v1/businesses/{bid}/import",
+        content=f"Date,Item,Qty,Revenue\n{rows}",
+        headers={"Content-Type": "text/csv"},
+    ).json()
+    client.post(
+        f"/api/v1/businesses/{bid}/import/{imported['import_id']}/approve",
+        json={"digest": imported["digest"]},
+    )
+    return bid
+
+
+def approve_api(client, base: str, po: dict) -> dict:  # noqa: F811
+    url = f"{base}/orders/{po['id']}"
+    for _ in range(3):
+        if not po["blocked"]:
+            break
+        fix = next(c["fix"] for c in po["checks"] if c["blocking"] and c["fix"])
+        po = client.post(f"{url}/fix", json={"version": po["version"], "fix": fix}).json()
+    return client.post(f"{url}/approve", json={"version": po["version"]}).json()
+
+
+def test_603_each_need_says_if_it_is_covered_and_the_open_one_leads(client) -> None:  # noqa: F811
+    """#603: with milk ordered and on its way, /supply puts sugar (still uncovered) first and
+    marks milk covered, so Today and Grow both lead with the sugar."""
+    bid = kirana_client(client)
+    base = f"/api/v1/businesses/{bid}/supply"
+    before = client.get(base).json()["needs"]
+    assert [n["item"] for n in before][:1] == ["Milk"]
+    assert {n["item"]: n["cover"] for n in before} == {"Milk": "none", "Sugar": "none"}
+    milk = client.post(f"{base}/reorder", json={"item": "milk"}).json()["order"]
+    assert approve_api(client, base, milk)["status"] == "sent"
+    needs = client.get(base).json()["needs"]
+    assert [(n["item"], n["covered"]) for n in needs] == [("Sugar", False), ("Milk", True)]
+    assert needs[1]["cover"] == "full" and needs[1]["on_order"] > 0
+    assert needs[0]["on_order"] == 0 and needs[0]["on_order_other"] == []
+
+
+def test_603_some_sugar_on_order_is_partly_covered(dairy_shop) -> None:
+    """#603: 2 kg on its way against a week's need is "partly": the need still leads."""
+    store, bid = dairy_shop
+    po = draft(store, bid, "sugar", 2)["order"]
+    send_po(store, bid, po)
+    context = store.context("alice", bid)
+    product = next(p for p in context["inventory"] if p["name"] == "Sugar")
+    forecast = (
+        asyncio.run(
+            ForecastService(offline()).forecast(
+                store.sales_history("alice", bid),
+                today_for(context["business"]["fields"]),
+                context["inventory"],
+            )
+        )
+    ).model_dump(mode="json")
+    need = supply_chain.need_from_forecast(
+        product, forecast, "Sugar", today_for(context["business"]["fields"])
+    )
+    coming = supply_coming.on_order(store, "alice", bid, "Sugar", "kg")
+    assert coming["quantity"] >= 2
+    assert supply_coming.cover(need, coming) == "partly"
+
+
+def pack_po(store: MerchantStore, bid: str, quantity: float = 2) -> dict:
+    """A milk PO sent in packs: the supplier sells packs, the shop counts litres."""
+    po = draft(store, bid, "milk")["order"]
+    po["lines"][0]["unit"], po["lines"][0]["quantity"] = "pack", quantity
+    po = supply_chain._save(store, bid, po)
+    return send_po(store, bid, po)
+
+
+def test_603_milk_on_order_in_packs_is_not_nothing(dairy_shop) -> None:
+    """#603: 2 pack of milk on its way for a shop counting litres is kept apart, never
+    counted as nothing; a reorder asks before drafting a second order, and drafts on yes."""
+    store, bid = dairy_shop
+    sent = pack_po(store, bid)
+    assert sent["status"] == "sent"
+    coming = supply_coming.on_order(store, "alice", bid, "Milk", "litre")
+    assert coming["quantity"] == 0
+    assert [(row["quantity"], row["unit"]) for row in coming["other"]] == [(2, "pack")]
+    again = draft(store, bid, "milk")
+    assert again["status"] == "on_order_units", again
+    assert again["other"][0]["unit"] == "pack" and "order" not in again
+    assert [o["status"] for o in supply_chain.orders(store, "alice", bid)] == ["sent"]
+    # A generic reorder does not lead with the milk either: sugar still runs out.
+    generic = draft(store, bid)
+    assert generic["status"] == "drafted" and generic["order"]["reason"]["item"] == "Sugar"
+    # The owner's yes drafts it.
+    yes = asyncio.run(
+        supply_chain.draft_reorder(
+            store,
+            "alice",
+            bid,
+            "milk",
+            None,
+            ForecastService(offline()),
+            SupplierGenerator(offline()),
+            DEMO_OWNER_UID,
+            anyway=True,
+        )
+    )
+    assert yes["status"] == "drafted" and yes["order"]["reason"]["item"] == "Milk"
+
+
+def test_603_the_coach_asks_before_ordering_more_in_another_unit(dairy_shop) -> None:
+    """#603: the coach's draft_reorder says 2 pack is on order and asks, with no new draft."""
+    from app import supply_tools
+
+    store, bid = dairy_shop
+    pack_po(store, bid)
+    answer = asyncio.run(supply_tools.draft_reorder("milk"))
+    assert answer["status"] == "on_order_other_unit"
+    assert answer["on_order"][0]["quantity"] == 2 and answer["on_order"][0]["unit"] == "pack"
+    assert "anyway=true" in answer["instruction"]
+    assert [o["status"] for o in supply_chain.orders(store, "alice", bid)] == ["sent"]
+
+
+def test_603_the_runs_out_rule_is_the_upper_bound_passing_the_stock() -> None:
+    """#603: stock 28 against a forecast summing to exactly 28 does not run out (Grow reads
+    this, so it cannot say "runs out" when Today says nothing)."""
+    today = date(2026, 11, 2)
+    rows = [
+        {"item": "Sugar", "date": (today + timedelta(days=i)).isoformat(), "quantity": 4}
+        for i in range(1, 8)
+    ]
+    product = {"name": "Sugar", "stock": 28, "unit": "kg"}
+    assert (
+        supply_chain.need_from_forecast(product, {"predictions": rows}, "Sugar", today)["runs_out"]
+        == ""
+    )
+    rows[-1]["upper"] = 5
+    assert (
+        supply_chain.need_from_forecast(product, {"predictions": rows}, "Sugar", today)["runs_out"]
+        == rows[-1]["date"]
+    )

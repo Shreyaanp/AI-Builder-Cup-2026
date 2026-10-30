@@ -39,6 +39,14 @@ const en = {
       : `${quantity} ${unit} ${item} is already on order. No new order needed.`,
   onOrderLine: (quantity: string, unit: string, day: string) =>
     day ? `${quantity} ${unit} on order, arriving ${day}` : `${quantity} ${unit} on order`,
+  // On order in a unit that does not compare with the stock (2 pack, litres): ask first (#603).
+  unitsAsk: (amounts: string, item: string, day: string) =>
+    `${amounts} ${item} is already on order${day ? `, arriving ${day}` : ''}. The app can’t tell if that is enough. Order more anyway?`,
+  orderMore: 'Order more',
+  notNow: 'Not now',
+  // Grow and Today lead with one need; the rest still to order.
+  moreRunOut: (n: number) => (n === 1 ? '1 more item runs out' : `${n} more items run out`),
+  reorderPrompt: (item: string) => `reorder ${item}`,
 }
 
 export type OrderChangeCopy = typeof en
@@ -74,6 +82,12 @@ const hi: OrderChangeCopy = {
       : `${quantity} ${unit} ${item} पहले से ऑर्डर पर है। नया ऑर्डर नहीं चाहिए।`,
   onOrderLine: (quantity, unit, day) =>
     day ? `${quantity} ${unit} ऑर्डर पर, ${day} को आएगा` : `${quantity} ${unit} ऑर्डर पर`,
+  unitsAsk: (amounts, item, day) =>
+    `${amounts} ${item} पहले से ऑर्डर पर है${day ? `, ${day} को आएगा` : ''}। ऐप नहीं बता सकता कि यह काफ़ी है या नहीं। फिर भी और मँगाएँ?`,
+  orderMore: 'और मँगाएँ',
+  notNow: 'अभी नहीं',
+  moreRunOut: (n) => (n === 1 ? '1 और चीज़ खत्म हो रही है' : `${n} और चीज़ें खत्म हो रही हैं`),
+  reorderPrompt: (item) => `${item} फिर से मँगाएँ`,
 }
 
 const tables: Record<string, OrderChangeCopy> = { en, hi }
