@@ -8,7 +8,8 @@ import { useCopy } from '../v1/strings'
 import { useWorkspace } from '../v1/workspaceContext'
 import { useSourcingCopy } from '../sourcing/copy'
 import { Sheet } from '../v1/Sheet'
-import { dayLabel } from '../supply/supplyData'
+import { dayLabel, useSupply } from '../supply/supplyData'
+import { useOrderChangeCopy } from '../supply/orderChangeCopy'
 
 type Forecast = components['schemas']['Forecast']
 const LOW_STOCK = 5
@@ -19,7 +20,10 @@ export function PrepPlanTile() {
   const demo = Boolean(readOnlyMessage)
   const t = useCopy()
   const s = useSourcingCopy()
+  const c = useOrderChangeCopy()
   const locale = useLocale()
+  // The supply needs are the one source for "runs out" and "on order", same as Today.
+  const { data: supply } = useSupply(true)
   const [loaded, setLoaded] = useState<{
     id: string
     revision: number
@@ -74,6 +78,10 @@ export function PrepPlanTile() {
     return days.length === 0 && product.stock <= LOW_STOCK ? [{ name: product.name, day: '' }] : []
   })
   const first = low[0]
+  const need =
+    first && supply?.needs?.find((n) => n.item.toLowerCase() === first.name.toLowerCase())
+  const covered = need?.on_order ? need : null
+  const unit = first ? (products.find((p) => p.name === first.name)?.unit ?? '') : ''
   return (
     <>
       <Tile
@@ -170,17 +178,34 @@ export function PrepPlanTile() {
         <Tile
           icon={<PackageSearch size={20} />}
           label={
-            first.day
-              ? s.runsOut(first.name, first.day)
-              : s.runningLow(
-                  low
-                    .map((item) => item.name)
-                    .slice(0, 3)
-                    .join(', '),
-                )
+            need?.runs_out
+              ? s.runsOut(first.name, dayLabel(need.runs_out, locale))
+              : first.day
+                ? s.runsOut(first.name, first.day)
+                : s.runningLow(
+                    low
+                      .map((item) => item.name)
+                      .slice(0, 3)
+                      .join(', '),
+                  )
           }
-          value={s.findSuppliers}
-          onClick={() => startCoachDraft(s.lowMessage(first.name.toLowerCase()), { send: true })}
+          value={
+            covered
+              ? c.onOrderLine(
+                  number.format(covered.on_order ?? 0),
+                  unit,
+                  dayLabel(covered.arrives ?? '', locale),
+                )
+              : s.findSuppliers
+          }
+          onClick={() =>
+            startCoachDraft(
+              covered
+                ? `reorder ${first.name.toLowerCase()}`
+                : s.lowMessage(first.name.toLowerCase()),
+              { send: true },
+            )
+          }
         />
       )}
     </>

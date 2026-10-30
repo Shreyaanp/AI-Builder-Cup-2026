@@ -108,6 +108,26 @@ for (const size of WIDTHS) {
     // #597: with 24 l on its way, another reorder drafts nothing and says why.
     await expect(today).toContainText(/24 l on order/)
     await page.getByRole('button', { name: 'Grow', exact: true }).click()
+    // Grow agrees with Today: milk is covered, so no supplier search is offered for it.
+    const runsOut = page.getByRole('button', { name: /^Milk runs out/ })
+    await expect(runsOut).toContainText(/24 l on order, arriving/)
+    await expect(runsOut).not.toContainText('Find suppliers')
+
+    // An uncovered item (nothing on order) still shows the need and offers suppliers.
+    await page.route(/\/businesses\/[^/]+\/supply$/, async (route) => {
+      const body = await (await route.fetch()).json()
+      for (const need of body.needs ?? []) {
+        delete need.on_order
+        delete need.arrives
+      }
+      await route.fulfill({ json: body })
+    })
+    await page.getByRole('button', { name: 'Coach', exact: true }).click()
+    await page.getByRole('button', { name: 'Grow', exact: true }).click()
+    await expect(page.getByRole('button', { name: /^Milk runs out/ })).toContainText(
+      'Find suppliers',
+    )
+    await page.unroute(/\/businesses\/[^/]+\/supply$/)
     await page.getByRole('button', { name: /^Purchase orders/ }).click()
     const sheet = page.getByRole('dialog', { name: 'Purchase orders', exact: true })
     const list = sheet.getByRole('list', { name: 'Purchase orders' })
