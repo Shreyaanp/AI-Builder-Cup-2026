@@ -50,6 +50,8 @@ LIMITS: dict[str, tuple[tuple[int, int], ...]] = {
     # The Prep plan tile loads with My shop; repeats are answered from the forecast cache.
     "forecast": ((120, 3_600), (1_000, 86_400)),
     "owner:read": ((120, 3_600), (1_000, 86_400)),
+    # The Supply screen reaches the forecast (cached 30 min); owners open it often.
+    "supply:read": ((300, 3_600), (3_000, 86_400)),
     # Morning brief wording: one Gemini call per shop per day at most, only on a cache miss.
     "brief": ((30, 3_600), (200, 86_400)),
     "owner:write": ((30, 60), (200, 86_400)),
@@ -114,6 +116,8 @@ PAID_OWNER_ACTIONS = frozenset(
         # Today, rescue suggestions and the brief reach the paid forecast model (AI.FORECAST),
         # and analytics reads BigQuery. A normal owner is never refused; loops are bounded.
         "owner:read",
+        # Supply overview: forecast provider on a cache miss.
+        "supply:read",
         # Every upload is moderated with paid Vision before it is saved.
         "gallery",
     }
