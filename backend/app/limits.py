@@ -42,7 +42,7 @@ LIMITS: dict[str, tuple[tuple[int, int], ...]] = {
     "voice": ((30, 600), (300, 86_400)),
     "voice:resume": ((90, 600), (600, 86_400)),
     "photo": ((10, 60), (60, 86_400)),
-    # Shop gallery uploads (moderated, no AI extraction).
+    # Shop gallery uploads (Vision-moderated, no AI extraction).
     "gallery": ((20, 60), (100, 86_400)),
     "import": ((10, 3_600), (30, 86_400)),
     # Shop icon from a photo or the gallery (moderated, no AI), and AI generations per shop.
@@ -102,10 +102,13 @@ PAID_OWNER_ACTIONS = frozenset(
         "playbook",
         "playbook:regenerate",
         "reverse",
-        # Model-backed or moderated: forecast provider, proposal extraction, icon upload moderation.
+        # Model-backed or moderated: forecast provider, proposal extraction, icon and gallery
+        # upload moderation.
         "forecast",
         "proposal",
         "icon",
+        # Every upload is moderated with paid Vision before it is saved.
+        "gallery",
     }
 )
 

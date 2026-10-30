@@ -241,12 +241,13 @@ OUTAGE_MODE: dict[str, Literal["capped", "open", "closed"]] = {
         (
             "coach", "voice", "voice:resume", "tts", "photo", "import", "recap", "playbook",
             "playbook:regenerate", "reverse", "forecast", "proposal", "icon",
+            "gallery",
         ),
         "capped",
     ),
     **dict.fromkeys(
         (
-            "owner:read", "owner:write", "rescue:write", "playbook:edit", "gallery",
+            "owner:read", "owner:write", "rescue:write", "playbook:edit",
             "thread:owner", "customer:erase", "me", "consent",
         ),
         "open",
