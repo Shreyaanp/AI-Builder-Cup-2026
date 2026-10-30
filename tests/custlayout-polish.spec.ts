@@ -1,6 +1,6 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
 
-// Customer phone polish (29 Oct): OB-71 (#381), OB-148 (#456), OB-104 (#404), OB-145 (#453).
+// Customer phone polish (29 Oct): OB-71 (#381), OB-148 (#456), OB-104 (#404), OB-145 (#453), OB-215 (#576), OB-216 (#577).
 // Each check runs at the three phone widths.
 const WIDTHS = [
   { width: 360, height: 800 },
@@ -179,6 +179,55 @@ for (const size of WIDTHS) {
       const fill = await card.evaluate((el) => getComputedStyle(el).backgroundColor)
       if (appearance === 'dark') expect(chroma(fill), fill).toBeLessThan(24)
       // Light keeps the soft coral card while a streak runs.
+      else expect(fill).toBe('rgb(255, 218, 211)')
+    }
+  })
+
+  test(`OB-216 (#577): ${size.width}px remembered budget chip shows the area's currency`, async ({
+    page,
+  }) => {
+    await page.route('**/api/v1/customer/me', async (route) => {
+      const response = await route.fetch()
+      const me = await response.json()
+      me.signed_in = true
+      me.profile = {
+        follows: [],
+        searches: [],
+        ...me.profile,
+        preferences: { vegetarian: false, halal: false, budget: 100, language: '' },
+      }
+      await route.fulfill({ response, json: me })
+    })
+    await customer(page, size, { place: { lat: 1.2847, lng: 103.832, label: 'Tiong Bahru' } })
+    await page.goto('/explore/saved', { waitUntil: 'domcontentloaded' })
+    const sheet = await profileSheet(page)
+    await expect(sheet.getByText('Budget under S$100')).toBeVisible()
+    await page.evaluate(() =>
+      localStorage.setItem(
+        'chalkboard.discover.filters',
+        JSON.stringify({ place: { lat: 12.9784, lng: 77.6408, label: 'Indiranagar' } }),
+      ),
+    )
+    await page.reload({ waitUntil: 'domcontentloaded' })
+    await expect((await profileSheet(page)).getByText('Budget under ₹100')).toBeVisible()
+  })
+
+  test(`OB-215 (#576): ${size.width}px Rescued card stays calm in dark`, async ({ page }) => {
+    for (const appearance of ['dark', 'light'] as const) {
+      await customer(page, size, {
+        appearance,
+        place: { lat: 1.2847, lng: 103.832, label: 'Tiong Bahru' },
+      })
+      await page.goto('/explore/passport', { waitUntil: 'domcontentloaded' })
+      const text = page.getByText('No rescues yet', { exact: false })
+      await expect(text).toBeVisible({ timeout: 30_000 })
+      const fill = await text.evaluate((el) => {
+        let node: HTMLElement | null = el
+        while (node && getComputedStyle(node).backgroundColor === 'rgba(0, 0, 0, 0)')
+          node = node.parentElement
+        return getComputedStyle(node!).backgroundColor
+      })
+      if (appearance === 'dark') expect(chroma(fill), fill).toBeLessThan(24)
       else expect(fill).toBe('rgb(255, 218, 211)')
     }
   })

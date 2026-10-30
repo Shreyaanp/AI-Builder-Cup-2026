@@ -126,7 +126,7 @@ export function ProfileSheet({ open, onClose }: { open: boolean; onClose: () => 
   const [confirming, setConfirming] = useState(false)
   const profile = account.profile
   const identified = account.status === 'signed-in' || account.status === 'guest'
-  const chips = preferenceChips(profile, t, locale)
+  const chips = preferenceChips(profile, t, locale, areaCurrency(askedArea()))
   async function remove(key: PreferenceKey, label: string) {
     if (!profile) return
     const reset = { vegetarian: false, halal: false, budget: null, language: '' }[key]
