@@ -166,12 +166,21 @@ const responsiveScale = Object.fromEntries(
     },
   ]),
 ) as Record<TypeRole, TypeStyle>
+// The front doors' headline keeps its full display size on phones (36px, 1.1 leading, tight tracking).
+// It is not a role, so the 13 roles stay as they are: --type-hero-size/-line/-tracking.
+const heroPhone = role(36, 40, 700, -1.6)
 const compactTypeVars = Object.fromEntries(
-  (Object.keys(compactScale) as TypeRole[]).flatMap((key) => [
-    [`--type-${key}-size`, compactScale[key].fontSize],
-    [`--type-${key}-line`, compactScale[key].lineHeight],
-    [`--type-${key}-tracking`, compactScale[key].letterSpacing],
-  ]),
+  [
+    ['--type-hero-size', heroPhone.fontSize],
+    ['--type-hero-line', heroPhone.lineHeight],
+    ['--type-hero-tracking', heroPhone.letterSpacing],
+  ].concat(
+    (Object.keys(compactScale) as TypeRole[]).flatMap((key) => [
+      [`--type-${key}-size`, compactScale[key].fontSize],
+      [`--type-${key}-line`, compactScale[key].lineHeight],
+      [`--type-${key}-tracking`, compactScale[key].letterSpacing],
+    ]),
+  ),
 )
 // Fields stay 16px on phones (OB-198): iOS zooms into smaller inputs, and the floating label (75%
 // of this) stays at 12px.
@@ -260,6 +269,8 @@ export function nivaTheme(
         styleOverrides: {
           ':root': {
             [compactQuery]: compactTypeVars,
+            // The logo's size, which the front doors' lead lines match on every window.
+            '--type-logo-size': typeScale.titleLarge.fontSize,
             '--scrollbar-thumb': roles.outlineVariant,
             '--scrollbar-thumb-hover': roles.outline,
             '--art-filter': mode === 'dark' ? 'brightness(0.72) saturate(0.8)' : 'none',
