@@ -79,6 +79,7 @@ export const en = {
   connectionOffline: 'Offline',
   connectionReconnecting: 'Reconnecting…',
   voiceFailed: 'Voice connection ended. Try again or use text.',
+  voiceOffline: 'Voice needs a connection. Type your message instead.',
   voiceRestarted: 'Voice reconnected. Please say that again.',
   voiceMicDenied:
     'Microphone access is blocked. Allow the microphone in browser settings and try again, or use text.',

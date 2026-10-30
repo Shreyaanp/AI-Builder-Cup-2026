@@ -151,7 +151,13 @@ function MessageBubble({
         sx={{ ...chatBubbleStyle(roles), ...(mine ? {} : { bgcolor: roles.surfaceContainerLow }) }}
       >
         <Typography variant="labelMedium">
-          {mine ? t.you : message.author === 'owner' ? t.shop : t.customer}
+          {message.kind === 'ai'
+            ? t.aiAnswer
+            : mine
+              ? t.you
+              : message.author === 'owner'
+                ? t.shop
+                : t.customer}
         </Typography>
         {visible || generated ? (
           <RichText content={generated ? formatMoneyText(displayed, locale) : displayed} />

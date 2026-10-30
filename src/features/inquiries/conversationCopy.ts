@@ -13,6 +13,7 @@ export const conversationEnglish = {
   you: 'You',
   customer: 'Customer',
   shop: 'Shop',
+  aiAnswer: 'AI instant answer',
   translate: 'See translation',
   original: 'See original',
   ai: 'AI translation · may be inaccurate',

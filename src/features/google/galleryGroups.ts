@@ -17,6 +17,8 @@ export const galleryGroupCopy = {
   makeCoverLabel: 'Make cover',
   move: 'Move photo {n} to another group',
   moveLabel: 'Move',
+  removed: 'Photo removed',
+  undo: 'Undo',
   usedNote:
     'The cover is the first photo customers see, on your shop page and in search. The other photos are saved with your shop.',
 }

@@ -69,6 +69,7 @@ export const zhHans: Copy = {
   connectionOffline: '离线',
   connectionReconnecting: '正在重新连接…',
   voiceFailed: '语音连接已结束。请重试或使用文字。',
+  voiceOffline: '语音需要网络连接。请改用文字输入。',
   voiceRestarted: '语音已重新连接。请再说一遍。',
   voiceMicDenied: '麦克风权限被阻止。请在浏览器设置中允许使用麦克风后重试，或使用文字。',
   voiceRateLimited: (seconds: number) => `语音请求过多。请等待 ${seconds} 秒后重试，或使用文字。`,
