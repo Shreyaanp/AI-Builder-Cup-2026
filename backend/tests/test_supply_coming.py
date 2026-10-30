@@ -396,3 +396,23 @@ def test_603_the_runs_out_rule_is_the_upper_bound_passing_the_stock() -> None:
         supply_chain.need_from_forecast(product, {"predictions": rows}, "Sugar", today)["runs_out"]
         == rows[-1]["date"]
     )
+
+
+def test_603_a_buyers_order_the_shop_must_ship_is_not_stock_coming(dairy_shop) -> None:
+    """#603: a partner's order for sugar (direction "out") takes stock away; it never counts as
+    on order, so on_order, cover and the reorder draft stay as they were."""
+    store, bid = dairy_shop
+    send_po(store, bid, draft(store, bid, "sugar", 2)["order"])
+    before = supply_coming.on_order(store, "alice", bid, "Sugar", "kg")
+    sent = next(o for o in supply_chain.orders(store, "alice", bid) if o["sent"])
+    sale = {**sent, "id": "sale-1", "number": "4700001201", "direction": "out", "version": 0}
+    sale["lines"] = [{**line, "quantity": 500} for line in sent["lines"]]
+    supply_chain._save(store, bid, sale)
+    assert len(supply_chain.all_orders(store, bid)) == 2
+    after = supply_coming.on_order(store, "alice", bid, "Sugar", "kg")
+    assert (after["quantity"], after["arrives"]) == (before["quantity"], before["arrives"])
+    assert 2 <= before["quantity"] < 500
+    again = draft(store, bid, "sugar")
+    assert again["status"] == "drafted"
+    after = supply_coming.on_order(store, "alice", bid, "Sugar", "kg")
+    assert (after["quantity"], after["arrives"]) == (before["quantity"], before["arrives"])

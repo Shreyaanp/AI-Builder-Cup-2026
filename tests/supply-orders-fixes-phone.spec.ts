@@ -361,3 +361,35 @@ for (const size of WIDTHS) {
     await noSideScroll(page)
   })
 }
+
+for (const size of WIDTHS) {
+  test(`#603 at ${size.width}: a buyer's order the shop must ship is not stock on order`, async ({
+    page,
+  }) => {
+    test.setTimeout(150_000)
+    await startShop(page, size)
+    await page.getByRole('button', { name: 'Grow', exact: true }).click()
+    await page.getByRole('button', { name: /^Purchase orders/ }).click()
+    await page.getByRole('button', { name: 'Try supply demo', exact: true }).click()
+    await expect(page.getByRole('region', { name: 'Supply chain' })).toContainText(/Milk runs out/)
+    await page.getByRole('button', { name: 'Grow', exact: true }).click()
+    const tile = page.getByRole('button', { name: /^Milk runs out/ })
+    await expect(tile).toContainText(/12 l on order, arriving/)
+
+    // The demo partner is a buyer: its order for 20 l Milk is one to ship, not stock coming in.
+    await page.getByRole('button', { name: /^Supply chain/ }).click()
+    const hub = page.getByRole('dialog', { name: 'Supply chain' })
+    await hub.getByRole('button', { name: /^Coming in/ }).click()
+    const next = hub.getByRole('button', { name: 'Partner sends next document (demo)' })
+    await next.click()
+    await expect(hub).toContainText(/Forecast · Expects 20 l Milk/)
+    await next.click()
+    await expect(hub).toContainText(/New order · Milk/)
+    await hub.getByRole('button', { name: 'Close', exact: true }).click()
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+    await expect(tile).toContainText(/12 l on order, arriving/)
+    await expect(tile).toContainText('Find suppliers')
+    await expect(page.getByText(/32 l on order/)).toHaveCount(0)
+    await noSideScroll(page)
+  })
+}

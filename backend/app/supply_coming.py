@@ -71,6 +71,8 @@ def on_order(
         row["arrives"] = earliest(row["arrives"], day)
 
     for po in pos:
+        if po.get("direction", "in") != "in":
+            continue  # a buyer's order the shop must ship is stock going out, not coming
         lines = [line for line in po["lines"] if same(line["item"])]
         if not lines and not same(str((po.get("reason") or {}).get("item", ""))):
             continue
