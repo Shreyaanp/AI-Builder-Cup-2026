@@ -1,35 +1,35 @@
 {
   "business-sign-in|1280x800|dark": {
-    "spacingOff": 5,
-    "fonts": 6
+    "spacingOff": 0,
+    "fonts": 4
   },
   "business-sign-in|1280x800|light": {
-    "spacingOff": 5,
-    "fonts": 6
+    "spacingOff": 0,
+    "fonts": 4
   },
   "business-sign-in|360x800|dark": {
-    "spacingOff": 5,
-    "fonts": 6
+    "spacingOff": 0,
+    "fonts": 3
   },
   "business-sign-in|360x800|light": {
-    "spacingOff": 5,
-    "fonts": 6
+    "spacingOff": 0,
+    "fonts": 3
   },
   "business-sign-in|390x844|dark": {
-    "spacingOff": 5,
-    "fonts": 6
+    "spacingOff": 0,
+    "fonts": 3
   },
   "business-sign-in|390x844|light": {
-    "spacingOff": 5,
-    "fonts": 6
+    "spacingOff": 0,
+    "fonts": 3
   },
   "business-sign-in|412x915|dark": {
-    "spacingOff": 5,
-    "fonts": 6
+    "spacingOff": 0,
+    "fonts": 3
   },
   "business-sign-in|412x915|light": {
-    "spacingOff": 5,
-    "fonts": 6
+    "spacingOff": 0,
+    "fonts": 3
   },
   "customer-explore|1280x800|dark": {
     "spacingOff": 5,
@@ -128,36 +128,36 @@
     "fonts": 4
   },
   "demo-shop-page|1280x800|dark": {
-    "spacingOff": 11,
+    "spacingOff": 0,
     "fonts": 4
   },
   "demo-shop-page|1280x800|light": {
-    "spacingOff": 11,
+    "spacingOff": 0,
     "fonts": 4
   },
   "demo-shop-page|360x800|dark": {
-    "spacingOff": 9,
-    "fonts": 4
+    "spacingOff": 0,
+    "fonts": 3
   },
   "demo-shop-page|360x800|light": {
-    "spacingOff": 9,
-    "fonts": 4
+    "spacingOff": 0,
+    "fonts": 3
   },
   "demo-shop-page|390x844|dark": {
-    "spacingOff": 9,
-    "fonts": 4
+    "spacingOff": 0,
+    "fonts": 3
   },
   "demo-shop-page|390x844|light": {
-    "spacingOff": 9,
-    "fonts": 4
+    "spacingOff": 0,
+    "fonts": 3
   },
   "demo-shop-page|412x915|dark": {
-    "spacingOff": 11,
-    "fonts": 4
+    "spacingOff": 0,
+    "fonts": 3
   },
   "demo-shop-page|412x915|light": {
-    "spacingOff": 11,
-    "fonts": 4
+    "spacingOff": 0,
+    "fonts": 3
   },
   "demo-shop|1280x800|dark": {
     "spacingOff": 30,
