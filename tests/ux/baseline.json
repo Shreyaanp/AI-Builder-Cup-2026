@@ -224,68 +224,68 @@
     "fonts": 4
   },
   "how-it-works|1280x800|dark": {
-    "spacingOff": 6,
-    "fonts": 6
+    "spacingOff": 0,
+    "fonts": 3
   },
   "how-it-works|1280x800|light": {
-    "spacingOff": 6,
-    "fonts": 6
+    "spacingOff": 0,
+    "fonts": 3
   },
   "how-it-works|360x800|dark": {
-    "spacingOff": 4,
-    "fonts": 5
+    "spacingOff": 0,
+    "fonts": 3
   },
   "how-it-works|360x800|light": {
-    "spacingOff": 4,
-    "fonts": 5
+    "spacingOff": 0,
+    "fonts": 3
   },
   "how-it-works|390x844|dark": {
-    "spacingOff": 4,
-    "fonts": 5
+    "spacingOff": 0,
+    "fonts": 3
   },
   "how-it-works|390x844|light": {
-    "spacingOff": 4,
-    "fonts": 5
+    "spacingOff": 0,
+    "fonts": 3
   },
   "how-it-works|412x915|dark": {
-    "spacingOff": 4,
-    "fonts": 5
+    "spacingOff": 0,
+    "fonts": 3
   },
   "how-it-works|412x915|light": {
-    "spacingOff": 4,
-    "fonts": 5
+    "spacingOff": 0,
+    "fonts": 3
   },
   "landing|1280x800|dark": {
-    "spacingOff": 29,
-    "fonts": 9
+    "spacingOff": 0,
+    "fonts": 3
   },
   "landing|1280x800|light": {
-    "spacingOff": 29,
-    "fonts": 9
+    "spacingOff": 0,
+    "fonts": 3
   },
   "landing|360x800|dark": {
-    "spacingOff": 19,
-    "fonts": 6
+    "spacingOff": 0,
+    "fonts": 3
   },
   "landing|360x800|light": {
-    "spacingOff": 19,
-    "fonts": 6
+    "spacingOff": 0,
+    "fonts": 3
   },
   "landing|390x844|dark": {
-    "spacingOff": 19,
-    "fonts": 7
+    "spacingOff": 0,
+    "fonts": 3
   },
   "landing|390x844|light": {
-    "spacingOff": 19,
-    "fonts": 7
+    "spacingOff": 0,
+    "fonts": 3
   },
   "landing|412x915|dark": {
-    "spacingOff": 27,
-    "fonts": 8
+    "spacingOff": 0,
+    "fonts": 3
   },
   "landing|412x915|light": {
-    "spacingOff": 27,
-    "fonts": 8
+    "spacingOff": 0,
+    "fonts": 3
   },
   "passport|1280x800|dark": {
     "spacingOff": 4,

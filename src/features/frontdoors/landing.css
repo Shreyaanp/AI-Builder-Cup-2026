@@ -78,7 +78,13 @@
 .lp-intro {
   max-width: 34rem;
   color: var(--muted);
-  font-size: clamp(1.05rem, 1.6vw, 1.25rem) !important;
+  /* The logo's size (the theme's titleLarge); phones use the body size (below). */
+  font-size: 1.375rem !important;
+}
+/* Buttons and the app mock-up use the body size, so the first view has three text sizes. */
+.lp .MuiButton-root.MuiButton-root {
+  font-size: var(--type-bodyMedium-size, 1rem);
+  line-height: var(--type-bodyMedium-line, 1.5rem);
 }
 .lp-cta {
   display: flex;
@@ -103,10 +109,22 @@
   display: grid;
   grid-template-columns: 1.15fr 0.85fr;
   align-items: center;
-  gap: clamp(24px, 4vw, 64px);
-  padding: clamp(32px, 7vw, 96px) clamp(16px, 4vw, 48px) clamp(48px, 8vw, 120px);
+  gap: 24px;
+  padding: 32px 16px 48px;
   max-width: 1240px;
   margin: 0 auto;
+}
+@media (min-width: 600px) {
+  .lp-hero {
+    gap: 32px;
+    padding: 48px 24px 64px;
+  }
+}
+@media (min-width: 900px) {
+  .lp-hero {
+    gap: 48px;
+    padding: 88px 48px 104px;
+  }
 }
 @media (max-width: 899px) {
   .lp-hero {
@@ -174,7 +192,7 @@
   aspect-ratio: 9 / 18.5;
   border-radius: 44px;
   background: #111;
-  padding: 10px;
+  padding: 8px;
   box-shadow:
     0 40px 80px -30px rgb(0 0 0 / 0.45),
     0 0 0 1px rgb(255 255 255 / 0.06) inset;
@@ -203,7 +221,7 @@
   padding: 52px 16px 16px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   opacity: 0;
   transform: translateY(24px) scale(0.98);
   transition:
@@ -216,13 +234,13 @@
 }
 .lp-app-bar {
   font-weight: 600;
-  font-size: 1.05rem;
+  font-size: var(--type-bodyMedium-size, 1rem);
 }
 .lp-bubble {
   max-width: 88%;
-  padding: 10px 14px;
+  padding: 8px 12px;
   border-radius: 20px;
-  font-size: 0.92rem;
+  font-size: var(--type-bodyMedium-size, 1rem);
   line-height: 1.35;
 }
 .lp-bubble.me {
@@ -269,7 +287,7 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
-  padding: 14px;
+  padding: 12px;
   border-radius: 20px;
   background: var(--surface-low);
   border: 1px solid var(--outline);
@@ -279,7 +297,7 @@
 }
 .lp-review strong {
   font-weight: 500;
-  font-size: 1.05rem;
+  font-size: var(--type-bodyMedium-size, 1rem);
 }
 .lp-review em {
   font-style: normal;
@@ -287,7 +305,7 @@
 }
 .lp-confirm {
   margin-top: 8px;
-  padding: 10px;
+  padding: 12px;
   border-radius: 999px;
   text-align: center;
   background: var(--primary);
@@ -296,19 +314,19 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
 }
 .lp-float {
   position: absolute;
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 14px;
+  padding: 8px 12px;
   border-radius: 16px;
   background: var(--surface);
   border: 1px solid var(--outline);
   box-shadow: 0 16px 32px -18px rgb(0 0 0 / 0.35);
-  font-size: 0.9rem;
+  font-size: var(--type-bodyMedium-size, 1rem);
   font-weight: 500;
   animation: lp-float 6s ease-in-out infinite alternate;
 }
@@ -925,8 +943,8 @@
     flex-shrink: 0;
   }
   .lp-title {
-    font-size: clamp(2rem, 1rem + 5vw, 2.5rem) !important;
-    line-height: 1.08 !important;
+    font-size: var(--type-displaySmall-size, 2.25rem) !important;
+    line-height: var(--type-displaySmall-line, 2.75rem) !important;
   }
   .lp-h2,
   .lp-final-title {
@@ -936,8 +954,8 @@
   /* The phone body size (OB-198), so the intro adds no extra type size. */
   .lp-intro,
   .lp .MuiTypography-bodyLarge {
-    font-size: 0.9375rem !important;
-    line-height: 1.5;
+    font-size: var(--type-bodyLarge-size, 1rem) !important;
+    line-height: var(--type-bodyLarge-line, 1.5rem);
   }
   .lp .MuiTypography-titleLarge,
   .lp .MuiTypography-headlineSmall {
