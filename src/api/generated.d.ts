@@ -407,6 +407,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/businesses/{business_id}/gallery/{photo_id}/kind": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Move Gallery Photo
+         * @description Move a photo to another group (shop front, inside, menu, product, other). Owner-only.
+         */
+        post: operations["move_gallery_photo_api_v1_businesses__business_id__gallery__photo_id__kind_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/businesses/{business_id}/gallery/{photo_id}.jpg": {
         parameters: {
             query?: never;
@@ -5152,6 +5172,11 @@ export interface components {
              */
             saved: string[];
         };
+        /** PhotoKind */
+        PhotoKind: {
+            /** Kind */
+            kind: string;
+        };
         /** Pick */
         Pick: {
             /** Id */
@@ -7820,6 +7845,44 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    move_gallery_photo_api_v1_businesses__business_id__gallery__photo_id__kind_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+                photo_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PhotoKind"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {

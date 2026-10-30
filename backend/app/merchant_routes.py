@@ -667,7 +667,7 @@ async def add_gallery_photo(
     (shop front, inside, menu, product, other) is what the Photos sheet groups by."""
     if kind not in GALLERY_KINDS:
         raise HTTPException(422, "Unknown photo kind.")
-    uid, gallery, kinds = await owned_gallery_kinds(request, business_id)
+    uid, gallery, _ = await owned_gallery_kinds(request, business_id)
     await enforce_limits(request, [("gallery", uid)])
     if len(gallery) >= GALLERY_LIMIT:
         raise HTTPException(409, "GALLERY_FULL")
@@ -690,28 +690,34 @@ async def add_gallery_photo(
         buffer.clear()
     photo_id = str(uuid4())
     await anyio.to_thread.run_sync(pipeline.save_gallery_sync, business_id, photo_id, image)
-    saved = await anyio.to_thread.run_sync(
-        store(request).set_gallery,
-        uid,
-        business_id,
-        [*gallery, photo_id],
-        {**kinds, photo_id: kind},
-    )
+
+    def append(photos: list[str], kinds: dict[str, str]) -> tuple[list[str], dict[str, str]]:
+        if len(photos) >= GALLERY_LIMIT:
+            raise HTTPException(409, "GALLERY_FULL")
+        return [*photos, photo_id], {**kinds, photo_id: kind}
+
+    try:
+        saved = await anyio.to_thread.run_sync(
+            store(request).edit_gallery, uid, business_id, append
+        )
+    except HTTPException:
+        await anyio.to_thread.run_sync(pipeline.delete_gallery_sync, business_id, photo_id)
+        raise
     return {"gallery": saved, "photo_id": photo_id, "kind": kind}
 
 
 @router.delete("/businesses/{business_id}/gallery/{photo_id}")
 async def remove_gallery_photo(business_id: str, photo_id: str, request: Request) -> dict[str, Any]:
-    uid, gallery, kinds = await owned_gallery_kinds(request, business_id)
+    uid, gallery = await owned_gallery(request, business_id)
     if photo_id not in gallery:
         raise HTTPException(404, "Photo not found.")
-    saved = await anyio.to_thread.run_sync(
-        store(request).set_gallery,
-        uid,
-        business_id,
-        [p for p in gallery if p != photo_id],
-        {k: v for k, v in kinds.items() if k != photo_id},
-    )
+
+    def drop(photos: list[str], kinds: dict[str, str]) -> tuple[list[str], dict[str, str]]:
+        return [p for p in photos if p != photo_id], {
+            k: v for k, v in kinds.items() if k != photo_id
+        }
+
+    saved = await anyio.to_thread.run_sync(store(request).edit_gallery, uid, business_id, drop)
     pipeline: PhotoPipeline = request.app.state.photos
     await anyio.to_thread.run_sync(pipeline.delete_gallery_sync, business_id, photo_id)
     return {"gallery": saved}
@@ -723,13 +729,39 @@ async def make_cover_photo(business_id: str, photo_id: str, request: Request) ->
     uid, gallery = await owned_gallery(request, business_id)
     if photo_id not in gallery:
         raise HTTPException(404, "Photo not found.")
-    saved = await anyio.to_thread.run_sync(
-        store(request).set_gallery,
-        uid,
-        business_id,
-        [photo_id, *(p for p in gallery if p != photo_id)],
-    )
+
+    def to_front(photos: list[str], kinds: dict[str, str]) -> tuple[list[str], dict[str, str]]:
+        if photo_id not in photos:
+            raise HTTPException(404, "Photo not found.")
+        return [photo_id, *(p for p in photos if p != photo_id)], kinds
+
+    saved = await anyio.to_thread.run_sync(store(request).edit_gallery, uid, business_id, to_front)
     return {"gallery": saved}
+
+
+class PhotoKind(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    kind: str = Field(max_length=20)
+
+
+@router.post("/businesses/{business_id}/gallery/{photo_id}/kind")
+async def move_gallery_photo(
+    business_id: str, photo_id: str, body: PhotoKind, request: Request
+) -> dict[str, Any]:
+    """Move a photo to another group (shop front, inside, menu, product, other). Owner-only."""
+    if body.kind not in GALLERY_KINDS:
+        raise HTTPException(422, "Unknown photo kind.")
+    uid, gallery = await owned_gallery(request, business_id)
+    if photo_id not in gallery:
+        raise HTTPException(404, "Photo not found.")
+
+    def regroup(photos: list[str], kinds: dict[str, str]) -> tuple[list[str], dict[str, str]]:
+        if photo_id not in photos:
+            raise HTTPException(404, "Photo not found.")
+        return photos, {**kinds, photo_id: body.kind}
+
+    saved = await anyio.to_thread.run_sync(store(request).edit_gallery, uid, business_id, regroup)
+    return {"gallery": saved, "photo_id": photo_id, "kind": body.kind}
 
 
 def jpeg(image: bytes | None, cache: str) -> Response:

@@ -162,3 +162,55 @@ def test_upload_reaches_the_customer_page_and_cover_can_be_changed_issue_481(app
         found = client.get("/api/v1/discover", params={"lat": 1.305, "lng": 103.905}).json()
         mine = next(p for p in found["places"] if p["id"] == bid)
         assert mine["photo_url"] == f"{public}/photos/{second}.jpg"
+
+
+def test_move_photo_to_another_group_is_owner_scoped_issue_586(app) -> None:
+    """OB-219 / #586: a photo saved under the wrong group can be moved without re-uploading."""
+    with TestClient(app) as client:
+        join(client)
+        bid = shop(client)
+        photo = add(client, bid, located_jpeg()).json()["photo_id"]
+        path = f"/api/v1/businesses/{bid}/gallery/{photo}/kind"
+        moved = client.post(path, json={"kind": "menu"})
+        assert moved.status_code == 200 and moved.json()["kind"] == "menu"
+        assert client.post(path, json={"kind": "selfie"}).status_code == 422
+        missing = f"/api/v1/businesses/{bid}/gallery/{'0' * 36}/kind"
+        assert client.post(missing, json={"kind": "menu"}).status_code == 404
+        mine = next(b for b in client.get("/api/v1/businesses").json() if b["id"] == bid)
+        assert mine["photo_kinds"] == {photo: "menu"} and mine["gallery"] == [photo]
+        # Someone else's shop: not found, and the kind is untouched.
+        owner = dict(client.cookies)
+        client.cookies.clear()
+        join(client)
+        assert client.post(path, json={"kind": "inside"}).status_code == 404
+        client.cookies.clear()
+        client.cookies.update(owner)
+        mine = next(b for b in client.get("/api/v1/businesses").json() if b["id"] == bid)
+        assert mine["photo_kinds"] == {photo: "menu"}
+
+
+def test_parallel_uploads_keep_every_kind_issue_586(app, monkeypatch) -> None:
+    """OB-219 / #586: two uploads that both read the gallery before either saved lose nothing."""
+    from app import merchant_routes
+
+    real = merchant_routes.owned_gallery_kinds
+
+    async def stale(request, business_id):
+        uid, _, _ = await real(request, business_id)
+        return uid, [], {}  # what a parallel upload saw before the other one saved
+
+    with TestClient(app) as client:
+        join(client)
+        bid = shop(client)
+        monkeypatch.setattr(merchant_routes, "owned_gallery_kinds", stale)
+        ids = [
+            client.post(
+                f"/api/v1/businesses/{bid}/gallery?kind={kind}",
+                content=located_jpeg(),
+                headers={"content-type": "image/jpeg"},
+            ).json()["photo_id"]
+            for kind in ("storefront", "menu")
+        ]
+        mine = next(b for b in client.get("/api/v1/businesses").json() if b["id"] == bid)
+        assert mine["gallery"] == ids
+        assert mine["photo_kinds"] == {ids[0]: "storefront", ids[1]: "menu"}

@@ -101,6 +101,21 @@ export function useGallery() {
     }
   }
 
+  /** Put a photo in another group (shop front, inside, menu, products, other). */
+  async function moveTo(id: string, kind: GalleryKind) {
+    if (!shop) return
+    try {
+      await ws.api(`/businesses/${encodeURIComponent(shop.id)}/gallery/${id}/kind`, {
+        method: 'POST',
+        body: JSON.stringify({ kind }),
+        headers: { 'Content-Type': 'application/json' },
+      })
+      await ws.reload()
+    } catch {
+      setFailed(true)
+    }
+  }
+
   return {
     ids,
     kinds,
@@ -110,6 +125,7 @@ export function useGallery() {
     add,
     remove,
     makeCover,
+    moveTo,
     full: ids.length >= GALLERY_LIMIT,
   }
 }

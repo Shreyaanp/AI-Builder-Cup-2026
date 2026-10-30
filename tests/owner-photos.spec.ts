@@ -57,6 +57,30 @@ for (const width of [360, 390, 412]) {
   })
 }
 
+for (const width of [360, 390, 412]) {
+  test(`#586 OB-219 a photo can be moved to another group (${width}px)`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 800 })
+    const sheet = await openPhotos(page)
+    const picker = sheet.locator('input[type=file]:not([capture])')
+    await picker.setInputFiles(fixture)
+    const front = sheet.getByRole('region', { name: 'Shop front' })
+    await expect(front.getByRole('heading', { name: 'Shop front · 1' })).toBeVisible(slow)
+
+    const move = front.getByRole('button', { name: 'Move photo 1 to another group' })
+    expect((await move.boundingBox())!.height).toBeGreaterThanOrEqual(48)
+    await move.click()
+    const menuItem = page.getByRole('menuitem', { name: 'Menu', exact: true })
+    // The menu is still scaling in, so check the target's own height, not its animated box.
+    await expect(menuItem).toHaveCSS('min-height', '48px')
+    await menuItem.click()
+
+    const menu = sheet.getByRole('region', { name: 'Menu' })
+    await expect(menu.getByRole('heading', { name: 'Menu · 1' })).toBeVisible(slow)
+    await expect(sheet.getByRole('region', { name: 'Shop front' })).toHaveCount(0)
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  })
+}
+
 test('#374 replacing the shop icon never draws the old picture while the new one loads', async ({
   page,
 }) => {
