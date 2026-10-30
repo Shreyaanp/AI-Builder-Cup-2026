@@ -349,3 +349,29 @@ def test_ob91_store_outage_caps_brief_route_but_not_cached_reads(app: FastAPI) -
         app.state.merchant.feature_docs.put("brief", bid, bid, time.time(), {"key": "stale"})
         refused = client.get(path)
         assert refused.status_code == 429 and "retry-after" in refused.headers
+
+
+@pytest.mark.parametrize("suffix", ["today", "brief", "rescue/suggestions"])
+def test_ob91_store_outage_caps_forecast_routes_on_owner_read(app: FastAPI, suffix: str) -> None:
+    with TestClient(app) as client:
+        join(client)
+        uid = app.state.services.identity.local_principal(
+            client.cookies.get("ogoogle_preview_session")
+        ).uid
+        bid = create_shop(app.state.merchant, uid)
+        path = f"/api/v1/businesses/{bid}/{suffix}"
+        failing = Mock(spec=RateLimiter)
+        failing.take.side_effect = RuntimeError("Store unavailable")
+        app.state.rate_limiter = failing
+        now = time.time()
+        # A normal owner is served while the store is down.
+        assert client.get(path).status_code == 200
+        maximum, seconds = LIMITS["owner:read"][0]
+        for _ in range(maximum):
+            fallback_limiter(app.state).take([Bucket("owner:read", uid, maximum, seconds)], now)
+        # A loop past the per-instance cap is refused before any forecast call.
+        calls = Mock(side_effect=AssertionError("forecast must not run past the cap"))
+        app.state.forecaster.forecast = calls
+        refused = client.get(path)
+        assert refused.status_code == 429 and "retry-after" in refused.headers
+        calls.assert_not_called()

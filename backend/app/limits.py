@@ -111,6 +111,9 @@ PAID_OWNER_ACTIONS = frozenset(
         "icon",
         # The morning brief's Gemini wording (cache misses only).
         "brief",
+        # Today, rescue suggestions and the brief reach the paid forecast model (AI.FORECAST),
+        # and analytics reads BigQuery. A normal owner is never refused; loops are bounded.
+        "owner:read",
         # Every upload is moderated with paid Vision before it is saved.
         "gallery",
     }
