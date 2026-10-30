@@ -439,8 +439,8 @@ export function nivaTheme(
             height: layout.target,
             padding: '16px 8px',
             '& .MuiSwitch-switchBase': {
-              padding: 12,
-              '&.Mui-checked': { transform: 'translateX(12px)' },
+              padding: '12px 8px',
+              '&.Mui-checked': { transform: 'translateX(20px)' },
             },
             '& .MuiSwitch-thumb': { width: 24, height: 24 },
           },

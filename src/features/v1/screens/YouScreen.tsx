@@ -181,16 +181,21 @@ export function YouScreen() {
               select
               fullWidth
               // The visible text is a div (the native input is hidden), so it follows the body size
-              // instead of adding the 16px field size; the label shrinks to 12px (80% of 15).
+              // instead of adding the 16px field size; the label shrinks on MUI's 0.75 notch scale.
               sx={{
                 '& .MuiSelect-select': {
                   typography: 'bodyLarge',
-                  lineHeight: '1.5rem',
                   py: 4,
                   pl: 4,
                 },
                 '& .MuiInputLabel-root': { typography: 'bodyLarge' },
-                '& .MuiInputLabel-shrink': { transform: 'translate(14px, -9px) scale(0.8)' },
+                // Label inset matches the 16px text; MUI's 0.75 scale is what sizes the notch.
+                '& .MuiInputLabel-outlined:not(.MuiInputLabel-shrink)': {
+                  transform: (theme) => `translate(${theme.spacing(4)}, ${theme.spacing(4)})`,
+                },
+                '& .MuiInputLabel-shrink': {
+                  transform: (theme) => `translate(${theme.spacing(4)}, -9px) scale(0.75)`,
+                },
               }}
               label={t.language}
               value={preferences.language}

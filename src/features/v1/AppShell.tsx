@@ -239,6 +239,8 @@ export function AppShell() {
                   top: 80,
                   maxHeight: 'calc(100dvh - 96px)',
                   overflowY: 'auto',
+                  // Beside the coach the page keeps one top size (headlineSmall), not a fourth.
+                  '& .MuiTypography-titleLarge': { typography: 'headlineSmall' },
                 }}
               >
                 <Suspense fallback={null}>
@@ -401,7 +403,7 @@ function TopBar() {
   // Settings live on the You tab now; the top bar keeps the shop switcher, new chat and "+".
   return (
     <AppHeader sx={{ gap: 1, justifyContent: 'flex-start' }}>
-      <BrandLogo wordmark="wide" href="/" />
+      <BrandLogo wordmark="wide" href="/" large={ws.destination === 'coach'} />
       <Button
         onClick={(event) => setShopMenu(event.currentTarget)}
         endIcon={<ChevronDown size={18} />}
@@ -417,7 +419,7 @@ function TopBar() {
       >
         {/* One line with an ellipsis: a long shop name must not grow the bar (OB-117). */}
         <Typography
-          variant="titleLarge"
+          variant={ws.destination === 'coach' ? 'headlineSmall' : 'titleLarge'}
           component="span"
           noWrap
           title={ws.active?.fields.name ?? t.appName}
