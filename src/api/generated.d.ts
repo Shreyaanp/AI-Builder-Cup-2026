@@ -2333,6 +2333,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/businesses/{business_id}/orders/{order_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel Order
+         * @description Cancel a sent order: the supplier gets the cancellation at once.
+         */
+        post: operations["cancel_order_api_v1_businesses__business_id__orders__order_id__cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/businesses/{business_id}/orders/{order_id}/change": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Change Order
+         * @description New quantities on a sent order: the supplier is told what changed.
+         */
+        post: operations["change_order_api_v1_businesses__business_id__orders__order_id__change_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/businesses/{business_id}/orders/{order_id}/messages": {
         parameters: {
             query?: never;
@@ -3484,7 +3524,7 @@ export interface components {
             /** Version */
             version: number;
             /** Shipped */
-            shipped?: components["schemas"]["LineQuantity"][];
+            shipped?: components["schemas"]["app__supply_routes__LineQuantity"][];
         };
         /** AvailabilityRequest */
         AvailabilityRequest: {
@@ -4786,13 +4826,6 @@ export interface components {
             /** Requirements */
             requirements: components["schemas"]["Requirement"][];
         };
-        /** LineQuantity */
-        LineQuantity: {
-            /** Line */
-            line: number;
-            /** Quantity */
-            quantity: number;
-        };
         /** LocalSignIn */
         LocalSignIn: {
             /**
@@ -4996,6 +5029,13 @@ export interface components {
             fit: number;
             /** Demo */
             demo: boolean;
+        };
+        /** OrderChange */
+        OrderChange: {
+            /** Version */
+            version: number;
+            /** Lines */
+            lines: components["schemas"]["app__sourcing_routes__LineQuantity"][];
         };
         /** OrderMessage */
         OrderMessage: {
@@ -5696,7 +5736,7 @@ export interface components {
             /** Version */
             version: number;
             /** Received */
-            received?: components["schemas"]["LineQuantity"][];
+            received?: components["schemas"]["app__supply_routes__LineQuantity"][];
             /**
              * Note
              * @default
@@ -7063,6 +7103,20 @@ export interface components {
              * @enum {string}
              */
             decision: "accepted" | "edited" | "declined";
+            /** Quantity */
+            quantity: number;
+        };
+        /** LineQuantity */
+        app__sourcing_routes__LineQuantity: {
+            /** Line */
+            line: number;
+            /** Quantity */
+            quantity: number;
+        };
+        /** LineQuantity */
+        app__supply_routes__LineQuantity: {
+            /** Line */
+            line: number;
             /** Quantity */
             quantity: number;
         };
@@ -11810,6 +11864,82 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["OrderVersion"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_order_api_v1_businesses__business_id__orders__order_id__cancel_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+                order_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OrderVersion"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    change_order_api_v1_businesses__business_id__orders__order_id__change_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+                order_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OrderChange"];
             };
         };
         responses: {

@@ -494,14 +494,14 @@ async def draft_reorder(
     coming = await anyio.to_thread.run_sync(on_order, store, uid, bid, target, unit)
     if coming["draft"]:
         # One draft per need: the open one comes back (with the owner's quantity, if named).
-        po = coming["draft"]
-        if quantity and po["lines"]:
-            po["lines"][0]["quantity"] = round(float(quantity), 3)
-        await anyio.to_thread.run_sync(recheck, store, bid, po, today)
-        po = await anyio.to_thread.run_sync(_save, store, bid, po)
-        if po["auto_send_allowed"]:
-            po = await anyio.to_thread.run_sync(_send, store, bid, po, True)
-        return {"status": "drafted", "order": po, "existing": True}
+        waiting: dict[str, Any] = coming["draft"]
+        if quantity and waiting["lines"]:
+            waiting["lines"][0]["quantity"] = round(float(quantity), 3)
+        await anyio.to_thread.run_sync(recheck, store, bid, waiting, today)
+        waiting = await anyio.to_thread.run_sync(_save, store, bid, waiting)
+        if waiting["auto_send_allowed"]:
+            waiting = await anyio.to_thread.run_sync(_send, store, bid, waiting, True)
+        return {"status": "drafted", "order": waiting, "existing": True}
     if quantity:
         wanted = float(quantity)
     elif need["daily"]:
