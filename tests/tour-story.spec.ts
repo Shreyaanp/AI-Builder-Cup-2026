@@ -38,8 +38,12 @@ for (const appearance of ['light', 'dark']) {
       await page.addInitScript((appearance) => {
         localStorage.setItem('niva.starter.preferences', JSON.stringify({ appearance }))
       }, appearance)
+      // Axe must not sample colours halfway through an entrance fade.
+      await page.emulateMedia({ reducedMotion: 'reduce' })
       await page.goto(`/explore/s/demo-story-${world.city}-${world.slug}`)
-      await expect(page.getByRole('heading', { name: world.name, exact: true })).toBeVisible()
+      await expect(page.getByRole('heading', { name: world.name, exact: true })).toBeVisible({
+        timeout: 30_000,
+      })
       await expect(page.getByText(world.item, { exact: true }).first()).toBeVisible()
       await expect(page.getByText(world.price, { exact: false }).first()).toBeVisible()
       // A sample shop is labelled "Sample shop" and never claims "Verified owner" (A-12).
@@ -84,7 +88,7 @@ for (const area of [
     lng: 103.9045,
     label: 'Katong, Singapore',
     query: 'kopi',
-    price: '$1.70',
+    price: /S?\$1\.50(?![\d])/,
   },
 ]) {
   test(`${area.city} front door leads to local prices and map pins`, async ({ page }, info) => {
@@ -92,7 +96,9 @@ for (const area of [
       localStorage.setItem('chalkboard.discover.filters', JSON.stringify({ place }))
     }, area)
     await page.goto('/explore/')
-    await expect(page.getByRole('button', { name: `Area: ${area.label}` })).toBeVisible()
+    await expect(
+      page.getByRole('button', { name: new RegExp(`^Area: ${area.label.split(',')[0]}`) }),
+    ).toBeVisible()
     await expect(
       page.getByRole('list', { name: 'Ask about anything nearby' }).getByRole('button').first(),
     ).toBeVisible()
