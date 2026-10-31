@@ -557,6 +557,7 @@ async def ai_intent(request: Request, body: AskRequest) -> Intent | None:
                 client,
                 settings,
                 "search",
+                lite=True,
                 contents=PROMPT.format(
                     categories=", ".join(GENERIC["category"]),
                     language=written_language(body.language),
@@ -765,6 +766,7 @@ async def ai_intent_stream(request: Request, body: AskRequest) -> AsyncIterator[
                 client,
                 settings,
                 "search",
+                lite=True,
                 contents=PROMPT.format(
                     categories=", ".join(GENERIC["category"]),
                     language=written_language(body.language),
