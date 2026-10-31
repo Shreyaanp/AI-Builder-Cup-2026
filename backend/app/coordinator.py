@@ -817,14 +817,13 @@ def propose_business(
     """Prepare the shop's basic details (new shop, or edits to the active shop) for the owner to
     review. Nothing is saved until the owner confirms. Leave a field empty if the owner did not
     say it; for an existing shop pass name="" and only what changed. To rename the shop pass the
-    new name (1-80 characters, "rename my shop to X"). currency is the ISO 4217
-    code (SGD, JPY, MYR…) for a new shop, only when the owner states or clearly implies it.
-    weekly_hours: one record per stated weekday (day: mon/tue/wed/thu/fri/sat/sun,
-    closed: boolean, open/close: HH:MM). Overnight closing belongs to the opening day.
-    Leave it unset to preserve saved hours; an empty list returns to free-text hours.
-    profile: classify from the owner's words, menu or photos, using kind and its typed block.
-    Never infer halal certification. Set food.halal_relevant only for a known relevant region
-    and food.serves_meat only with evidence. Unknown attributes stay unset. Owner reviews it."""
+    new name (1-80 characters). currency: ISO 4217 code (SGD, JPY, MYR…) for a new shop, only
+    when the owner states or clearly implies it. weekly_hours: one record per stated weekday
+    (day: mon..sun, closed, open/close HH:MM); overnight closing belongs to the opening day;
+    unset keeps saved hours, an empty list returns to free-text hours. profile: classify from
+    the owner's words, menu or photos (kind and its typed block). Never infer halal
+    certification: food.halal_relevant only for a known relevant region, food.serves_meat only
+    with evidence. Unknown attributes stay unset."""
     return _propose_shop(
         name=name,
         category=category,
@@ -861,17 +860,15 @@ def propose_customer_facts(
 ) -> dict[str, Any]:
     """Prepare facts customers ask about for the owner to review, only as the owner states
     them; pass just the facts that changed. Private owner goals (never shown to customers):
-    focus is more_customers, less_waste, save_time or other (focus_note: their words, e.g.
-    "more office lunch orders"); regulars: who comes back, in their words; skip: the keys of
-    skippable plan questions (focus, busy_hours, regulars) the owner chose not to answer.
-    halal: yes, no, muslim_owned or not_stated.
-    vegetarian_options, locally_made (made in-house or by local makers), preorders:
-    true/false. delivery: any service name, max 40 characters; use none for no delivery,
-    own for the shop's delivery. Existing grab/foodpanda keys work
-    (delivery_note up to 80 characters, e.g. "within 3 km"). preorder_lead_time e.g. "1 day
-    ahead". payment_methods: up to 8 names, each max 40 characters, exactly as the owner says
-    (e.g. UPI, PayPay, GCash, card, cash). Known keys remain compatible. busy_hours e.g.
-    "12:00-13:30". custom_facts: answers to get_question_plan questions (key, label, value)."""
+    focus is more_customers, less_waste, save_time or other (focus_note: their words);
+    regulars: who comes back, in their words; skip: keys of plan questions (focus, busy_hours,
+    regulars) the owner chose not to answer. halal: yes, no, muslim_owned or not_stated.
+    vegetarian_options, locally_made, preorders: true/false. delivery: any service name, max 40
+    characters; none for no delivery, own for the shop's delivery (delivery_note up to 80
+    characters, e.g. "within 3 km"). preorder_lead_time e.g. "1 day ahead". payment_methods: up
+    to 8 names, each max 40 characters, exactly as the owner says (UPI, PayPay, GCash, card).
+    busy_hours e.g. "12:00-13:30". custom_facts: answers to get_question_plan questions (key,
+    label, value)."""
     ctx = current.get()
     _start_new_shop_draft()
     if not ctx or (

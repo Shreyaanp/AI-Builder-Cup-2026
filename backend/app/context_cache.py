@@ -82,6 +82,13 @@ class CachedGemini(SteadyGemini):
     _caches: dict[str, tuple[str, float]] = PrivateAttr(default_factory=dict)
     _retry_after: dict[str, float] = PrivateAttr(default_factory=dict)
     _creating: dict[str, asyncio.Task[None]] = PrivateAttr(default_factory=dict)
+    _counts: dict[str, int] = PrivateAttr(default_factory=dict)
+
+    def count(self, result: str) -> dict[str, int]:
+        """Running totals since start-up, logged with every cache decision so the hit rate
+        is one log line away."""
+        self._counts[result] = self._counts.get(result, 0) + 1
+        return {name: self._counts.get(name, 0) for name in ("hit", "miss", "skipped")}
 
     def cache_key(
         self, model: str, stable: str, tools: list[types.Tool], tool_config: types.ToolConfig | None
@@ -108,7 +115,9 @@ class CachedGemini(SteadyGemini):
         schemas = json.dumps([tool.model_dump(mode="json", exclude_none=True) for tool in tools])
         # About four characters per token; below the floor Vertex would refuse the cache.
         if (len(stable) + len(schemas)) // 4 < min_tokens(model):
-            log.info("context_cache", result="skipped", reason="below_minimum")
+            log.info(
+                "context_cache", result="skipped", reason="below_minimum", **self.count("skipped")
+            )
             return None
         key = self.cache_key(model, stable, tools, tool_config)
         now = time.monotonic()
@@ -117,9 +126,9 @@ class CachedGemini(SteadyGemini):
             self.start_create(key, model, stable, tools, tool_config)
         # Never send a cache in its last seconds: it could expire before Vertex reads it.
         if entry and entry[1] - SAFETY_MARGIN > now:
-            log.info("context_cache", result="hit", key=key)
+            log.info("context_cache", result="hit", key=key, **self.count("hit"))
             return key, entry[0]
-        log.info("context_cache", result="miss", key=key)
+        log.info("context_cache", result="miss", key=key, **self.count("miss"))
         return None
 
     def start_create(
@@ -224,6 +233,8 @@ class CachedGemini(SteadyGemini):
                 # steady wrapper for this request so it does not append that rule again.
                 async for response in Gemini.generate_content_async(self, plan, stream):
                     started = True
+                    if not response.partial and (usage := cache_usage(response)):
+                        log.info("context_cache_usage", key=key, **usage)
                     yield response
                 return
             except Exception as error:
