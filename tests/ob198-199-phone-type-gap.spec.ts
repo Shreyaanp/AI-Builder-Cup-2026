@@ -109,7 +109,7 @@ test.describe('phone', () => {
     await page.setViewportSize({ width: 390, height: 844 })
     await page.goto('/explore/', { waitUntil: 'domcontentloaded' })
     await expect(page.locator('main').getByRole('textbox').first()).toBeVisible()
-    expect(await page.evaluate(() => getComputedStyle(document.body).fontSize)).toBe('16px')
+    expect(await page.evaluate(() => getComputedStyle(document.body).fontSize)).toBe('15px')
     // A field label stays 16px, so when it floats (75%) it is still 12px. Since #554 the area field lives in the
     // sheet the Area chip opens.
     await page.getByRole('button', { name: /^Area: / }).click()
