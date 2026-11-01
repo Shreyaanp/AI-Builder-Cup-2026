@@ -106,6 +106,7 @@ import { useLanguageSwitch } from '../languageSwitch'
 import { ActionChip, MenuLinkChip, ReplyCard } from '../CoachActions'
 import { useNextStepsCopy } from '../nextStepsCopy'
 import { asCoachAction, NEEDS_TAP, type CoachAction } from '../coachAction'
+import { requestOpen } from '../openRequest'
 import type { Destination } from '../workspaceContext'
 import { GuideChips } from '../../owner-tools/CoachGuide'
 import { openOwnerFeature } from '../../owner-tools/entry'
@@ -190,6 +191,14 @@ const DESTINATIONS: Partial<Record<CoachAction['target'], Destination>> = {
   playbook: 'privacy',
   // Payments & rides opens over Grow, so Back returns there.
   payments: 'grow',
+  rider: 'grow',
+  radar: 'grow',
+  reminders: 'you',
+}
+/** Screens that open over or inside the destination tab (simplify batch 2). */
+function openInside(target: CoachAction['target']) {
+  if (target === 'radar' || target === 'rider') requestOpen(target)
+  if (target === 'payments' || target === 'rider') openOwnerFeature('payments')
 }
 const REPLY_POLL_MS = 1500
 const REPLY_WAIT_MS = 45_000
@@ -422,7 +431,7 @@ function CoachScreen({
             if (action.target === 'connect') setConnectOpen(true)
             if (sheet) setShopSheet(sheet)
             else if (DESTINATIONS[action.target]) go(DESTINATIONS[action.target]!)
-            if (action.target === 'payments') openOwnerFeature('payments')
+            openInside(action.target)
           }
         }
       }
@@ -768,7 +777,7 @@ function CoachScreen({
     else if (action.target === 'reply') return
     else if (SHEETS[action.target]) setShopSheet(SHEETS[action.target]!)
     else if (DESTINATIONS[action.target]) go(DESTINATIONS[action.target]!)
-    if (action.target === 'payments') openOwnerFeature('payments')
+    openInside(action.target)
   }
   async function sendReply(action: CoachAction): Promise<boolean> {
     if (!activeId || !action.thread_id || !action.text) return false

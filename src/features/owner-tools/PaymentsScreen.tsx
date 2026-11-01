@@ -34,6 +34,7 @@ import { useRegionCopy } from './regionCopy'
 import { railCurrency, shopRegion } from '../../region/region'
 import { formatAmount, formatPrice, shopCurrency, toMinor } from '../v1/format'
 import { AskHint } from '../v1/AskHint'
+import { clearOpen, wantsOpen } from '../v1/openRequest'
 
 /** Used unchanged by the feature screen and the coach tool's card. */
 export function PaymentCard({ payment }: { payment: PaymentLink }) {
@@ -202,6 +203,9 @@ export function PaymentsScreen() {
   const [status, setStatus] = useState('')
   const [busy, setBusy] = useState(false)
   const [submitted, setSubmitted] = useState(false)
+  // The coach's "send a rider" opens this screen with Send a rider already open.
+  const [riderOpen, setRiderOpen] = useState(() => wantsOpen('rider'))
+  useEffect(() => clearOpen('rider'), [])
   const upiField = useRef<HTMLInputElement>(null)
   const amountField = useRef<HTMLInputElement>(null)
   if (!shop)
@@ -451,6 +455,8 @@ export function PaymentsScreen() {
           </Button>
           <Box
             component="details"
+            open={riderOpen}
+            onToggle={(event) => setRiderOpen((event.currentTarget as HTMLDetailsElement).open)}
             sx={{ pt: 2, '& summary': { minHeight: 48, cursor: 'pointer', display: 'list-item' } }}
           >
             <Typography component="summary" variant="titleLarge">

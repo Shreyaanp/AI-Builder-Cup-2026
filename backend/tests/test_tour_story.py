@@ -162,7 +162,8 @@ async def test_every_feature_has_connected_records_and_truthful_forecasts(world)
 
 
 def test_ob127_demo_supplier_coach_points_to_grow_supplies(world) -> None:
-    # OB-127: the demo coach points owners to the Grow tab that contains Supplies.
+    # OB-127: the demo coach points owners to the Grow tab that holds supplies. Simplify batch 2
+    # renamed the stale "Grow → Supplies" to the tile owners see, "Grow → Purchase orders".
     store, _ = world
     uid = "public-demo-ob127"
     bid, _ = seed_workspace(store, uid, "bengaluru", DAY)
@@ -171,7 +172,8 @@ def test_ob127_demo_supplier_coach_points_to_grow_supplies(world) -> None:
     reply = public_demo_reply(ctx, "My masala chai is running low. Find suppliers.")
 
     assert reply is not None
-    assert "Grow → Supplies" in reply
+    assert "Next, open Grow → Purchase orders." in reply
+    assert "Grow → Supplies" not in reply
     assert "Shop → Supplies" not in reply
 
 
