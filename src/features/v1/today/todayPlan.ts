@@ -229,7 +229,8 @@ export function todayPlan(input: TodayInput): TodayPlan {
       kind: 'low',
       item: low.name,
       left: low.stock,
-      source: low.source ?? 'bought',
+      // Not said is never bought: an older answer without it asks, never offers Order (OB-243).
+      source: low.source ?? 'unknown',
       productId: low.product_id ?? null,
     })
   if (soldOut.length) all.push({ id: 'sold-out', kind: 'soldOut', items: soldOut })

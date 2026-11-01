@@ -94,7 +94,10 @@ def weekday_average(rows: list[dict[str, Any]], today: date) -> list[Prediction]
             ]
             # Same weekday is the weekly seasonal adjustment; extrapolate the recent level.
             baseline = mean(matching) if matching else mean(r["quantity"] for r in recent)
-            quantity = math.floor(baseline * trend ** (offset / 14) + 0.5)
+            level = baseline * trend ** (offset / 14)
+            # Whole numbers for a plan, but a slow item (0.3 kg of tea dust a day) keeps its real
+            # amount: rounded to 0 it would read as never used (OB-243).
+            quantity = math.floor(level + 0.5) or round(level, 2)
             predictions.append(Prediction(date=day, item=item, quantity=quantity))
     return predictions
 

@@ -207,9 +207,13 @@ for (const width of [360, 390, 412, 1280])
         await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1),
       ).toBe(true)
 
+      // OB-243: the tap saves at once (Cancel does not undo it), so the editor says so.
+      const note = form.getByTestId('product-source-saved')
+      await expect(note).toHaveText('')
       await buy.click()
       await expect(buy).toHaveAttribute('aria-pressed', 'true')
       await expect.poll(saved.samosa).toBe('bought')
+      await expect(note).toHaveText('Saved')
       expect(
         (await new AxeBuilder({ page }).include('[role=dialog]').withTags(['wcag2aa']).analyze())
           .violations,

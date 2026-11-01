@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { ApiError, type Api, type Proposal } from '../v1/api'
+import { isServiceShop } from '../v1/tabsCopy'
 import { useWorkspace } from '../v1/workspaceContext'
 import { useLocale } from '../../state/hooks'
 import { productName } from '../../i18n/productNames'
@@ -121,11 +122,13 @@ export type SimVariant = 'full' | 'partial' | 'substitute' | 'match' | 'price_mi
 export function usePoActions(onChange: (order: PurchaseOrder) => void) {
   const { api, activeId, notify, review } = useWorkspace()
   const s = useSupplyCopy()
+  const change = useOrderChangeCopy()
   const base = `/businesses/${encodeURIComponent(activeId ?? '')}/supply`
   const explain = useCallback(
     (cause: unknown): string => {
       const detail = cause instanceof ApiError ? cause.code : ''
       if (detail === 'RULES_BROKEN') return s.rulesBroken
+      if (detail === 'TOO_BIG') return change.tooBig
       if (detail === 'RESOLVE_FLAGS') return s.resolveFirst
       if (detail === 'RECEIVE_FIRST') return s.receiveFirst
       if (detail === 'UNREADABLE_DOCUMENT') return s.unreadable
@@ -134,7 +137,7 @@ export function usePoActions(onChange: (order: PurchaseOrder) => void) {
       if (detail === 'STALE') return s.stale
       return s.failed
     },
-    [s],
+    [s, change],
   )
   const run = useCallback(
     async (order: PurchaseOrder, path: string, body: Record<string, unknown> = {}) => {
@@ -194,6 +197,8 @@ interface ReorderResult {
    * unit does not convert to the shop's (OB-239).
    */
   days?: number | null
+  /** `check`: why nothing was drafted (`no_history`: no use of its own on record). */
+  reason?: string
   supplier_quantity?: number
   supplier_unit?: string
   arrives?: string
@@ -207,7 +212,8 @@ interface ReorderResult {
  * "Order more", which drafts again with `anyway` (#603).
  */
 export function useDraftReorder() {
-  const { api, activeId } = useWorkspace()
+  const { api, activeId, active } = useWorkspace()
+  const services = isServiceShop(active?.fields.category)
   const s = useSupplyCopy()
   const c = useOrderChangeCopy()
   const locale = useLocale()
@@ -241,22 +247,25 @@ export function useDraftReorder() {
           return {
             order: null,
             note:
-              result.days == null
-                ? c.checkUnits(
-                    quantity.format(result.supplier_quantity ?? 0),
-                    result.supplier_unit ?? '',
-                    name,
-                    result.unit ?? '',
-                  )
-                : c.checkQuantity(
-                    quantity.format(result.quantity ?? 0),
-                    result.unit ?? '',
-                    name,
-                    result.days,
-                  ),
+              result.reason === 'no_history'
+                ? c.checkUse(name)
+                : result.days == null
+                  ? c.checkUnits(
+                      quantity.format(result.supplier_quantity ?? 0),
+                      result.supplier_unit ?? '',
+                      name,
+                      result.unit ?? '',
+                    )
+                  : c.checkQuantity(
+                      quantity.format(result.quantity ?? 0),
+                      result.unit ?? '',
+                      name,
+                      result.days,
+                    ),
           }
         if (result.status === 'made') return { order: null, note: c.madeHere(name) }
-        if (result.status === 'ask_source') return { order: null, note: c.askSource(name) }
+        if (result.status === 'ask_source')
+          return { order: null, note: c.askSource(name, services) }
         const note =
           result.status === 'on_order'
             ? c.onOrder(
@@ -273,7 +282,7 @@ export function useDraftReorder() {
         return { order: null, note: s.failed }
       }
     },
-    [api, activeId, s, c, locale],
+    [api, activeId, services, s, c, locale],
   )
 }
 
