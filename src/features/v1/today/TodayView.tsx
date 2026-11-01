@@ -38,6 +38,7 @@ import { shopCurrency, toMajor } from '../format'
 import { useCopy } from '../strings'
 import { useWorkspace } from '../workspaceContext'
 import { useOnboardingCopy } from '../onboardingCopy'
+import { useSourceCopy } from './sourceCopy'
 import { useTodayCopy, type Festival } from './todayCopy'
 import type { CoachLine, Need, StepId, TodayPlan } from './todayPlan'
 import { useTodayPlan } from './useTodayPlan'
@@ -409,6 +410,7 @@ function NeedRow({
 }) {
   const t = useCopy()
   const tt = useTodayCopy()
+  const sc = useSourceCopy()
   const o = useOnboardingCopy()
   const locale = useLocale()
   const ws = useWorkspace()
@@ -481,16 +483,66 @@ function NeedRow({
     )
   } else if (need.kind === 'low') {
     icon = <PackageMinus size={20} />
-    text = tt.low(productName(need.item, locale), need.left)
-    buttons = (
-      <Button
-        variant={primary}
-        sx={{ minHeight: 48 }}
-        onClick={() => actions.ask(tt.orderDraft(need.item))}
-      >
-        {tt.order}
-      </Button>
-    )
+    const name = productName(need.item, locale)
+    const productId = need.productId
+    if (need.source === 'unknown' && productId) {
+      // One question, saved on the item so it is never asked again (OB-239).
+      text = sc.ask(name, need.left)
+      const answer = (source: 'made' | 'bought') =>
+        void run(async () => {
+          if (!ws.active) return
+          await ws.api(
+            `/businesses/${ws.active.id}/inventory/${encodeURIComponent(productId)}/source`,
+            { method: 'POST', body: JSON.stringify({ source }) },
+          )
+          await ws.reload()
+        })
+      buttons = (
+        <>
+          <Button
+            variant={primary}
+            disabled={busy}
+            aria-label={sc.makeLabel(name)}
+            sx={{ minHeight: 48, minWidth: 48 }}
+            onClick={() => answer('made')}
+          >
+            {sc.make}
+          </Button>
+          <Button
+            variant={first ? 'outlined' : 'text'}
+            disabled={busy}
+            aria-label={sc.buyLabel(name)}
+            sx={{ minHeight: 48, minWidth: 48 }}
+            onClick={() => answer('bought')}
+          >
+            {sc.buy}
+          </Button>
+        </>
+      )
+    } else if (need.source === 'made') {
+      // Made here: the prep plan, never a supplier order (OB-239).
+      text = tt.low(name, need.left)
+      buttons = (
+        <Button
+          variant={primary}
+          sx={{ minHeight: 48 }}
+          onClick={() => actions.ask(sc.makeDraft(need.item))}
+        >
+          {sc.makeMore}
+        </Button>
+      )
+    } else {
+      text = tt.low(name, need.left)
+      buttons = (
+        <Button
+          variant={primary}
+          sx={{ minHeight: 48 }}
+          onClick={() => actions.ask(tt.orderDraft(need.item))}
+        >
+          {tt.order}
+        </Button>
+      )
+    }
   } else if (need.kind === 'soldOut') {
     icon = <ZapOff size={20} />
     const only = need.items.length === 1 ? need.items[0] : undefined

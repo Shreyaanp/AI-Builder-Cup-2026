@@ -188,6 +188,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/businesses/{business_id}/inventory/{product_id}/source": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Product Source
+         * @description The owner's one tap, "I make it" or "I buy it": only bought stock is ever reordered, and
+         *     the question is never asked again for this item (OB-239). No AI involved.
+         */
+        post: operations["product_source_api_v1_businesses__business_id__inventory__product_id__source_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/businesses/{business_id}/share": {
         parameters: {
             query?: never;
@@ -4863,6 +4884,14 @@ export interface components {
             stock: number;
             /** Runs Out */
             runs_out: string | null;
+            /**
+             * Source
+             * @default bought
+             * @enum {string}
+             */
+            source: "made" | "bought" | "unknown";
+            /** Product Id */
+            product_id?: string | null;
         };
         /** LowStock */
         LowStock: {
@@ -4872,6 +4901,12 @@ export interface components {
             stock: number;
             /** Runs Out */
             runs_out: string | null;
+            /**
+             * Source
+             * @default bought
+             * @enum {string}
+             */
+            source: "made" | "bought" | "unknown";
         };
         /** Match */
         Match: {
@@ -5519,6 +5554,8 @@ export interface components {
              * @default true
              */
             available: boolean;
+            /** Source */
+            source?: ("made" | "bought") | null;
             /** Previous Unit */
             previous_unit?: string | null;
         };
@@ -5811,6 +5848,12 @@ export interface components {
              * @default false
              */
             anyway: boolean;
+            /**
+             * Source
+             * @default
+             * @enum {string}
+             */
+            source: "" | "made" | "bought";
         };
         /** Requirement */
         Requirement: {
@@ -6508,6 +6551,17 @@ export interface components {
              * @enum {string}
              */
             variant: "full" | "partial" | "substitute" | "match" | "price_mismatch";
+        };
+        /**
+         * SourceRequest
+         * @description The owner's one tap: they make this item, or they buy it (OB-239).
+         */
+        SourceRequest: {
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "made" | "bought";
         };
         /** SpeakRequest */
         SpeakRequest: {
@@ -7521,6 +7575,44 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["AvailabilityRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    product_source_api_v1_businesses__business_id__inventory__product_id__source_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+                product_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SourceRequest"];
             };
         };
         responses: {

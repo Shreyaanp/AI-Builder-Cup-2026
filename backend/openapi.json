@@ -418,6 +418,67 @@
         }
       }
     },
+    "/api/v1/businesses/{business_id}/inventory/{product_id}/source": {
+      "post": {
+        "summary": "Product Source",
+        "description": "The owner's one tap, \"I make it\" or \"I buy it\": only bought stock is ever reordered, and\nthe question is never asked again for this item (OB-239). No AI involved.",
+        "operationId": "product_source_api_v1_businesses__business_id__inventory__product_id__source_post",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          },
+          {
+            "name": "product_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Product Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SourceRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Product Source Api V1 Businesses  Business Id  Inventory  Product Id  Source Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/businesses/{business_id}/share": {
       "post": {
         "summary": "Share",
@@ -13558,6 +13619,27 @@
               }
             ],
             "title": "Runs Out"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "made",
+              "bought",
+              "unknown"
+            ],
+            "title": "Source",
+            "default": "bought"
+          },
+          "product_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Product Id"
           }
         },
         "type": "object",
@@ -13589,6 +13671,16 @@
               }
             ],
             "title": "Runs Out"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "made",
+              "bought",
+              "unknown"
+            ],
+            "title": "Source",
+            "default": "bought"
           }
         },
         "type": "object",
@@ -15242,6 +15334,21 @@
             "title": "Available",
             "default": true
           },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "made",
+                  "bought"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
           "previous_unit": {
             "anyOf": [
               {
@@ -15996,6 +16103,16 @@
             "type": "boolean",
             "title": "Anyway",
             "default": false
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "",
+              "made",
+              "bought"
+            ],
+            "title": "Source",
+            "default": ""
           }
         },
         "additionalProperties": false,
@@ -17588,6 +17705,25 @@
           "version"
         ],
         "title": "SimulateBody"
+      },
+      "SourceRequest": {
+        "properties": {
+          "source": {
+            "type": "string",
+            "enum": [
+              "made",
+              "bought"
+            ],
+            "title": "Source"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "source"
+        ],
+        "title": "SourceRequest",
+        "description": "The owner's one tap: they make this item, or they buy it (OB-239)."
       },
       "SpeakRequest": {
         "properties": {

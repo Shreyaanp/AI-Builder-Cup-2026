@@ -27,6 +27,7 @@ from .merchant import (
     ProductFields,
     ProposalRequest,
     ShareRequest,
+    SourceRequest,
 )
 from .money import to_minor
 from .photos import PhotoExtraction, PhotoPipeline, PhotoRejected, header_gps
@@ -214,6 +215,18 @@ async def availability(
     uid = await consented_owner(request)
     return await anyio.to_thread.run_sync(
         store(request).set_availability, uid, business_id, product_id, body.available
+    )
+
+
+@router.post("/businesses/{business_id}/inventory/{product_id}/source")
+async def product_source(
+    business_id: str, product_id: str, body: SourceRequest, request: Request
+) -> dict[str, Any]:
+    """The owner's one tap, "I make it" or "I buy it": only bought stock is ever reordered, and
+    the question is never asked again for this item (OB-239). No AI involved."""
+    uid = await consented_owner(request)
+    return await anyio.to_thread.run_sync(
+        store(request).set_source, uid, business_id, product_id, body.source
     )
 
 

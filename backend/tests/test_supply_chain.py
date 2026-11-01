@@ -13,7 +13,7 @@ from fastapi import HTTPException
 from fastapi.testclient import TestClient
 from google.adk.sessions import InMemorySessionService
 
-from app import supply_chain, supply_coming, supply_docs
+from app import shop_today, supply_chain, supply_coming, supply_docs
 from app.coordinator import DEMO_OWNER_UID, MerchantContext, SupplierGenerator, current
 from app.forecast import ForecastService
 from app.gemini_schema import gemini_schema
@@ -675,8 +675,11 @@ def test_ob226_reorder_counts_what_is_on_its_way_and_never_duplicates(shop) -> N
     assert again["quantity"] == coming and again["arrives"] == sent["delivery"]
     assert len(supply_chain.orders(store, "alice", bid)) == 1
     # The owner can still order a named quantity on top.
-    extra = draft(store, bid, "atta", 5)
+    extra = draft(store, bid, "atta", coming)
     assert extra["status"] == "drafted" and extra["order"]["id"] != sent["id"]
+    assert extra["order"]["lines"][0]["quantity"] == coming
+    # Below the supplier's minimum it says so, and never drafts a different amount (OB-239).
+    assert draft(store, bid, "atta", 1)["reason"] == "named"
     # Cancelled orders are not on their way: the need comes back in full.
     supply_chain.cancel(store, "alice", bid, extra["order"]["id"], extra["order"]["version"])
     latest = supply_chain.get_po(store, "alice", bid, sent["id"])
@@ -724,3 +727,143 @@ def test_ob226_a_sent_chat_order_counts_as_on_order(shop) -> None:
     assert again["existing"] and again["order"]["id"] == coming["draft"]["id"]
     assert again["order"]["reason"]["wanted"] == round(wanted - 10, 2)
     assert again["order"]["reason"]["on_order"] == 10
+
+
+def tea_stall(store: MerchantStore) -> str:
+    """A tea stall that sells chai by the cup and buys milk and tea dust (OB-239)."""
+    proposal = store.propose(
+        "alice",
+        ProposalRequest(
+            kind="business",
+            business=BusinessFields(
+                name="Sharma Chai Corner",
+                category="Tea stall",
+                location="Indiranagar, Bengaluru",
+                lat=BENGALURU[0],
+                lng=BENGALURU[1],
+                currency="INR",
+                timezone="Asia/Kolkata",
+                phone="+91 98450 00000",
+            ),
+            products=[
+                ProductFields(
+                    name="Masala chai", price=2000, unit="cup", category="Drinks", stock=40
+                ),
+                ProductFields(
+                    name="Bun maska", price=3000, unit="plate", category="Snacks", stock=4
+                ),
+                ProductFields(name="Milk", price=6000, unit="litre", stock=3),
+                ProductFields(name="Tea dust", price=32000, unit="kg", stock=1),
+            ],
+        ),
+    )
+    bid = store.commit("alice", proposal["id"], proposal["digest"])["business_id"]
+    today = today_for(store.context("alice", bid)["business"]["fields"])
+    rows = [
+        {
+            "date": (today - timedelta(days=i)).isoformat(),
+            "item": item,
+            "quantity": quantity,
+            "revenue": round(quantity * price),
+        }
+        for i in range(1, 36)
+        for item, quantity, price in (
+            ("Masala chai", 60, 2000),
+            ("Bun maska", 15, 3000),
+            ("Milk", 8, 6000),
+            ("Tea dust", 0.5, 32000),
+        )
+    ]
+    prepared = store.prepare_sales("alice", bid, rows)
+    store.save_sales("alice", bid, prepared["id"], prepared["digest"])
+    # A nearby café that sells chai by the cup: the habit test drafted 614 cups from one.
+    cafe = BusinessFields(
+        name="Lantern Chai Corner (Demo)",
+        category="Tea stall",
+        location="Indiranagar, Bengaluru",
+        lat=BENGALURU[0] + 0.002,
+        lng=BENGALURU[1],
+        currency="INR",
+        timezone="Asia/Kolkata",
+        demo=True,
+    )
+    menu = [ProductFields(name="Masala chai", price=1840, unit="cup", stock=500)]
+    store.seed_demo_shop(DEMO_OWNER_UID, "demo-ob239-cafe", cafe, menu)
+    shared = store.public_shop("demo-ob239-cafe")
+    assert shared is not None
+    supply_chain.ensure_relationship(store, bid, shared, "INR", 0)
+    return bid
+
+
+def test_ob239_reorder_never_drafts_a_finished_menu_item(tmp_path: Path) -> None:
+    # Issue #621: Today's Reorder drafted 614 cups of Masala chai (₹11,297.60) from a café.
+    store = MerchantStore(str(tmp_path / "merchant.sqlite3"))
+    bid = tea_stall(store)
+    token = current.set(MerchantContext(store, "alice", bid, []))
+    try:
+        inventory = store.inventory("alice", bid)
+        assert [p["name"] for p in inventory if supply_chain.bought(p)] == ["Milk", "Tea dust"]
+        # Reorder picks what the shop buys: milk and tea dust still draft.
+        first = draft(store, bid)
+        assert first["status"] == "drafted", first
+        assert first["order"]["reason"]["item"] in {"Milk", "Tea dust"}
+        for item in ("Milk", "Tea dust"):
+            po = draft(store, bid, item)["order"]
+            assert po["reason"]["item"] == item and po["lines"][0]["unit"] in {"litre", "kg"}
+        # Even named, chai is made here: no order, and the café is never its supplier.
+        named = draft(store, bid, "Masala chai")
+        assert named == {"status": "made", "item": "Masala chai"}
+        for po in [named.get("order")] + [
+            supply_chain.get_po(store, "alice", bid, o["id"])
+            for o in supply_chain.orders(store, "alice", bid)
+        ]:
+            if po:
+                assert po["supplier"]["id"] != "demo-ob239-cafe"
+                assert all(line["unit"] != "cup" for line in po["lines"]), po["lines"]
+        # Chai (40 cups) and bun maska (4 plates) run out first, yet nothing orders them: not
+        # the reorder, and Today's low row for bun maska says "Make more", not "Order".
+        today = today_for(store.context("alice", bid)["business"]["fields"])
+        forecast = asyncio.run(
+            ForecastService(offline()).forecast(store.sales_history("alice", bid), today, inventory)
+        )
+        menu = [p for p in inventory if p["name"] in {"Masala chai", "Bun maska"}]
+        assert supply_chain.pick_item("", menu, forecast.model_dump(mode="json"), today) == ""
+        low = {row.name: row.source for row in shop_today.low_stock(inventory, forecast, today)}
+        assert low["Bun maska"] == "made"
+        assert {name for name, source in low.items() if source == "bought"} <= {"Milk", "Tea dust"}
+        assert {name for name, source in low.items() if source == "bought"}
+    finally:
+        current.reset(token)
+
+
+def test_ob239_an_absurd_quantity_is_checked_not_drafted(shop) -> None:
+    # Issue #621: a supplier minimum of a year's flour is a mistake to check, not a draft.
+    store, bid = shop
+    po = draft(store, bid)["order"]
+    assert po["reason"]["item"] == "Atta (wheat flour)"
+    sid = po["supplier"]["id"]
+    supply_chain.cancel(store, "alice", bid, po["id"], po["version"])
+    for row in supply_chain.relationships(store, "alice", bid):
+        rules = supply_chain.rules_of(row)
+        items = [
+            rule.model_copy(update={"moq": 1000.0}) if "flour" in rule.item.casefold() else rule
+            for rule in rules.items
+        ]
+        supply_chain.save_rules(
+            store,
+            "alice",
+            bid,
+            row["supplier"]["id"],
+            rules.model_copy(update={"items": items}),
+            row["version"],
+        )
+    before = len(supply_chain.orders(store, "alice", bid))
+    result = draft(store, bid, "Atta (wheat flour)")
+    assert result["status"] == "check", result
+    assert result["item"] == "Atta (wheat flour)" and result["unit"] == "kg"
+    assert result["quantity"] >= 1000 and result["days"] >= supply_chain.CHECK_DAYS
+    assert result["supplier"]
+    assert len(supply_chain.orders(store, "alice", bid)) == before
+    # The owner's own quantity is theirs: it still drafts.
+    assert draft(store, bid, "Atta (wheat flour)", 1000)["status"] == "drafted"
+    assert sid

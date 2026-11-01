@@ -34,6 +34,7 @@ from .gemini_schema import gemini_schema, parse_reply
 from .latin_names import sounds_like
 from .merchant import BusinessFields, CustomFact, MerchantRepository, ProductFields
 from .money import exponent, to_major, to_minor
+from .product_source import same_kind
 from .product_units import UNITS, normalize_unit
 from .region import shop_currency
 from .search_engine import (
@@ -668,6 +669,9 @@ def candidates(
         if shop["id"] == own_id or shop.get("lat") is None or shop.get("lng") is None:
             continue
         if (shop_currency(shop)) != pin.currency:
+            continue
+        if same_kind(pin.category, str(shop.get("category") or ""), bool(shop.get("supplier"))):
+            # Never a rival of the shop's own kind: a bakery's bread is not a bakery's supply.
             continue
         km = haversine(pin.lat, pin.lng, shop["lat"], shop["lng"])
         if km > SEARCH_KM:

@@ -301,9 +301,9 @@ def test_603_each_need_says_if_it_is_covered_and_the_open_one_leads(client) -> N
 
 
 def test_603_some_sugar_on_order_is_partly_covered(dairy_shop) -> None:
-    """#603: 2 kg on its way against a week's need is "partly": the need still leads."""
+    """#603: 10 kg on its way against a week's need is "partly": the need still leads."""
     store, bid = dairy_shop
-    po = draft(store, bid, "sugar", 2)["order"]
+    po = draft(store, bid, "sugar", 10)["order"]
     send_po(store, bid, po)
     context = store.context("alice", bid)
     product = next(p for p in context["inventory"] if p["name"] == "Sugar")
@@ -402,7 +402,7 @@ def test_603_a_buyers_order_the_shop_must_ship_is_not_stock_coming(dairy_shop) -
     """#603: a partner's order for sugar (direction "out") takes stock away; it never counts as
     on order, so on_order, cover and the reorder draft stay as they were."""
     store, bid = dairy_shop
-    send_po(store, bid, draft(store, bid, "sugar", 2)["order"])
+    send_po(store, bid, draft(store, bid, "sugar", 10)["order"])
     before = supply_coming.on_order(store, "alice", bid, "Sugar", "kg")
     sent = next(o for o in supply_chain.orders(store, "alice", bid) if o["sent"])
     sale = {**sent, "id": "sale-1", "number": "4700001201", "direction": "out", "version": 0}
@@ -446,7 +446,7 @@ def test_603_every_order_status_has_an_on_order_answer() -> None:
 @pytest.mark.parametrize(("status", "received", "counts"), ON_ORDER_BY_STATUS)
 def test_603_on_order_by_status(dairy_shop, status: str, received: bool, counts: bool) -> None:
     store, bid = dairy_shop
-    send_po(store, bid, draft(store, bid, "sugar", 2)["order"])
+    send_po(store, bid, draft(store, bid, "sugar", 10)["order"])
     po = next(o for o in supply_chain.all_orders(store, bid) if o["status"] == "sent")
     supply_chain._save(store, bid, {**po, "status": status, "received": received})
     po = next(o for o in supply_chain.all_orders(store, bid) if o["id"] == po["id"])
