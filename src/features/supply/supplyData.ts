@@ -4,6 +4,8 @@ import { isServiceShop } from '../v1/tabsCopy'
 import { useWorkspace } from '../v1/workspaceContext'
 import { useLocale } from '../../state/hooks'
 import { productName } from '../../i18n/productNames'
+import { useShopCopy } from '../shop/strings'
+import { unitLabel } from '../shop/units'
 import { useSupplyCopy } from './copy'
 import { useOrderChangeCopy } from './orderChangeCopy'
 import { supplyBus, supplyChanged } from './supplyEvents'
@@ -244,6 +246,8 @@ export function useDraftReorder() {
   const s = useSupplyCopy()
   const c = useOrderChangeCopy()
   const locale = useLocale()
+  const shopCopy = useShopCopy()
+  const unit = useCallback((raw: string) => unitLabel(raw, shopCopy), [shopCopy])
   return useCallback(
     async (
       item = '',
@@ -264,7 +268,7 @@ export function useDraftReorder() {
             ask: result.item ?? item,
             note: c.unitsAsk(
               (result.other ?? [])
-                .map((row) => `${quantity.format(row.quantity)} ${row.unit}`)
+                .map((row) => `${quantity.format(row.quantity)} ${unit(row.unit)}`)
                 .join(', '),
               name,
               dayLabel(result.other?.[0]?.arrives ?? '', locale),
@@ -279,13 +283,13 @@ export function useDraftReorder() {
                 : result.days == null
                   ? c.checkUnits(
                       quantity.format(result.supplier_quantity ?? 0),
-                      result.supplier_unit ?? '',
+                      unit(result.supplier_unit ?? ''),
                       name,
-                      result.unit ?? '',
+                      unit(result.unit ?? ''),
                     )
                   : c.checkQuantity(
                       quantity.format(result.quantity ?? 0),
-                      result.unit ?? '',
+                      unit(result.unit ?? ''),
                       name,
                       result.days,
                     ),
@@ -297,7 +301,7 @@ export function useDraftReorder() {
           result.status === 'on_order'
             ? c.onOrder(
                 quantity.format(result.quantity ?? 0),
-                result.unit ?? '',
+                unit(result.unit ?? ''),
                 name,
                 dayLabel(result.arrives ?? '', locale),
               )
@@ -309,7 +313,7 @@ export function useDraftReorder() {
         return { order: null, note: s.failed }
       }
     },
-    [api, activeId, services, s, c, locale],
+    [api, activeId, services, s, c, locale, unit],
   )
 }
 
@@ -369,6 +373,7 @@ export function dayLabel(iso: string, locale: string): string {
 export function useOnOrderText() {
   const c = useOrderChangeCopy()
   const locale = useLocale()
+  const shopCopy = useShopCopy()
   const { products } = useWorkspace()
   return useCallback(
     (need: SupplyNeed) => {
@@ -379,10 +384,14 @@ export function useOnOrderText() {
         ...(need.on_order_other ?? []),
       ]
         .map((row) =>
-          c.onOrderLine(number.format(row.quantity), row.unit, dayLabel(row.arrives, locale)),
+          c.onOrderLine(
+            number.format(row.quantity),
+            unitLabel(row.unit, shopCopy),
+            dayLabel(row.arrives, locale),
+          ),
         )
         .join(' · ')
     },
-    [c, locale, products],
+    [c, locale, products, shopCopy],
   )
 }

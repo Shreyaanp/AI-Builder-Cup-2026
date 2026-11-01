@@ -35,8 +35,10 @@ export function termsLabel(
 export function orderLabel(
   order: Pick<PurchaseOrder, 'lines' | 'supplier' | 'reason'>,
   title: (item: string, supplier: string) => string,
+  name: (item: string) => string = (item) => item,
 ): string {
-  return title(order.reason?.item || order.lines?.[0]?.item || '', order.supplier.name)
+  const item = order.reason?.item || order.lines?.[0]?.item || ''
+  return title(item && name(item), order.supplier.name)
 }
 
 /** "18 kg +3": what an order is for at a glance, so two orders of one item never read alike. */

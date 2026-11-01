@@ -252,3 +252,58 @@ test('OB-248 three plain orders bring a yes, a short reply and a new price', asy
   })
   await expect(card.getByRole('button', { name: 'Accept changes', exact: true })).toBeVisible()
 })
+
+// Item names and units a Hindi owner must never see in English (OB-74, OB-248).
+const LATIN_ITEM =
+  /\b(Tea dust|Milk|Sugar|Paper cups|Masala chai|Ginger chai|Bun maska|Samosa|Ragi biscuit|kg|litre|pack|piece|cup|cups)\b/
+
+test('OB-248 Hindi: Coach, Purchase orders, order card and supplier chat name every item in Hindi', async ({
+  page,
+}) => {
+  await page.addInitScript(() =>
+    localStorage.setItem('niva.starter.preferences', JSON.stringify({ language: 'hi' })),
+  )
+  await openDemo(page, 'छोड़ें')
+  const seen: string[] = []
+  const check = async (where: string, text: string) => {
+    const latin = LATIN_ITEM.exec(text)
+    if (latin)
+      seen.push(
+        `${where}: "${latin[0]}" in …${text.slice(Math.max(0, latin.index - 40), latin.index + 40)}…`,
+      )
+  }
+  // Coach (the first screen): its cards and rows.
+  await expect(page.getByTestId('today')).toContainText('चाय पत्ती', { timeout: 15_000 })
+  await check('Coach', await page.getByTestId('today').innerText())
+  // चाय पत्ती is feminine: it "खत्म होगी", never "खत्म होगा".
+  await expect(page.getByTestId('today')).toContainText(/चाय पत्ती [^।]* को खत्म होगी/)
+  // Purchase orders: the tile, the list, then each order card with its supplier chat.
+  await page.locator('[data-tour="nav-grow"]').click()
+  await expect(page.locator('[data-tour="supply"]')).toContainText('Sri Lakshmi', {
+    timeout: 15_000,
+  })
+  await check('Purchase orders tile', await page.locator('[data-tour="supply"]').innerText())
+  await page.locator('[data-tour="supply"]').click()
+  const sheet = page.getByRole('dialog')
+  await expect(sheet.getByText(/Sri Lakshmi/).first()).toBeVisible({ timeout: 15_000 })
+  await check('Purchase orders', await sheet.innerText())
+  await sheet
+    .getByText(/Sri Lakshmi/)
+    .first()
+    .click()
+  const talk = sheet.getByTestId('supplier-talk')
+  await expect(talk).toContainText('यह रहा बिल')
+  await check('Order card', await sheet.locator('article').innerText())
+  await check('Supplier chat', await talk.innerText())
+  // A new draft from the forecast.
+  await sheet.getByRole('button').first().click()
+  await sheet.getByRole('button', { name: 'फिर से सामान मँगाएँ' }).click()
+  await expect(sheet.locator('article')).toBeVisible({ timeout: 15_000 })
+  await check('Draft card', await sheet.locator('article').innerText())
+  // Back on Coach once everything has loaded: rows that came later (sold out, prep plan) too.
+  await page.keyboard.press('Escape')
+  await page.locator('[data-tour="nav-coach"]').click()
+  await expect(page.getByTestId('today')).toContainText('चाय पत्ती', { timeout: 15_000 })
+  await check('Coach again', await page.getByTestId('today').innerText())
+  expect(seen).toEqual([])
+})

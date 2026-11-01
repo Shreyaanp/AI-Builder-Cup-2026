@@ -3,6 +3,7 @@ import { Button, Stack, Typography } from '@mui/material'
 import { CalendarClock, PackageSearch } from 'lucide-react'
 import type { components } from '../../api/generated'
 import { useLocale } from '../../state/hooks'
+import { productFeminine, productName } from '../../i18n/productNames'
 import { Tile, Supporting } from '../v1/ShopTiles'
 import { useCopy } from '../v1/strings'
 import { useWorkspace } from '../v1/workspaceContext'
@@ -164,10 +165,14 @@ export function PrepPlanTile() {
           icon={<PackageSearch size={20} />}
           label={
             need
-              ? s.runsOut(need.item, dayLabel(need.runs_out, locale))
+              ? s.runsOut(
+                  productName(need.item, locale),
+                  dayLabel(need.runs_out, locale),
+                  productFeminine(need.item, locale),
+                )
               : s.runningLow(
                   low
-                    .map((item) => item.name)
+                    .map((item) => productName(item.name, locale))
                     .slice(0, 3)
                     .join(', '),
                 )

@@ -31,7 +31,7 @@ import {
 } from 'lucide-react'
 import { useIdentity } from '../../../auth/useIdentity'
 import { HAND_FONT, enterRise, motion, shape } from '../../../design/theme'
-import { productName } from '../../../i18n/productNames'
+import { productFeminine, productName } from '../../../i18n/productNames'
 import { useLocale } from '../../../state/hooks'
 import { closeDayCopy } from '../../closeday/strings'
 import { shopCurrency, toMajor } from '../format'
@@ -154,7 +154,7 @@ function LineText({ line }: { line: CoachLine }) {
     const weekday = new Intl.DateTimeFormat(locale, { weekday: 'long', timeZone: 'UTC' }).format(
       new Date(Date.UTC(2026, 0, 5 + line.weekday)),
     )
-    text = tt.busiest(weekday, number.format(line.count), line.item)
+    text = tt.busiest(weekday, number.format(line.count), productName(line.item, locale))
   }
   if (!text) return null
   return (
@@ -550,7 +550,9 @@ function NeedRow({
   } else if (need.kind === 'soldOut') {
     icon = <ZapOff size={20} />
     const only = need.items.length === 1 ? need.items[0] : undefined
-    text = only ? tt.soldOut(only.name) : tt.soldOutMany(need.items.length)
+    text = only
+      ? tt.soldOut(productName(only.name, locale), productFeminine(only.name, locale))
+      : tt.soldOutMany(need.items.length)
     buttons = only ? (
       <Button
         variant={primary}
@@ -669,7 +671,10 @@ function PulseCard({ plan, actions }: { plan: TodayPlan; actions: TodayActions }
     )
   }
   if (plan.forecast) {
-    let text = tt.forecast(number.format(plan.forecast.quantity), plan.forecast.item)
+    let text = tt.forecast(
+      number.format(plan.forecast.quantity),
+      productName(plan.forecast.item, locale),
+    )
     if (plan.forecast.busy) {
       const [start, end] = plan.forecast.busy.map(
         (minutes) => new Date(Date.UTC(2026, 0, 1, Math.floor(minutes / 60), minutes % 60)),

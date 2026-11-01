@@ -266,6 +266,11 @@ export function useShowcaseCopy() {
     title: s[0],
     reorder: s[1],
     runsOut: s[2],
+    /** "Tea dust runs out Tue": Hindi puts the day first and follows the item's gender. */
+    runsOutLine: (item: string, day: string, feminine: boolean) =>
+      locale === 'hi'
+        ? `${item} ${day} को खत्म ${feminine ? 'होगी' : 'होगा'}`
+        : `${item} ${s[2]} ${day}`,
     restocked: s[3],
     sap: s[4],
     simulate: s[5],

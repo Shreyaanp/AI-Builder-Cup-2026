@@ -20,6 +20,7 @@ import {
 } from '@mui/material'
 import { ArrowLeft, ChevronRight, FileText, Settings2, Sparkles } from 'lucide-react'
 import { useLocale } from '../../state/hooks'
+import { productName } from '../../i18n/productNames'
 import { enterRise, shape } from '../../design/theme'
 import { formatShopPrice, toMajor, toMinor } from '../v1/format'
 import { Sheet } from '../v1/Sheet'
@@ -48,6 +49,7 @@ const OPEN = new Set([
 /** My shop: the Purchase orders tile, opening the sheet. */
 export function SupplyTile() {
   const s = useSupplyCopy()
+  const locale = useLocale()
   const [open, setOpen] = useState(false)
   const { data, refresh, failed } = useSupply(true)
   const orders = data?.orders ?? []
@@ -64,7 +66,7 @@ export function SupplyTile() {
       >
         <Supporting>
           {latest
-            ? `${orderLabel(latest, s.orderTitle)} · ${s.status[latest.status]}`
+            ? `${orderLabel(latest, s.orderTitle, (item) => productName(item, locale))} · ${s.status[latest.status]}`
             : data === null && failed
               ? s.loadFailed
               : s.tileEmpty}
@@ -141,7 +143,7 @@ export function SupplySheet({ open, onClose }: { open: boolean; onClose: () => v
             {back}
             <Box component="span" sx={{ minWidth: 0, overflowWrap: 'anywhere' }}>
               {view.kind === 'order' && selected
-                ? orderLabel(selected, s.orderTitle)
+                ? orderLabel(selected, s.orderTitle, (item) => productName(item, locale))
                 : supplier
                   ? s.rulesFor(supplier.supplier.name)
                   : s.title}
@@ -260,7 +262,7 @@ export function SupplySheet({ open, onClose }: { open: boolean; onClose: () => v
                   >
                     <FileText size={20} color={roles.primary} aria-hidden="true" />
                     <ListItemText
-                      primary={orderLabel(order, s.orderTitle)}
+                      primary={orderLabel(order, s.orderTitle, (item) => productName(item, locale))}
                       secondary={`${orderSize(order, locale, (raw) => unitLabel(raw, shopCopy))} · ${s.status[order.status]} · ${money(order)}`}
                     />
                     <ChevronRight size={18} aria-hidden="true" />
