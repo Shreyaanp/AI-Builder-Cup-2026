@@ -480,6 +480,9 @@ def get_insights() -> dict[str, Any]:
     year, week, _ = today.isocalendar()
     # The last 7 days, not the calendar week, so early in the week it is never empty.
     facts = recap_facts(f"{year}-W{week:02d}", sales, signals, through=today)
+    # "week" would read as the calendar week to the model; this is a rolling window.
+    facts.pop("week", None)
+    facts["period"] = "last_7_days"
     currency = facts["currency"]
     for key in ("revenue", "previous_revenue", "revenue_change"):
         facts[key] = to_major(int(facts[key]), currency)
