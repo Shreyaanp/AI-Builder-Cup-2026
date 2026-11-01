@@ -42,6 +42,7 @@ import { FreshnessCard } from '../sales/ShopInsights'
 import { ConnectTile } from '../connect/ConnectTile'
 import { Sheet } from './Sheet'
 import { AskHint } from './AskHint'
+import { ClosedTodaySwitch, ReplyLanguage } from './TwoPaths'
 import { ShopQr } from './ShopQr'
 import { OwnerPerks } from '../passport/games/OwnerPerks'
 import { useUnread } from './useUnread'
@@ -490,6 +491,11 @@ export function ShopSheets({
         >
           {kind === 'details' && (
             <Box sx={{ mb: 4 }}>
+              <ClosedTodaySwitch onReview={onClose} />
+            </Box>
+          )}
+          {kind === 'details' && (
+            <Box sx={{ mb: 4 }}>
               <ShopIcon />
             </Box>
           )}
@@ -649,6 +655,7 @@ export function ShopSheets({
       return (
         <Sheet {...common} titleId="messages-title" ask="messages">
           <Messages key={`messages-${shop.id}`} businessId={shop.id} />
+          <ReplyLanguage />
         </Sheet>
       )
     case 'plan':
