@@ -416,3 +416,175 @@ def test_the_offline_coach_reads_the_item_without_the_day() -> None:
     found = supply_call("Reorder milk for tomorrow", None)
     assert found is not None and found.function_call is not None
     assert found.function_call.args == {"item": "milk"}
+# Second review of PR #623, point 3: the owner's chat answer is saved only on the item it names.
+
+
+def chai_stall(store: MerchantStore, chai_first: bool = False) -> str:
+    """Tea dust and Masala chai; the review's repros differ only in which the menu lists first."""
+    menu = [
+        ProductFields(name="Tea dust", price=30000, unit="kg", stock=1),
+        ProductFields(name="Masala chai", price=2000, unit="cup", stock=10),
+    ]
+    return open_shop(
+        store,
+        "Sharma Chai Corner",
+        "Tea stall",
+        menu[::-1] if chai_first else menu,
+        [("Tea dust", 0.5, 30000), ("Masala chai", 60, 2000)],
+    )
+
+
+def saved_source(store: MerchantStore, bid: str, name: str) -> str | None:
+    return next(p for p in store.inventory("alice", bid) if p["name"] == name).get("source")
+
+
+def test_i_make_chai_marks_the_chai_and_tea_dust_still_reorders(store) -> None:
+    # "I make chai" saved Tea dust as made: the stall's main supply silently stopped reordering.
+    bid = chai_stall(store)
+    assert draft(store, bid, "chai", source="made") == {"status": "made", "item": "Masala chai"}
+    assert saved_source(store, bid, "Masala chai") == "made"
+    assert saved_source(store, bid, "Tea dust") is None
+    assert low_rows(store, bid)["Tea dust"] == "bought"
+    order = draft(store, bid)
+    assert order["status"] == "drafted", order
+    assert order["order"]["reason"]["item"] == "Tea dust"
+
+
+def test_reorder_tea_means_the_tea_dust_the_stall_buys(store) -> None:
+    # "Reorder tea" answered "made" for Masala chai although the stall buys tea dust.
+    bid = chai_stall(store, chai_first=True)
+    order = draft(store, bid, "tea")
+    assert order["status"] == "drafted", order
+    assert order["order"]["reason"]["item"] == "Tea dust"
+
+
+def test_i_buy_milk_never_changes_milk_bread(store) -> None:
+    bid = open_shop(
+        store,
+        "Butter Window Bakery",
+        "Bakery",
+        [ProductFields(name="Milk bread", price=5500, unit="piece", stock=5)],
+        [("Milk bread", 30, 5500)],
+    )
+    result = draft(store, bid, "milk", source="bought")
+    assert result["status"] == "which_item", result
+    assert saved_source(store, bid, "Milk bread") is None
+    assert supply_chain.orders(store, "alice", bid) == []
+
+
+def test_a_partial_name_is_saved_only_when_it_fits_the_answer(store) -> None:
+    # "I buy rice" must not make the dish a reorder; "I make milk" must not stop the milk's.
+    bid = open_shop(
+        store,
+        "Annapoorna Kitchen",
+        "Restaurant",
+        [
+            ProductFields(name="Coconut rice", price=9000, unit="item", stock=5),
+            ProductFields(name="Amul milk", price=3000, unit="bottle", stock=9),
+        ],
+        [("Coconut rice", 20, 9000), ("Amul milk", 2, 3000)],
+    )
+    result = draft(store, bid, "rice", source="bought")
+    assert result["status"] == "which_item" and result["choices"] == ["Coconut rice"], result
+    assert saved_source(store, bid, "Coconut rice") is None
+    reply = supply_reply("draft_reorder", result)
+    assert reply and 'Say "I buy Coconut rice"' in reply
+    assert draft(store, bid, "milk", source="made")["status"] == "which_item"
+    assert saved_source(store, bid, "Amul milk") is None
+    assert draft(store, bid, "rice", source="made") == {"status": "made", "item": "Coconut rice"}
+    assert saved_source(store, bid, "Coconut rice") == "made"
+
+
+def test_i_make_biryani_off_the_menu_saves_and_drafts_nothing(store) -> None:
+    # The answer was dropped and 10 kg of Biryani was drafted from a cash and carry.
+    bid = chai_stall(store)
+    result = draft(store, bid, "biryani", source="made")
+    assert result == {"status": "which_item", "item": "biryani", "source": "made", "choices": []}
+    assert supply_chain.orders(store, "alice", bid) == []
+    reply = supply_reply("draft_reorder", result)
+    assert reply and "not on your menu" in reply and "drafted nothing" in reply
+
+
+def test_the_offline_coach_takes_it_buy_make_and_hindi() -> None:
+    from google.genai import types
+
+    asked = [
+        types.Content(
+            role="user",
+            parts=[
+                types.Part(
+                    function_response=types.FunctionResponse(
+                        name="draft_reorder",
+                        response={"status": "ask_make_or_buy", "item": "Samosa"},
+                    )
+                )
+            ],
+        )
+    ]
+    for text, source in [
+        ("I buy it", "bought"),
+        ("buy", "bought"),
+        ("make", "made"),
+        ("I buy it ready-made", "bought"),
+        ("हम बनाते हैं", "made"),
+        ("हम खरीदते हैं", "bought"),
+    ]:
+        found = supply_call(text, None, asked)
+        assert found is not None and found.function_call is not None, text
+        assert found.function_call.args == {"item": "Samosa", "source": source}, text
+    # The full name of a longer item, as the "which item" question asks for it.
+    named = supply_call("I make Hainanese chicken rice", None, [])
+    assert named is not None and named.function_call is not None
+    assert named.function_call.args == {"item": "Hainanese chicken rice", "source": "made"}
+    # With no question asked, "buy" is not an answer, and "make a list" never is.
+    assert supply_call("buy", None, []) is None
+    assert supply_call("make a list", None, asked) is None
+
+
+def test_the_offline_model_routes_each_answer_to_the_item_it_asked_about(store) -> None:
+    # Through the coach itself, not only the parser: the answer reaches draft_reorder.
+    from google.genai import types
+
+    from app.agent import OfflineCoachModel
+
+    bid = chai_stall(store)
+    asked = types.Content(
+        role="user",
+        parts=[
+            types.Part(
+                function_response=types.FunctionResponse(
+                    name="draft_reorder",
+                    response={"status": "ask_make_or_buy", "item": "Masala chai"},
+                )
+            )
+        ],
+    )
+    said = types.Content(role="model", parts=[types.Part(text="Do you make it or buy it?")])
+
+    async def first_part(text: str) -> types.Part:
+        request = types.Content(role="user", parts=[types.Part(text=text)])
+        token = current.set(MerchantContext(store, "alice", bid, [], message=text))
+        try:
+            replies = [
+                reply
+                async for reply in OfflineCoachModel().generate_content_async(
+                    type("R", (), {"contents": [asked, said, request]})()  # type: ignore[arg-type]
+                )
+            ]
+        finally:
+            current.reset(token)
+        return replies[0].content.parts[0]
+
+    for text, source in [
+        ("I buy it", "bought"),
+        ("buy", "bought"),
+        ("make", "made"),
+        ("हम बनाते हैं", "made"),
+        ("हम खरीदते हैं", "bought"),
+    ]:
+        part = asyncio.run(first_part(text))
+        assert part.function_call is not None, text
+        assert part.function_call.name == "draft_reorder", text
+        assert part.function_call.args == {"item": "Masala chai", "source": source}, text
+
+

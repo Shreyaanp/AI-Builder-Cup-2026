@@ -29,6 +29,7 @@ per relationship (`supply_rules`) and per order (`supply_po`), scoped to the sho
 from __future__ import annotations
 
 import math
+import re
 import time
 from collections.abc import Callable
 from datetime import date, timedelta
@@ -41,7 +42,7 @@ from pydantic import ValidationError
 
 from .merchant import SUPPLY_KINDS, MerchantRepository, ProductFields
 from .money import exponent, to_major
-from .product_source import same_kind, source_of
+from .product_source import raw_ingredient, same_kind, source_of
 from .region import shop_currency
 from .supply_docs import (
     MAPPING,
@@ -465,6 +466,23 @@ async def draft_reorder(
         mode="json"
     )
     inventory = context["inventory"]
+    if source in {"made", "bought"}:
+        # "I make chai": saved only on the one item it is about, never on a loose match (the tea
+        # dust chai is brewed from), and nothing is drafted when no item is meant (OB-239).
+        answered, choices = answered_item(item, inventory, source)
+        if not answered:
+            return {
+                "status": "which_item",
+                "item": item.strip()[:80],
+                "source": source,
+                "choices": choices,
+            }
+        if answered.get("id"):
+            saved = await anyio.to_thread.run_sync(
+                store.set_source, uid, bid, answered["id"], source
+            )
+            inventory = [saved if p is answered else p for p in inventory]
+        item = answered["name"]
     known = await anyio.to_thread.run_sync(coming_orders, store, uid, bid)
 
     def is_covered(product: dict[str, Any], need: dict[str, Any]) -> bool:
@@ -494,8 +512,6 @@ async def draft_reorder(
         (p for p in inventory if p["name"].casefold() == target.casefold()),
         next((p for p in inventory if sourcing.matches(p["name"], target)), None),
     )
-    if named and source in {"made", "bought"} and named.get("id"):
-        named = await anyio.to_thread.run_sync(store.set_source, uid, bid, named["id"], source)
     if named:
         # Only stock the shop buys is ordered. Something it makes is made again, never bought
         # from a rival; one it has not said either way is asked once (OB-239).
@@ -740,9 +756,10 @@ def pick_item(
             (p["name"] for p in inventory if p["name"].casefold() == item.strip().casefold()),
             None,
         )
-        return named or next(
-            (p["name"] for p in inventory if matches(p["name"], item)), item.strip()[:80]
-        )
+        loose = [p for p in inventory if matches(p["name"], item)]
+        # "Reorder tea" with tea dust and masala chai means the tea dust it buys (OB-239).
+        loose.sort(key=lambda p: not bought(p, category))
+        return named or (loose[0]["name"] if loose else item.strip()[:80])
     soonest: tuple[bool, bool, str, str] | None = None
     for product in inventory:
         if product.get("stock") is None or not bought(product, category):
@@ -759,6 +776,35 @@ def pick_item(
         if soonest is None or rank[:3] < soonest[:3]:
             soonest = rank
     return soonest[3] if soonest else ""
+
+
+def answered_item(
+    item: str, inventory: list[dict[str, Any]], source: str
+) -> tuple[dict[str, Any] | None, list[str]]:
+    """The one item an owner's "I make chai" is about: the exact name, else the only item whose
+    name ends with it and fits the answer: "Masala chai" is made, "Amul milk" is bought. Never
+    "Milk bread" for "milk", "Tea dust" for "chai" or "Coconut rice" for "I buy rice". Otherwise
+    None, and the items they may mean, to ask which (OB-239)."""
+    from .sourcing import matches
+
+    def said(name: str) -> list[str]:
+        text = re.sub(r"\(.*?\)", " ", name.casefold())
+        return [w[:-1] if len(w) > 3 and w.endswith("s") else w for w in re.findall(r"\w+", text)]
+
+    wanted = said(item)
+    if not wanted:
+        return None, []
+    exact = [p for p in inventory if said(p["name"]) == wanted]
+    ends = exact or [
+        p
+        for p in inventory
+        if said(p["name"])[-len(wanted) :] == wanted
+        and raw_ingredient(p["name"]) == (source == "bought")
+    ]
+    if len(ends) == 1:
+        return ends[0], []
+    loose = ends or [p for p in inventory if matches(p["name"], item)]
+    return None, [p["name"] for p in loose][:4]
 
 
 def supplier_candidates(

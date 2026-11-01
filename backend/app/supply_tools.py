@@ -213,6 +213,16 @@ async def draft_reorder(
             "instruction": "Ask once: do they make it or buy it ready-made? Then call "
             "draft_reorder again with this item and source made or bought.",
         }
+    if result["status"] == "which_item":
+        return {
+            "status": "which_item",
+            "item": result["item"],
+            "source": result["source"],
+            "choices": result["choices"],
+            "instruction": "Nothing was saved and nothing was drafted: no single menu item is "
+            "called that. Ask which item they mean (choices, if any), then call draft_reorder "
+            "again with its exact name and the same source.",
+        }
     if result["status"] == "check":
         return {
             "status": "check_quantity",
