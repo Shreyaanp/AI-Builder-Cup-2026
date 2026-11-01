@@ -45,6 +45,13 @@ const en = {
   // More than a month of use in one draft: nothing was drafted (OB-239).
   checkQuantity: (quantity: string, unit: string, item: string, days: number) =>
     `Check this first: ${quantity} ${unit} ${item} is about ${days} days of what you use, so no order was drafted. Check the item and the supplier’s minimum, or ask the coach for the amount you want.`,
+  // Sold in a unit the shop's count does not convert to (pack vs kg): nothing drafted (OB-239).
+  checkUnits: (supplierQuantity: string, supplierUnit: string, item: string, unit: string) =>
+    `Check this first: the supplier sells ${item} by the ${supplierUnit} (at least ${supplierQuantity}) and you count it in ${unit}, so no order was drafted. Check the unit and the supplier’s minimum, or ask the coach for the amount you want.`,
+  // Made here, or not said yet: only stock the shop buys is ordered (OB-239).
+  madeHere: (item: string) =>
+    `You make ${item} yourself, so there is no supplier order. Plan how many to make in the prep plan.`,
+  askSource: (item: string) => `Do you make ${item} or buy it? Answer on Today first.`,
   orderMore: 'Order more',
   notNow: 'Not now',
   // Grow and Today lead with one need; the rest still to order.
@@ -89,6 +96,11 @@ const hi: OrderChangeCopy = {
     `${amounts} ${item} पहले से ऑर्डर पर है${day ? `, ${day} को आएगा` : ''}। ऐप नहीं बता सकता कि यह काफ़ी है या नहीं। फिर भी और मँगाएँ?`,
   checkQuantity: (quantity, unit, item, days) =>
     `पहले जाँच लें: ${quantity} ${unit} ${item} आपके लगभग ${days} दिन के इस्तेमाल जितना है, इसलिए कोई ऑर्डर नहीं बना। चीज़ और सप्लायर की न्यूनतम मात्रा देखें, या कोच से उतना माँगें जितना चाहिए।`,
+  checkUnits: (supplierQuantity, supplierUnit, item, unit) =>
+    `पहले जाँच लें: सप्लायर ${item} ${supplierUnit} में बेचता है (कम से कम ${supplierQuantity}) और आप इसे ${unit} में गिनते हैं, इसलिए कोई ऑर्डर नहीं बना। इकाई और सप्लायर की न्यूनतम मात्रा देखें, या कोच से उतना माँगें जितना चाहिए।`,
+  madeHere: (item) =>
+    `${item} आप खुद बनाते हैं, इसलिए सप्लायर को ऑर्डर नहीं जाता। कितना बनाना है, यह तैयारी योजना में देखें।`,
+  askSource: (item) => `${item} आप बनाते हैं या खरीदते हैं? पहले Today पर बताएँ।`,
   orderMore: 'और मँगाएँ',
   notNow: 'अभी नहीं',
   moreRunOut: (n) => (n === 1 ? '1 और चीज़ खत्म हो रही है' : `${n} और चीज़ें खत्म हो रही हैं`),

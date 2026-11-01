@@ -16,11 +16,12 @@ from .forecast import Forecast, ForecastService
 from .gemini_schema import gemini_schema, parse_reply
 from .imports import ColumnMapper
 from .merchant import MerchantRepository
+from .product_source import Source, source_of
 from .recap import Summary
 from .rescue import buffer_for, local_now
 from .settings import Settings
 from .sourcing import OPEN, shop_pin
-from .supply_chain import bought, runs_out
+from .supply_chain import runs_out
 
 
 class Weather(BaseModel):
@@ -96,6 +97,8 @@ class LowStock(BaseModel):
     name: str
     stock: int
     runs_out: date | None
+    # Only bought stock becomes "Order X now" (OB-239).
+    source: Source = "bought"
 
 
 class BestAction(BaseModel):
@@ -158,17 +161,26 @@ def facts(
     ][:3]
     low = []
     predictions = {"predictions": [p.model_dump(mode="json") for p in forecast.predictions]}
+    category = str(business["fields"].get("category") or "")
     for product in context["inventory"]:
         stock = product.get("stock")
-        # Menu items are made, not bought: they never run out into an order (OB-239).
-        if stock is None or not bought(product):
+        source = source_of(product, category)
+        # Something the shop makes is in the prep plan above, never a low supply (OB-239).
+        if stock is None or source == "made":
             continue
         # The supply tile's own rule (tomorrow on, the forecast's upper bound), for every shop:
         # the brief, Today and the supply tile name the same day for the same item (OB-238).
         found = runs_out(product, predictions, today)
         runs_out_on = date.fromisoformat(found) if found else None
         if runs_out_on is not None or stock <= 5:
-            low.append(LowStock(name=product["name"], stock=stock, runs_out=runs_out_on))
+            low.append(
+                LowStock(
+                    name=product["name"],
+                    stock=stock,
+                    runs_out=runs_out_on,
+                    source=source,
+                )
+            )
     signals = store.recap_signals(uid, bid)
     waiting = [
         q
@@ -182,11 +194,16 @@ def facts(
         == "customer"
     ]
     orders = store.supplier_orders(uid, bid)
+    # Only stock the shop buys is ordered: a made item is made again, and one it has not said
+    # either way is asked on Today first (OB-239).
     urgent = [
         p
         for p in low
-        if (p.runs_out is None and p.stock <= 5)
-        or (p.runs_out is not None and p.runs_out <= today + timedelta(days=2))
+        if p.source == "bought"
+        and (
+            (p.runs_out is None and p.stock <= 5)
+            or (p.runs_out is not None and p.runs_out <= today + timedelta(days=2))
+        )
     ]
     # Avoid duplicate orders for a supply already ordered and not yet received.
     urgent = [

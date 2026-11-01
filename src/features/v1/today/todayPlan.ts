@@ -18,7 +18,15 @@ export type Need =
   | { id: string; kind: 'reply'; count: number }
   | { id: string; kind: 'closeDay' }
   | { id: string; kind: 'menu' }
-  | { id: string; kind: 'low'; item: string; left: number }
+  | {
+      id: string
+      kind: 'low'
+      item: string
+      left: number
+      /** Bought: Order. Made: Make more. Unknown: "Do you make it or buy it?" (OB-239). */
+      source: 'bought' | 'made' | 'unknown'
+      productId: string | null
+    }
   | { id: string; kind: 'soldOut'; items: Product[] }
   | { id: string; kind: 'step'; step: StepId }
   | { id: string; kind: 'facts'; facts: AskFact[] }
@@ -216,7 +224,14 @@ export function todayPlan(input: TodayInput): TodayPlan {
     all.push({ id: 'menu', kind: 'menu' })
   const soldOut = products.filter((product) => product.available === false)
   for (const low of facts?.low_stock ?? [])
-    all.push({ id: `low-${low.name}`, kind: 'low', item: low.name, left: low.stock })
+    all.push({
+      id: `low-${low.name}`,
+      kind: 'low',
+      item: low.name,
+      left: low.stock,
+      source: low.source ?? 'bought',
+      productId: low.product_id ?? null,
+    })
   if (soldOut.length) all.push({ id: 'sold-out', kind: 'soldOut', items: soldOut })
   // On day one the hero carries the next step; elsewhere missing steps wait their turn here.
   if (!dayOne) for (const step of steps) all.push({ id: `step-${step}`, kind: 'step', step })

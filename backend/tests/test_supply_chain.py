@@ -807,8 +807,9 @@ def test_ob239_reorder_never_drafts_a_finished_menu_item(tmp_path: Path) -> None
         for item in ("Milk", "Tea dust"):
             po = draft(store, bid, item)["order"]
             assert po["reason"]["item"] == item and po["lines"][0]["unit"] in {"litre", "kg"}
-        # Even named, chai is never bought by the cup, and the café is never its supplier.
+        # Even named, chai is made here: no order, and the café is never its supplier.
         named = draft(store, bid, "Masala chai")
+        assert named == {"status": "made", "item": "Masala chai"}
         for po in [named.get("order")] + [
             supply_chain.get_po(store, "alice", bid, o["id"])
             for o in supply_chain.orders(store, "alice", bid)
@@ -816,16 +817,18 @@ def test_ob239_reorder_never_drafts_a_finished_menu_item(tmp_path: Path) -> None
             if po:
                 assert po["supplier"]["id"] != "demo-ob239-cafe"
                 assert all(line["unit"] != "cup" for line in po["lines"]), po["lines"]
-        # Chai (40 cups) and bun maska (4 plates) run out first, yet nothing picks them: not
-        # the reorder, and not Today's low-stock rows with their Order button.
+        # Chai (40 cups) and bun maska (4 plates) run out first, yet nothing orders them: not
+        # the reorder, and Today's low row for bun maska says "Make more", not "Order".
         today = today_for(store.context("alice", bid)["business"]["fields"])
         forecast = asyncio.run(
             ForecastService(offline()).forecast(store.sales_history("alice", bid), today, inventory)
         )
         menu = [p for p in inventory if p["name"] in {"Masala chai", "Bun maska"}]
         assert supply_chain.pick_item("", menu, forecast.model_dump(mode="json"), today) == ""
-        low = {row.name for row in shop_today.low_stock(inventory, forecast, today)}
-        assert low and low <= {"Milk", "Tea dust"}
+        low = {row.name: row.source for row in shop_today.low_stock(inventory, forecast, today)}
+        assert low["Bun maska"] == "made"
+        assert {name for name, source in low.items() if source == "bought"} <= {"Milk", "Tea dust"}
+        assert {name for name, source in low.items() if source == "bought"}
     finally:
         current.reset(token)
 

@@ -327,6 +327,9 @@ class ProductFields(BaseModel):
     unit: str = Field(default="item", min_length=1, max_length=40)
     stock: int | None = Field(default=None, ge=0, le=1_000_000)
     available: bool = True
+    # The owner's answer to "Do you make it or buy it?": only bought stock is ever reordered
+    # (OB-239). Unset means the app infers it (product_source.py); a menu edit keeps it.
+    source: Literal["made", "bought"] | None = None
     # Set only when the owner picks a new unit for an item saved under another one: the commit
     # updates that saved item instead of adding a second one. Never stored on the item.
     previous_unit: str | None = Field(default=None, min_length=1, max_length=40)
@@ -338,12 +341,28 @@ class ProductFields(BaseModel):
             del data["category"]
         if data.get("previous_unit") in (None, data["unit"]):
             data.pop("previous_unit", None)
+        if data.get("source") is None:
+            data.pop("source", None)
         return data
 
 
 class AvailabilityRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     available: bool
+
+
+class SourceRequest(BaseModel):
+    """The owner's one tap: they make this item, or they buy it (OB-239)."""
+
+    model_config = ConfigDict(extra="forbid")
+    source: Literal["made", "bought"]
+
+
+def kept_source(product: dict[str, Any], saved: dict[str, Any] | None) -> dict[str, Any]:
+    """A menu edit never forgets the owner's make-or-buy answer (OB-239)."""
+    if saved and saved.get("source") and not product.get("source"):
+        return {**product, "source": saved["source"]}
+    return product
 
 
 class ShareRequest(BaseModel):
@@ -499,6 +518,10 @@ class MerchantRepository(Protocol):
         self, uid: str, bid: str, product_id: str, available: bool
     ) -> dict[str, Any]:
         """Owner's direct sold-out toggle; bumps the revision so pending proposals go stale."""
+        ...
+
+    def set_source(self, uid: str, bid: str, product_id: str, source: str) -> dict[str, Any]:
+        """The owner's make-or-buy answer, saved on the item so it is never asked again."""
         ...
 
     def planning(
@@ -967,6 +990,10 @@ class MerchantStore:
                         db.execute("DELETE FROM inventory WHERE id=?", (old[0],))
                     existing = existing or old
                 if existing:
+                    saved = db.execute(
+                        "SELECT fields FROM inventory WHERE id=?", (existing[0],)
+                    ).fetchone()
+                    product = kept_source(product, json.loads(saved[0]) if saved else None)
                     db.execute(
                         "UPDATE inventory SET fields=? WHERE id=?",
                         (json.dumps(product), existing[0]),
@@ -1121,6 +1148,22 @@ class MerchantStore:
                     (bid, day),
                 )
             db.execute("UPDATE inventory SET fields=? WHERE id=?", (json.dumps(fields), product_id))
+            db.execute("UPDATE businesses SET revision=revision+1 WHERE id=?", (bid,))
+            revision = db.execute("SELECT revision FROM businesses WHERE id=?", (bid,)).fetchone()
+        return {"id": product_id, **fields, "revision": revision[0]}
+
+    def set_source(self, uid: str, bid: str, product_id: str, source: str) -> dict[str, Any]:
+        with self.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            self.owned(db, uid, bid)
+            row = db.execute(
+                "SELECT fields FROM inventory WHERE id=? AND business_id=?", (product_id, bid)
+            ).fetchone()
+            if not row:
+                raise HTTPException(404, "Product not found.")
+            fields = {**json.loads(row[0]), "source": source}
+            db.execute("UPDATE inventory SET fields=? WHERE id=?", (json.dumps(fields), product_id))
+            # A new revision, like the sold-out switch: the app reloads the item at once.
             db.execute("UPDATE businesses SET revision=revision+1 WHERE id=?", (bid,))
             revision = db.execute("SELECT revision FROM businesses WHERE id=?", (bid,)).fetchone()
         return {"id": product_id, **fields, "revision": revision[0]}

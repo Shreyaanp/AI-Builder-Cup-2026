@@ -130,7 +130,7 @@ def set_supplier_rules(
 
 
 async def draft_reorder(
-    item: str = "", quantity: float | None = None, anyway: bool = False
+    item: str = "", quantity: float | None = None, anyway: bool = False, source: str = ""
 ) -> dict[str, Any]:
     """Draft a purchase order from the forecast, stock and the supplier rules: how much to
     order (covering demand until delivery plus a week, rounded to the MOQ and packs), from the
@@ -141,7 +141,8 @@ async def draft_reorder(
     Explain the choice in one line from reason (stock, runs_out, supplier, price tier, arrival,
     credit) and name any broken rule. If the supplier is demo, say it is a simulated supplier.
     anyway: only after the owner said yes to ordering more of something already on order in
-    another unit (status on_order_other_unit)."""
+    another unit (status on_order_other_unit). source: "made" or "bought", only as the owner's
+    answer to ask_make_or_buy."""
     from . import supply_chain
     from .forecast import ForecastService
 
@@ -164,6 +165,7 @@ async def draft_reorder(
             _generator(),
             DEMO_OWNER_UID,
             anyway=anyway,
+            source=source if source in {"made", "bought"} else "",
         )
     except HTTPException as error:
         return _invalid(error, ctx)
@@ -197,6 +199,20 @@ async def draft_reorder(
             "arrives; the app cannot tell if it is enough. Ask if they want to order more. Only "
             "if they say yes, call draft_reorder again with anyway=true.",
         }
+    if result["status"] == "made":
+        return {
+            "status": "made_here",
+            "item": result["item"],
+            "instruction": "The shop makes this itself: no supplier order. Offer to plan how many "
+            "to make (the prep plan), or to reorder what it is made from.",
+        }
+    if result["status"] == "ask_source":
+        return {
+            "status": "ask_make_or_buy",
+            "item": result["item"],
+            "instruction": "Ask once: do they make it or buy it ready-made? Then call "
+            "draft_reorder again with this item and source made or bought.",
+        }
     if result["status"] == "check":
         return {
             "status": "check_quantity",
@@ -205,9 +221,11 @@ async def draft_reorder(
             "quantity": result["quantity"],
             "days": result["days"],
             "supplier": result["supplier"],
-            "instruction": "No order was drafted: this much is more than a month of what the "
-            "shop uses (OB-239). Ask the owner to check the item and the supplier's minimum, "
-            "or to name the quantity they want.",
+            "supplier_quantity": result["supplier_quantity"],
+            "supplier_unit": result["supplier_unit"],
+            "instruction": "No order was drafted: it is more than a month of what the shop uses, "
+            "or sold in a unit that does not compare (days is null). Ask the owner to check the "
+            "item and the supplier's minimum, or to name the quantity they want.",
         }
     order = result["order"]
     return {

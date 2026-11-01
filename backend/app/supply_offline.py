@@ -38,7 +38,13 @@ ORDER_QUESTION = re.compile(
     r"my purchase orders)\b",
     re.I,
 )
-SKIP = {"my", "the", "some", "more", "it", "please", "now", "stock"}
+SKIP = {"my", "the", "some", "more", "it", "please", "now", "stock", "for", "tomorrow", "today"}
+# The owner's answer to "Do you make it or buy it?" (OB-239): "I buy Samosa", "we make samosa".
+MAKE_OR_BUY = re.compile(
+    r"^\s*(?:i|we)\s+(buy|make|cook|bake)\s+(?:the\s+)?([^\W\d_]+(?:\s[^\W\d_]+)?)"
+    r"(?:\s+ready-?made)?\s*[.!]?\s*$",
+    re.I,
+)
 SHOW_INBOUND = re.compile(
     r"\b(?:inbound|what came in|what(?:'s| is) coming in|what needs me|order changes?\??$|"
     r"any (?:new )?(?:orders|changes|forecasts?))\b",
@@ -167,6 +173,13 @@ def supply_call(question: str, ctx: Any) -> types.Part | None:
         if args:
             supplier = supplier_named(text, ctx)
             return call("set_supplier_rules", {"supplier": supplier, **args})
+    answer = MAKE_OR_BUY.match(text)
+    if answer and answer.group(2).casefold() not in {"it", "them", "this"}:
+        made = answer.group(1).casefold() != "buy"
+        return call(
+            "draft_reorder",
+            {"item": answer.group(2), "source": "made" if made else "bought"},
+        )
     if REORDER.search(text):
         args = {}
         found = REORDER_ITEM.search(text)
@@ -281,7 +294,24 @@ def supply_reply(name: str, result: dict[str, Any]) -> str | None:
                 f"Offline coach: {result['on_order']:g} {result['unit']} {result['item']} is "
                 f"already on order{arrives}. No new order needed."
             )
+        if result.get("status") == "made_here":
+            return (
+                f"Offline coach: you make {result['item']} yourself, so there is no supplier "
+                "order. Ask me how many to make, or reorder what it is made from."
+            )
+        if result.get("status") == "ask_make_or_buy":
+            return (
+                f'Offline coach: do you make {result["item"]} or buy it? Say "I make '
+                f'{result["item"]}" or "I buy {result["item"]}", or tap Make or Buy on Today.'
+            )
         if result.get("status") == "check_quantity":
+            if result.get("days") is None:
+                return (
+                    f"Offline coach: check this first. {result['supplier']} sells "
+                    f"{result['item']} by the {result['supplier_unit']} (at least "
+                    f"{result['supplier_quantity']:g}) and you count it in {result['unit']}, so "
+                    "I drafted nothing. Tell me how much you want."
+                )
             return (
                 f"Offline coach: check this first. {result['quantity']:g} {result['unit']} "
                 f"{result['item']} from {result['supplier']} is about {result['days']} days of "

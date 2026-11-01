@@ -1,0 +1,35 @@
+import { useLocale } from '../../../state/hooks'
+
+/**
+ * Made or bought (OB-239): only stock the shop buys gets an Order button. Something it makes
+ * gets "Make more"; an item the app cannot tell about asks once. Hindi and English are complete;
+ * other languages show English until translated, like the supply screens' copy.
+ */
+const en = {
+  ask: (item: string, left: number) => `${item}: only ${left} left. Do you make it or buy it?`,
+  make: 'Make',
+  buy: 'Buy',
+  makeLabel: (item: string) => `I make ${item}`,
+  buyLabel: (item: string) => `I buy ${item}`,
+  makeMore: 'Make more',
+  // The coach answers with the prep plan for the item.
+  makeDraft: (item: string) => `How many ${item} should I prep for tomorrow?`,
+}
+
+export type SourceCopy = typeof en
+
+const hi: SourceCopy = {
+  ask: (item, left) => `${item}: सिर्फ़ ${left} बचे। आप इसे बनाते हैं या खरीदते हैं?`,
+  make: 'बनाते हैं',
+  buy: 'खरीदते हैं',
+  makeLabel: (item) => `${item}: बनाते हैं`,
+  buyLabel: (item) => `${item}: खरीदते हैं`,
+  makeMore: 'और बनाएँ',
+  makeDraft: (item) => `कल के लिए कितने ${item} तैयार करूँ?`,
+}
+
+const tables: Record<string, SourceCopy> = { en, hi }
+
+export function useSourceCopy(): SourceCopy {
+  return tables[useLocale()] ?? en
+}

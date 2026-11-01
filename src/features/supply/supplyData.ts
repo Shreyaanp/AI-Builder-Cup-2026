@@ -176,13 +176,26 @@ export function usePoActions(onChange: (order: PurchaseOrder) => void) {
 }
 
 interface ReorderResult {
-  status: 'drafted' | 'needs_item' | 'no_supplier' | 'on_order' | 'on_order_units' | 'check'
+  status:
+    | 'drafted'
+    | 'needs_item'
+    | 'no_supplier'
+    | 'on_order'
+    | 'on_order_units'
+    | 'check'
+    | 'made'
+    | 'ask_source'
   order?: PurchaseOrder
   item?: string
   unit?: string
-  quantity?: number
-  /** `check`: how many days of the shop's own use the quantity would be (OB-239). */
-  days?: number
+  quantity?: number | null
+  /**
+   * `check`: how many days of the shop's own use the quantity would be; null when the supplier's
+   * unit does not convert to the shop's (OB-239).
+   */
+  days?: number | null
+  supplier_quantity?: number
+  supplier_unit?: string
   arrives?: string
   other?: { quantity: number; unit: string; arrives: string }[]
 }
@@ -227,13 +240,23 @@ export function useDraftReorder() {
         if (result.status === 'check')
           return {
             order: null,
-            note: c.checkQuantity(
-              quantity.format(result.quantity ?? 0),
-              result.unit ?? '',
-              name,
-              result.days ?? 0,
-            ),
+            note:
+              result.days == null
+                ? c.checkUnits(
+                    quantity.format(result.supplier_quantity ?? 0),
+                    result.supplier_unit ?? '',
+                    name,
+                    result.unit ?? '',
+                  )
+                : c.checkQuantity(
+                    quantity.format(result.quantity ?? 0),
+                    result.unit ?? '',
+                    name,
+                    result.days,
+                  ),
           }
+        if (result.status === 'made') return { order: null, note: c.madeHere(name) }
+        if (result.status === 'ask_source') return { order: null, note: c.askSource(name) }
         const note =
           result.status === 'on_order'
             ? c.onOrder(

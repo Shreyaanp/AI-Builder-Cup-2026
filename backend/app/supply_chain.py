@@ -41,6 +41,7 @@ from pydantic import ValidationError
 
 from .merchant import SUPPLY_KINDS, MerchantRepository, ProductFields
 from .money import exponent, to_major
+from .product_source import same_kind, source_of
 from .region import shop_currency
 from .supply_docs import (
     MAPPING,
@@ -79,9 +80,6 @@ SEQUENCE = "supply_seq"
 INBOX = "supply_inbox"  # partner documents (supply_io.py)
 assert (RULES, ORDERS, SEQUENCE, INBOX) == SUPPLY_KINDS  # erased with the shop (merchant.py)
 COVER_DAYS = 7
-# A cup of chai or a plate of bun maska is a menu item the shop makes from its supplies, never
-# stock it buys: it is never reordered and no supplier sells it (OB-239).
-SERVED_UNITS = {"cup", "glass", "plate", "bowl", "portion", "slice", "set", "hour", "service"}
 # More than a month of the shop's own use in one draft is a mistake to check, not an order: a
 # supplier's minimum or a unit mix-up must never draft 614 cups (OB-239).
 CHECK_DAYS = 30
@@ -371,12 +369,10 @@ def shop_today(context: dict[str, Any]) -> date:
     return today_for(context["business"]["fields"])
 
 
-def bought(product: dict[str, Any]) -> bool:
-    """Stock the shop buys (a raw supply, an ingredient or goods it resells), not a menu item
-    it makes and serves (OB-239)."""
-    from .sourcing import unit_of
-
-    return unit_of(product.get("unit") or "kg") not in SERVED_UNITS
+def bought(product: dict[str, Any], category: str = "") -> bool:
+    """Stock the shop buys (a raw supply, an ingredient or goods it resells), not something it
+    makes, nor an item it has not said either way (OB-239, product_source.py)."""
+    return source_of(product, category) == "bought"
 
 
 def runs_out(product: dict[str, Any], forecast: dict[str, Any], today: date) -> str:
@@ -388,7 +384,7 @@ def runs_out(product: dict[str, Any], forecast: dict[str, Any], today: date) -> 
         if isinstance(row, dict) and str(row.get("date") or "") > today.isoformat()
     ]
     need = need_from_forecast(product, {**forecast, "predictions": rows}, product["name"], today)
-    return str(need["runs_out"])
+    return str(need["runs_out"] or "")
 
 
 def need_from_forecast(
@@ -442,9 +438,11 @@ async def draft_reorder(
     demo_owner: str,
     supplier_id: str = "",
     anyway: bool = False,
+    source: str = "",
 ) -> dict[str, Any]:
     """Draft the purchase order the forecast and rules call for (nothing is sent). When some is
-    on order in a unit that does not convert, it asks first: `anyway` is the owner's yes."""
+    on order in a unit that does not convert, it asks first: `anyway` is the owner's yes.
+    `source` is the owner's answer to "Do you make it or buy it?", saved on the item."""
     import anyio
 
     from . import sourcing
@@ -474,6 +472,7 @@ async def draft_reorder(
         coming = on_order(store, uid, bid, product["name"], unit, known)
         return cover(need, coming) in {"full", "units"}
 
+    category = str(fields.get("category") or "")
     target = await anyio.to_thread.run_sync(
         lambda: pick_item(
             item,
@@ -481,13 +480,30 @@ async def draft_reorder(
             forecast,
             today,
             lambda name: any(
-                can_supply(store, bid, p, currency) for p in inventory if p["name"] == name
+                can_supply(store, bid, p, currency, category)
+                for p in inventory
+                if p["name"] == name
             ),
             is_covered,
+            category,
         )
     )
     if not target:
         return {"status": "needs_item"}
+    named = next(
+        (p for p in inventory if p["name"].casefold() == target.casefold()),
+        next((p for p in inventory if sourcing.matches(p["name"], target)), None),
+    )
+    if named and source in {"made", "bought"} and named.get("id"):
+        named = await anyio.to_thread.run_sync(store.set_source, uid, bid, named["id"], source)
+    if named:
+        # Only stock the shop buys is ordered. Something it makes is made again, never bought
+        # from a rival; one it has not said either way is asked once (OB-239).
+        made_or_bought = source_of(named, category)
+        if made_or_bought == "made":
+            return {"status": "made", "item": named["name"]}
+        if made_or_bought == "unknown":
+            return {"status": "ask_source", "item": named["name"], "product_id": named.get("id")}
     if not item.strip():
         # Items this reorder skipped as covered: their unsent drafts are sized again or withdrawn
         # too, so none stays approvable at an old size (#603).
@@ -540,7 +556,9 @@ async def draft_reorder(
         # 2 pack is on its way and the shop counts litres: the app cannot tell if it is enough,
         # so the owner says before a second order goes out (#603).
         return {"status": "on_order_units", "item": target, "unit": unit, **coming}
-    candidates = await anyio.to_thread.run_sync(supplier_candidates, store, bid, target, currency)
+    candidates = await anyio.to_thread.run_sync(
+        supplier_candidates, store, bid, target, currency, category
+    )
     if not candidates:
         found = await sourcing.find(
             store, uid, bid, target, wanted or None, unit, generator, demo_owner
@@ -552,7 +570,7 @@ async def draft_reorder(
                     ensure_relationship, store, bid, shop, currency, index, business_size(fields)
                 )
         candidates = await anyio.to_thread.run_sync(
-            supplier_candidates, store, bid, target, currency
+            supplier_candidates, store, bid, target, currency, category
         )
     if not candidates:
         return {"status": "no_supplier", "item": target}
@@ -609,20 +627,33 @@ async def draft_reorder(
     faster = next((o for o in options if o["on_time"] and o is not best), None)
     line = best["line"]
     amount = sourcing.convert(line["quantity"], line["unit"], unit)
+    check = {
+        "status": "check",
+        "item": target,
+        "unit": unit,
+        "quantity": None,
+        "days": None,
+        "supplier": best["supplier"]["name"],
+        "supplier_item": line["item"],
+        "supplier_quantity": line["quantity"],
+        "supplier_unit": line["unit"],
+    }
+    if not quantity and amount is None:
+        # The supplier sells it in a unit the shop's count does not convert to (Atta by the
+        # pack with a minimum of 1000, counted here in kg): the app cannot tell how much that
+        # is, so the owner checks it first and nothing is drafted (OB-239).
+        return check
     if (
         not quantity
         and need["daily"]
         and amount is not None
         and amount > need["daily"] * CHECK_DAYS
     ):
-        # The owner checks the item and its supplier; nothing is drafted (OB-239).
+        # More than a month of use: the owner checks the item and its supplier (OB-239).
         return {
-            "status": "check",
-            "item": target,
-            "unit": unit,
+            **check,
             "quantity": round(amount, 2),
             "days": math.floor(amount / need["daily"]),
-            "supplier": best["supplier"]["name"],
         }
     number = await anyio.to_thread.run_sync(_next_number, store, bid, "po")
     now = time.time()
@@ -695,6 +726,7 @@ def pick_item(
     today: date,
     supplied: Callable[[str], bool] = lambda _: False,
     is_covered: Callable[[dict[str, Any], dict[str, Any]], bool] = lambda _p, _n: False,
+    category: str = "",
 ) -> str:
     """The named item, else the stocked item that runs out first. Menu items are never picked:
     a tea stall reorders tea dust, not the chai it brews from it (#264, OB-239); items a linked
@@ -713,7 +745,7 @@ def pick_item(
         )
     soonest: tuple[bool, bool, str, str] | None = None
     for product in inventory:
-        if product.get("stock") is None or not bought(product):
+        if product.get("stock") is None or not bought(product, category):
             continue
         need = need_from_forecast(product, forecast, product["name"], today)
         if not need["runs_out"]:
@@ -730,9 +762,11 @@ def pick_item(
 
 
 def supplier_candidates(
-    store: MerchantRepository, bid: str, item: str, currency: str
+    store: MerchantRepository, bid: str, item: str, currency: str, category: str = ""
 ) -> list[dict[str, Any]]:
-    """Suppliers the shop has a relationship with that stock this item."""
+    """Suppliers the shop has a relationship with that stock this item. A shop of the shop's own
+    kind is never one (a bakery never orders bread from another bakery), nor is something a shop
+    makes itself (a café's cup of chai is its menu), OB-239."""
     from .sourcing import matches
 
     found = []
@@ -740,21 +774,33 @@ def supplier_candidates(
         shop = store.public_shop(row["supplier"]["id"])
         if not shop or (shop.get("currency") or currency) != currency:
             continue
-        # A café's cup of chai is its menu, not a supply to buy from it (OB-239).
-        products = [p for p in shop.get("products", []) if matches(p["name"], item) and bought(p)]
+        theirs = str(shop.get("category") or "")
+        if same_kind(category, theirs, bool(shop.get("supplier"))):
+            continue
+        products = [
+            p
+            for p in shop.get("products", [])
+            if matches(p["name"], item) and source_of(p, theirs) != "made"
+        ]
         if products:
             found.append({"row": row, "shop": shop, "product": products[0]})
     return found
 
 
-def can_supply(store: MerchantRepository, bid: str, product: dict[str, Any], currency: str) -> bool:
+def can_supply(
+    store: MerchantRepository,
+    bid: str,
+    product: dict[str, Any],
+    currency: str,
+    category: str = "",
+) -> bool:
     """A linked supplier stocks this item in a unit it converts to (cups never become kg)."""
     from .sourcing import convert
 
     unit = product.get("unit") or "kg"
     return any(
         convert(1, unit, c["product"]["unit"]) is not None
-        for c in supplier_candidates(store, bid, product["name"], currency)
+        for c in supplier_candidates(store, bid, product["name"], currency, category)
     )
 
 

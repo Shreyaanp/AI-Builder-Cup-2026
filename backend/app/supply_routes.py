@@ -39,6 +39,8 @@ class ReorderBody(BaseModel):
     supplier_id: str = Field(default="", max_length=120)
     # Yes to "2 pack is already on order, order more?" when the units do not compare (#603).
     anyway: bool = False
+    # The owner's answer to "Do you make it or buy it?", saved on the item (OB-239).
+    source: Literal["", "made", "bought"] = ""
 
 
 class Fix(BaseModel):
@@ -91,11 +93,12 @@ async def overview(business_id: str, request: Request) -> dict[str, Any]:
     history = await anyio.to_thread.run_sync(store(request).sales_history, uid, business_id)
     today = supply_chain.shop_today(context)
     forecast = await forecaster(request).forecast(history, today, context["inventory"])
+    category = str(context["business"]["fields"].get("category") or "")
     needs = [
         {"item": product["name"], **need}
         for product in context["inventory"]
         # Only stock the shop buys runs out here: a menu item is made from it (OB-239).
-        if supply_chain.bought(product)
+        if supply_chain.bought(product, category)
         and (
             need := supply_chain.need_from_forecast(
                 product, forecast.model_dump(mode="json"), product["name"], today
@@ -107,7 +110,7 @@ async def overview(business_id: str, request: Request) -> dict[str, Any]:
 
     def supplied(item: str) -> bool:
         product = next(p for p in context["inventory"] if p["name"] == item)
-        return supply_chain.can_supply(store(request), business_id, product, currency)
+        return supply_chain.can_supply(store(request), business_id, product, currency, category)
 
     # What is already on its way, so Today does not ask for the same milk twice (OB-226); the
     # orders are read once for every need.
@@ -207,6 +210,7 @@ async def reorder(business_id: str, body: ReorderBody, request: Request) -> dict
         coordinator.DEMO_OWNER_UID,
         body.supplier_id,
         body.anyway,
+        body.source,
     )
 
 

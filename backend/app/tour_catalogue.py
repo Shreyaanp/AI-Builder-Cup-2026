@@ -3,8 +3,8 @@
 from .demo_catalogue import DemoShop, item, shop
 from .merchant import Understanding
 from .money import to_minor
+from .product_source import SERVED_UNITS, source_of
 from .region import profile
-from .supply_chain import bought
 from .vendor_profile import allowed_facts, infer_profile
 
 _INDIA = profile("IN")
@@ -28,13 +28,17 @@ def local_shop(
     category: str,
     story: str,
     hours: str,
-    menu: list[tuple[str, float, str]],
+    menu: list[tuple[str, float, str, str]],
     index: int,
 ) -> DemoShop:
     lat, lng, currency, zone, area = CENTRES[city]
     profile = infer_profile(category, story)
     allowed = allowed_facts({"profile": profile.model_dump()})
-    products = [item(n, to_minor(p, currency), u, category=category) for n, p, u in menu]
+    products = [item(n, to_minor(p, currency), u, category=category) for n, p, u, _ in menu]
+    # Made or bought is set on every tour item (OB-239): only bought stock is ever reordered,
+    # so the tour never shows "Order Bread" at a bakery or a supplier for a tailor's hem.
+    for product, (*_, made_or_bought) in zip(products, menu, strict=True):
+        product.source = "made" if made_or_bought == "made" else "bought"
     if category == "Bakery":
         for product in products:
             product.category = (
@@ -42,11 +46,15 @@ def local_shop(
             )
     if index == 0:
         products[4].stock = 6  # A busy chai stall keeps several days of tea dust on hand.
-    # A concrete, actionable low-stock row on Today: stock the shop buys, never the cup of chai
-    # it brews (OB-239). The last other item is sold out.
+    # A concrete, actionable low-stock row on Today (OB-239): a supply the shop buys (a cable,
+    # a stem, rice) carries "Order"; else something it makes by the piece carries "Make more".
+    # Never a service or a cup of chai. The last other item is sold out.
     kept = {4} if index == 0 else set()
-    low = next(
-        (p for n, p in enumerate(products) if n not in kept and bought(p.model_dump())), None
+    rows = [
+        (p, source_of(p.model_dump(), category)) for n, p in enumerate(products) if n not in kept
+    ]
+    low = next((p for p, found in rows if found == "bought"), None) or next(
+        (p for p, found in rows if found == "made" and p.unit not in SERVED_UNITS), None
     )
     if low:
         low.stock = 4
@@ -118,7 +126,7 @@ def local_shop(
 
 
 def catalogue() -> list[DemoShop]:
-    india: list[tuple[str, str, str, str, str, list[tuple[str, float, str]]]] = [
+    india: list[tuple[str, str, str, str, str, list[tuple[str, float, str, str]]]] = [
         (
             "chai",
             "Lantern Chai Corner",
@@ -126,12 +134,12 @@ def catalogue() -> list[DemoShop]:
             "Ginger chai brewed in small pots; bun maska warmed to order.",
             "06:30–21:00",
             [
-                ("Masala chai", 20, "cup"),
-                ("Ginger chai", 25, "cup"),
-                ("Bun maska", 35, "piece"),
-                ("Samosa", 20, "piece"),
-                ("Tea dust", 320, "kg"),
-                ("Ragi biscuit", 15, "piece"),
+                ("Masala chai", 20, "cup", "made"),
+                ("Ginger chai", 25, "cup", "made"),
+                ("Bun maska", 35, "piece", "made"),
+                ("Samosa", 20, "piece", "made"),
+                ("Tea dust", 320, "kg", "bought"),
+                ("Ragi biscuit", 15, "piece", "made"),
             ],
         ),
         (
@@ -141,12 +149,12 @@ def catalogue() -> list[DemoShop]:
             "Vegetarian-only puffs leave the oven at four; ask for the warm tray.",
             "07:00–21:00",
             [
-                ("Vegetable puff", 35, "piece"),
-                ("Butter croissant", 95, "piece"),
-                ("Milk bread", 55, "piece"),
-                ("Coconut bun", 30, "piece"),
-                ("Khari biscuits", 80, "pack"),
-                ("Plum cake", 140, "slice"),
+                ("Vegetable puff", 35, "piece", "made"),
+                ("Butter croissant", 95, "piece", "made"),
+                ("Milk bread", 55, "piece", "made"),
+                ("Coconut bun", 30, "piece", "made"),
+                ("Khari biscuits", 80, "pack", "made"),
+                ("Plum cake", 140, "slice", "made"),
             ],
         ),
         (
@@ -156,12 +164,12 @@ def catalogue() -> list[DemoShop]:
             "Trouser hems ready the same evening; fittings by appointment.",
             "10:00–20:00",
             [
-                ("Trouser hemming", 150, "service"),
-                ("Zip replacement", 180, "service"),
-                ("Shirt fitting", 250, "service"),
-                ("Kurta stitching", 850, "service"),
-                ("Button repair", 40, "service"),
-                ("Curtain shortening", 200, "piece"),
+                ("Trouser hemming", 150, "service", "made"),
+                ("Zip replacement", 180, "service", "made"),
+                ("Shirt fitting", 250, "service", "made"),
+                ("Kurta stitching", 850, "service", "made"),
+                ("Button repair", 40, "service", "made"),
+                ("Curtain shortening", 200, "service", "made"),
             ],
         ),
         (
@@ -171,12 +179,12 @@ def catalogue() -> list[DemoShop]:
             "A written quote before every repair; data stays on your phone.",
             "10:00–21:00",
             [
-                ("Screen replacement", 1800, "service"),
-                ("Battery replacement", 950, "service"),
-                ("Charging port clean", 150, "service"),
-                ("Screen protector", 180, "piece"),
-                ("USB-C cable", 250, "piece"),
-                ("Speaker repair", 650, "service"),
+                ("Screen replacement", 1800, "service", "made"),
+                ("Battery replacement", 950, "service", "made"),
+                ("Charging port clean", 150, "service", "made"),
+                ("Screen protector", 180, "piece", "bought"),
+                ("USB-C cable", 250, "piece", "bought"),
+                ("Speaker repair", 650, "service", "made"),
             ],
         ),
         (
@@ -186,12 +194,12 @@ def catalogue() -> list[DemoShop]:
             "Jasmine strings tied each morning; paper-wrapped bouquets on request.",
             "07:00–20:30",
             [
-                ("Jasmine string", 40, "piece"),
-                ("Marigold garland", 120, "piece"),
-                ("Rose bouquet", 450, "bunch"),
-                ("Sunflower", 80, "piece"),
-                ("Orchid bunch", 650, "bunch"),
-                ("Festival flower basket", 300, "item"),
+                ("Jasmine string", 40, "piece", "made"),
+                ("Marigold garland", 120, "piece", "made"),
+                ("Rose bouquet", 450, "bunch", "made"),
+                ("Sunflower", 80, "piece", "bought"),
+                ("Orchid bunch", 650, "bunch", "made"),
+                ("Festival flower basket", 300, "item", "made"),
             ],
         ),
         (
@@ -201,12 +209,12 @@ def catalogue() -> list[DemoShop]:
             "Self-service helmet cleaning beside the cycle stand; a ten-minute stop.",
             "08:00–22:00",
             [
-                ("Helmet clean", 79, "service"),
-                ("Deep liner clean", 149, "service"),
-                ("Visor polish", 49, "service"),
-                ("Two helmet cleans", 139, "set"),
-                ("Helmet liner", 199, "piece"),
-                ("Rain cover", 99, "piece"),
+                ("Helmet clean", 79, "service", "made"),
+                ("Deep liner clean", 149, "service", "made"),
+                ("Visor polish", 49, "service", "made"),
+                ("Two helmet cleans", 139, "set", "made"),
+                ("Helmet liner", 199, "piece", "bought"),
+                ("Rain cover", 99, "piece", "bought"),
             ],
         ),
         (
@@ -216,12 +224,12 @@ def catalogue() -> list[DemoShop]:
             "Twenty vegetarian-only lunch boxes cooked each morning; order before ten.",
             "08:00–20:00",
             [
-                ("Vegetarian thali", 120, "plate"),
-                ("Lemon rice", 70, "plate"),
-                ("Chapati set", 40, "set"),
-                ("Curd rice", 65, "plate"),
-                ("Dal", 50, "pack"),
-                ("Weekend biryani", 150, "plate"),
+                ("Vegetarian thali", 120, "plate", "made"),
+                ("Lemon rice", 70, "plate", "made"),
+                ("Chapati set", 40, "set", "made"),
+                ("Curd rice", 65, "plate", "made"),
+                ("Dal", 50, "pack", "made"),
+                ("Weekend biryani", 150, "plate", "made"),
             ],
         ),
         (
@@ -231,16 +239,16 @@ def catalogue() -> list[DemoShop]:
             "Bring a container for rice and lentils; small quantities welcome.",
             "07:00–22:00",
             [
-                ("Sona masoori rice", 65, "kg"),
-                ("Toor dal", 155, "kg"),
-                ("Atta", 58, "kg"),
-                ("Tea leaves", 280, "kg"),
-                ("Milk", 28, "pack"),
-                ("Jaggery", 85, "pack"),
+                ("Sona masoori rice", 65, "kg", "bought"),
+                ("Toor dal", 155, "kg", "bought"),
+                ("Atta", 58, "kg", "bought"),
+                ("Tea leaves", 280, "kg", "bought"),
+                ("Milk", 28, "pack", "bought"),
+                ("Jaggery", 85, "pack", "bought"),
             ],
         ),
     ]
-    singapore: list[tuple[str, str, str, str, str, list[tuple[str, float, str]]]] = [
+    singapore: list[tuple[str, str, str, str, str, list[tuple[str, float, str, str]]]] = [
         (
             "kopi",
             "Sunny Side Kopitiam",
@@ -248,12 +256,12 @@ def catalogue() -> list[DemoShop]:
             "Kopi ground at dawn, kaya toast grilled when you order.",
             "06:30–20:00",
             [
-                ("Kopi", 1.7, "cup"),
-                ("Kopi O", 1.5, "cup"),
-                ("Kaya toast set", 5.2, "set"),
-                ("Soft-boiled eggs", 1.8, "set"),
-                ("Kopi powder", 18, "kg"),
-                ("Curry puff", 1.8, "piece"),
+                ("Kopi", 1.7, "cup", "made"),
+                ("Kopi O", 1.5, "cup", "made"),
+                ("Kaya toast set", 5.2, "set", "made"),
+                ("Soft-boiled eggs", 1.8, "set", "made"),
+                ("Kopi powder", 18, "kg", "bought"),
+                ("Curry puff", 1.8, "piece", "made"),
             ],
         ),
         (
@@ -263,12 +271,12 @@ def catalogue() -> list[DemoShop]:
             "Small-batch coconut rice and house sambal, ready for the lunch queue.",
             "07:00–20:00",
             [
-                ("Nasi lemak", 3.5, "plate"),
-                ("Chicken wing set", 5.5, "plate"),
-                ("Otah", 1.5, "piece"),
-                ("Teh tarik", 1.6, "cup"),
-                ("Sambal egg", 1.2, "piece"),
-                ("Rendang set", 6.5, "plate"),
+                ("Nasi lemak", 3.5, "plate", "made"),
+                ("Chicken wing set", 5.5, "plate", "made"),
+                ("Otah", 1.5, "piece", "made"),
+                ("Teh tarik", 1.6, "cup", "made"),
+                ("Sambal egg", 1.2, "piece", "made"),
+                ("Rendang set", 6.5, "plate", "made"),
             ],
         ),
         (
@@ -278,12 +286,12 @@ def catalogue() -> list[DemoShop]:
             "Seasonal stems wrapped in reused paper; small bunches welcome.",
             "09:00–20:00",
             [
-                ("Small bouquet", 28, "bunch"),
-                ("Sunflower", 6, "piece"),
-                ("Orchid pot", 38, "item"),
-                ("Rose trio", 15, "bunch"),
-                ("Dried flower jar", 22, "item"),
-                ("Graduation bouquet", 55, "bunch"),
+                ("Small bouquet", 28, "bunch", "made"),
+                ("Sunflower", 6, "piece", "bought"),
+                ("Orchid pot", 38, "item", "bought"),
+                ("Rose trio", 15, "bunch", "made"),
+                ("Dried flower jar", 22, "item", "made"),
+                ("Graduation bouquet", 55, "bunch", "made"),
             ],
         ),
         (
@@ -293,12 +301,12 @@ def catalogue() -> list[DemoShop]:
             "Vegetarian-only bakes; pandan chiffon and sourdough sliced to order.",
             "07:00–21:00",
             [
-                ("Butter croissant", 4.5, "piece"),
-                ("Pandan chiffon", 3.8, "slice"),
-                ("Sourdough loaf", 12, "piece"),
-                ("Kaya bun", 2.8, "piece"),
-                ("Kouign-amann", 5.2, "piece"),
-                ("Earl Grey cake", 58, "piece"),
+                ("Butter croissant", 4.5, "piece", "made"),
+                ("Pandan chiffon", 3.8, "slice", "made"),
+                ("Sourdough loaf", 12, "piece", "made"),
+                ("Kaya bun", 2.8, "piece", "made"),
+                ("Kouign-amann", 5.2, "piece", "made"),
+                ("Earl Grey cake", 58, "piece", "made"),
             ],
         ),
         (
@@ -308,12 +316,12 @@ def catalogue() -> list[DemoShop]:
             "Upfront repair quotes and a bench you can watch from the counter.",
             "10:00–21:00",
             [
-                ("Screen replacement", 98, "service"),
-                ("Battery replacement", 48, "service"),
-                ("Port clean", 12, "service"),
-                ("Screen protector", 10, "piece"),
-                ("USB-C cable", 12, "piece"),
-                ("Speaker repair", 38, "service"),
+                ("Screen replacement", 98, "service", "made"),
+                ("Battery replacement", 48, "service", "made"),
+                ("Port clean", 12, "service", "made"),
+                ("Screen protector", 10, "piece", "bought"),
+                ("USB-C cable", 12, "piece", "bought"),
+                ("Speaker repair", 38, "service", "made"),
             ],
         ),
     ]
