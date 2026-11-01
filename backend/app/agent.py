@@ -1140,7 +1140,7 @@ class OfflineCoachModel(BaseLlm):
                     yield LlmResponse(content=types.Content(role="model", parts=[detail_call]))
                     return
                 sourcing = (
-                    supply_call(question, ctx)
+                    supply_call(question, ctx, list(llm_request.contents))
                     or sourcing_call(question, list(llm_request.contents), ctx)
                     if ctx and ctx.business_id
                     else None

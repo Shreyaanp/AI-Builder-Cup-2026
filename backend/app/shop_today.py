@@ -22,9 +22,11 @@ from .limits import enforce_limits
 from .merchant import MerchantRepository
 from .merchant_routes import owner, store
 from .playbook import LineTopic, TodayHints, migrate_stored, today_hints
+from .product_source import Source, source_of
 from .region import shop_currency, shop_zone
 from .rescue import buffer_for, local_now
 from .shop_time import shop_timezone
+from .supply_chain import runs_out
 
 router = APIRouter(prefix="/api/v1/businesses", tags=["today"])
 log = structlog.get_logger(__name__)
@@ -77,6 +79,9 @@ class LowItem(BaseModel):
     name: str
     stock: int
     runs_out: date | None
+    # Bought stock is ordered, made items are made again, unknown ones ask once (OB-239).
+    source: Source = "bought"
+    product_id: str | None = None
 
 
 class CoachLine(BaseModel):
@@ -149,26 +154,30 @@ def pulse(
     )
 
 
-def low_stock(inventory: list[dict[str, Any]], forecast: brief.Forecast) -> list[LowItem]:
-    """Items that run out within two days of forecast demand, or have 5 or fewer left."""
+def low_stock(
+    inventory: list[dict[str, Any]], forecast: brief.Forecast, today: date, category: str = ""
+) -> list[LowItem]:
+    """Stock that runs out by tomorrow, or has 5 or fewer left. The run-out day is the supply
+    tile's (OB-238). Each row says if the shop buys it (an order), makes it (make more) or has
+    not said (one question), so a made item never becomes a supplier order (OB-239)."""
+    predictions = {"predictions": [p.model_dump(mode="json") for p in forecast.predictions]}
     out = []
     for product in inventory:
         stock = product.get("stock")
         if stock is None or product.get("available") is False:
             continue
-        total, runs_out = 0.0, None
-        for row in sorted(
-            (p for p in forecast.predictions if p.item.casefold() == product["name"].casefold()),
-            key=lambda p: p.date,
-        ):
-            total += row.quantity
-            if total >= stock:
-                runs_out = row.date
-                break
-        first = forecast.predictions[0].date if forecast.predictions else None
-        soon = runs_out is not None and first is not None and runs_out <= first + timedelta(days=1)
-        if stock <= 5 or soon:
-            out.append(LowItem(name=product["name"], stock=stock, runs_out=runs_out))
+        found = runs_out(product, predictions, today)
+        day = date.fromisoformat(found) if found else None
+        if stock <= 5 or (day is not None and day <= today + timedelta(days=1)):
+            out.append(
+                LowItem(
+                    name=product["name"],
+                    stock=stock,
+                    runs_out=day,
+                    source=source_of(product, category),
+                    product_id=product.get("id"),
+                )
+            )
     return sorted(out, key=lambda item: item.stock)[:3]
 
 
@@ -292,7 +301,9 @@ async def today_page(business_id: str, request: Request) -> Today:
         )
         if top and top.quantity >= 1
         else None,
-        low_stock=low_stock(context["inventory"], forecast),
+        low_stock=low_stock(
+            context["inventory"], forecast, today, str(fields.get("category") or "")
+        ),
         line=coach_line(fields, today, sales, weather, hints.line_topics if hints else None),
         demo=bool(fields.get("demo")),
         hints=hints,

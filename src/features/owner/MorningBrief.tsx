@@ -146,7 +146,11 @@ export function MorningBrief({
               direction="row"
               sx={{ gap: 2, alignItems: 'baseline' }}
             >
-              <Typography variant="bodyLarge" sx={{ flex: 1, minWidth: 0 }} noWrap>
+              {/* Long names wrap, never cut off, beside the longer "Sun, Nov 2" (OB-238). */}
+              <Typography
+                variant="bodyLarge"
+                sx={{ flex: 1, minWidth: 0, overflowWrap: 'anywhere' }}
+              >
                 {row.name}
               </Typography>
               <Typography
@@ -228,7 +232,11 @@ export function MorningBrief({
         <Stack spacing={1}>
           {lowStock.slice(0, 3).map((row) => (
             <Stack key={row.name} direction="row" sx={{ gap: 2, alignItems: 'baseline' }}>
-              <Typography variant="bodyLarge" sx={{ flex: 1, minWidth: 0 }} noWrap>
+              {/* Long names wrap, never cut off, beside the longer "Sun, Nov 2" (OB-238). */}
+              <Typography
+                variant="bodyLarge"
+                sx={{ flex: 1, minWidth: 0, overflowWrap: 'anywhere' }}
+              >
                 {row.name}
               </Typography>
               <Typography variant="bodyMedium" sx={{ fontVariantNumeric: 'tabular-nums' }}>
@@ -236,15 +244,8 @@ export function MorningBrief({
               </Typography>
               {typeof row.runs_out === 'string' && (
                 <Typography variant="bodySmall" color="text.secondary">
-                  {fill(t.runsOut, {
-                    date: ws.readOnlyMessage
-                      ? dayLabel(row.runs_out, locale)
-                      : new Intl.DateTimeFormat(locale, {
-                          weekday: 'short',
-                          day: 'numeric',
-                          timeZone: 'UTC',
-                        }).format(new Date(`${row.runs_out}T00:00:00Z`)),
-                  })}
+                  {/* The supply tile's own words for the day, "Sun, Nov 2" (OB-238). */}
+                  {fill(t.runsOut, { date: dayLabel(row.runs_out, locale) })}
                 </Typography>
               )}
             </Stack>

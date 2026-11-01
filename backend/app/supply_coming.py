@@ -137,11 +137,17 @@ def cover(need: dict[str, Any], coming: dict[str, Any]) -> str:
     return "partly" if coming["quantity"] else "none"
 
 
-def resize(
+def cannot_meet(named: float, amount: float | None) -> bool:
+    """The supplier's amount is not what the owner named: its minimum or packs are far off, or
+    its unit does not convert. Rounding up to a nearby pack is still what they asked for."""
+    return amount is None or amount > max(named * 1.25, named + 1) or amount < named * 0.8
+
+
+def sized_line(
     store: MerchantRepository, bid: str, po: dict[str, Any], item: str, unit: str, wanted: float
-) -> None:
-    """Set the draft's line for this item to the wanted quantity, rounded to the supplier's
-    rules (MOQ, pack size) as a fresh draft would be."""
+) -> tuple[dict[str, Any], float | None] | None:
+    """The draft's line for this item and the quantity the supplier's rules (MOQ, pack size) make
+    of the wanted amount, as a fresh draft would be; None when the units do not convert."""
     from .sourcing import convert, matches
 
     line = next(
@@ -153,14 +159,23 @@ def resize(
         None,
     )
     if line is None:
-        return
+        return None
     row = relationship(store, bid, po["supplier"]["id"])
     rule = item_rule(rules_of(row), line["item"]) if row else None
     amount = convert(wanted, unit, line["unit"]) if wanted else 0.0
     if amount is None:
-        return
+        return line, None
     quantity = round_quantity(rule, amount) if rule else max(1.0, math.ceil(amount))
-    line["quantity"] = quantity or (rule.moq if rule and rule.moq else 1.0)
+    return line, quantity or (rule.moq if rule and rule.moq else 1.0)
+
+
+def resize(
+    store: MerchantRepository, bid: str, po: dict[str, Any], item: str, unit: str, wanted: float
+) -> None:
+    """Set the draft's line for this item to the wanted quantity, by the supplier's rules."""
+    sized = sized_line(store, bid, po, item, unit, wanted)
+    if sized and sized[1] is not None:
+        sized[0]["quantity"] = sized[1]
 
 
 def settle_drafts(

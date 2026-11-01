@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   Alert,
   Button,
@@ -10,13 +10,18 @@ import {
   MenuItem,
   Stack,
   TextField,
+  ToggleButton,
+  ToggleButtonGroup,
+  Typography,
   useMediaQuery,
+  useTheme,
 } from '@mui/material'
 import type { Business, Product, Proposal } from './api'
 import { currencySymbol, shopCurrency, toMajor, toMinor } from './format'
 import { useBackClose } from './backStack'
 import { GuidedDetails, type GuidedResult } from './GuidedDetails'
 import { useCopy } from './strings'
+import { useSourceCopy } from './today/sourceCopy'
 import { useWorkspace } from './workspaceContext'
 import { windowClass } from '../../design/theme'
 import { useShopCopy } from '../shop/strings'
@@ -102,7 +107,9 @@ export function ProductDialog() {
 function ProductForm({ product }: { product: Product | null }) {
   const t = useCopy()
   const shopCopy = useShopCopy()
-  const { api, active, openEditor, review } = useWorkspace()
+  const sourceCopy = useSourceCopy()
+  const roles = useTheme().material
+  const { api, active, openEditor, reload, review } = useWorkspace()
   const compact = useCompact()
   const currency = shopCurrency(active)
   const [initial] = useState(() => ({
@@ -114,12 +121,54 @@ function ProductForm({ product }: { product: Product | null }) {
     category: product?.category ?? '',
   }))
   const [item, setItem] = useState(initial)
+  const [source, setSource] = useState(product?.source)
+  const [savingSource, setSavingSource] = useState(false)
+  const sourceTapped = useRef(false)
+  const shopId = active?.id
+  const productId = product?.id
+  // Today and the coach save the answer too, so the menu's copy of the item may be behind.
+  useEffect(() => {
+    if (!shopId || !productId) return
+    const abort = new AbortController()
+    void api<Product[]>(`/businesses/${shopId}/inventory`, { signal: abort.signal })
+      .then((items) => {
+        const saved = items.find((entry) => entry.id === productId)
+        if (saved && !abort.signal.aborted && !sourceTapped.current) setSource(saved.source)
+      })
+      // The menu's copy stays: a tap still saves, and the answer is changed, never cleared.
+      .catch(() => undefined)
+    return () => abort.abort()
+  }, [api, shopId, productId])
   const close = () => openEditor({ kind: 'none' })
-  useBackClose(true, close, JSON.stringify(item) !== JSON.stringify(initial))
+  // A saved item's answer is saved on the tap, so only a new item's can still be lost.
+  const unsavedSource = !product?.id && source !== product?.source
+  useBackClose(true, close, JSON.stringify(item) !== JSON.stringify(initial) || unsavedSource)
   const [error, setError] = useState('')
   // One request at a time: repeated taps must not create competing proposals.
   const [busy, setBusy] = useState(false)
   const price = Number(item.price)
+  /** The same saved answer Today's question writes (OB-239). It only saves: never a reorder. */
+  async function chooseSource(next: 'made' | 'bought') {
+    sourceTapped.current = true
+    if (!product?.id) return setSource(next)
+    if (!active || savingSource) return
+    const before = source
+    setSource(next)
+    setSavingSource(true)
+    setError('')
+    try {
+      await api(`/businesses/${active.id}/inventory/${encodeURIComponent(product.id)}/source`, {
+        method: 'POST',
+        body: JSON.stringify({ source: next }),
+      })
+      await reload()
+    } catch (cause) {
+      setSource(before)
+      setError(cause instanceof Error ? cause.message : t.actionFailed)
+    } finally {
+      setSavingSource(false)
+    }
+  }
   async function submit() {
     if (!item.name.trim()) return setError(t.enterName)
     if (!item.price.trim() || !Number.isFinite(price) || price < 0) return setError(t.enterPrice)
@@ -142,6 +191,7 @@ function ProductForm({ product }: { product: Product | null }) {
               stock: item.stock.trim() ? Number(item.stock) : null,
               category: item.category.trim(),
               available: product?.available ?? true,
+              ...(source ? { source } : {}),
             },
           ],
         }),
@@ -219,6 +269,35 @@ function ProductForm({ product }: { product: Product | null }) {
             onChange={(event) => setItem({ ...item, stock: event.target.value.replace(/\D/g, '') })}
             slotProps={{ htmlInput: { inputMode: 'numeric' } }}
           />
+          <Stack spacing={1}>
+            <Typography id="product-source-label" variant="bodyMedium" color="text.secondary">
+              {sourceCopy.question}
+            </Typography>
+            <ToggleButtonGroup
+              exclusive
+              fullWidth
+              value={source ?? null}
+              disabled={savingSource}
+              aria-labelledby="product-source-label"
+              // Tapping the chosen answer again keeps it: an answer is changed, never cleared.
+              onChange={(_, next: 'made' | 'bought' | null) => {
+                if (next) void chooseSource(next)
+              }}
+              sx={{
+                '& .MuiToggleButton-root': { color: roles.onSurface, minHeight: 48 },
+                '& .MuiToggleButton-root.Mui-selected': {
+                  bgcolor: roles.secondaryContainer,
+                  color: roles.onSecondaryContainer,
+                },
+                '& .MuiToggleButton-root.Mui-selected:hover': {
+                  bgcolor: roles.secondaryContainer,
+                },
+              }}
+            >
+              <ToggleButton value="made">{sourceCopy.make}</ToggleButton>
+              <ToggleButton value="bought">{sourceCopy.buy}</ToggleButton>
+            </ToggleButtonGroup>
+          </Stack>
           {error && <Alert severity="error">{error}</Alert>}
           <button type="submit" hidden />
         </Stack>

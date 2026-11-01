@@ -63,7 +63,8 @@ export function useToday(): TodayFacts | null {
   const id = active?.id
   const revision = active?.revision
   const confirmed = active?.last_confirmed
-  const stock = products.map((p) => `${p.stock}:${p.available}`).join()
+  // A make-or-buy answer changes the low row's button (OB-239).
+  const stock = products.map((p) => `${p.stock}:${p.available}:${p.source}`).join()
   useEffect(() => {
     if (!id) return
     const controller = new AbortController()

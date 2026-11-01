@@ -18,7 +18,15 @@ export type Need =
   | { id: string; kind: 'reply'; count: number }
   | { id: string; kind: 'closeDay' }
   | { id: string; kind: 'menu' }
-  | { id: string; kind: 'low'; item: string; left: number }
+  | {
+      id: string
+      kind: 'low'
+      item: string
+      left: number
+      /** Bought: Order. Made: Make more. Unknown: "Do you make it or buy it?" (OB-239). */
+      source: 'bought' | 'made' | 'unknown'
+      productId: string | null
+    }
   | { id: string; kind: 'soldOut'; items: Product[] }
   | { id: string; kind: 'step'; step: StepId }
   | { id: string; kind: 'facts'; facts: AskFact[] }
@@ -154,6 +162,17 @@ export function byPlaybook(needs: Need[], hints?: TodayHints | null): Need[] {
     .map(({ need }) => need)
 }
 
+/**
+ * In the close window, closing the day keeps row 1: the playbook has no rank for it, and three
+ * low-stock rows must never push the one daily ritual off Today (OB-235).
+ */
+export function closeDayFirst(needs: Need[]): Need[] {
+  return [
+    ...needs.filter((need) => need.kind === 'closeDay'),
+    ...needs.filter((need) => need.kind !== 'closeDay'),
+  ]
+}
+
 function pulseLine(pulse: Pulse, when: PulseLine['when'], order: Metric[]): PulseLine | null {
   const values = order
     // Revenue already tells the day; the item count is the fallback when no prices were saved.
@@ -178,10 +197,14 @@ export function todayPlan(input: TodayInput): TodayPlan {
   const total = 6
   const done = total - steps.filter((step) => step !== 'share' && !REMINDERS.includes(step)).length
   const metrics = metricsFor(shop, facts?.hints)
-  const pulse = facts
-    ? (pulseLine(facts.yesterday, 'yesterday', metrics) ??
-      (facts.today ? pulseLine(facts.today, 'today', metrics) : null))
-    : null
+  const serverClosed = Boolean(
+    facts?.today && (facts.today.sales != null || facts.today.items != null),
+  )
+  const isClosed = Boolean(input.dayClosed || serverClosed)
+  // Once today is closed, the pulse is today's: the owner just saved it (OB-237).
+  const todayLine = facts?.today ? pulseLine(facts.today, 'today', metrics) : null
+  const yesterdayLine = facts ? pulseLine(facts.yesterday, 'yesterday', metrics) : null
+  const pulse = isClosed ? (todayLine ?? yesterdayLine) : (yesterdayLine ?? todayLine)
   const busy = timeRanges(shop.fields.busy_hours ?? '')[0] ?? null
   const forecast = facts?.forecast
     ? { quantity: facts.forecast.quantity, item: facts.forecast.item, busy }
@@ -192,10 +215,6 @@ export function todayPlan(input: TodayInput): TodayPlan {
   const setup = steps.filter((step) => !REMINDERS.includes(step))
   const dayOne = fresh && setup.length ? { step: setup[0]! } : null
 
-  const serverClosed = Boolean(
-    facts?.today && (facts.today.sales != null || facts.today.items != null),
-  )
-  const isClosed = Boolean(input.dayClosed || serverClosed)
   const closeWindow = isCloseDayWindow(shop.fields, input.now)
 
   const all: Need[] = []
@@ -205,7 +224,14 @@ export function todayPlan(input: TodayInput): TodayPlan {
     all.push({ id: 'menu', kind: 'menu' })
   const soldOut = products.filter((product) => product.available === false)
   for (const low of facts?.low_stock ?? [])
-    all.push({ id: `low-${low.name}`, kind: 'low', item: low.name, left: low.stock })
+    all.push({
+      id: `low-${low.name}`,
+      kind: 'low',
+      item: low.name,
+      left: low.stock,
+      source: low.source ?? 'bought',
+      productId: low.product_id ?? null,
+    })
   if (soldOut.length) all.push({ id: 'sold-out', kind: 'soldOut', items: soldOut })
   // On day one the hero carries the next step; elsewhere missing steps wait their turn here.
   if (!dayOne) for (const step of steps) all.push({ id: `step-${step}`, kind: 'step', step })
@@ -216,7 +242,7 @@ export function todayPlan(input: TodayInput): TodayPlan {
     part: dayPart(input.now),
     food,
     progress: done < total ? { done, total } : null,
-    needs: byPlaybook(all, facts?.hints).slice(0, MAX_NEEDS),
+    needs: closeDayFirst(byPlaybook(all, facts?.hints)).slice(0, MAX_NEEDS),
     line: facts?.line ?? null,
     pulse,
     forecast,
