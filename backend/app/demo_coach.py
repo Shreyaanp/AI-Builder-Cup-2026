@@ -511,7 +511,7 @@ def public_demo_reply(ctx: Any, question: str) -> str | None:
     if re.search(r"[\u0900-\u097f]", question):
         # This offline demo has no translation model. Keep its answers in the language of a
         # Devanagari question, with the same seeded facts used by the English replies.
-        low =re.search(r"मेरा\s+(?P<item>[^।?]{1,40}?)\s+कम\s+हो\s+रहा", words)
+        low = re.search(r"मेरा\s+(?P<item>[^।?]{1,40}?)\s+कम\s+हो\s+रहा", words)
         if low:
             return (
                 f"असली दुकान में कोच पास के सप्लायर ढूँढकर {low['item']} का ऑर्डर तैयार करता है, "
@@ -524,9 +524,8 @@ def public_demo_reply(ctx: Any, question: str) -> str | None:
             if not top:
                 return "डेमो दुकान में पिछले 7 दिनों की कोई बिक्री अभी सेव नहीं है।"
             names = ", ".join(f"{row['item']} ({row['quantity']:g} बिके)" for row in top[:3])
-            return (
-                f"पिछले 7 दिनों में डेमो के सबसे ज़्यादा बिकने वाले आइटम: {names}। "
-                + next_line_hi("insights")
+            return f"पिछले 7 दिनों में डेमो के सबसे ज़्यादा बिकने वाले आइटम: {names}। " + next_line_hi(
+                "insights"
             )
         if any(term in words for term in ("आज", "बिक्री", "कमाई")):
             rows = [row for row in history if row["date"] == today.isoformat()]
