@@ -49,7 +49,7 @@ const OPEN = new Set([
 export function SupplyTile() {
   const s = useSupplyCopy()
   const [open, setOpen] = useState(false)
-  const { data, refresh } = useSupply(true)
+  const { data, refresh, failed } = useSupply(true)
   const orders = data?.orders ?? []
   const active = orders.filter((order) => OPEN.has(order.status))
   const latest = orders[0]
@@ -65,7 +65,9 @@ export function SupplyTile() {
         <Supporting>
           {latest
             ? `${orderLabel(latest, s.orderTitle)} · ${s.status[latest.status]}`
-            : s.tileEmpty}
+            : data === null && failed
+              ? s.loadFailed
+              : s.tileEmpty}
         </Supporting>
       </Tile>
       <SupplySheet

@@ -80,19 +80,24 @@ function load(api: Api, id: string, fresh: boolean, revision?: number): Promise<
 export function useSupply(open: boolean) {
   const { api, activeId, active } = useWorkspace()
   const [loaded, setLoaded] = useState(shared)
+  // A read that failed says so and tries again by itself, never "–" as if there were no orders.
+  const [failed, setFailed] = useState(false)
   const revision = active?.revision
   const refresh = useCallback(async () => {
     if (!activeId) return
     try {
       await load(api, activeId, true, revision)
     } catch {
-      // Keep what is shown; the next refresh tries again.
+      setFailed(true)
     }
   }, [api, activeId, revision])
   useEffect(() => {
-    const show = () => setLoaded(shared)
+    const show = () => {
+      setLoaded(shared)
+      setFailed(false)
+    }
     const reload = () => {
-      if (open && activeId) load(api, activeId, false, revision).catch(() => undefined)
+      if (open && activeId) load(api, activeId, false, revision).catch(() => setFailed(true))
     }
     supplyBus.addEventListener('loaded', show)
     supplyBus.addEventListener('changed', reload)
@@ -103,14 +108,19 @@ export function useSupply(open: boolean) {
   }, [api, activeId, open, revision])
   useEffect(() => {
     if (!open || !activeId) return
+    let timer = 0
+    let tries = 0
+    const attempt = (fresh: boolean) =>
+      load(api, activeId, fresh, revision).catch(() => {
+        setFailed(true)
+        tries += 1
+        timer = window.setTimeout(() => attempt(true), Math.min(1000 * 2 ** tries, 8000))
+      })
     // Async on purpose: the list arrives after this effect, never synchronously inside it.
-    const first = window.setTimeout(
-      () => load(api, activeId, false, revision).catch(() => undefined),
-      0,
-    )
-    return () => window.clearTimeout(first)
+    timer = window.setTimeout(() => attempt(false), 0)
+    return () => window.clearTimeout(timer)
   }, [open, api, activeId, revision])
-  return { data: loaded?.id === activeId ? loaded.data : null, refresh }
+  return { data: loaded?.id === activeId ? loaded.data : null, refresh, failed }
 }
 
 export type SimVariant = 'full' | 'partial' | 'substitute' | 'match' | 'price_mismatch'

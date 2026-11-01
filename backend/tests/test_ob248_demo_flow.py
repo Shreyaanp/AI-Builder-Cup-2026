@@ -278,3 +278,57 @@ def test_OB_248_an_icon_comes_from_the_shops_own_gallery(live_parent_demo) -> No
     unknown = "00000000-0000-0000-0000-000000000000"
     response = owner(client, session, f"businesses/{bid}/icon/from-gallery/{unknown}", "POST")
     assert response.status_code == 404
+
+
+def test_OB_248_hosted_overlapping_supply_reads_all_answer_when_a_reply_is_due(
+    live_parent_demo,  # noqa: F811
+    instant,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """On the hosted path every request restores its own copy; a due reply must not 409 a read."""
+    from concurrent.futures import ThreadPoolExecutor
+
+    import anyio
+
+    from app import public_demo
+
+    client, parent, session, bid = live_parent_demo
+    sent = draft_and_send(client, session, bid)
+    # Hosted from here: `live` restores each request from the saved document, as on Cloud Run.
+    monkeypatch.setattr(parent.state.v1_settings, "merchant_backend", "firestore")
+    real = public_demo.settle_supplier_replies
+    arrived = {"n": 0}
+    everyone = anyio.Event()
+
+    async def together(store, uid, shop):
+        # Hold every read until all four have restored the same revision, so they overlap.
+        arrived["n"] += 1
+        if arrived["n"] >= 4:
+            everyone.set()
+        with anyio.move_on_after(5):
+            await everyone.wait()
+        return await real(store, uid, shop)
+
+    monkeypatch.setattr(public_demo, "settle_supplier_replies", together)
+    paths = [f"businesses/{bid}/supply", f"businesses/{bid}/supply/board"] * 2
+    with ThreadPoolExecutor(4) as pool:
+        answers = list(pool.map(lambda path: owner(client, session, path), paths))
+    assert [a.status_code for a in answers] == [200] * 4, [a.text for a in answers]
+    # The reply was saved once and every later read sees it.
+    assert order_of(client, session, bid, sent["id"])["status"] in {"confirmed", "dispatched"}
+
+
+def test_OB_248_a_full_sandbox_still_answers_a_supply_read(
+    live_parent_demo,  # noqa: F811
+    instant,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app import demo_sessions
+
+    client, parent, session, bid = live_parent_demo
+    sent = draft_and_send(client, session, bid)
+    monkeypatch.setattr(parent.state.v1_settings, "merchant_backend", "firestore")
+    monkeypatch.setattr(demo_sessions, "MAX_SNAPSHOT", 1)
+    answer = owner(client, session, f"businesses/{bid}/supply/orders/{sent['id']}")
+    assert answer.status_code == 200, answer.text
+    assert answer.json()["status"] == "confirmed"

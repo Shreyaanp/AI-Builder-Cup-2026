@@ -24,6 +24,7 @@ from typing import Annotated, Any
 from uuid import uuid4
 
 import anyio
+import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from itsdangerous import URLSafeTimedSerializer
 from pydantic import BaseModel, ConfigDict, Field
@@ -68,6 +69,7 @@ CHAIN_OWNER = "demo-world-owner"
 
 _ID = r"[A-Za-z0-9_.-]{1,120}"
 _BIZ = rf"businesses/{_ID}"
+log = structlog.get_logger()
 SUPPLY_READ = re.compile(rf"^businesses/(?P<bid>{_ID})/supply(?:/.*)?$")
 # Reads and writes that stay inside the sandbox store.
 ALLOWED: tuple[tuple[str, re.Pattern[str]], ...] = tuple(
@@ -266,6 +268,30 @@ async def open_workspace(request: Request, zone: str) -> dict[str, Any]:
     return {"session_id": key, "expires_at": entry.expires}
 
 
+def restore(docs: Any, session_id: str) -> DemoSession:
+    """The visitor's sandbox as last saved, in a fresh directory of its own."""
+    data = docs.get(KIND, session_id)
+    if not data or data["expires"] <= time.time():
+        raise HTTPException(410, "DEMO_EXPIRED")
+    directory = TemporaryDirectory(prefix="chalkboard-demo-", ignore_cleanup_errors=True)
+    try:
+        store = SandboxStore(restore_files(data, directory.name))
+        return DemoSession(
+            data["expires"],
+            data["reads"],
+            data["uid"],
+            data["bid"],
+            store,
+            directory,
+            turns=data["turns"],
+            reminders=data["reminders"],
+            revision=data["revision"],
+        )
+    except BaseException:
+        directory.cleanup()
+        raise
+
+
 async def live(request: Request, session_id: str) -> AsyncIterator[DemoSession]:
     prior = getattr(request.app.state, "public_demos", {}).get(session_id)
     if prior is not None and prior.expires <= time.time():
@@ -279,29 +305,7 @@ async def live(request: Request, session_id: str) -> AsyncIterator[DemoSession]:
         yield cached
         return
 
-    def load() -> DemoSession:
-        data = repository(request).get(KIND, session_id)
-        if not data or data["expires"] <= time.time():
-            raise HTTPException(410, "DEMO_EXPIRED")
-        directory = TemporaryDirectory(prefix="chalkboard-demo-", ignore_cleanup_errors=True)
-        try:
-            store = SandboxStore(restore_files(data, directory.name))
-            return DemoSession(
-                data["expires"],
-                data["reads"],
-                data["uid"],
-                data["bid"],
-                store,
-                directory,
-                turns=data["turns"],
-                reminders=data["reminders"],
-                revision=data["revision"],
-            )
-        except BaseException:
-            directory.cleanup()
-            raise
-
-    entry = await anyio.to_thread.run_sync(load)
+    entry = await anyio.to_thread.run_sync(restore, repository(request), session_id)
     try:
         yield entry
     finally:
@@ -564,17 +568,43 @@ async def owner_api(
 
 
 async def deliver_replies(request: Request, entry: DemoSession, session_id: str, bid: str) -> None:
-    """The demo supplier's replies that are due arrive with the read that asks for them."""
+    """The demo supplier's replies that are due arrive with the read that asks for them.
+
+    This writes during a GET, so it must never fail the read. On the hosted path each request
+    restores its own copy: when reads overlap only one save wins, and the others answer from the
+    winner's copy instead of a 409. A sandbox at its size limit still shows the reply, unsaved.
+    """
     from .demo_context import services
 
-    assert entry.store is not None
-    token = services.set(offline(request.scope["app"]))
-    try:
-        changed = await settle_supplier_replies(entry.store, entry.uid, bid)
-    finally:
-        services.reset(token)
-    if changed:
-        await anyio.to_thread.run_sync(save, repository(request), session_id, entry)
+    docs = repository(request)
+    for _attempt in range(3):
+        assert entry.store is not None
+        token = services.set(offline(request.scope["app"]))
+        try:
+            changed = await settle_supplier_replies(entry.store, entry.uid, bid)
+        finally:
+            services.reset(token)
+        if not changed:
+            return
+        try:
+            await anyio.to_thread.run_sync(save, docs, session_id, entry)
+            return
+        except HTTPException as error:
+            if error.status_code != 409:
+                log.info("demo_supplier_reply_unsaved", status=error.status_code)
+                return
+        # Another request saved first: carry on from its copy, which may already hold the reply.
+        try:
+            latest = await anyio.to_thread.run_sync(restore, docs, session_id)
+        except HTTPException:
+            return
+        entry.close()
+        entry.store, entry.directory = latest.store, latest.directory
+        entry.revision, entry.turns, entry.reminders = (
+            latest.revision,
+            latest.turns,
+            latest.reminders,
+        )
 
 
 def reminders(entry: DemoSession, method: str, body: bytes) -> Any:

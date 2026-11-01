@@ -190,3 +190,24 @@ for (const accepted of [false, true]) {
     else await expect(talk).not.toContainText('OK, go ahead.')
   })
 }
+
+test('OB-248 a failed orders read says so and tries again, never "–" as if empty', async ({
+  page,
+}) => {
+  await openDemo(page)
+  // The first reads fail the way an overlapping hosted save used to (409), then recover.
+  let failures = 3
+  await page.route(/\/api\/businesses\/[^/]+\/supply$/, (route) =>
+    failures-- > 0
+      ? route.fulfill({ status: 409, body: '{"detail":"Demo changed. Try again."}' })
+      : route.continue(),
+  )
+  await page.reload()
+  await expect(page.getByTestId('today')).toBeVisible({ timeout: 30_000 })
+  await page.locator('[data-tour="nav-grow"]').click()
+  const tile = page.locator('[data-tour="supply"]')
+  await expect(tile).toContainText('Couldn’t load orders. Trying again…', { timeout: 15_000 })
+  await expect(tile).not.toContainText('Orders drafted from your forecast')
+  await expect(tile).toContainText(/\d+ open|None open/, { timeout: 30_000 })
+  await expect(tile).not.toContainText('Couldn’t load orders')
+})
