@@ -122,6 +122,9 @@ async def demo_upload(request: Request, entry: Any, path: str) -> dict[str, Any]
         return await anyio.to_thread.run_sync(add_sample_photo, entry, bid, kind)
     if picked := ICON_FROM_GALLERY.match(path):
         bid = await anyio.to_thread.run_sync(owned, entry, picked["bid"])
+        shop = await anyio.to_thread.run_sync(entry.store.context, entry.uid, bid)
+        if picked["photo"] not in (shop["business"].get("gallery") or []):
+            raise HTTPException(404, "Photo not found.")
         await anyio.to_thread.run_sync(entry.store.set_icon, entry.uid, bid, picked["photo"])
         return {"icon": picked["photo"], "source": "gallery", "sample": True}
     if icon := ICON_PATH.match(path):

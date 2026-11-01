@@ -40,9 +40,14 @@ export function orderLabel(
 }
 
 /** "18 kg +3": what an order is for at a glance, so two orders of one item never read alike. */
-export function orderSize(order: Pick<PurchaseOrder, 'lines'>): string {
+export function orderSize(
+  order: Pick<PurchaseOrder, 'lines'>,
+  locale: string,
+  unit: (raw: string) => string,
+): string {
   const [first, ...rest] = order.lines ?? []
   if (!first) return ''
-  const size = `${first.quantity ?? 0} ${first.unit ?? ''}`.trim()
+  const quantity = new Intl.NumberFormat(locale, { maximumFractionDigits: 2 })
+  const size = `${quantity.format(first.quantity ?? 0)} ${unit(first.unit ?? '')}`.trim()
   return rest.length ? `${size} +${rest.length}` : size
 }

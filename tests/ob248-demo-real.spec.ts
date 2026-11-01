@@ -88,6 +88,8 @@ test('OB-248 the supplier talks in the owner language', async ({ page }) => {
     .click()
   const talk = sheet.getByTestId('supplier-talk')
   await expect(talk).toContainText('कृपया')
+  // Hindi units too: no English "kg" or "pack" left in the supplier's words.
+  await expect(talk).not.toContainText(/\b(kg|litre|pack)\b/)
   await expect(talk).toContainText('जी,')
   await expect(talk).toContainText('यह रहा बिल')
 })

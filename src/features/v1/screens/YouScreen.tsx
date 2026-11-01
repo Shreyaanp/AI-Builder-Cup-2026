@@ -23,7 +23,6 @@ import {
   Plus,
   ShieldCheck,
   Sparkles,
-  Store,
 } from 'lucide-react'
 import { useDemoCopy } from '../../frontdoors/strings'
 import { openOwnerFeature } from '../../owner-tools/entry'
@@ -273,10 +272,12 @@ export function YouScreen() {
               onClick={() => ws.select(item.id)}
             />
           ))}
-          <Row icon={<Plus size={20} />} label={t.newShop} onClick={ws.startNewShop} />
-          {ws.demo && (
-            <Row icon={<Store size={20} />} label={demoCopy.startOwn} onClick={ws.startNewShop} />
-          )}
+          <Row
+            icon={<Plus size={20} />}
+            label={t.newShop}
+            hint={ws.demo ? demoCopy.startOwn : undefined}
+            onClick={ws.startNewShop}
+          />
         </Group>
 
         {/* Optional, so it follows settings and shops instead of leading the screen (OB-106). */}

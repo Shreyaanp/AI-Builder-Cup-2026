@@ -3,6 +3,8 @@ import { Box, Stack, Typography, useTheme } from '@mui/material'
 import { useLocale } from '../../state/hooks'
 import { shape } from '../../design/theme'
 import { productName } from '../../i18n/productNames'
+import { useShopCopy } from '../shop/strings'
+import { unitLabel } from '../shop/units'
 import { formatShopPrice } from '../v1/format'
 import { dayLabel } from './supplyData'
 import { useSupplierTalkCopy } from './supplierTalkCopy'
@@ -45,6 +47,7 @@ export function SupplierTalk({
   refresh: (order: PurchaseOrder) => Promise<void>
 }) {
   const c = useSupplierTalkCopy()
+  const shopCopy = useShopCopy()
   const locale = useLocale()
   const roles = useTheme().material
   const waiting = waitingForDemoSupplier(order)
@@ -58,7 +61,7 @@ export function SupplierTalk({
   const money = (minor: number | null | undefined) =>
     minor == null ? '' : formatShopPrice(minor, order.currency, locale)
   const size = (line: { quantity: number; unit: string; item: string }) =>
-    `${number.format(line.quantity)} ${line.unit} ${productName(line.item, locale)}`
+    `${number.format(line.quantity)} ${unitLabel(line.unit, shopCopy)} ${productName(line.item, locale)}`
   const list = order.lines.map(size).join(', ')
   const day = order.delivery ? dayLabel(order.delivery, locale) : ''
 
@@ -78,9 +81,9 @@ export function SupplierTalk({
           ...base,
           mine: false,
           text: c.short(
-            `${number.format(short.quantity)} ${short.unit}`,
+            `${number.format(short.quantity)} ${unitLabel(short.unit, shopCopy)}`,
             productName(short.item, locale),
-            `${number.format(short.backorder_quantity ?? 0)} ${short.unit}`,
+            `${number.format(short.backorder_quantity ?? 0)} ${unitLabel(short.unit, shopCopy)}`,
             dayLabel(short.backorder_date ?? '', locale),
           ),
         })
@@ -93,7 +96,7 @@ export function SupplierTalk({
             productName(dearer.item, locale),
             money(dearer.price),
             money(asked?.price),
-            dearer.unit,
+            unitLabel(dearer.unit, shopCopy),
           ),
         })
       } else {
