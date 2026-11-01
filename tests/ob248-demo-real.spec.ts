@@ -3,7 +3,7 @@ import { test, expect, type Page } from '@playwright/test'
 // OB-248 (#635): one full supplier order in the public demo, and nothing blocked for a visitor.
 test.setTimeout(120_000)
 
-const BLOCKED = /not available in (the )?demo|changes aren.t saved|Demo: not sent|read.only/i
+const BLOCKED = /(not|n.t) available in (the )?demo|changes aren.t saved|Demo: not sent|read.only/i
 
 test.beforeEach(async ({ context, page }, info) => {
   test.skip(info.project.name !== 'phone', 'Phone flow')
@@ -144,5 +144,8 @@ test('OB-248 what touches the real world says it is pretend, plainly', async ({ 
   await expect(
     page.locator('.MuiSnackbar-root', { hasText: 'In the demo this is pretend: nothing is sent' }),
   ).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Start my own shop' })).toBeVisible()
+  await expect(page.getByRole('button', { name: /Start my own shop/ })).toBeVisible()
+  await page.getByRole('button', { name: /Privacy & your data/ }).click()
+  await expect(page.locator('body')).not.toContainText(BLOCKED)
+  await expect(page.getByText('In the demo this is pretend: nothing is sent').first()).toBeVisible()
 })
