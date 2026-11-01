@@ -13,7 +13,7 @@ from app.coordinator import DEMO_OWNER_UID, MerchantContext, SupplierGenerator, 
 from app.demand import Radar
 from app.forecast import ForecastService
 from app.merchant import BusinessFields, MerchantStore, ProductFields, ProposalRequest
-from app.product_source import same_kind, source_of
+from app.product_source import same_kind, shop_kind, source_of
 from app.sales import today_for
 from app.supply_offline import supply_call, supply_reply
 from tests.test_supply_chain import BENGALURU, offline
@@ -180,6 +180,25 @@ def store(tmp_path: Path):
         ("Thread", "item", "Tailor", "unknown"),
         ("Curtain shortening", "piece", "Tailor", "unknown"),
         ("Small bouquet", "bunch", "Florist", "unknown"),
+        # OB-244: dal, rice or paneer a food shop sells by the item, plate or bowl may be the
+        # dish, so it is asked. By the kg or pack, branded, or at a kirana, it is still bought.
+        ("Moong dal", "item", "Restaurant", "unknown"),
+        ("Toor dal", "plate", "Restaurant", "unknown"),
+        ("Dal", "bowl", "Home kitchen", "unknown"),
+        ("Basmati rice", "plate", "Restaurant", "unknown"),
+        ("Paneer", "item", "Restaurant", "unknown"),
+        ("Paneer", "kg", "Restaurant", "bought"),
+        ("Fortune basmati rice", "item", "Restaurant", "bought"),
+        ("Sugar", "item", "Bakery", "bought"),
+        ("Basmati rice", "kg", "Dhaba", "bought"),
+        ("Moong dal", "item", "Kirana store", "bought"),
+        ("Toor dal", "pack", "Kirana store", "bought"),
+        ("Dal", "item", "किराना", "bought"),
+        # Whole words: a Mandir prasad shop is no mandi and asks; a medical store resells.
+        ("Laddoo", "piece", "Mandir prasad", "unknown"),
+        ("Crocin", "strip", "Medical store", "bought"),
+        ("Dolo 650", "strip", "दवा की दुकान", "bought"),
+        ("Haircut", "service", "सैलून", "made"),
     ],
 )
 def test_made_or_bought_is_inferred_on_the_safe_side(name, unit, category, expected) -> None:
@@ -194,6 +213,88 @@ def test_the_owners_answer_wins_and_same_kind_shops_are_never_suppliers() -> Non
     assert not same_kind("Bakery", "Wholesale supplier")
     assert not same_kind("Bakery", "Bakery", other_is_supplier=True)
     assert not same_kind("Tea stall", "Bakery") and not same_kind("", "")
+
+
+@pytest.mark.parametrize(
+    ("category", "kind"),
+    [
+        # Real Indian shop categories, and the words that only look like one (OB-244).
+        ("Kirana store", "resale"),
+        ("Kiryana shop", "resale"),
+        ("Grocery / Kirana", "resale"),
+        ("Medical store", "resale"),
+        ("Apollo Pharmacy", "resale"),
+        ("Chemist & druggist", "resale"),
+        ("Stationery shop", "resale"),
+        ("Tea stall", "tea"),
+        ("Chai tapri", "tea"),
+        ("Chaiwala", "tea"),
+        ("Kopitiam", "tea"),
+        ("Iyengar Bakery", "bakery"),
+        ("Cake shop", "bakery"),
+        ("Café", "cafe"),
+        ("Coffee house", "cafe"),
+        ("Agarwal Sweets", "sweets"),
+        ("Mithai shop", "sweets"),
+        ("Halwai", "sweets"),
+        ("Punjabi Dhaba", "kitchen"),
+        ("Home kitchen", "kitchen"),
+        ("Udupi restaurant", "kitchen"),
+        ("Hawker stall", "kitchen"),
+        ("Sabzi mandi wholesaler", "wholesale"),
+        ("Azadpur Mandi", "wholesale"),
+        ("Cash & carry", "wholesale"),
+        ("Ladies tailor", "tailor"),
+        ("Flower shop", "florist"),
+        ("Unisex salon", "salon"),
+        ("Beauty parlour", "salon"),
+        ("Barber shop", "salon"),
+        # Hindi, Bengali, Tamil and Hinglish categories have a kind too.
+        ("बेकरी", "bakery"),
+        ("किराना स्टोर", "resale"),
+        ("किराने की दुकान", "resale"),
+        ("चाय की दुकान", "tea"),
+        ("मिठाई की दुकान", "sweets"),
+        ("दवा की दुकान", "resale"),
+        ("मेडिकल स्टोर", "resale"),
+        ("सैलून", "salon"),
+        ("ढाबा", "kitchen"),
+        ("थोक विक्रेता", "wholesale"),
+        ("দর্জি", "tailor"),
+        ("বেকারি", "bakery"),
+        ("মিষ্টির দোকান", "sweets"),
+        ("டீக்கடை", "tea"),
+        ("Dawai ki dukan", "resale"),
+        ("टी स्टॉल", "tea"),
+        ("कैफ़े", "cafe"),
+        ("टी-शर्ट की दुकान", ""),
+        ("Mithaiwala", "sweets"),
+        # A word inside another word is not that kind.
+        ("Mandir prasad", ""),
+        ("Kitchenware store", ""),
+        ("Chair store", ""),
+        ("Steakhouse", ""),
+        ("Hardware & sanitary", ""),
+        ("Ice cream parlour", ""),
+        ("Hair oil and accessories", ""),
+        ("Flour mill", ""),
+        ("Sweetcorn cart", ""),
+        ("Mobile repair", ""),
+        ("", ""),
+    ],
+)
+def test_shop_kind_matches_whole_words_in_every_script(category, kind) -> None:
+    assert shop_kind(category) == kind
+
+
+def test_rivals_are_never_suppliers_but_wholesalers_are() -> None:
+    assert same_kind("Tea stall", "Café") and same_kind("Coffee house", "चाय की दुकान")
+    assert same_kind("बेकरी", "Iyengar Bakery") and same_kind("किराना", "Kirana store")
+    assert not same_kind("Restaurant", "Kitchenware store")
+    assert not same_kind("Tea stall", "Chair store")
+    assert not same_kind("Kirana store", "Mandir prasad")
+    assert not same_kind("Tea stall", "Sabzi mandi wholesaler")
+    assert not same_kind("Café", "Bakery")
 
 
 def test_tea_stall_makes_chai_and_buys_milk(store) -> None:
