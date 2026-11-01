@@ -1,5 +1,7 @@
 """OB-248: vendor-to-vendor in the demo, end to end, and no owner feature blocked."""
 
+from unittest.mock import Mock
+
 import pytest
 
 from app import demo_supplier
@@ -149,11 +151,14 @@ def test_OB_248_seeded_orders_keep_their_story(live_parent_demo, instant) -> Non
 
 def test_OB_248_owner_features_work_in_the_sandbox_and_stay_offline(
     live_parent_demo,  # noqa: F811
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Each of these answered DEMO_NOT_SENT before. `no_paid_calls` fails on any provider call."""
-    client, app, session, bid = live_parent_demo
+    client, parent, session, bid = live_parent_demo
     base = f"businesses/{bid}"
-    community_before = app.state.community.docs.scoped("listing_review", "all", 50)
+    # Any touch of the shared community store (perks, a listing check after a save) is recorded.
+    shared_store = Mock()
+    monkeypatch.setattr(parent.state.community, "docs", shared_store)
 
     def ok(path, method="POST", **kwargs):
         response = owner(client, session, path, method, **kwargs)
@@ -196,8 +201,7 @@ def test_OB_248_owner_features_work_in_the_sandbox_and_stay_offline(
     assert ok(f"{base}/google-sim", "GET")
 
     # A demo's writes stayed out of the shared store.
-    assert app.state.community.docs.scoped("listing_review", "all", 50) == community_before
-    assert app.state.community.docs.scoped("perks", bid, 5) == []
+    assert shared_store.mock_calls == []
 
 
 def test_OB_248_a_chain_shop_gets_the_same_uploads(live_parent_demo) -> None:  # noqa: F811

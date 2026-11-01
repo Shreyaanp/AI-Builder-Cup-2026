@@ -140,7 +140,7 @@ test('You: Verify it is you answers with the demo note', async ({ page }) => {
     .getByRole('button', { name: /Verify it/ })
     .first()
     .click()
-  await expect(page.getByText(NOTICE)).toBeVisible()
+  await expect(page.locator('.MuiSnackbar-root', { hasText: NOTICE })).toBeVisible()
   await noErrors(page)
 })
 
@@ -202,7 +202,7 @@ test('prep numbers and dates are identical on every reload', async ({ page }) =>
     const brief = page.locator('section', { hasText: 'Prep today' }).first()
     await expect(brief).toBeVisible({ timeout: 15_000 })
     const prep = (await brief.innerText()).replace(/\s+/g, ' ')
-    const low = /Tea dust Left: [\d.]+ Runs out ([A-Za-z]{3}, [A-Za-z]{3} \d+)/.exec(prep)?.[1]
+    const low = /Tea dust Left: [\d.]+ kg Runs out ([A-Za-z]{3}, [A-Za-z]{3} \d+)/.exec(prep)?.[1]
     // One source of truth: Today and the Grow brief name the same run-out day.
     expect(runsOut, 'Today names a run-out day').toBeTruthy()
     expect(low, 'The Grow brief names the same run-out day').toBe(runsOut)

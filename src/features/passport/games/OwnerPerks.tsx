@@ -30,9 +30,7 @@ export function OwnerPerks() {
   const api = ws.api
   const [loaded, setLoaded] = useState<{ shop: string; perks: Perk[] } | null>(null)
   const [texts, setTexts] = useState<Partial<Record<PerkTrigger, string>>>({})
-  const [state, setState] = useState<'idle' | 'saving' | 'error' | 'load-error'>(
-    'idle',
-  )
+  const [state, setState] = useState<'idle' | 'saving' | 'error' | 'load-error'>('idle')
   useEffect(() => {
     if (!shop) return
     let live = true

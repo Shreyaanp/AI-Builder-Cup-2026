@@ -62,7 +62,7 @@ test('OB-248 a supplier order goes draft, reply, on the way, delivered, stock up
   await expect(talk).toContainText('Waiting for Sri Lakshmi Provisions (Demo) to reply')
   // The visitor's first order is a plain yes; nobody has to press a "simulate" button.
   await expect(card.getByText('Supplier simulator (demo)')).toHaveCount(0)
-  await expect(talk).toContainText(`Yes, ${quantity} kg Tea dust is confirmed`, { timeout: 20_000 })
+  await expect(talk).toContainText(`Yes, confirmed: ${quantity} kg Tea dust`, { timeout: 20_000 })
   await expect(talk).toContainText('Your order is on the way', { timeout: 20_000 })
 
   await card.getByRole('button', { name: 'Goods arrived', exact: true }).click()

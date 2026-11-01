@@ -7,7 +7,7 @@ const en = {
   ask: (list: string, day: string) =>
     day ? `Please send ${list} by ${day}.` : `Please send ${list}.`,
   yes: (list: string, day: string) =>
-    day ? `Yes, ${list} is confirmed. It reaches you ${day}.` : `Yes, ${list} is confirmed.`,
+    day ? `Yes, confirmed: ${list}. It reaches you ${day}.` : `Yes, confirmed: ${list}.`,
   short: (now: string, item: string, later: string, day: string) =>
     `I have only ${now} ${item} today. The other ${later} comes ${day}. Is that OK?`,
   dearer: (item: string, now: string, was: string, unit: string) =>
