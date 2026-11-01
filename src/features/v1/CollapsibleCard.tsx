@@ -1,4 +1,4 @@
-import { useId, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import {
   Box,
@@ -47,6 +47,17 @@ export function CollapsibleCard({
   const panel = useId()
   const text = summaryText(summary)
   const line = !open || !newest
+  const toggle = useRef<HTMLButtonElement>(null)
+  const actionFocus = useRef(false)
+  const showAction = !open && Boolean(action) && line
+  // The line's action unmounts once it is done (the card no longer needs the owner): keep keyboard
+  // and screen-reader focus on this line instead of dropping it to the page top.
+  useEffect(() => {
+    if (showAction || !actionFocus.current) return
+    actionFocus.current = false
+    const active = document.activeElement
+    if (!active || active === document.body) toggle.current?.focus()
+  }, [showAction])
   return (
     <Box component="li" sx={{ minWidth: 0 }}>
       {line && (
@@ -57,6 +68,7 @@ export function CollapsibleCard({
           sx={{ pl: { xs: 0, sm: 10 }, mb: open ? 2 : 0, alignItems: 'center', ...fieldFade }}
         >
           <ButtonBase
+            ref={toggle}
             aria-expanded={open}
             aria-controls={panel}
             aria-label={`${text}. ${open ? c.hide : c.show}`}
@@ -114,7 +126,19 @@ export function CollapsibleCard({
               <ChevronDown size={18} />
             </Box>
           </ButtonBase>
-          {!open && action && <Box sx={{ flexShrink: 0 }}>{action}</Box>}
+          {!open && action && (
+            <Box
+              sx={{ flexShrink: 0 }}
+              onFocus={() => {
+                actionFocus.current = true
+              }}
+              onBlur={(event) => {
+                if (event.relatedTarget) actionFocus.current = false
+              }}
+            >
+              {action}
+            </Box>
+          )}
         </Stack>
       )}
       <Collapse in={open} id={panel} timeout={reducedMotion ? 0 : motion.duration.short}>

@@ -35,9 +35,19 @@ test('OB-249: an order line says what and whether it needs the owner', () => {
   expect(needs(order('sent'))).toBe(false)
   expect(line(order('confirmed'))).toBe('Order · Tea dust 10 kg · Confirmed')
   // A prepared message or cancellation still waits for the owner's Send.
-  const pending = order('sent', { pending: { kind: 'cancel', text: 'Cancel', created: 0 } })
-  expect(line(pending)).toBe('Order · Tea dust 10 kg · Needs your OK')
-  expect(needs(pending)).toBe(true)
+  // The line says which: a cancellation never reads like the order itself.
+  const cancel = order('confirmed', { pending: { kind: 'cancel', text: 'Cancel', created: 0 } })
+  expect(line(cancel)).toBe('Order · Tea dust 10 kg · Cancellation to send')
+  expect(needs(cancel)).toBe(true)
+  for (const kind of ['text'] as const) {
+    const prepared = order('sent', { pending: { kind, text: 'Hello', created: 0 } })
+    expect(line(prepared)).toBe('Order · Tea dust 10 kg · Message to send')
+    expect(needs(prepared)).toBe(true)
+  }
+  // The card's own (localised) wording wins when the screen passes it.
+  expect(
+    line({ ...cancel, pendingWords: { cancel: 'रद्दीकरण', message: 'संदेश' } } as SummaryInput),
+  ).toBe('Order · Tea dust 10 kg · रद्दीकरण')
   expect(line(order('replaced'))).toBe('Order · Tea dust 10 kg · Discarded')
   expect(line(order('replaced', { replaced_by: 'o2' }))).toBe(
     'Order · Tea dust 10 kg · Replaced by a new order',
@@ -57,11 +67,12 @@ test('OB-249: a purchase order line, draft, blocked, sent and changed', () => {
   expect(line(po('draft', { blocked: true }))).toBe('Order · Milk 25 l · Needs a fix')
   expect(line(po('sent'))).toBe('Order · Milk 25 l · Sent')
   expect(needs(po('sent'))).toBe(false)
-  expect(line(po('changed'))).toBe('Order · Milk 25 l · Changes to check')
+  expect(line(po('changed'))).toBe('Order · Milk 25 l · Open to check')
   expect(needs(po('changed'))).toBe(true)
   expect(line(po('closed'))).toBe('Order · Milk 25 l · Done')
   // The supply chat card's order (inbound/outbound) needs the owner when its chip says so.
   expect(needs(po('sent', { chip: 'needs_you' }))).toBe(true)
+  expect(line(po('sent', { chip: 'needs_you' }))).toBe('Order · Milk 25 l · Open to check')
 })
 
 test('OB-249: suppliers, charts, payment, rules and reply lines', () => {
@@ -100,9 +111,9 @@ test('OB-249: suppliers, charts, payment, rules and reply lines', () => {
 
   const reply = (sent: boolean) =>
     ({ kind: 'reply', action: { label: 'Reply to Priya' }, sent }) as unknown as SummaryInput
-  expect(line(reply(false))).toBe('Reply · Reply to Priya · Ready to send')
+  expect(line(reply(false))).toBe('Reply to Priya · Ready to send')
   expect(needs(reply(false))).toBe(true)
-  expect(line(reply(true))).toBe('Reply · Reply to Priya · Sent')
+  expect(line(reply(true))).toBe('Reply to Priya · Sent')
 })
 
 test('OB-249: Hindi lines; other languages fall back to English, never a {placeholder}', () => {

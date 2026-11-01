@@ -24,6 +24,13 @@ const en = {
   reply: 'Reply',
   readyToSend: 'Ready to send',
   needsYou: 'Needs your OK',
+  openToCheck: 'Open to check',
+  sendCancel: 'Send cancellation',
+  sendMessage: 'Send message',
+  cancelToSend: 'Cancellation to send',
+  messageToSend: 'Message to send',
+  sendCancelTo: (name: string) => `Send cancellation to ${name}`,
+  sendMessageTo: (name: string) => `Send message to ${name}`,
   needsFix: 'Needs a fix',
   more: (n: number) => `+${n} more`,
   saved: 'Saved',
@@ -60,6 +67,13 @@ const hi: SummaryCopy = {
   reply: 'जवाब',
   readyToSend: 'भेजने को तैयार',
   needsYou: 'मंज़ूरी चाहिए',
+  openToCheck: 'खोलकर देखें',
+  sendCancel: 'रद्द करना भेजें',
+  sendMessage: 'संदेश भेजें',
+  cancelToSend: 'भेजने वाला रद्दीकरण',
+  messageToSend: 'भेजने वाला संदेश',
+  sendCancelTo: (name: string) => `${name} को रद्द करना भेजें`,
+  sendMessageTo: (name: string) => `${name} को संदेश भेजें`,
   needsFix: 'पहले ठीक करें',
   more: (n: number) => `+${n} और`,
   saved: 'सेव हो गया',
@@ -95,7 +109,7 @@ type ChartLike =
 
 /** The card behind one chat item, with what its line needs to know. */
 export type SummaryInput =
-  | { kind: 'order'; order: Order }
+  | { kind: 'order'; order: Order; pendingWords?: { cancel: string; message: string } }
   | { kind: 'po'; order: PoLike }
   | { kind: 'suppliers'; result: SupplierResult }
   | { kind: 'chart'; chart: ChartLike }
@@ -133,23 +147,37 @@ export function cardSummary(input: SummaryInput, locale: string): CardSummary {
     case 'order': {
       const { order } = input
       const needsYou = order.status === 'draft' || Boolean(order.pending)
+      // A prepared cancellation or message says what it is, never just "Needs your OK".
+      const pendingStatus = order.pending
+        ? order.pending.kind === 'cancel'
+          ? (input.pendingWords?.cancel ?? c.cancelToSend)
+          : (input.pendingWords?.message ?? c.messageToSend)
+        : null
       const status =
-        needsYou || order.status === 'draft'
+        pendingStatus ??
+        (order.status === 'draft'
           ? c.needsYou
           : order.replaced_by
             ? c.replacedByNew
-            : c.status[order.status]
+            : c.status[order.status])
       return { parts: [c.order, amount(order.lines, locale, c)], status, needsYou }
     }
     case 'po': {
       const { order } = input
-      const draft = order.status === 'draft' || order.chip === 'needs_you'
+      const draft = order.status === 'draft'
+      // No line action covers a changed order or a supply card's "needs you": say to open it.
+      const check = order.status === 'changed' || order.chip === 'needs_you'
       return {
         parts: [c.order, amount(order.lines, locale, c)],
         status:
-          draft && order.blocked ? c.needsFix : draft ? c.needsYou : poStatus(order.status, c),
-        // A supplier's changed order waits for the owner's check too.
-        needsYou: draft || order.status === 'changed',
+          draft && order.blocked
+            ? c.needsFix
+            : draft
+              ? c.needsYou
+              : check
+                ? c.openToCheck
+                : poStatus(order.status, c),
+        needsYou: draft || check,
       }
     }
     case 'suppliers': {
@@ -206,7 +234,7 @@ export function cardSummary(input: SummaryInput, locale: string): CardSummary {
     }
     case 'reply':
       return {
-        parts: [c.reply, input.action.label],
+        parts: [input.action.label],
         status: input.sent ? c.status.sent : c.readyToSend,
         needsYou: !input.sent,
       }

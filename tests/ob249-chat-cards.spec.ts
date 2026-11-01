@@ -194,6 +194,40 @@ test('OB-249: only the newest card is full; earlier ones are one line that keeps
   await fitsAndPasses(page, '390 opened')
 })
 
+test('OB-249: a folded cancellation says "Cancellation to send", not that the order needs sending', async ({
+  page,
+}) => {
+  test.setTimeout(180_000)
+  await kirana(page, { width: 390, height: 844 })
+  await say(page, 'reorder milk')
+  await expect(page.getByRole('article')).toBeVisible({ timeout: 30_000 })
+  await say(page, 'My onions are running low')
+  await expect(lines(page)).toHaveCount(1, { timeout: 30_000 })
+  await say(page, 'order 20 kg onions from the first one')
+  await expect(lines(page)).toHaveCount(2, { timeout: 30_000 })
+  await page.getByRole('button', { name: 'Send to Shree Ganesh Wholesale Traders' }).first().click()
+  await expect(page.getByText(/Confirmed: 20 kg Onions/).first()).toBeVisible({ timeout: 30_000 })
+  await say(page, 'cancel the onions order')
+  await expect(page.getByText('Cancellation to send').first()).toBeVisible({ timeout: 30_000 })
+  await say(page, 'forecast demand')
+  const folded = page.getByRole('button', {
+    name: /^Order · Onions 20 kg · Cancellation to send\. Show$/,
+  })
+  await expect(folded).toBeVisible({ timeout: 30_000 })
+  await expect(folded).not.toHaveAccessibleName(/Needs your OK/)
+  await expect(
+    page.getByRole('button', { name: 'Send cancellation to Shree Ganesh Wholesale Traders' }),
+  ).toBeVisible()
+  // After the line action runs, focus stays on that line instead of dropping to the page top.
+  await page
+    .getByRole('button', { name: 'Send cancellation to Shree Ganesh Wholesale Traders' })
+    .press('Enter')
+  await expect(
+    page.getByRole('button', { name: 'Send cancellation to Shree Ganesh Wholesale Traders' }),
+  ).toHaveCount(0, { timeout: 15_000 })
+  await expect(page.getByRole('button', { name: /^Order · Onions 20 kg .+\. Show$/ })).toBeFocused()
+})
+
 for (const [width, height, appearance] of [
   [360, 800, 'dark'],
   [412, 915, 'dark'],

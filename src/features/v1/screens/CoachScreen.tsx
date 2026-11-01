@@ -112,7 +112,7 @@ import { useLanguageSwitch } from '../languageSwitch'
 import { ActionChip, MenuLinkChip, ReplyCard, ReplyLineAction } from '../CoachActions'
 import { CollapsibleCard, LineAction } from '../CollapsibleCard'
 import { sendPrepared, useCardFold, type ReplyState } from '../chatCards'
-import { cardSummary, type SummaryInput } from '../cardSummary'
+import { cardSummary, summaryCopy, type SummaryInput } from '../cardSummary'
 import { useNextStepsCopy } from '../nextStepsCopy'
 import { asCoachAction, NEEDS_TAP, type CoachAction } from '../coachAction'
 import { requestOpen } from '../openRequest'
@@ -988,7 +988,14 @@ function CoachScreen({
   function cardOf(message: Message): [string, SummaryInput] | null {
     if (message.role === 'order')
       return orders[message.orderId]
-        ? [message.orderId, { kind: 'order', order: orders[message.orderId]! }]
+        ? [
+            message.orderId,
+            {
+              kind: 'order',
+              order: orders[message.orderId]!,
+              pendingWords: { cancel: s.cancelToSend, message: s.messageToSupplier },
+            },
+          ]
         : null
     if (message.role === 'po')
       return pos[message.poId] ? [message.poId, { kind: 'po', order: pos[message.poId]! }] : null
@@ -1014,6 +1021,14 @@ function CoachScreen({
       items.map((item) => (item.role === 'rules' && item.key === key ? { ...item, row } : item)),
     )
   const fold = useCardFold(messages.flatMap((message) => cardOf(message)?.[0] ?? []))
+  /** The folded order's action: a prepared cancellation or message is named as what it sends. */
+  function pendingLine(order: Order) {
+    const c = summaryCopy(language)
+    const name = order.supplier.name
+    if (order.pending?.kind === 'cancel') return { label: c.sendCancel, name: c.sendCancelTo(name) }
+    if (order.pending) return { label: c.sendMessage, name: c.sendMessageTo(name) }
+    return { label: s.send, name: s.sendTo(name) }
+  }
   /** One card of the chat, folded to its summary line unless it is the open one. */
   function folded(message: Message, icon: ReactElement, card: ReactElement, action?: ReactElement) {
     const [key, input] = cardOf(message)!
@@ -1548,8 +1563,8 @@ function CoachScreen({
                         />
                       </Suspense>,
                       <LineAction
-                        label={s.send}
-                        name={s.sendTo(orders[message.orderId]!.supplier.name)}
+                        label={pendingLine(orders[message.orderId]!).label}
+                        name={pendingLine(orders[message.orderId]!).name}
                         icon={<Send size={18} />}
                         onRun={() => sendOrder(orders[message.orderId]!)}
                       />,

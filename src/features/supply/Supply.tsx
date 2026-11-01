@@ -557,7 +557,6 @@ export function RulesEditor({ row, onSaved }: { row: Relationship; onSaved: () =
   )
 }
 
-/** A rule change the coach prepared: confirm or keep the old rules. */
 /** OB-249: a folded rule change's "Confirm", on its one-line summary in the chat. */
 export function RulesLineAction({
   row,
@@ -579,6 +578,7 @@ export function RulesLineAction({
   )
 }
 
+/** A rule change the coach prepared: confirm or keep the old rules. */
 export function RulesChangeCard({
   row,
   onChange,
