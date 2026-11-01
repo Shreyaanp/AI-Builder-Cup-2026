@@ -1327,14 +1327,14 @@ export function useStoryCopy(): StoryCopy {
 }
 
 const demoEnglish = {
-  banner: 'Demo shop – nothing here is real',
+  banner: 'Demo shop · sample data',
   exit: 'Exit demo',
   owner: 'View owner',
   customer: 'Browse shops',
   retry: 'Try again',
   failed: 'The demo could not open. Try again.',
   expired: 'This demo has ended. Try again.',
-  readOnly: 'Demo: not sent',
+  readOnly: 'In the demo this is pretend: nothing is sent',
   title: 'Demo shop',
   tryDemo: 'Try demo',
   guideStamp: 'Collect a stamp',
@@ -1342,7 +1342,9 @@ const demoEnglish = {
   stampAtStall: 'Collect a stamp at the demo chai stall',
   // Translations in demoRows are matched by position and stop after this key; the keys below
   // them fall back to English, so new translated keys go here, before askTitle.
-  demoNotice: "This is a demo shop; changes aren't saved",
+  demoNotice: 'In the demo this is pretend: nothing is sent',
+  startOwn: 'Start my own shop',
+  samplePhoto: 'In the demo a sample picture stands in. Your photo is not kept.',
   askTitle: 'Coach (sample answer)',
   askPrep:
     'Tomorrow, make 40 cups of chai, 30 samosas and 2 trays of poha. Based on the last 14 days; Saturdays sell about a fifth more. This is a sample.',
@@ -1354,20 +1356,20 @@ const demoEnglish = {
 type DemoCopy = typeof demoEnglish
 // prettier-ignore
 const demoRows: Record<Exclude<Locale, 'en'>, string[]> = {
-"hi": ["डेमो दुकान – यहाँ कुछ भी असली नहीं है","डेमो छोड़ें","मालिक बनकर देखें","दुकानें देखें","फिर कोशिश करें","डेमो नहीं खुला। फिर कोशिश करें।","डेमो खत्म हुआ। फिर कोशिश करें।","डेमो: भेजा नहीं गया","डेमो दुकान","डेमो देखें","स्टैंप लें","अपना पासपोर्ट देखें","डेमो चाय की दुकान पर स्टैंप लें","डेमो: बदलाव सहेजे नहीं जाते"],
-"ta": ["மாதிரிக் கடை – எதுவும் உண்மையல்ல","வெளியேறு","உரிமையாளர் பார்வை","கடைகளைப் பார்","மீண்டும் முயல்","மாதிரி திறக்கவில்லை. மீண்டும் முயலவும்.","மாதிரி முடிந்தது. மீண்டும் முயலவும்.","மாதிரி: அனுப்பப்படவில்லை","மாதிரிக் கடை","மாதிரியைப் பார்","முத்திரை பெறுங்கள்","உங்கள் பாஸ்போர்ட்டைப் பாருங்கள்","மாதிரி டீக்கடையில் முத்திரை பெறுங்கள்","மாதிரி: மாற்றங்கள் சேமிக்கப்படாது"],
-"bn": ["নমুনা দোকান – কিছুই আসল নয়","বের হন","মালিকের দৃশ্য","দোকান দেখুন","আবার চেষ্টা","নমুনা খোলেনি। আবার চেষ্টা করুন।","নমুনা শেষ। আবার চেষ্টা করুন।","নমুনা: পাঠানো হয়নি","নমুনা দোকান","নমুনা দেখুন","স্ট্যাম্প নিন","আপনার পাসপোর্ট দেখুন","নমুনা চায়ের দোকানে স্ট্যাম্প নিন","নমুনা: পরিবর্তন সংরক্ষিত হয় না"],
-"te": ["నమూనా దుకాణం – ఏదీ నిజం కాదు","నిష్క్రమించు","యజమానిగా చూడు","దుకాణాలు చూడు","మళ్లీ ప్రయత్నించు","నమూనా తెరుచుకోలేదు. మళ్లీ ప్రయత్నించండి.","నమూనా ముగిసింది. మళ్లీ ప్రయత్నించండి.","నమూనా: పంపలేదు","నమూనా దుకాణం","నమూనా చూడు","స్టాంప్ పొందండి","మీ పాస్‌పోర్ట్ చూడండి","నమూనా టీ దుకాణంలో స్టాంప్ పొందండి","నమూనా: మార్పులు సేవ్ కావు"],
-"mr": ["नमुना दुकान – येथे काहीही खरे नाही","बाहेर पडा","मालक म्हणून पहा","दुकाने पहा","पुन्हा प्रयत्न","नमुना उघडला नाही. पुन्हा प्रयत्न करा.","नमुना संपला. पुन्हा प्रयत्न करा.","नमुना: पाठवले नाही","नमुना दुकान","नमुना पहा","स्टॅम्प घ्या","तुमचा पासपोर्ट पहा","नमुना चहाच्या दुकानात स्टॅम्प घ्या","नमुना: बदल जतन होत नाहीत"],
-"kn": ["ಮಾದರಿ ಅಂಗಡಿ – ಯಾವುದೂ ನಿಜವಲ್ಲ","ಹೊರಬನ್ನಿ","ಮಾಲೀಕರಾಗಿ ನೋಡಿ","ಅಂಗಡಿಗಳನ್ನು ನೋಡಿ","ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ","ಮಾದರಿ ತೆರೆಯಲಿಲ್ಲ. ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.","ಮಾದರಿ ಮುಗಿದಿದೆ. ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.","ಮಾದರಿ: ಕಳುಹಿಸಿಲ್ಲ","ಮಾದರಿ ಅಂಗಡಿ","ಮಾದರಿ ನೋಡಿ","ಸ್ಟಾಂಪ್ ಪಡೆಯಿರಿ","ನಿಮ್ಮ ಪಾಸ್‌ಪೋರ್ಟ್ ನೋಡಿ","ಮಾದರಿ ಚಹಾ ಅಂಗಡಿಯಲ್ಲಿ ಸ್ಟಾಂಪ್ ಪಡೆಯಿರಿ","ಮಾದರಿ: ಬದಲಾವಣೆಗಳು ಉಳಿಸಲ್ಪಡುವುದಿಲ್ಲ"],
-"ms": ["Kedai demo – semuanya rekaan","Keluar demo","Lihat pemilik","Lihat kedai","Cuba lagi","Demo tidak dibuka. Cuba lagi.","Demo tamat. Cuba lagi.","Demo: tidak dihantar","Kedai demo","Cuba demo","Kumpul setem","Lihat Pasport anda","Kumpul setem di gerai teh demo","Demo: perubahan tidak disimpan"],
-"id": ["Toko demo – semuanya fiktif","Keluar demo","Lihat pemilik","Jelajahi toko","Coba lagi","Demo gagal dibuka. Coba lagi.","Demo berakhir. Coba lagi.","Demo: tidak dikirim","Toko demo","Coba demo","Kumpulkan stempel","Lihat Paspor Anda","Kumpulkan stempel di kedai teh demo","Demo: perubahan tidak disimpan"],
-"th": ["ร้านตัวอย่าง – ทุกอย่างเป็นเรื่องสมมติ","ออกจากตัวอย่าง","ดูมุมเจ้าของ","ดูร้านค้า","ลองอีกครั้ง","เปิดตัวอย่างไม่ได้ ลองอีกครั้ง","ตัวอย่างสิ้นสุดแล้ว ลองอีกครั้ง","ตัวอย่าง: ไม่ได้ส่ง","ร้านตัวอย่าง","ลองตัวอย่าง","สะสมแสตมป์","ดูพาสปอร์ตของคุณ","สะสมแสตมป์ที่ร้านชาตัวอย่าง","ตัวอย่าง: ไม่บันทึกการเปลี่ยนแปลง"],
-"vi": ["Cửa hàng mẫu – tất cả là giả định","Thoát bản mẫu","Xem chủ quán","Xem cửa hàng","Thử lại","Không mở được bản mẫu. Thử lại.","Bản mẫu đã hết hạn. Thử lại.","Bản mẫu: chưa gửi","Cửa hàng mẫu","Thử bản mẫu","Nhận tem","Xem Hộ chiếu của bạn","Nhận tem tại quán trà mẫu","Bản mẫu: thay đổi không được lưu"],
-"fil": ["Demo shop – kathang-isip ang lahat","Lumabas","Tingnan bilang may-ari","Tumingin ng tindahan","Subukan muli","Hindi nabuksan ang demo. Subukan muli.","Tapos na ang demo. Subukan muli.","Demo: hindi ipinadala","Demo shop","Subukan ang demo","Kumuha ng stamp","Tingnan ang iyong Passport","Kumuha ng stamp sa demo na tindahan ng chai","Demo: hindi sine-save ang mga pagbabago"],
-"ja": ["デモ店舗 – すべて架空です","デモを終了","オーナーを見る","店舗を見る","再試行","デモを開けません。再試行してください。","デモは終了しました。再試行してください。","デモ: 送信されません","デモ店舗","デモを試す","スタンプを集める","パスポートを見る","デモのチャイ店でスタンプを集める","デモ: 変更は保存されません"],
-"ko": ["데모 가게 – 모두 가상입니다","데모 종료","점주 보기","가게 둘러보기","다시 시도","데모를 열 수 없습니다. 다시 시도하세요.","데모가 끝났습니다. 다시 시도하세요.","데모: 전송되지 않음","데모 가게","데모 보기","스탬프 받기","내 패스포트 보기","데모 차이 가게에서 스탬프 받기","데모: 변경 사항은 저장되지 않습니다"],
-"zh-Hans": ["演示店铺 – 所有内容均为虚构","退出演示","查看店主","浏览店铺","重试","无法打开演示，请重试。","演示已结束，请重试。","演示：未发送","演示店铺","试用演示","集印章","查看你的护照","在演示茶摊集印章","演示：更改不会保存"],
+"hi": ["डेमो दुकान · नमूना डेटा","डेमो छोड़ें","मालिक बनकर देखें","दुकानें देखें","फिर कोशिश करें","डेमो नहीं खुला। फिर कोशिश करें।","डेमो खत्म हुआ। फिर कोशिश करें।","डेमो में यह नकली है: कुछ भेजा नहीं जाता","डेमो दुकान","डेमो देखें","स्टैंप लें","अपना पासपोर्ट देखें","डेमो चाय की दुकान पर स्टैंप लें","डेमो में यह नकली है: कुछ भेजा नहीं जाता","अपनी दुकान शुरू करें","डेमो में नमूना तस्वीर लगती है। आपकी फ़ोटो नहीं रखी जाती।"],
+"ta": ["டெமோ கடை · மாதிரித் தரவு","வெளியேறு","உரிமையாளர் பார்வை","கடைகளைப் பார்","மீண்டும் முயல்","மாதிரி திறக்கவில்லை. மீண்டும் முயலவும்.","மாதிரி முடிந்தது. மீண்டும் முயலவும்.","டெமோவில் இது பாவனை மட்டுமே: எதுவும் அனுப்பப்படாது","மாதிரிக் கடை","மாதிரியைப் பார்","முத்திரை பெறுங்கள்","உங்கள் பாஸ்போர்ட்டைப் பாருங்கள்","மாதிரி டீக்கடையில் முத்திரை பெறுங்கள்","டெமோவில் இது பாவனை மட்டுமே: எதுவும் அனுப்பப்படாது","என் சொந்தக் கடையைத் தொடங்கு","டெமோவில் ஒரு மாதிரிப் படம் காட்டப்படும். உங்கள் படம் வைக்கப்படாது."],
+"bn": ["ডেমো দোকান · নমুনা তথ্য","বের হন","মালিকের দৃশ্য","দোকান দেখুন","আবার চেষ্টা","নমুনা খোলেনি। আবার চেষ্টা করুন।","নমুনা শেষ। আবার চেষ্টা করুন।","ডেমোতে এটি কাল্পনিক: কিছুই পাঠানো হয় না","নমুনা দোকান","নমুনা দেখুন","স্ট্যাম্প নিন","আপনার পাসপোর্ট দেখুন","নমুনা চায়ের দোকানে স্ট্যাম্প নিন","ডেমোতে এটি কাল্পনিক: কিছুই পাঠানো হয় না","আমার নিজের দোকান শুরু করুন","ডেমোতে একটি নমুনা ছবি দেখানো হয়। আপনার ছবি রাখা হয় না।"],
+"te": ["డెమో దుకాణం · నమూనా డేటా","నిష్క్రమించు","యజమానిగా చూడు","దుకాణాలు చూడు","మళ్లీ ప్రయత్నించు","నమూనా తెరుచుకోలేదు. మళ్లీ ప్రయత్నించండి.","నమూనా ముగిసింది. మళ్లీ ప్రయత్నించండి.","డెమోలో ఇది ఊహాజనితం: ఏదీ పంపబడదు","నమూనా దుకాణం","నమూనా చూడు","స్టాంప్ పొందండి","మీ పాస్‌పోర్ట్ చూడండి","నమూనా టీ దుకాణంలో స్టాంప్ పొందండి","డెమోలో ఇది ఊహాజనితం: ఏదీ పంపబడదు","నా సొంత దుకాణం ప్రారంభించండి","డెమోలో నమూనా చిత్రం చూపబడుతుంది. మీ ఫోటో ఉంచబడదు."],
+"mr": ["डेमो दुकान · नमुना डेटा","बाहेर पडा","मालक म्हणून पहा","दुकाने पहा","पुन्हा प्रयत्न","नमुना उघडला नाही. पुन्हा प्रयत्न करा.","नमुना संपला. पुन्हा प्रयत्न करा.","डेमोमध्ये हे खोटे आहे: काहीही पाठवले जात नाही","नमुना दुकान","नमुना पहा","स्टॅम्प घ्या","तुमचा पासपोर्ट पहा","नमुना चहाच्या दुकानात स्टॅम्प घ्या","डेमोमध्ये हे खोटे आहे: काहीही पाठवले जात नाही","माझे स्वतःचे दुकान सुरू करा","डेमोमध्ये नमुना चित्र दिसते. तुमचा फोटो ठेवला जात नाही."],
+"kn": ["ಡೆಮೊ ಅಂಗಡಿ · ಮಾದರಿ ಡೇಟಾ","ಹೊರಬನ್ನಿ","ಮಾಲೀಕರಾಗಿ ನೋಡಿ","ಅಂಗಡಿಗಳನ್ನು ನೋಡಿ","ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ","ಮಾದರಿ ತೆರೆಯಲಿಲ್ಲ. ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.","ಮಾದರಿ ಮುಗಿದಿದೆ. ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.","ಡೆಮೊದಲ್ಲಿ ಇದು ಕಾಲ್ಪನಿಕ: ಏನೂ ಕಳುಹಿಸಲಾಗುವುದಿಲ್ಲ","ಮಾದರಿ ಅಂಗಡಿ","ಮಾದರಿ ನೋಡಿ","ಸ್ಟಾಂಪ್ ಪಡೆಯಿರಿ","ನಿಮ್ಮ ಪಾಸ್‌ಪೋರ್ಟ್ ನೋಡಿ","ಮಾದರಿ ಚಹಾ ಅಂಗಡಿಯಲ್ಲಿ ಸ್ಟಾಂಪ್ ಪಡೆಯಿರಿ","ಡೆಮೊದಲ್ಲಿ ಇದು ಕಾಲ್ಪನಿಕ: ಏನೂ ಕಳುಹಿಸಲಾಗುವುದಿಲ್ಲ","ನನ್ನ ಸ್ವಂತ ಅಂಗಡಿ ಪ್ರಾರಂಭಿಸಿ","ಡೆಮೊದಲ್ಲಿ ಮಾದರಿ ಚಿತ್ರ ತೋರಿಸಲಾಗುತ್ತದೆ. ನಿಮ್ಮ ಫೋಟೋ ಉಳಿಸಲಾಗುವುದಿಲ್ಲ."],
+"ms": ["Kedai demo · data contoh","Keluar demo","Lihat pemilik","Lihat kedai","Cuba lagi","Demo tidak dibuka. Cuba lagi.","Demo tamat. Cuba lagi.","Dalam demo ini cuma lakonan: tiada apa yang dihantar","Kedai demo","Cuba demo","Kumpul setem","Lihat Pasport anda","Kumpul setem di gerai teh demo","Dalam demo ini cuma lakonan: tiada apa yang dihantar","Mulakan kedai saya sendiri","Dalam demo, gambar contoh digunakan. Foto anda tidak disimpan."],
+"id": ["Toko demo · data contoh","Keluar demo","Lihat pemilik","Jelajahi toko","Coba lagi","Demo gagal dibuka. Coba lagi.","Demo berakhir. Coba lagi.","Di demo ini hanya pura-pura: tidak ada yang dikirim","Toko demo","Coba demo","Kumpulkan stempel","Lihat Paspor Anda","Kumpulkan stempel di kedai teh demo","Di demo ini hanya pura-pura: tidak ada yang dikirim","Mulai toko saya sendiri","Di demo, gambar contoh yang dipakai. Foto Anda tidak disimpan."],
+"th": ["ร้านตัวอย่าง · ข้อมูลตัวอย่าง","ออกจากตัวอย่าง","ดูมุมเจ้าของ","ดูร้านค้า","ลองอีกครั้ง","เปิดตัวอย่างไม่ได้ ลองอีกครั้ง","ตัวอย่างสิ้นสุดแล้ว ลองอีกครั้ง","ในเดโมนี่เป็นการจำลอง: ไม่มีการส่งอะไรจริง","ร้านตัวอย่าง","ลองตัวอย่าง","สะสมแสตมป์","ดูพาสปอร์ตของคุณ","สะสมแสตมป์ที่ร้านชาตัวอย่าง","ในเดโมนี่เป็นการจำลอง: ไม่มีการส่งอะไรจริง","เริ่มร้านของฉันเอง","ในเดโมจะใช้รูปตัวอย่างแทน ระบบไม่เก็บรูปของคุณ"],
+"vi": ["Cửa hàng mẫu · dữ liệu mẫu","Thoát bản mẫu","Xem chủ quán","Xem cửa hàng","Thử lại","Không mở được bản mẫu. Thử lại.","Bản mẫu đã hết hạn. Thử lại.","Trong bản demo đây chỉ là giả lập: không có gì được gửi đi","Cửa hàng mẫu","Thử bản mẫu","Nhận tem","Xem Hộ chiếu của bạn","Nhận tem tại quán trà mẫu","Trong bản demo đây chỉ là giả lập: không có gì được gửi đi","Mở cửa hàng của tôi","Trong bản demo, ảnh mẫu được dùng thay thế. Ảnh của bạn không được lưu."],
+"fil": ["Demo shop · sample na data","Lumabas","Tingnan bilang may-ari","Tumingin ng tindahan","Subukan muli","Hindi nabuksan ang demo. Subukan muli.","Tapos na ang demo. Subukan muli.","Sa demo, kunwari lang ito: walang ipinapadala","Demo shop","Subukan ang demo","Kumuha ng stamp","Tingnan ang iyong Passport","Kumuha ng stamp sa demo na tindahan ng chai","Sa demo, kunwari lang ito: walang ipinapadala","Simulan ang sarili kong tindahan","Sa demo, sample na larawan ang gagamitin. Hindi itinatago ang litrato mo."],
+"ja": ["デモ店舗 · サンプルデータ","デモを終了","オーナーを見る","店舗を見る","再試行","デモを開けません。再試行してください。","デモは終了しました。再試行してください。","デモでは模擬動作です。実際には何も送信されません","デモ店舗","デモを試す","スタンプを集める","パスポートを見る","デモのチャイ店でスタンプを集める","デモでは模擬動作です。実際には何も送信されません","自分のお店を始める","デモではサンプル画像を使います。写真は保存されません。"],
+"ko": ["데모 가게 · 샘플 데이터","데모 종료","점주 보기","가게 둘러보기","다시 시도","데모를 열 수 없습니다. 다시 시도하세요.","데모가 끝났습니다. 다시 시도하세요.","데모에서는 가상으로 동작합니다. 실제로 보내지 않습니다","데모 가게","데모 보기","스탬프 받기","내 패스포트 보기","데모 차이 가게에서 스탬프 받기","데모에서는 가상으로 동작합니다. 실제로 보내지 않습니다","내 가게 시작하기","데모에서는 샘플 사진을 사용합니다. 내 사진은 보관되지 않습니다."],
+"zh-Hans": ["演示店铺 · 示例数据","退出演示","查看店主","浏览店铺","重试","无法打开演示，请重试。","演示已结束，请重试。","演示中仅为模拟：不会真正发送任何内容","演示店铺","试用演示","集印章","查看你的护照","在演示茶摊集印章","演示中仅为模拟：不会真正发送任何内容","开设我自己的店铺","演示中使用示例图片。您的照片不会被保存。"],
 }
 export function useDemoCopy(): DemoCopy {
   const locale = useLocale()

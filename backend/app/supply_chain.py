@@ -1183,6 +1183,10 @@ def supplier_document(
             doc_line.substitute_for = line["item"]
             doc_line.item = name[:120]
             doc_line.supplier_code = f"{line.get('supplier_code') or 'MAT'}-S"
+        if kind == "ORDRSP" and index == 0 and variant == "price_change" and price is not None:
+            # Up about 5%, to the nearest whole currency unit, as a wholesaler would quote it.
+            doc_line.price = max(price + 100, round(price * 1.05 / 100) * 100)
+            doc_line.total = round(doc_line.price * quantity)
         if kind == "INVOIC" and index == 0 and variant == "price_mismatch":
             # A classic three-way-match failure: the list price instead of the agreed tier.
             listed = line.get("list_price") or price

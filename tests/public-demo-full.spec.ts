@@ -31,7 +31,7 @@ test('public demo walks the whole owner lifecycle at 390 px', async ({ page }, i
       realApi.push(path)
   })
   await page.goto('/demo')
-  await expect(page.getByText('Demo shop – nothing here is real', { exact: true })).toBeVisible({
+  await expect(page.getByText('Demo shop · sample data', { exact: true })).toBeVisible({
     timeout: 30_000,
   })
 
@@ -99,7 +99,7 @@ test('public demo walks the whole owner lifecycle at 390 px', async ({ page }, i
   await page.locator('[data-tour="supply"]').click()
   const sheet = page.getByRole('dialog')
   await expect(sheet.getByText(/Sri Lakshmi/).first()).toBeVisible({ timeout: 15_000 })
-  await expect(page.getByText('Demo: not sent')).toHaveCount(0)
+  await expect(page.getByText('In the demo this is pretend: nothing is sent')).toHaveCount(0)
   // #282: draft a reorder inside the sandbox.
   await sheet.getByRole('button', { name: 'Draft a reorder' }).click()
   await expect(sheet.locator('article')).toBeVisible({ timeout: 15_000 })
@@ -132,7 +132,7 @@ test('public demo walks the whole owner lifecycle at 390 px', async ({ page }, i
   await page.screenshot({ path: 'output/playwright/demo-full-08-you.png', fullPage: true })
   await reminders.click()
   await expect(reminders).toBeChecked()
-  await expect(page.getByText('Demo: not sent').first()).toBeVisible()
+  await expect(page.getByText('In the demo this is pretend: nothing is sent').first()).toBeVisible()
   await expect(reminders).toBeEnabled()
   await reminders.click()
   await expect(reminders).not.toBeChecked()

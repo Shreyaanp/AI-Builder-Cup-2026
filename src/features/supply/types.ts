@@ -87,6 +87,19 @@ export interface SupplyDocument {
   /** gemini (live AI), parser (offline fixture) or template (we wrote it). */
   reader: 'gemini' | 'parser' | 'template'
   simulated?: boolean
+  /** The document in plain fields, whatever format it arrived in. */
+  canonical?: {
+    total?: number | null
+    lines?: {
+      item: string
+      quantity: number
+      unit: string
+      price?: number | null
+      status?: string
+      backorder_quantity?: number | null
+      backorder_date?: string | null
+    }[]
+  }
 }
 
 export interface OrderChange {

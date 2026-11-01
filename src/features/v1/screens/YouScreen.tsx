@@ -23,7 +23,9 @@ import {
   Plus,
   ShieldCheck,
   Sparkles,
+  Store,
 } from 'lucide-react'
+import { useDemoCopy } from '../../frontdoors/strings'
 import { openOwnerFeature } from '../../owner-tools/entry'
 import { useToolCopy } from '../../owner-tools/copy'
 import { TrustCard } from '../../trust/TrustCard'
@@ -135,6 +137,7 @@ export function YouScreen() {
   const tabs = useTabsCopy()
   const tools = useToolCopy()
   const ws = useWorkspace()
+  const demoCopy = useDemoCopy()
   const identity = useIdentity()
   const preferences = usePreferences()
   const dispatch = usePreferencesDispatch()
@@ -271,6 +274,9 @@ export function YouScreen() {
             />
           ))}
           <Row icon={<Plus size={20} />} label={t.newShop} onClick={ws.startNewShop} />
+          {ws.demo && (
+            <Row icon={<Store size={20} />} label={demoCopy.startOwn} onClick={ws.startNewShop} />
+          )}
         </Group>
 
         {/* Optional, so it follows settings and shops instead of leading the screen (OB-106). */}

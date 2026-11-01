@@ -34,7 +34,7 @@ test.describe('Try the demo shop flow', () => {
     await page.goto('/demo')
 
     // 1. Labelled demo banner
-    const banner = 'Demo shop – nothing here is real'
+    const banner = 'Demo shop · sample data'
     await expect(page.getByText(banner, { exact: true })).toBeVisible({ timeout: 30_000 })
     await expect(page).toHaveURL(/\/demo$/)
 

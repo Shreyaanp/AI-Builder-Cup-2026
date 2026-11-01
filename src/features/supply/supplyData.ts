@@ -165,7 +165,22 @@ export function usePoActions(onChange: (order: PurchaseOrder) => void) {
     },
     [api, base, notify, onChange, review, explain],
   )
+  // The demo supplier's reply arrives with a read; only a real change is passed on.
+  const refresh = useCallback(
+    async (order: PurchaseOrder) => {
+      try {
+        const next = await api<PurchaseOrder>(`${base}/orders/${encodeURIComponent(order.id)}`)
+        if (next.version === order.version) return
+        onChange(next)
+        supplyChanged()
+      } catch {
+        // The next check tries again; nothing here needs the owner.
+      }
+    },
+    [api, base, onChange],
+  )
   return {
+    refresh,
     approve: (order: PurchaseOrder) => run(order, 'approve'),
     cancel: (order: PurchaseOrder) => run(order, 'cancel'),
     fix: (order: PurchaseOrder, fix: unknown) => run(order, 'fix', { fix }),

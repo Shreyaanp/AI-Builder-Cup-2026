@@ -33,11 +33,15 @@ export function WorkspaceProvider({
   me,
   children,
   readOnlyMessage,
+  onStartOwnShop,
 }: {
   api: Api
   me: Me
   children: ReactNode
+  /** The public demo: the note shown for the few things that would touch the real world. */
   readOnlyMessage?: string
+  /** The public demo: a new shop is the visitor's own, outside the demo. */
+  onStartOwnShop?: () => void
 }) {
   const t = useCopy()
   const theme = useTheme()
@@ -221,10 +225,6 @@ export function WorkspaceProvider({
   )
   const setShared = useCallback(
     async (shared: boolean) => {
-      if (readOnlyMessage) {
-        setToast(readOnlyMessage)
-        return
-      }
       if (!activeId) return
       await api(`/businesses/${activeId}/share`, {
         method: 'POST',
@@ -232,7 +232,7 @@ export function WorkspaceProvider({
       })
       await reload()
     },
-    [activeId, api, reload, readOnlyMessage],
+    [activeId, api, reload],
   )
 
   const value = useMemo<Workspace>(
@@ -263,7 +263,7 @@ export function WorkspaceProvider({
       dismissNewShopReady: () => setShopReady(false),
       startNewShop: () => {
         if (readOnlyMessage) {
-          setToast(readOnlyMessage)
+          onStartOwnShop?.()
           return
         }
         track('onboarding_started')
@@ -312,16 +312,18 @@ export function WorkspaceProvider({
       reload,
       setAvailability,
       setShared,
-      shareUrl: activeId && customerOrigin ? customerShopLink(activeId, customerOrigin) : null,
+      // A sandbox shop has no public page; its link opens the demo's customer side.
+      shareUrl:
+        activeId && customerOrigin
+          ? readOnlyMessage
+            ? `${customerOrigin}/explore/demo`
+            : customerShopLink(activeId, customerOrigin)
+          : null,
       review: setProposal,
       savedProposals,
       confirm,
       notify: setToast,
       requestPhoto: () => {
-        if (readOnlyMessage) {
-          setToast(readOnlyMessage)
-          return
-        }
         setDestination('coach')
         setPhotoPending(true)
       },
@@ -345,6 +347,7 @@ export function WorkspaceProvider({
     [
       api,
       readOnlyMessage,
+      onStartOwnShop,
       customerOrigin,
       me,
       businesses,

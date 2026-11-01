@@ -28,6 +28,8 @@ import { enterRise, fieldFade, shape } from '../../design/theme'
 import { chalkWrite, stampThud } from '../../design/chalkMotion'
 import { formatShopPrice } from '../v1/format'
 import { Sheet } from '../v1/Sheet'
+import { useWorkspace } from '../v1/workspaceContext'
+import { SupplierTalk } from './SupplierTalk'
 import { Code } from './Code'
 import { ConfirmUndo } from './ConfirmUndo'
 import { useOrderChangeCopy } from './orderChangeCopy'
@@ -162,6 +164,7 @@ export function PurchaseOrderCard({
       setBusy(null)
     }
   }
+  const { demo } = useWorkspace()
   const spinner = (key: string, icon: ReactNode) =>
     busy === key ? <CircularProgress size={16} color="inherit" /> : icon
   if (preview === 'timeline')
@@ -399,6 +402,7 @@ export function PurchaseOrderCard({
               </Box>
             )}
           </Sheet>
+          {demo && order.simulated && <SupplierTalk order={order} refresh={actions.refresh} />}
           <Timeline order={order} busy={busy} act={act} actions={actions} />
           <NextStep order={order} busy={busy} act={act} actions={actions} />
           {/* A sent order can still be cancelled until the supplier confirms it (OB-225). */}
@@ -767,6 +771,7 @@ function NextStep({
   const showcase = useShowcaseCopy()
   const f = useFormat(order)
   const roles = useTheme().material
+  const { demo } = useWorkspace()
   const [paste, setPaste] = useState(false)
   const [text, setText] = useState('')
   const flags = order.open_flags ?? 0
@@ -856,7 +861,8 @@ function NextStep({
             border: `1px dashed ${roles.outline}`,
           }}
         >
-          {order.simulated && sim.length > 0 && (
+          {/* The public demo's supplier answers by itself (SupplierTalk). */}
+          {order.simulated && !demo && sim.length > 0 && (
             <>
               <Button
                 variant="contained"

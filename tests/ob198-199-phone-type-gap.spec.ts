@@ -71,7 +71,7 @@ async function openDemo(page: Page, width: number, appearance: string) {
       : route.abort(),
   )
   await page.goto('/demo', { waitUntil: 'domcontentloaded' })
-  await expect(page.getByText('Demo shop – nothing here is real', { exact: true })).toBeVisible()
+  await expect(page.getByText('Demo shop · sample data', { exact: true })).toBeVisible()
   await expect(page.getByRole('navigation', { name: 'Main' })).toBeVisible({ timeout: 30_000 })
   await page.evaluate(() => document.fonts.ready)
 }

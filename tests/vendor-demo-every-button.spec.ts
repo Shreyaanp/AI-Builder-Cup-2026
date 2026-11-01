@@ -2,7 +2,7 @@ import { test, expect, type Page } from '@playwright/test'
 
 test.setTimeout(90_000)
 
-const NOTICE = "This is a demo shop; changes aren't saved"
+const NOTICE = 'In the demo this is pretend: nothing is sent'
 const errorsOf = new WeakMap<Page, string[]>()
 
 test.beforeEach(async ({ context, page }, info) => {
@@ -157,13 +157,16 @@ test('You: Remind me turns on without an error', async ({ page }) => {
   await noErrors(page)
 })
 
-test('You: New shop answers with the demo note', async ({ page }) => {
-  await openDemo(page)
-  await tab(page, 'you')
-  await page.getByRole('button', { name: /New shop/ }).click()
-  await expect(page.getByText(NOTICE)).toBeVisible()
-  await noErrors(page)
-})
+// OB-248: a new shop is the visitor's own, so both rows leave the demo for the real start.
+for (const row of [/New shop/, /Start my own shop/]) {
+  test(`You: ${row.source} leaves the demo for the real start`, async ({ page }) => {
+    await openDemo(page)
+    await tab(page, 'you')
+    await page.getByRole('button', { name: row }).click()
+    await expect(page).not.toHaveURL(/\/demo/, { timeout: 15_000 })
+    expect(errorsOf.get(page)).toEqual([])
+  })
+}
 
 for (const shop of ['FreshMart', 'Metro Foods']) {
   test(`You: switch to ${shop}`, async ({ page }) => {

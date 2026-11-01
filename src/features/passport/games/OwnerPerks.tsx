@@ -30,7 +30,7 @@ export function OwnerPerks() {
   const api = ws.api
   const [loaded, setLoaded] = useState<{ shop: string; perks: Perk[] } | null>(null)
   const [texts, setTexts] = useState<Partial<Record<PerkTrigger, string>>>({})
-  const [state, setState] = useState<'idle' | 'saving' | 'error' | 'load-error' | 'demo-saved'>(
+  const [state, setState] = useState<'idle' | 'saving' | 'error' | 'load-error'>(
     'idle',
   )
   useEffect(() => {
@@ -58,10 +58,6 @@ export function OwnerPerks() {
   const ready = loaded?.shop === shop
   async function save() {
     if (!shop || !loaded) return
-    if (ws.readOnlyMessage) {
-      setState('demo-saved')
-      return
-    }
     setState('saving')
     const perks = TRIGGERS.flatMap((trigger) => {
       const text = (texts[trigger] ?? '').trim()
@@ -78,11 +74,7 @@ export function OwnerPerks() {
       setState('idle')
       ws.notify(t.ownerSaved)
     } catch {
-      if (ws.readOnlyMessage) {
-        setState('demo-saved')
-      } else {
-        setState('error')
-      }
+      setState('error')
     }
   }
   return (
@@ -109,10 +101,7 @@ export function OwnerPerks() {
               label={t[`trigger_${trigger}`]}
               placeholder={t.ownerPerkHint}
               value={texts[trigger] ?? ''}
-              onChange={(event) => {
-                if (state === 'demo-saved') setState('idle')
-                setTexts({ ...texts, [trigger]: event.target.value })
-              }}
+              onChange={(event) => setTexts({ ...texts, [trigger]: event.target.value })}
               slotProps={{ htmlInput: { maxLength: 80 } }}
               fullWidth
             />
@@ -120,11 +109,6 @@ export function OwnerPerks() {
           {state === 'error' && (
             <Alert severity={ws.readOnlyMessage ? 'info' : 'error'}>
               {ws.readOnlyMessage ?? t.ownerFailed}
-            </Alert>
-          )}
-          {state === 'demo-saved' && (
-            <Alert severity="info">
-              {ws.readOnlyMessage ?? "This is a demo shop; changes aren't saved"}
             </Alert>
           )}
           <Button

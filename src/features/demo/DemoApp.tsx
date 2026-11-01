@@ -147,8 +147,8 @@ export default function DemoApp() {
       },
     [session, t.expired, t.readOnly],
   )
-  // The owner app on the visitor's own sandbox: reads and safe writes run there and reset
-  // with it; anything that would leave the demo (a message, push, payment) is not sent.
+  // The owner app on the visitor's own sandbox: every feature runs there and resets with it.
+  // Only what would touch the real world answers DEMO_NOT_SENT, with a plain "pretend" note.
   const ownerApi = useMemo<Api>(
     () =>
       async <T,>(path: string, init: RequestInit & { raw?: boolean } = {}) => {
@@ -262,7 +262,12 @@ export default function DemoApp() {
           )
         ) : (
           <BackHistory value>
-            <WorkspaceProvider api={ownerApi} me={demoMe} readOnlyMessage={t.demoNotice}>
+            <WorkspaceProvider
+              api={ownerApi}
+              me={demoMe}
+              readOnlyMessage={t.demoNotice}
+              onStartOwnShop={exit}
+            >
               <AppShell />
               <DemoWelcome />
             </WorkspaceProvider>
