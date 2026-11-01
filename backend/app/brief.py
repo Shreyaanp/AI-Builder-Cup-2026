@@ -20,7 +20,7 @@ from .recap import Summary
 from .rescue import buffer_for, local_now
 from .settings import Settings
 from .sourcing import OPEN, shop_pin
-from .supply_chain import need_from_forecast
+from .supply_chain import bought, runs_out
 
 
 class Weather(BaseModel):
@@ -157,38 +157,18 @@ def facts(
         if p.date == today
     ][:3]
     low = []
+    predictions = {"predictions": [p.model_dump(mode="json") for p in forecast.predictions]}
     for product in context["inventory"]:
         stock = product.get("stock")
-        if stock is None:
+        # Menu items are made, not bought: they never run out into an order (OB-239).
+        if stock is None or not bought(product):
             continue
-        if business["fields"].get("demo"):
-            # Demo shops use the supply card's own rule and horizon (tomorrow on, the forecast's
-            # upper bound), so the brief and Today name the same day for the same item.
-            demo_rows = [
-                p.model_dump(mode="json")
-                for p in forecast.predictions
-                if p.item.casefold() == product["name"].casefold() and p.date > today
-            ]
-            found = need_from_forecast(product, {"predictions": demo_rows}, product["name"], today)
-            runs_out = date.fromisoformat(found["runs_out"]) if found["runs_out"] else None
-        else:
-            rows = sorted(
-                (
-                    p
-                    for p in forecast.predictions
-                    if p.item.casefold() == product["name"].casefold()
-                ),
-                key=lambda p: p.date,
-            )
-            total = 0.0
-            runs_out = None
-            for row in rows:
-                total += row.quantity
-                if total >= stock:
-                    runs_out = row.date
-                    break
-        if runs_out is not None or stock <= 5:
-            low.append(LowStock(name=product["name"], stock=stock, runs_out=runs_out))
+        # The supply tile's own rule (tomorrow on, the forecast's upper bound), for every shop:
+        # the brief, Today and the supply tile name the same day for the same item (OB-238).
+        found = runs_out(product, predictions, today)
+        runs_out_on = date.fromisoformat(found) if found else None
+        if runs_out_on is not None or stock <= 5:
+            low.append(LowStock(name=product["name"], stock=stock, runs_out=runs_out_on))
     signals = store.recap_signals(uid, bid)
     waiting = [
         q

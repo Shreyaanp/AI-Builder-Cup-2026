@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import math
 import re
 from collections import defaultdict
 from datetime import date, datetime, timedelta
@@ -67,6 +68,10 @@ def recap_facts(week: str, sales: list[dict[str, Any]], signals: dict[str, Any])
         item = items.setdefault(key, {"item": row["item"], "quantity": 0.0, "revenue": 0})
         item["quantity"] += row["quantity"]
         item["revenue"] += row["revenue"]
+    # An item is a top seller or a slow mover, never both: a shop with few items splits them
+    # (OB-240), the better-selling half on top.
+    ranked = sorted(items.values(), key=lambda r: (-r["quantity"], r["item"]))
+    top = min(5, math.ceil(len(ranked) / 2))
     revenue, old = sum(r["revenue"] for r in current), sum(r["revenue"] for r in prior)
     timezone = shop_timezone(shop_zone(signals["fields"]))
     questions: dict[str, int] = defaultdict(int)
@@ -81,8 +86,8 @@ def recap_facts(week: str, sales: list[dict[str, Any]], signals: dict[str, Any])
         "currency": shop_currency(signals["fields"]),
         "sales_days": len({r["date"] for r in current}),
         "previous_sales_days": len({r["date"] for r in prior}),
-        "top_sellers": sorted(items.values(), key=lambda r: (-r["quantity"], r["item"]))[:5],
-        "slow_movers": sorted(items.values(), key=lambda r: (r["quantity"], r["item"]))[:5],
+        "top_sellers": ranked[:top],
+        "slow_movers": sorted(ranked[top:], key=lambda r: (r["quantity"], r["item"]))[:5],
         "revenue": revenue,
         "previous_revenue": old,
         "revenue_change": revenue - old,

@@ -176,11 +176,13 @@ export function usePoActions(onChange: (order: PurchaseOrder) => void) {
 }
 
 interface ReorderResult {
-  status: 'drafted' | 'needs_item' | 'no_supplier' | 'on_order' | 'on_order_units'
+  status: 'drafted' | 'needs_item' | 'no_supplier' | 'on_order' | 'on_order_units' | 'check'
   order?: PurchaseOrder
   item?: string
   unit?: string
   quantity?: number
+  /** `check`: how many days of the shop's own use the quantity would be (OB-239). */
+  days?: number
   arrives?: string
   other?: { quantity: number; unit: string; arrives: string }[]
 }
@@ -220,6 +222,16 @@ export function useDraftReorder() {
                 .join(', '),
               name,
               dayLabel(result.other?.[0]?.arrives ?? '', locale),
+            ),
+          }
+        if (result.status === 'check')
+          return {
+            order: null,
+            note: c.checkQuantity(
+              quantity.format(result.quantity ?? 0),
+              result.unit ?? '',
+              name,
+              result.days ?? 0,
             ),
           }
         const note =

@@ -42,6 +42,9 @@ const en = {
   // On order in a unit that does not compare with the stock (2 pack, litres): ask first (#603).
   unitsAsk: (amounts: string, item: string, day: string) =>
     `${amounts} ${item} is already on order${day ? `, arriving ${day}` : ''}. The app can’t tell if that is enough. Order more anyway?`,
+  // More than a month of use in one draft: nothing was drafted (OB-239).
+  checkQuantity: (quantity: string, unit: string, item: string, days: number) =>
+    `Check this first: ${quantity} ${unit} ${item} is about ${days} days of what you use, so no order was drafted. Check the item and the supplier’s minimum, or ask the coach for the amount you want.`,
   orderMore: 'Order more',
   notNow: 'Not now',
   // Grow and Today lead with one need; the rest still to order.
@@ -84,6 +87,8 @@ const hi: OrderChangeCopy = {
     day ? `${quantity} ${unit} ऑर्डर पर, ${day} को आएगा` : `${quantity} ${unit} ऑर्डर पर`,
   unitsAsk: (amounts, item, day) =>
     `${amounts} ${item} पहले से ऑर्डर पर है${day ? `, ${day} को आएगा` : ''}। ऐप नहीं बता सकता कि यह काफ़ी है या नहीं। फिर भी और मँगाएँ?`,
+  checkQuantity: (quantity, unit, item, days) =>
+    `पहले जाँच लें: ${quantity} ${unit} ${item} आपके लगभग ${days} दिन के इस्तेमाल जितना है, इसलिए कोई ऑर्डर नहीं बना। चीज़ और सप्लायर की न्यूनतम मात्रा देखें, या कोच से उतना माँगें जितना चाहिए।`,
   orderMore: 'और मँगाएँ',
   notNow: 'अभी नहीं',
   moreRunOut: (n) => (n === 1 ? '1 और चीज़ खत्म हो रही है' : `${n} और चीज़ें खत्म हो रही हैं`),

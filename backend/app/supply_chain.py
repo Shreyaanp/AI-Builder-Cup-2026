@@ -79,6 +79,12 @@ SEQUENCE = "supply_seq"
 INBOX = "supply_inbox"  # partner documents (supply_io.py)
 assert (RULES, ORDERS, SEQUENCE, INBOX) == SUPPLY_KINDS  # erased with the shop (merchant.py)
 COVER_DAYS = 7
+# A cup of chai or a plate of bun maska is a menu item the shop makes from its supplies, never
+# stock it buys: it is never reordered and no supplier sells it (OB-239).
+SERVED_UNITS = {"cup", "glass", "plate", "bowl", "portion", "slice", "set", "hour", "service"}
+# More than a month of the shop's own use in one draft is a mistake to check, not an order: a
+# supplier's minimum or a unit mix-up must never draft 614 cups (OB-239).
+CHECK_DAYS = 30
 MAX_DOCUMENTS = 12
 MAX_ORDERS = 100
 CREDIT_OPEN = {"sent", "changed", "confirmed", "dispatched", "received", "invoiced"}
@@ -365,6 +371,26 @@ def shop_today(context: dict[str, Any]) -> date:
     return today_for(context["business"]["fields"])
 
 
+def bought(product: dict[str, Any]) -> bool:
+    """Stock the shop buys (a raw supply, an ingredient or goods it resells), not a menu item
+    it makes and serves (OB-239)."""
+    from .sourcing import unit_of
+
+    return unit_of(product.get("unit") or "kg") not in SERVED_UNITS
+
+
+def runs_out(product: dict[str, Any], forecast: dict[str, Any], today: date) -> str:
+    """The day this item runs out, from tomorrow on: the one rule the supply tile, Today and the
+    morning brief share, so one item never shows two days (OB-238)."""
+    rows = [
+        row
+        for row in forecast.get("predictions") or []
+        if isinstance(row, dict) and str(row.get("date") or "") > today.isoformat()
+    ]
+    need = need_from_forecast(product, {**forecast, "predictions": rows}, product["name"], today)
+    return str(need["runs_out"])
+
+
 def need_from_forecast(
     product: dict[str, Any] | None, forecast: dict[str, Any], item: str, today: date
 ) -> dict[str, Any]:
@@ -581,6 +607,23 @@ async def draft_reorder(
         else options[0]
     )
     faster = next((o for o in options if o["on_time"] and o is not best), None)
+    line = best["line"]
+    amount = sourcing.convert(line["quantity"], line["unit"], unit)
+    if (
+        not quantity
+        and need["daily"]
+        and amount is not None
+        and amount > need["daily"] * CHECK_DAYS
+    ):
+        # The owner checks the item and its supplier; nothing is drafted (OB-239).
+        return {
+            "status": "check",
+            "item": target,
+            "unit": unit,
+            "quantity": round(amount, 2),
+            "days": math.floor(amount / need["daily"]),
+            "supplier": best["supplier"]["name"],
+        }
     number = await anyio.to_thread.run_sync(_next_number, store, bid, "po")
     now = time.time()
     po: dict[str, Any] = {
@@ -653,8 +696,9 @@ def pick_item(
     supplied: Callable[[str], bool] = lambda _: False,
     is_covered: Callable[[dict[str, Any], dict[str, Any]], bool] = lambda _p, _n: False,
 ) -> str:
-    """The named item, else the stocked item that runs out first. Items a linked supplier
-    stocks come first: a tea stall reorders tea dust, not the chai it brews from it (#264).
+    """The named item, else the stocked item that runs out first. Menu items are never picked:
+    a tea stall reorders tea dust, not the chai it brews from it (#264, OB-239); items a linked
+    supplier stocks come first.
     Items whose need is already on its way come last: milk on order must not hide the sugar
     that still runs out (#603)."""
     from .sourcing import matches
@@ -669,7 +713,7 @@ def pick_item(
         )
     soonest: tuple[bool, bool, str, str] | None = None
     for product in inventory:
-        if product.get("stock") is None:
+        if product.get("stock") is None or not bought(product):
             continue
         need = need_from_forecast(product, forecast, product["name"], today)
         if not need["runs_out"]:
@@ -696,7 +740,8 @@ def supplier_candidates(
         shop = store.public_shop(row["supplier"]["id"])
         if not shop or (shop.get("currency") or currency) != currency:
             continue
-        products = [p for p in shop.get("products", []) if matches(p["name"], item)]
+        # A café's cup of chai is its menu, not a supply to buy from it (OB-239).
+        products = [p for p in shop.get("products", []) if matches(p["name"], item) and bought(p)]
         if products:
             found.append({"row": row, "shop": shop, "product": products[0]})
     return found

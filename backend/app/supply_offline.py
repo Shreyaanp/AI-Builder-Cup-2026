@@ -281,6 +281,12 @@ def supply_reply(name: str, result: dict[str, Any]) -> str | None:
                 f"Offline coach: {result['on_order']:g} {result['unit']} {result['item']} is "
                 f"already on order{arrives}. No new order needed."
             )
+        if result.get("status") == "check_quantity":
+            return (
+                f"Offline coach: check this first. {result['quantity']:g} {result['unit']} "
+                f"{result['item']} from {result['supplier']} is about {result['days']} days of "
+                "what you use, so I drafted nothing. Tell me how much you want."
+            )
         if result.get("status") not in {"needs_owner_tap", "sent_automatically"}:
             return "Offline coach: tell me which item to reorder and I'll draft the order."
         currency = result.get("currency", "SGD")

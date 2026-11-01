@@ -94,7 +94,9 @@ async def overview(business_id: str, request: Request) -> dict[str, Any]:
     needs = [
         {"item": product["name"], **need}
         for product in context["inventory"]
-        if (
+        # Only stock the shop buys runs out here: a menu item is made from it (OB-239).
+        if supply_chain.bought(product)
+        and (
             need := supply_chain.need_from_forecast(
                 product, forecast.model_dump(mode="json"), product["name"], today
             )

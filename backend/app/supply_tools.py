@@ -197,6 +197,18 @@ async def draft_reorder(
             "arrives; the app cannot tell if it is enough. Ask if they want to order more. Only "
             "if they say yes, call draft_reorder again with anyway=true.",
         }
+    if result["status"] == "check":
+        return {
+            "status": "check_quantity",
+            "item": result["item"],
+            "unit": result["unit"],
+            "quantity": result["quantity"],
+            "days": result["days"],
+            "supplier": result["supplier"],
+            "instruction": "No order was drafted: this much is more than a month of what the "
+            "shop uses (OB-239). Ask the owner to check the item and the supplier's minimum, "
+            "or to name the quantity they want.",
+        }
     order = result["order"]
     return {
         **supply_chain.summary(order),

@@ -4,6 +4,7 @@ from .demo_catalogue import DemoShop, item, shop
 from .merchant import Understanding
 from .money import to_minor
 from .region import profile
+from .supply_chain import bought
 from .vendor_profile import allowed_facts, infer_profile
 
 _INDIA = profile("IN")
@@ -39,10 +40,19 @@ def local_shop(
             product.category = (
                 "Bread" if any(w in product.name.lower() for w in ("bread", "loaf")) else "Bakes"
             )
-    products[-1].available = False
-    products[0].stock = 4  # A concrete, actionable low-stock row on Today.
     if index == 0:
         products[4].stock = 6  # A busy chai stall keeps several days of tea dust on hand.
+    # A concrete, actionable low-stock row on Today: stock the shop buys, never the cup of chai
+    # it brews (OB-239). The last other item is sold out.
+    kept = {4} if index == 0 else set()
+    low = next(
+        (p for n, p in enumerate(products) if n not in kept and bought(p.model_dump())), None
+    )
+    if low:
+        low.stock = 4
+    next(
+        p for n, p in reversed(list(enumerate(products))) if n not in kept and p is not low
+    ).available = False
     return shop(
         f"demo-story-{city}-{slug}",
         city=city,
