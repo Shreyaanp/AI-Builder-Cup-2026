@@ -27,6 +27,9 @@ import { fill, useGoogleCopy } from '../../google/strings'
 import { useGallery } from '../../google/useGallery'
 import { GalleryEditor } from '../../google/GalleryEditor'
 import { TrustCard } from '../../trust/TrustCard'
+import { useIdentity } from '../../../auth/useIdentity'
+import { GoogleSimulator } from '../../google-sim/GoogleSimulator'
+import { useSimCopy } from '../../google-sim/strings'
 
 const EASE = 'cubic-bezier(0.2, 0, 0, 1)' // M3 emphasized decelerate
 
@@ -55,8 +58,33 @@ const motionKeyframes = {
   },
 }
 
-/** A guided, four-step path to Google: details → photos → profile preview → Google. */
 export function GoogleScreen() {
+  const { scope } = useIdentity()
+  return scope === 'demo' ? <GooglePractice /> : <GoogleGuide />
+}
+
+/** The public demo practises the whole journey on the simulator: nothing reaches Google. */
+function GooglePractice() {
+  const t = useCopy()
+  const sim = useSimCopy()
+  return (
+    <Stack
+      component="section"
+      aria-label={t.navGoogle}
+      spacing={3}
+      sx={{ maxWidth: 640, mx: 'auto', pt: 2, pb: 4 }}
+    >
+      <Typography component="h1" variant="headlineSmall">
+        {t.googleTitle}
+      </Typography>
+      <Alert severity="info">{sim.pretend}</Alert>
+      <GoogleSimulator visitor />
+    </Stack>
+  )
+}
+
+/** A guided, four-step path to Google: details → photos → profile preview → Google. */
+function GoogleGuide() {
   const t = useCopy()
   const g = useGoogleCopy()
   const locale = useLocale()

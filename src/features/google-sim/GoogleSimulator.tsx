@@ -47,7 +47,8 @@ const categories = {
 } as const
 const requestedScenario = new URLSearchParams(window.location.search).get('sim')
 
-export function GoogleSimulator() {
+/** With `visitor` (the public demo) only the journey shows: no reviewer fixtures, no live links. */
+export function GoogleSimulator({ visitor = false }: { visitor?: boolean }) {
   const t = useSimCopy()
   const ws = useWorkspace()
   const [open, setOpen] = useState(false)
@@ -79,42 +80,44 @@ export function GoogleSimulator() {
       >
         {t.find}
       </Button>
-      <Box
-        component="details"
-        sx={{
-          '& summary': { minHeight: layout.target, cursor: 'pointer', alignContent: 'center' },
-        }}
-      >
-        <Typography component="summary" variant="labelLarge">
-          {t.reviewer}
-        </Typography>
-        <Stack spacing={3} sx={{ pt: 3 }}>
-          <Typography variant="bodyMedium">{t.scenarioHelp}</Typography>
-          <TextField
-            select
-            label={t.scenario}
-            value={scenario}
-            onChange={(event) => {
-              setScenario(event.target.value as Scenario)
-              setForceScenario(true)
-            }}
-          >
-            {scenarios.map((value) => (
-              <MenuItem key={value} value={value}>
-                {value}
-              </MenuItem>
-            ))}
-          </TextField>
-          <Button
-            onClick={() => {
-              setForceScenario(true)
-              setOpen(true)
-            }}
-          >
-            {t.reset}
-          </Button>
-        </Stack>
-      </Box>
+      {!visitor && (
+        <Box
+          component="details"
+          sx={{
+            '& summary': { minHeight: layout.target, cursor: 'pointer', alignContent: 'center' },
+          }}
+        >
+          <Typography component="summary" variant="labelLarge">
+            {t.reviewer}
+          </Typography>
+          <Stack spacing={3} sx={{ pt: 3 }}>
+            <Typography variant="bodyMedium">{t.scenarioHelp}</Typography>
+            <TextField
+              select
+              label={t.scenario}
+              value={scenario}
+              onChange={(event) => {
+                setScenario(event.target.value as Scenario)
+                setForceScenario(true)
+              }}
+            >
+              {scenarios.map((value) => (
+                <MenuItem key={value} value={value}>
+                  {value}
+                </MenuItem>
+              ))}
+            </TextField>
+            <Button
+              onClick={() => {
+                setForceScenario(true)
+                setOpen(true)
+              }}
+            >
+              {t.reset}
+            </Button>
+          </Stack>
+        </Box>
+      )}
       {open && (
         <Wizard
           key={ws.active.id}
@@ -123,6 +126,7 @@ export function GoogleSimulator() {
           scenario={scenario}
           forceScenario={forceScenario}
           find={find}
+          visitor={visitor}
           close={() => {
             setOpen(false)
             setForceScenario(false)
@@ -139,6 +143,7 @@ function Wizard({
   scenario,
   forceScenario,
   find,
+  visitor,
   close,
 }: {
   shop: Business
@@ -146,6 +151,7 @@ function Wizard({
   scenario: Scenario
   forceScenario: boolean
   find: boolean
+  visitor: boolean
   close: () => void
 }) {
   const t = useSimCopy()
@@ -264,6 +270,7 @@ function Wizard({
       <DialogContent aria-busy={busy}>
         <Stack spacing={4}>
           <Typography variant="titleMedium">{shop.fields.name}</Typography>
+          {visitor && <Alert severity="info">{t.pretend}</Alert>}
           {failed && (
             <Alert
               severity="error"
@@ -315,6 +322,7 @@ function Wizard({
                   key={s.preview_revision}
                   state={s}
                   busy={busy}
+                  visitor={visitor}
                   save={(facts) => void send({ kind: 'facts', facts })}
                 />
               )}
@@ -467,78 +475,82 @@ function Wizard({
                   <Typography>{t.keepsListing}</Typography>
                 </>
               )}
-              <Stack spacing={1}>
-                <Typography variant="labelMedium">{t.liveMaps}</Typography>
-                <Button
-                  component="a"
-                  href={mapsSearch(
-                    s.facts.name,
-                    s.business_type === 'service' ? s.facts.service_area : s.facts.location,
-                  )}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  {t.mapsHandoff}
-                </Button>
-                <Typography variant="labelMedium">{t.liveOwner}</Typography>
-                {official}
-                <Typography variant="bodyMedium">{t.handoffHelp}</Typography>
-              </Stack>
-              <Box
-                component="details"
-                sx={{
-                  '& summary': {
-                    minHeight: layout.target,
-                    cursor: 'pointer',
-                    display: 'list-item',
-                    alignContent: 'center',
-                  },
-                }}
-              >
-                <Typography component="summary" variant="labelLarge">
-                  {t.reviewer}
-                </Typography>
-                <Stack spacing={3} sx={{ pt: 3 }}>
-                  <Typography variant="bodyMedium">{t.scenarioHelp}</Typography>
-                  <TextField
-                    select
-                    label={t.scenario}
-                    value={s.scenario}
-                    disabled={busy}
-                    onChange={(event) => void reset(event.target.value as Scenario)}
+              {!visitor && (
+                <>
+                  <Stack spacing={1}>
+                    <Typography variant="labelMedium">{t.liveMaps}</Typography>
+                    <Button
+                      component="a"
+                      href={mapsSearch(
+                        s.facts.name,
+                        s.business_type === 'service' ? s.facts.service_area : s.facts.location,
+                      )}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {t.mapsHandoff}
+                    </Button>
+                    <Typography variant="labelMedium">{t.liveOwner}</Typography>
+                    {official}
+                    <Typography variant="bodyMedium">{t.handoffHelp}</Typography>
+                  </Stack>
+                  <Box
+                    component="details"
+                    sx={{
+                      '& summary': {
+                        minHeight: layout.target,
+                        cursor: 'pointer',
+                        display: 'list-item',
+                        alignContent: 'center',
+                      },
+                    }}
                   >
-                    {scenarios.map((scenario) => (
-                      <MenuItem key={scenario} value={scenario}>
-                        {scenario}
-                      </MenuItem>
-                    ))}
-                  </TextField>
-                  <Button
-                    disabled={busy}
-                    onClick={() => void reset(s.scenario ?? 'new-store-success')}
-                  >
-                    {t.reset}
-                  </Button>
-                  {s.phase === 'review' &&
-                    button(t.rejectField, {
-                      kind: 'submit',
-                      revision: s.preview_revision,
-                      value: 'reject-hours',
-                    })}
-                  {s.phase === 'claim' && s.ownership === 'pending' && (
-                    <>
-                      {button(t.grant, { kind: 'claim_result', value: 'granted' })}
-                      {button(t.rejectClaim, { kind: 'claim_result', value: 'rejected' })}
-                    </>
-                  )}
-                  {s.phase !== 'goal' &&
-                    s.phase !== 'disconnect' &&
-                    button(t.disconnect, { kind: 'disconnect' })}
-                  {s.phase === 'disconnect' &&
-                    s.removal === 'pending' &&
-                    button(t.confirmRemoval, { kind: 'confirm_removal' })}
-                </Stack>
-              </Box>
+                    <Typography component="summary" variant="labelLarge">
+                      {t.reviewer}
+                    </Typography>
+                    <Stack spacing={3} sx={{ pt: 3 }}>
+                      <Typography variant="bodyMedium">{t.scenarioHelp}</Typography>
+                      <TextField
+                        select
+                        label={t.scenario}
+                        value={s.scenario}
+                        disabled={busy}
+                        onChange={(event) => void reset(event.target.value as Scenario)}
+                      >
+                        {scenarios.map((scenario) => (
+                          <MenuItem key={scenario} value={scenario}>
+                            {scenario}
+                          </MenuItem>
+                        ))}
+                      </TextField>
+                      <Button
+                        disabled={busy}
+                        onClick={() => void reset(s.scenario ?? 'new-store-success')}
+                      >
+                        {t.reset}
+                      </Button>
+                      {s.phase === 'review' &&
+                        button(t.rejectField, {
+                          kind: 'submit',
+                          revision: s.preview_revision,
+                          value: 'reject-hours',
+                        })}
+                      {s.phase === 'claim' && s.ownership === 'pending' && (
+                        <>
+                          {button(t.grant, { kind: 'claim_result', value: 'granted' })}
+                          {button(t.rejectClaim, { kind: 'claim_result', value: 'rejected' })}
+                        </>
+                      )}
+                      {s.phase !== 'goal' &&
+                        s.phase !== 'disconnect' &&
+                        button(t.disconnect, { kind: 'disconnect' })}
+                      {s.phase === 'disconnect' &&
+                        s.removal === 'pending' &&
+                        button(t.confirmRemoval, { kind: 'confirm_removal' })}
+                    </Stack>
+                  </Box>
+                </>
+              )}
             </>
           )}
         </Stack>
@@ -555,10 +567,12 @@ function Wizard({
 function FactsForm({
   state,
   busy,
+  visitor,
   save,
 }: {
   state: State
   busy: boolean
+  visitor: boolean
   save: (facts: Facts) => void
 }) {
   const t = useSimCopy()
@@ -607,21 +621,23 @@ function FactsForm({
             }}
           />
         ))}
-      <TextField
-        select
-        label={t.fields.region}
-        value={region}
-        disabled={busy}
-        onChange={(event) =>
-          setFacts({ ...facts, region: event.target.value as Facts['region'], category_id: '' })
-        }
-      >
-        {(['SG', 'JP'] as const).map((value) => (
-          <MenuItem key={value} value={value}>
-            {t.regions[value]}
-          </MenuItem>
-        ))}
-      </TextField>
+      {!visitor && (
+        <TextField
+          select
+          label={t.fields.region}
+          value={region}
+          disabled={busy}
+          onChange={(event) =>
+            setFacts({ ...facts, region: event.target.value as Facts['region'], category_id: '' })
+          }
+        >
+          {(['SG', 'JP'] as const).map((value) => (
+            <MenuItem key={value} value={value}>
+              {t.regions[value]}
+            </MenuItem>
+          ))}
+        </TextField>
+      )}
       <TextField
         select
         label={t.fields.category_id}

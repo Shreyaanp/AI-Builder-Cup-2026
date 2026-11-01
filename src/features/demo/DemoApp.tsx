@@ -39,7 +39,8 @@ const demoIdentity = {
   status: 'ready' as const,
   scope: 'demo',
   error: '',
-  features: hiddenFeatures,
+  // Get on Google opens the practice simulator here: nothing reaches Google.
+  features: { ...hiddenFeatures, google_guide: true },
   getToken: async () => null,
   signIn: async () => undefined,
   signOut: async () => undefined,

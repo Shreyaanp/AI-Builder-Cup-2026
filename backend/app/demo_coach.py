@@ -416,6 +416,8 @@ def public_demo_reply(ctx: Any, question: str) -> str | None:
                 return "डेमो दुकान में पिछले 7 दिनों की कोई बिक्री अभी सेव नहीं है।"
             names = ", ".join(f"{row['item']} ({row['quantity']:g} बिके)" for row in top[:3])
             return f"पिछले 7 दिनों में डेमो के सबसे ज़्यादा बिकने वाले आइटम: {names}।"
+        if "गूगल" in words or "google" in words:
+            return "डेमो में Google पर आने का अभ्यास करें: यह सिर्फ़ दिखावा है, Google को कुछ नहीं भेजा जाता।"
         if any(term in words for term in ("आज", "बिक्री", "कमाई")):
             rows = [row for row in history if row["date"] == today.isoformat()]
             sold = sum(row["quantity"] for row in rows)
@@ -446,6 +448,11 @@ def public_demo_reply(ctx: Any, question: str) -> str | None:
         return (
             f"{shop} has {len(inventory)} menu items and {len(history)} sales records. "
             "Next, ask about sales, stock, prep or customers."
+        )
+    if re.search(r"\bgoogle\b", words):
+        return (
+            "In the demo, getting on Google is practice: open Grow → Get on Google and walk "
+            "through it. It is pretend: nothing is sent to Google."
         )
     if re.search(r"\b(?:hours|open|opening|closed|timing|sunday)\b", words):
         return (

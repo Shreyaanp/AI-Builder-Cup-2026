@@ -387,3 +387,13 @@ def test_OB_248_a_full_sandbox_still_answers_a_supply_read(
     answer = owner(client, session, f"businesses/{bid}/supply/orders/{sent['id']}")
     assert answer.status_code == 200, answer.text
     assert answer.json()["status"] == "confirmed"
+
+
+def test_OB_248_google_question_points_to_the_practice_tile(live_parent_demo) -> None:  # noqa: F811
+    client, _app, session, _bid = live_parent_demo
+    response = client.post(
+        f"/api/v1/demo/sessions/{session}/coach", json={"message": "How do I get on Google?"}
+    )
+    assert response.status_code == 200
+    assert "Grow → Get on Google" in response.text
+    assert "nothing is sent to Google" in response.text

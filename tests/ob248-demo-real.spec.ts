@@ -307,3 +307,35 @@ test('OB-248 Hindi: Coach, Purchase orders, order card and supplier chat name ev
   await check('Coach again', await page.getByTestId('today').innerText())
   expect(seen).toEqual([])
 })
+
+test('OB-248 Get on Google: a visitor walks the whole practice, and it says nothing is sent', async ({
+  page,
+}) => {
+  await openDemo(page)
+  await page.locator('[data-tour="nav-grow"]').click()
+  await page.locator('[data-tour="google"]').click()
+  const note = 'In the demo this is pretend: nothing is sent to Google'
+  await expect(page.getByRole('heading', { name: 'Get on Google' })).toBeVisible()
+  await expect(page.getByText(note).first()).toBeVisible()
+  await expect(page.getByText('Reviewer controls')).toHaveCount(0)
+
+  await page.getByRole('button', { name: 'Put my shop on Google' }).click()
+  const sim = page.getByRole('dialog')
+  await expect(sim.getByText(note)).toBeVisible()
+  await sim.getByRole('button', { name: 'Put my shop on Google' }).click()
+  await sim.getByRole('button', { name: 'Customers visit' }).click()
+  // The sample shop has no phone: the visitor adds what is missing, as an owner would.
+  await sim.getByRole('textbox', { name: 'Contact' }).fill('00000 00000')
+  await sim.getByRole('combobox', { name: 'Google category fixture' }).click()
+  await page.getByRole('option', { name: 'Café' }).click()
+  await sim.getByRole('button', { name: 'Continue' }).click()
+  await sim.getByRole('button', { name: 'Demo owner account (fictional)' }).click()
+  await sim.getByRole('button', { name: 'Create a new listing' }).click()
+  await sim.getByRole('button', { name: 'Approve this revision and submit for practice' }).click()
+  await sim.getByRole('button', { name: 'SMS (fictional)' }).click()
+  await sim.getByRole('textbox', { name: 'Fictional code' }).fill('123456')
+  await sim.getByRole('button', { name: 'Check fictional code' }).click()
+  await expect(sim.getByRole('heading', { name: 'Practice result' })).toBeVisible()
+  await expect(sim.getByRole('link')).toHaveCount(0)
+  await expect(sim).not.toContainText('Reviewer controls')
+})
