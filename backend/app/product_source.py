@@ -36,7 +36,7 @@ RESALE = {"resale", "wholesale"}
 # Shops whose items are work done here: a hem, a haircut, an arrangement.
 SERVICES = {"tailor", "florist", "salon"}
 
-# Raw ingredients and supplies the shop buys to make things, as the last word of a name.
+# Raw ingredients and supplies the shop buys to make things, as the whole name.
 RAW = {
     "milk",
     "sugar",
@@ -81,35 +81,48 @@ RAW_PHRASES = (
     "paper cup",
     "carry bag",
     "takeaway box",
+    "toned milk",
+    "double toned milk",
+    "full cream milk",
+    "whole milk",
+    "fresh milk",
+    "fresh cream",
+    "double cream",
+    "cooking oil",
+    "refined oil",
+    "sunflower oil",
+    "mustard oil",
+    "groundnut oil",
+    "table salt",
+    "iodised salt",
+    "iodized salt",
+    "dry yeast",
+    "active dry yeast",
+    "instant yeast",
 )
-# A word before the ingredient that makes it a dish: "lemon rice", "boiled eggs", "masala milk".
-DISH_WORDS = {
-    "boiled",
-    "soft-boiled",
-    "fried",
-    "fry",
-    "scrambled",
-    "poached",
-    "steamed",
-    "roasted",
-    "toasted",
-    "masala",
-    "lemon",
-    "curd",
-    "jeera",
-    "ghee",
-    "tomato",
-    "egg",
-    "sambal",
-    "hot",
-    "iced",
-    "cold",
-    "sweet",
-    "spicy",
-    "special",
-    "badam",
-    "kesar",
-    "dal",
+# Words that only say which supply it is (a brand, a grain or a kind of dal), never a dish:
+# "Wheat flour", "Amul milk", "Toor dal". Anything else before the raw word may be a dish
+# ("Palak paneer", "Rose milk", "Mustard rice"), so the owner is asked (OB-239).
+SUPPLY_WORDS = {
+    "wheat",
+    "amul",
+    "nandini",
+    "mother",
+    "dairy",
+    "aashirvaad",
+    "fortune",
+    "tata",
+    "basmati",
+    "sona",
+    "masoori",
+    "ponni",
+    "toor",
+    "arhar",
+    "moong",
+    "urad",
+    "masoor",
+    "chana",
+    "all-purpose",
 }
 
 
@@ -120,14 +133,13 @@ def shop_kind(category: str) -> str:
 
 
 def raw_ingredient(name: str) -> bool:
-    """'Tea dust', 'Amul milk', 'Wheat flour (atta)': a supply, not a dish made from it."""
+    """'Milk', 'Tea dust', 'Wheat flour (atta)': a bare supply, not a dish made from it. Only the
+    raw word or phrase itself, after words that just name the supply, counts (OB-239)."""
     text = re.sub(r"\(.*?\)", " ", (name or "").casefold())
-    if any(phrase in text for phrase in RAW_PHRASES):
-        return True
     words = re.findall(r"[\w-]+", text)
-    if not words or words[-1] not in RAW:
-        return False
-    return not any(word in DISH_WORDS for word in words[:-1])
+    while len(words) > 1 and words[0] in SUPPLY_WORDS:
+        words = words[1:]
+    return " ".join(words) in RAW_PHRASES or (len(words) == 1 and words[0] in RAW)
 
 
 def source_of(product: dict[str, Any], category: str = "") -> Source:

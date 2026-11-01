@@ -145,6 +145,28 @@ def store(tmp_path: Path):
         ("Curtain shortening", "piece", "Tailor", "made"),
         ("Small bouquet", "bunch", "Florist", "made"),
         ("Haircut", "service", "Salon", "made"),
+        # Second review of PR #623: a dish whose last word is a raw ingredient was "bought", so
+        # Today offered Order and the brief said "order Palak paneer". Only a bare raw name or
+        # a known supply phrase is bought; anything else is asked.
+        ("Milk", "item", "Café", "bought"),
+        ("Tea dust", "item", "Tea stall", "bought"),
+        ("Amul milk", "bottle", "Tea stall", "bought"),
+        ("Toor dal", "kg", "Restaurant", "bought"),
+        ("Palak paneer", "item", "Restaurant", "unknown"),
+        ("Chicken rice", "item", "Hawker stall", "unknown"),
+        ("Tadka dal", "item", "Dhaba", "unknown"),
+        ("Mix vegetables", "item", "Restaurant", "unknown"),
+        ("Rose milk", "item", "Café", "unknown"),
+        ("Bread butter", "item", "Café", "unknown"),
+        ("Chilli paneer", "piece", "Restaurant", "unknown"),
+        ("Hainanese chicken rice", "piece", "Hawker stall", "unknown"),
+        ("Coconut rice", "pack", "Home kitchen", "unknown"),
+        ("Mustard rice", "item", "Restaurant", "unknown"),
+        ("Dry paneer", "item", "Restaurant", "unknown"),
+        ("Double egg", "item", "Café", "unknown"),
+        ("Cream cheese", "item", "Café", "unknown"),
+        ("Fortune sunflower oil", "item", "Restaurant", "bought"),
+        ("Amul full cream milk", "item", "Café", "bought"),
     ],
 )
 def test_made_or_bought_is_inferred_on_the_safe_side(name, unit, category, expected) -> None:
