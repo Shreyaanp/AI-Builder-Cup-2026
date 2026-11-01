@@ -113,9 +113,9 @@ def test_ob220_owner_insights_week_is_the_shops_not_the_servers(
     seen: list[str] = []
     real_facts = coordinator.recap_facts
 
-    def spy(week: str, sales: Any, signals: Any) -> dict[str, Any]:
+    def spy(week: str, sales: Any, signals: Any, through: Any = None) -> dict[str, Any]:
         seen.append(week)
-        return real_facts(week, sales, signals)
+        return real_facts(week, sales, signals, through)
 
     monkeypatch.setattr(coordinator, "recap_facts", spy)
     monkeypatch.setattr(

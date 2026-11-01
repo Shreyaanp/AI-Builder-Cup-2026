@@ -464,10 +464,11 @@ def remember_note(note: str) -> dict[str, Any]:
 
 
 def get_insights() -> dict[str, Any]:
-    """How the shop is doing this week, from its own data: imported sales (top sellers, slow
-    movers, revenue vs last week), sold-out count, customer questions and unanswered messages,
-    and when the menu was last confirmed. Call it when the owner asks how business is going or
-    what to do next, then give 2-3 short, concrete suggestions grounded only in these numbers.
+    """How the shop is doing over the last 7 days, from its own data: imported sales (top
+    sellers, slow movers, revenue vs the 7 days before), sold-out count, customer questions and
+    unanswered messages, and when the menu was last confirmed. Call it when the owner asks how
+    business is going or what to do next, then give 2-3 short, concrete suggestions grounded only
+    in these numbers.
     If has_sales_data is false, suggest importing a POS or Excel sales export."""
     ctx = current.get()
     if not ctx or not ctx.business_id:
@@ -475,8 +476,10 @@ def get_insights() -> dict[str, Any]:
     signals = ctx.store.recap_signals(ctx.uid, ctx.business_id)
     sales = ctx.store.sales_history(ctx.uid, ctx.business_id)
     shop = (ctx.store.context(ctx.uid, ctx.business_id) or {}).get("business") or {}
-    year, week, _ = local_now(shop_zone(shop.get("fields")), time.time()).date().isocalendar()
-    facts = recap_facts(f"{year}-W{week:02d}", sales, signals)
+    today = local_now(shop_zone(shop.get("fields")), time.time()).date()
+    year, week, _ = today.isocalendar()
+    # The last 7 days, not the calendar week, so early in the week it is never empty.
+    facts = recap_facts(f"{year}-W{week:02d}", sales, signals, through=today)
     currency = facts["currency"]
     for key in ("revenue", "previous_revenue", "revenue_change"):
         facts[key] = to_major(int(facts[key]), currency)

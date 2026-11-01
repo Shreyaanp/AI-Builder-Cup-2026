@@ -301,14 +301,18 @@ def _best_sellers() -> list[StreamEvent]:
     result = get_insights()
     top = result.get("top_sellers") or []
     if not top:
-        return [StreamEvent(kind="reply", text="The demo shop has no sales saved this week yet.")]
+        return [
+            StreamEvent(
+                kind="reply", text="The demo shop has no sales saved in the last 7 days yet."
+            )
+        ]
     names = ", ".join(f"{row['item']} ({row['quantity']:g} sold)" for row in top[:3])
     card = insights_card(result)
     return [
         *([StreamEvent(kind="chart", data=card)] if card else []),
         StreamEvent(
             kind="reply",
-            text=f"This week's demo best sellers: {names}. "
+            text=f"In the last 7 days, the demo best sellers: {names}. "
             "In your real shop, these come from your saved sales; open Grow → Insights next.",
         ),
     ]
