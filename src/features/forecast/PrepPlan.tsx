@@ -112,6 +112,7 @@ export function PrepPlanTile() {
         open={demo && open}
         onClose={() => setOpen(false)}
         titleId="prep-plan-title"
+        ask="forecast"
         title={t.prepPlan}
         actions={
           <Button

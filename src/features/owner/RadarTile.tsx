@@ -78,7 +78,7 @@ export function RadarSheet({ open, onClose }: { open: boolean; onClose: () => vo
   const opportunities = radar?.opportunities ?? []
   const km = radar ? new Intl.NumberFormat(formatLocale(locale)).format(radar.radius / 1000) : ''
   return (
-    <Sheet open={open} onClose={onClose} titleId="radar-sheet-title" title={t.radar}>
+    <Sheet open={open} onClose={onClose} titleId="radar-sheet-title" ask="radar" title={t.radar}>
       {failed && !radar ? (
         <Alert severity="error" action={<Button onClick={retry}>{t.retry}</Button>}>
           {t.loadFailed}

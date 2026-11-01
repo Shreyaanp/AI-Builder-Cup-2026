@@ -54,6 +54,9 @@ Screen = Literal[
     "playbook",
     "connect",
     "icon",
+    "radar",
+    "rider",
+    "reminders",
 ]
 SCREENS: dict[str, str] = {
     "messages": "Customer messages",
@@ -77,8 +80,11 @@ SCREENS: dict[str, str] = {
     "payments": "Payments & rides",
     "supply": "Purchase orders",
     "playbook": "What Chalkboard knows about your shop",
-    "connect": "Connect your system",
+    "connect": "Link your billing app",
     "icon": "Shop icon",
+    "radar": "Asked nearby",
+    "rider": "Send a rider",
+    "reminders": "Remind me",
 }
 # Screens where the owner still has to act (the app opens them; nothing changes by itself).
 CONFIRM_THERE = {
@@ -99,6 +105,11 @@ CONFIRM_THERE = {
     "playbook": "The owner can edit or remove anything there; opening it changes nothing.",
     "connect": "The owner picks the file or paste and confirms the mapped import.",
     "icon": "The owner taps Make my icon or picks a photo there; nothing changes until they do.",
+    "radar": "Ideas show only once 5 different people asked; never invent demand.",
+    "rider": "The owner types the drop address and picks a ride app there; no rider is booked "
+    "and nothing is paid by the app.",
+    "reminders": "The owner turns reminders on there; the phone asks for permission first. "
+    "Reminders come only when something needs the owner; never promise a custom reminder.",
 }
 
 
@@ -112,13 +123,15 @@ def open_screen(screen: Screen) -> dict[str, Any]:
     Coach), shop, grow (owner tools and perks), you (settings), trust (optional check), games
     (owner stamp and perk settings; customer games live in the passport), payments (UPI payment
     links and rides), supply (purchase orders to suppliers), playbook (what the app knows about
-    the shop: goals, numbers, regulars; edit or remove), connect (POS or ERP import)."""
+    the shop: goals, numbers, regulars; edit or remove), connect (POS or ERP import), radar (what
+    people nearby asked for), rider (send a rider: open a ride app for a delivery), reminders
+    (turn the morning and evening reminders on or off)."""
     ctx = current.get()
     if not ctx:
         return {"status": "unavailable"}
     if screen not in SCREENS:
         return _invalid(ValueError(f"screen: use one of {', '.join(SCREENS)}"), ctx)
-    if not ctx.business_id and screen not in {"photo", "privacy", "you", "trust"}:
+    if not ctx.business_id and screen not in {"photo", "privacy", "you", "trust", "reminders"}:
         return {"status": "needs_business"}
     card_id = _card(
         ctx, "action", {"target": screen, "label": SCREENS[screen], "business_id": ctx.business_id}

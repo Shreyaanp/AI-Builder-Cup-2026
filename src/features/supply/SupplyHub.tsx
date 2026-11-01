@@ -66,6 +66,7 @@ export function SupplyHub({
         open={open}
         onClose={onClose}
         titleId="supply-hub-title"
+        ask="deliveries"
         title={c.title}
         actions={
           view === 'send' && n.send > 0 ? (

@@ -67,7 +67,13 @@ export function WeekPulseTile() {
           {delta != null ? `${delta > 0 ? '+' : ''}${delta}% ${t.vsLastWeek}` : t.hint}
         </Supporting>
       </Tile>
-      <Sheet open={open} onClose={() => setOpen(false)} titleId="week-pulse-title" title={t.title}>
+      <Sheet
+        open={open}
+        onClose={() => setOpen(false)}
+        titleId="week-pulse-title"
+        ask="insights"
+        title={t.title}
+      >
         {open && <WeekPulse data={value} />}
       </Sheet>
     </>

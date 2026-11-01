@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Box, LinearProgress, Stack, Typography, useTheme } from '@mui/material'
 import { visuallyHidden } from '@mui/utils'
@@ -21,6 +21,8 @@ import { useCopy } from '../strings'
 import { useTabsCopy } from '../tabsCopy'
 import { useWorkspace } from '../workspaceContext'
 import { ShopGate } from './ShopScreen'
+import { AskHint } from '../AskHint'
+import { clearOpen, wantsOpen } from '../openRequest'
 import { MorningBrief } from '../../owner/MorningBrief'
 import { RadarSheet, RadarTile } from '../../owner/RadarTile'
 import { RescueTile } from '../../owner/RescueTile'
@@ -83,7 +85,9 @@ function GrowTiles() {
   const { state: playbook } = usePlaybook()
   const [planOpen, setPlanOpen] = useState(false)
   const [sheet, setSheet] = useState<ShopSheetKind | null>(null)
-  const [radarOpen, setRadarOpen] = useState(false)
+  // The coach's "what are people nearby asking for?" opens Asked nearby here.
+  const [radarOpen, setRadarOpen] = useState(() => wantsOpen('radar'))
+  useEffect(() => clearOpen('radar'), [])
   const shop = ws.active
   if (!shop) return null
   const { done, total } = readiness(ws)
@@ -179,6 +183,7 @@ function GrowTiles() {
       <Box data-testid="grow-tiles" sx={tileGrid}>
         {cards}
       </Box>
+      <AskHint id="forecast" />
       <ShopSheets
         kind={sheet ?? (planOpen ? 'plan' : null)}
         onClose={() => {

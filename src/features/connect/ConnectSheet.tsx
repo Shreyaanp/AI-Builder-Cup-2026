@@ -391,6 +391,7 @@ export function ConnectSheet({
         open={open}
         onClose={handleClose}
         titleId="connect-sheet-title"
+        ask="import_sales"
         title={t.connectTitle}
         // Without a mapping the only action is Close, so the phone sheet adds no second one.
         dismissInActions={!currentMapping}

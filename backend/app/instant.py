@@ -16,7 +16,7 @@ from typing import Any
 
 import anyio
 
-from .app_guide import guide_reply
+from .app_guide import guide_reply, where_line
 from .contracts import StreamEvent
 from .coordinator import MerchantContext, propose_products
 from .discover import open_now
@@ -51,6 +51,17 @@ SCREEN_RULES: tuple[tuple[str, str], ...] = (
     (r"\bplan\s+tomorrow\b", "plan"),
     (r"\b(?:open|show)\b.*\bmessages?\b", "messages"),
     (r"\b(?:stamp\s*card|loyalty\s+card)\b", "stamps"),
+    # Screens with no tool of their own: the chat opens them.
+    (
+        r"\bnearby\s+demand\b|\basked\s+nearby\b"
+        r"|\bpeople\s+(?:nearby|near\s+(?:me|here|my\s+shop))\b.*\b(?:ask|want|look)\w*\b",
+        "radar",
+    ),
+    (r"\b(?:send|call|book|get)\s+(?:me\s+)?(?:a\s+)?(?:rider|courier)\b", "rider"),
+    (
+        r"^remind\s+me\b|\b(?:turn|switch|set)\s+(?:on|up)\s+(?:my\s+|the\s+)?reminders?\b",
+        "reminders",
+    ),
 )
 CLOSED_TODAY = re.compile(
     r"^(?:we(?:'re|\s+are)|i(?:'m|\s+am)|the\s+shop\s+is|shop\s+is|shop)?\s*closed\s+today\b"
@@ -173,6 +184,33 @@ SCREEN_REPLIES = {
     "photo": "Tap Add a photo to pick one.",
     "payments": "Here are payments and rides. You share the link; I never handle the money.",
     "supply": "Here are your purchase orders. Nothing is sent until you confirm.",
+    "radar": "Here is what people nearby asked for. An idea shows once 5 different people ask.",
+    "rider": "Here is Send a rider. Type the customer's address and pick a ride app; "
+    "I never book or pay the rider.",
+    "reminders": "Here is Remind me. Turn it on for a short nudge in the morning and evening, "
+    "only when something needs you.",
+}
+# The same screen in the shared map (app_guide.py), so each reply also teaches the screen path.
+SCREEN_FEATURE = {
+    "share": "share",
+    "close_day": "close_day",
+    "google": "google",
+    "privacy": "privacy",
+    "import": "import_sales",
+    "messages": "messages",
+    "stamps": "stamps",
+    "sold_out": "sold_out",
+    "menu": "price_change",
+    "details": "details",
+    "payments": "payments",
+    "supply": "supply",
+    "games": "games",
+    "trust": "face_check",
+    "playbook": "playbook",
+    "connect": "connect",
+    "radar": "radar",
+    "rider": "rider",
+    "reminders": "reminders",
 }
 
 
@@ -215,7 +253,10 @@ def _read_intent(ctx: MerchantContext, intent: str) -> InstantResult | None:
         )
     if intent.startswith("screen:"):
         target = intent.split(":", 1)[1]
-        return _screen(ctx, target, SCREEN_REPLIES.get(target, "Here it is."))
+        reply = SCREEN_REPLIES.get(target, "Here it is.")
+        if target in SCREEN_FEATURE:
+            reply += " " + where_line(SCREEN_FEATURE[target])
+        return _screen(ctx, target, reply)
     return None
 
 
