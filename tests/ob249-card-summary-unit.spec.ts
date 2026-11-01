@@ -39,6 +39,9 @@ test('OB-249: an order line says what and whether it needs the owner', () => {
   expect(line(pending)).toBe('Order · Tea dust 10 kg · Needs your OK')
   expect(needs(pending)).toBe(true)
   expect(line(order('replaced'))).toBe('Order · Tea dust 10 kg · Discarded')
+  expect(line(order('replaced', { replaced_by: 'o2' }))).toBe(
+    'Order · Tea dust 10 kg · Replaced by a new order',
+  )
   const two = order('draft', {
     lines: [
       { name: 'Flour', quantity: 20, unit: 'kg' },

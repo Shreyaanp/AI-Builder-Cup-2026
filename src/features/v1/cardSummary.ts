@@ -27,6 +27,7 @@ const en = {
   needsFix: 'Needs a fix',
   more: (n: number) => `+${n} more`,
   saved: 'Saved',
+  replacedByNew: 'Replaced by a new order',
   status: {
     sent: 'Sent',
     changed: 'Changes to check',
@@ -62,6 +63,7 @@ const hi: SummaryCopy = {
   needsFix: 'पहले ठीक करें',
   more: (n: number) => `+${n} और`,
   saved: 'सेव हो गया',
+  replacedByNew: 'नए ऑर्डर से बदला गया',
   status: {
     sent: 'भेजा गया',
     changed: 'बदलाव देखें',
@@ -131,7 +133,12 @@ export function cardSummary(input: SummaryInput, locale: string): CardSummary {
     case 'order': {
       const { order } = input
       const needsYou = order.status === 'draft' || Boolean(order.pending)
-      const status = needsYou || order.status === 'draft' ? c.needsYou : c.status[order.status]
+      const status =
+        needsYou || order.status === 'draft'
+          ? c.needsYou
+          : order.replaced_by
+            ? c.replacedByNew
+            : c.status[order.status]
       return { parts: [c.order, amount(order.lines, locale, c)], status, needsYou }
     }
     case 'po': {
