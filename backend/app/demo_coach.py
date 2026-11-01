@@ -6,6 +6,7 @@ import re
 from datetime import timedelta
 from typing import Any, cast
 
+from .app_guide import Feature, by_ask, next_line
 from .contracts import StreamEvent
 from .demo_food_words import FOOD_UNITS, NUMBER_WORDS, is_food, singular
 
@@ -236,7 +237,7 @@ def _add_item(ctx: Any, text: str) -> list[StreamEvent] | None:
             StreamEvent(
                 kind="reply",
                 text=f"{known['name']} is already on your demo menu at {sign}{price:g} per "
-                f"{known['unit']}. Open Shop → Menu next to see it.",
+                f"{known['unit']}. " + next_line("price_change"),
             )
         ]
     item: dict[str, Any] = {"name": known["name"] if known else name[0].upper() + name[1:]}
@@ -275,9 +276,39 @@ def _upkeep(ctx: Any, text: str) -> list[StreamEvent] | None:
     return [
         StreamEvent(
             kind="reply",
-            text=f"{known['name']} {state} on your demo menu. Open Shop → Menu next to see it.",
+            text=f"{known['name']} {state} on your demo menu. "
+            + next_line("price_change" if found.re is NEW_PRICE else "sold_out"),
         )
     ]
+
+
+# The feature each prepared change belongs to, for its "Next, open …" line.
+TAUGHT = {"_hours_change": "hours", "_add_item": "add_menu"}
+# Screens with no tool of their own: the demo opens them, as the real coach does.
+OPENS = {"radar", "rider", "reminders"}
+WHERE = re.compile(r" Next, open [^.]*\.$")
+
+
+def _teach(events: list[StreamEvent], feature_id: str) -> list[StreamEvent]:
+    """End the reply with the feature's screen path (one shared map, app_guide.py)."""
+    line = next_line(feature_id)
+    last = events[-1]
+    if last.kind == "reply" and last.text and line not in last.text:
+        events[-1] = last.model_copy(update={"text": f"{last.text} {line}"})
+    return events
+
+
+def _guided(ctx: Any, feature: Feature) -> list[StreamEvent]:
+    """What the feature does and where it is on screen; the screen-only ones open at once."""
+    from .voice_tools import open_screen
+
+    events: list[StreamEvent] = []
+    if feature.screen in OPENS:
+        card = ctx.cards.get(str(open_screen(feature.screen).get("card_id")))  # type: ignore[arg-type]
+        if card:
+            events.append(StreamEvent(kind="action", data=card[1]))
+    text = f"{feature.title}: {feature.what} {next_line(feature.id)} {DEMO_NOTE}"
+    return [*events, StreamEvent(kind="reply", text=text)]
 
 
 def _unclear_change(question: str, text: str) -> bool:
@@ -309,7 +340,7 @@ def _best_sellers() -> list[StreamEvent]:
         StreamEvent(
             kind="reply",
             text=f"This week's demo best sellers: {names}. "
-            "In your real shop, these come from your saved sales; open Grow → Insights next.",
+            "In your real shop, these come from your saved sales. " + next_line("insights"),
         ),
     ]
 
@@ -330,8 +361,7 @@ def _visits(ctx: Any) -> list[StreamEvent]:
             kind="reply",
             text=f"In the last 7 days the demo shop page was opened {views} times and customers "
             f"collected {stamps} stamps at the counter ({returning} returning visits). "
-            "In your real shop, these count real page opens and QR scans; open Grow → Insights "
-            "next.",
+            "In your real shop, these count real page opens and QR scans. " + next_line("insights"),
         )
     ]
 
@@ -349,12 +379,24 @@ async def public_demo_turn(ctx: Any, question: str) -> list[StreamEvent] | None:
             for intent in () if asked else (_hours_change, _add_item, _upkeep):
                 events = intent(ctx, text)
                 if events:
-                    return events
+                    taught = TAUGHT.get(intent.__name__, "sold_out")
+                    return _teach(events, "price_change" if NEW_PRICE.fullmatch(text) else taught)
+    if not re.search(r"[ऀ-ॿ]", question):
+        # The phrase a screen shows ("Or just ask: …") ends with its own feature's screen path:
+        # the demo's data answer when there is one, else what the feature does. Hindi keeps the
+        # Hindi answers below (the paths here are the English labels).
+        feature = by_ask(question)
+        if feature:
+            known = None if feature.screen in OPENS else public_demo_reply(ctx, question)
+            if not known or known == FALLBACK:
+                return _guided(ctx, feature)
+            reply = WHERE.sub("", known) + " " + next_line(feature.id)
+        elif not NEGATION.search(text):
             if BEST_SELLERS.fullmatch(text):
                 return _best_sellers()
             if VISITS.fullmatch(text):
                 return _visits(ctx)
-        if _unclear_change(question, text):
+        if not feature and _unclear_change(question, text):
             reply = FALLBACK
     reply = reply or public_demo_reply(ctx, question)
     if reply is None:
@@ -436,7 +478,7 @@ def public_demo_reply(ctx: Any, question: str) -> str | None:
     if re.search(r"\b(?:hours|open|opening|closed|timing|sunday)\b", words):
         return (
             f"Demo shop hours are {fields.get('hours', 'not listed')}. "
-            "In your real shop, a hours change waits for review; open Shop Details next."
+            "In your real shop, a hours change waits for review. " + next_line("hours")
         )
     if "today" in words or "close the day" in words or "\u0906\u091c" in words:
         rows = [row for row in history if row["date"] == today.isoformat()]
@@ -444,7 +486,7 @@ def public_demo_reply(ctx: Any, question: str) -> str | None:
         revenue = sum(row.get("revenue", row.get("amount", 0)) for row in rows)
         return (
             f"Today’s demo sales show {sold:g} items and ₹{revenue:g}. "
-            "In your real shop, saving would add today’s sales; open Grow → Close the day next."
+            "In your real shop, saving would add today’s sales. " + next_line("close_day")
         )
     if (
         re.search(
@@ -457,7 +499,7 @@ def public_demo_reply(ctx: Any, question: str) -> str | None:
         supplier = po["supplier"]["name"] if po else "the demo supplier"
         return (
             f"Demo supply records show {supplier}; {name} has {stock:g} in stock. "
-            "In your real shop, this would draft an order for review; open Grow → Supplies next."
+            "In your real shop, this would draft an order for review. " + next_line("supply")
         )
     if any(
         term in words
@@ -482,7 +524,7 @@ def public_demo_reply(ctx: Any, question: str) -> str | None:
         return (
             f"The demo forecast for {name} tomorrow is {estimate:g} {product.get('unit', 'items')} "
             "(method: weekday average of past sales). "
-            "In your real shop, this guides prep only; open Grow → Prep plan next."
+            "In your real shop, this guides prep only. " + next_line("forecast")
         )
     if any(
         term in words
@@ -502,14 +544,14 @@ def public_demo_reply(ctx: Any, question: str) -> str | None:
             count = f"{stock:g} {product.get('unit', 'items')}"
         return (
             f"Demo stock shows {name}: {count}. "
-            "In your real shop, this would update customer availability; open Shop → Sold out next."
+            "In your real shop, this would update customer availability. " + next_line("sold_out")
         )
     if any(
         term in words for term in ("price", "\u0915\u0940\u092e\u0924", "\u0926\u093e\u092e")
     ) or re.search(r"\b(?:is|now)\s+\d+|\b\d+\s+now\b", words):
         return (
             f"The demo price for {name} is ₹{price:g}. "
-            "In your real shop, a price change waits for review; open Shop → Menu next."
+            "In your real shop, a price change waits for review. " + next_line("price_change")
         )
     if any(
         term in words
@@ -530,7 +572,7 @@ def public_demo_reply(ctx: Any, question: str) -> str | None:
         sample = pending[0].message if pending else "No unanswered demo questions"
         return (
             f"There are {len(pending)} demo customer questions; one asks, ‘{sample}’. "
-            "In your real shop, a reply waits for review; open Shop → Messages next."
+            "In your real shop, a reply waits for review. " + next_line("messages")
         )
     if any(
         term in words
@@ -553,7 +595,7 @@ def public_demo_reply(ctx: Any, question: str) -> str | None:
         )
         return (
             f"The demo rescue deal has {detail}. "
-            "In your real shop, this would be shared with customers; open Rescue deals next."
+            "In your real shop, this would be shared with customers. " + next_line("rescue")
         )
     if any(
         term in words
@@ -568,14 +610,14 @@ def public_demo_reply(ctx: Any, question: str) -> str | None:
     ):
         return (
             f"Your demo menu has {len(inventory)} items; {name} costs ₹{price:g}. "  # noqa: E501
-            "In your real shop, edits wait for review; open Shop → Menu next."
+            "In your real shop, edits wait for review. " + next_line("price_change")
         )
     if "sales" in words or (
         "business" in words and any(term in words for term in ("how", "week", "going"))
     ):
         return (
             f"The demo has {len(history)} saved sales rows and {quantity:g} {name} sold. "
-            "In your real shop, these figures come from saved sales; open Grow → Insights next."
+            "In your real shop, these figures come from saved sales. " + next_line("insights")
         )
     return FALLBACK
 
