@@ -16,6 +16,7 @@ from .supply_chain import (
     COVER_DAYS,
     _save,
     all_orders,
+    made_names,
     need_from_forecast,
     recheck,
     relationship,
@@ -187,14 +188,16 @@ def settle_drafts(
     today: date,
     known: tuple[list[dict[str, Any]], list[dict[str, Any]]],
     skip: str,
+    category: str = "",
 ) -> None:
     """Size again, or withdraw, the unsent drafts of the other items that run out. An order sent
     after a draft was made changes what it should ask for; one that covers the need leaves the
     draft over-ordering, and it must not stay approvable (#603). The owner's own quantity stays."""
+    made = made_names(inventory, category)
     for product in inventory:
         if product["name"] == skip or product.get("stock") is None:
             continue
-        need = need_from_forecast(product, forecast, product["name"], today)
+        need = need_from_forecast(product, forecast, product["name"], today, made)
         if not need["runs_out"]:
             continue
         unit = product.get("unit") or "kg"

@@ -356,10 +356,9 @@ def supply_reply(name: str, result: dict[str, Any]) -> str | None:
             )
         if result.get("status") == "check_quantity" and result.get("reason") == "no_history":
             return (
-                f"Offline coach: you have no sales of {result['item']} yet, so I can't tell how "
-                f"much you need and drafted nothing. {result['supplier']} sells at least "
-                f"{result['supplier_quantity']:g} {result['supplier_unit']}. Tell me how much "
-                "you want."
+                f"Offline coach: I can't tell how much {result['item']} you use, so I drafted "
+                f"nothing. How much do you buy a week? {result['supplier']} sells at least "
+                f"{result['supplier_quantity']:g} {result['supplier_unit']}."
             )
         if result.get("status") == "check_quantity":
             if result.get("days") is None:

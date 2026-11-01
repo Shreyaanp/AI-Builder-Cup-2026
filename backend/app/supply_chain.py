@@ -30,7 +30,7 @@ from __future__ import annotations
 
 import math
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Collection
 from datetime import date, timedelta
 from typing import Any, Literal
 from uuid import uuid4
@@ -375,7 +375,16 @@ def bought(product: dict[str, Any], category: str = "") -> bool:
     return source_of(product, category) == "bought"
 
 
-def runs_out(product: dict[str, Any], forecast: dict[str, Any], today: date) -> str:
+def made_names(inventory: list[dict[str, Any]], category: str = "") -> set[str]:
+    """The items this shop makes (casefolded): their sales are never a supply's use (OB-242)."""
+    return {
+        str(p.get("name") or "").casefold() for p in inventory if source_of(p, category) == "made"
+    }
+
+
+def runs_out(
+    product: dict[str, Any], forecast: dict[str, Any], today: date, made: Collection[str] = ()
+) -> str:
     """The day this item runs out, from tomorrow on: the one rule the supply tile, Today and the
     morning brief share, so one item never shows two days (OB-238)."""
     rows = [
@@ -383,15 +392,22 @@ def runs_out(product: dict[str, Any], forecast: dict[str, Any], today: date) -> 
         for row in forecast.get("predictions") or []
         if isinstance(row, dict) and str(row.get("date") or "") > today.isoformat()
     ]
-    need = need_from_forecast(product, {**forecast, "predictions": rows}, product["name"], today)
+    need = need_from_forecast(
+        product, {**forecast, "predictions": rows}, product["name"], today, made
+    )
     return str(need["runs_out"] or "")
 
 
 def need_from_forecast(
-    product: dict[str, Any] | None, forecast: dict[str, Any], item: str, today: date
+    product: dict[str, Any] | None,
+    forecast: dict[str, Any],
+    item: str,
+    today: date,
+    made: Collection[str] = (),
 ) -> dict[str, Any]:
-    """Stock, run-out day and demand for one item from the forecast rows."""
-    from .sourcing import matches
+    """Stock, run-out day and demand for one item from the forecast rows. `made` names the
+    items the shop makes (made_names): their sales are never this item's use."""
+    from .sourcing import convert, matches
 
     rows = [
         row
@@ -405,7 +421,15 @@ def need_from_forecast(
     # "Tea dust" also matches the chai brewed from it; its own sales rows, when there are any,
     # are the demand for the kilos on the shelf, not the cups sold.
     exact = [row for row in rows if row["item"].casefold() == item.casefold()]
-    rows = exact or rows
+    unit = str((product or {}).get("unit") or "")
+    # Without them, a loose match counts only when it is sold in a unit that converts and is not
+    # something the shop makes: 60 cups of chai a day are never 60 kg of tea dust (OB-242).
+    rows = exact or [
+        row
+        for row in rows
+        if str(row["item"]).casefold() not in made
+        and (not unit or convert(1.0, str(row.get("unit") or ""), unit) is not None)
+    ]
     rows.sort(key=lambda row: row["date"])
     stock = (product or {}).get("stock")
     known = stock is not None
@@ -525,14 +549,14 @@ async def draft_reorder(
         # Items this reorder skipped as covered: their unsent drafts are sized again or withdrawn
         # too, so none stays approvable at an old size (#603).
         await anyio.to_thread.run_sync(
-            settle_drafts, store, uid, bid, inventory, forecast, today, known, target
+            settle_drafts, store, uid, bid, inventory, forecast, today, known, target, category
         )
     product = next(
         (p for p in inventory if p["name"].casefold() == target.casefold()),
         next((p for p in inventory if sourcing.matches(p["name"], target)), None),
     )
     unit = (product or {}).get("unit") or "kg"
-    need = need_from_forecast(product, forecast, target, today)
+    need = need_from_forecast(product, forecast, target, today, made_names(inventory, category))
     need_by = need["runs_out"] or ""
     coming = await anyio.to_thread.run_sync(on_order, store, uid, bid, target, unit, known)
     if quantity:
@@ -694,8 +718,9 @@ async def draft_reorder(
         # is, so the owner checks it first and nothing is drafted (OB-239).
         return {**check, "reason": "units"}
     if not quantity and not need["daily"]:
-        # No sales of it yet (a new shop): nothing says how much it needs, so the supplier's
-        # minimum is never drafted unseen; the owner names the amount (OB-239).
+        # No use of its own on record (a new shop, milk that is never sold, or tea dust whose
+        # only sales are the chai made from it): nothing says how much it needs, so the
+        # supplier's minimum is never drafted unseen; the owner names the amount (OB-239, OB-242).
         return {
             **check,
             "reason": "no_history",
@@ -799,10 +824,11 @@ def pick_item(
         loose.sort(key=lambda p: not bought(p, category))
         return named or (loose[0]["name"] if loose else item.strip()[:80])
     soonest: tuple[bool, bool, str, str] | None = None
+    made = made_names(inventory, category)
     for product in inventory:
         if product.get("stock") is None or not bought(product, category):
             continue
-        need = need_from_forecast(product, forecast, product["name"], today)
+        need = need_from_forecast(product, forecast, product["name"], today, made)
         if not need["runs_out"]:
             continue
         rank = (

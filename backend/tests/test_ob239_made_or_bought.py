@@ -626,7 +626,7 @@ def test_a_new_shop_with_no_sales_is_checked_not_drafted_at_the_minimum(store) -
     assert result["status"] == "check" and result["reason"] == "no_history", result
     assert supply_chain.orders(store, "alice", bid) == []
     reply = supply_reply("draft_reorder", {**result, "status": "check_quantity"})
-    assert reply and "no sales of Atta yet" in reply and "drafted nothing" in reply
+    assert reply and "can't tell how much Atta you use" in reply and "drafted nothing" in reply
     # Naming an amount the supplier sells drafts exactly that.
     minimum(store, bid, 0.0)
     named = draft(store, bid, "Atta", quantity=20)

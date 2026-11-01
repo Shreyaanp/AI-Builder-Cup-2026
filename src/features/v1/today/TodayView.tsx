@@ -531,6 +531,9 @@ function NeedRow({
           {sc.makeMore}
         </Button>
       )
+    } else if (need.source === 'unknown') {
+      // Not said, and no item to save the answer on: never an Order button (OB-243).
+      text = sc.askInMenu(name, need.left)
     } else {
       text = tt.low(name, need.left)
       buttons = (

@@ -194,6 +194,8 @@ interface ReorderResult {
    * unit does not convert to the shop's (OB-239).
    */
   days?: number | null
+  /** `check`: why nothing was drafted (`no_history`: no use of its own on record). */
+  reason?: string
   supplier_quantity?: number
   supplier_unit?: string
   arrives?: string
@@ -241,19 +243,21 @@ export function useDraftReorder() {
           return {
             order: null,
             note:
-              result.days == null
-                ? c.checkUnits(
-                    quantity.format(result.supplier_quantity ?? 0),
-                    result.supplier_unit ?? '',
-                    name,
-                    result.unit ?? '',
-                  )
-                : c.checkQuantity(
-                    quantity.format(result.quantity ?? 0),
-                    result.unit ?? '',
-                    name,
-                    result.days,
-                  ),
+              result.reason === 'no_history'
+                ? c.checkUse(name)
+                : result.days == null
+                  ? c.checkUnits(
+                      quantity.format(result.supplier_quantity ?? 0),
+                      result.supplier_unit ?? '',
+                      name,
+                      result.unit ?? '',
+                    )
+                  : c.checkQuantity(
+                      quantity.format(result.quantity ?? 0),
+                      result.unit ?? '',
+                      name,
+                      result.days,
+                    ),
           }
         if (result.status === 'made') return { order: null, note: c.madeHere(name) }
         if (result.status === 'ask_source') return { order: null, note: c.askSource(name) }

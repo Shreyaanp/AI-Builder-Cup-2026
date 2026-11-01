@@ -236,10 +236,12 @@ async def draft_reorder(
             "supplier_quantity": result["supplier_quantity"],
             "supplier_unit": result["supplier_unit"],
             "instruction": "No order was drafted. reason month: more than a month of what the "
-            "shop uses; units: sold in a unit that does not compare; no_history: no sales yet, "
-            "so the need is unknown; named: the supplier cannot sell the amount the owner asked "
-            "(asked) — say plainly what it sells instead and never order a different amount "
-            "unasked. Ask the owner to check, or to name an amount the supplier sells.",
+            "shop uses; units: sold in a unit that does not compare; no_history: no use of "
+            "its own on record (never sold, or only made items sold from it), so the need is "
+            "unknown: say you can't tell how much they use and ask how much they buy a week; "
+            "named: the supplier cannot sell the amount the owner asked (asked) — say plainly "
+            "what it sells instead and never order a different amount unasked. Ask the owner "
+            "to check, or to name an amount the supplier sells.",
         }
     order = result["order"]
     return {

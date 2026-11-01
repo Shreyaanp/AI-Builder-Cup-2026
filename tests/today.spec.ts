@@ -184,6 +184,9 @@ test('needs you now: at most three, most urgent first, each leaves when done', a
   await expect(rows).toHaveCount(3)
   await expect(rows.nth(0)).toContainText('Still the same menu today?')
   await expect(rows.nth(1)).toContainText('Masala chai: only 4 left')
+  // OB-243: a low row without a made/bought answer asks; it never offers Order.
+  await expect(rows.nth(1)).toContainText('Do you make it or buy it? Choose in Shop › Menu.')
+  await expect(rows.nth(1).getByRole('button', { name: 'Order', exact: true })).toHaveCount(0)
   await expect(rows.nth(2)).toContainText('Add a phone number')
   // One primary action: only the top row's button is filled.
   await expect(card.locator('.MuiButton-contained')).toHaveCount(1)
