@@ -122,11 +122,13 @@ export type SimVariant = 'full' | 'partial' | 'substitute' | 'match' | 'price_mi
 export function usePoActions(onChange: (order: PurchaseOrder) => void) {
   const { api, activeId, notify, review } = useWorkspace()
   const s = useSupplyCopy()
+  const change = useOrderChangeCopy()
   const base = `/businesses/${encodeURIComponent(activeId ?? '')}/supply`
   const explain = useCallback(
     (cause: unknown): string => {
       const detail = cause instanceof ApiError ? cause.code : ''
       if (detail === 'RULES_BROKEN') return s.rulesBroken
+      if (detail === 'TOO_BIG') return change.tooBig
       if (detail === 'RESOLVE_FLAGS') return s.resolveFirst
       if (detail === 'RECEIVE_FIRST') return s.receiveFirst
       if (detail === 'UNREADABLE_DOCUMENT') return s.unreadable
@@ -135,7 +137,7 @@ export function usePoActions(onChange: (order: PurchaseOrder) => void) {
       if (detail === 'STALE') return s.stale
       return s.failed
     },
-    [s],
+    [s, change],
   )
   const run = useCallback(
     async (order: PurchaseOrder, path: string, body: Record<string, unknown> = {}) => {

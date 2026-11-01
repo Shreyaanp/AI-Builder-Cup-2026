@@ -52,6 +52,8 @@ const en = {
   // (OB-242, OB-243).
   checkUse: (item: string) =>
     `I can’t tell how much ${item} you use, so no order was drafted. How much do you buy a week? Tell the coach.`,
+  // Approving a draft far beyond what the shop uses: refused, nothing sent (OB-242).
+  tooBig: 'This order is much bigger than you use. Check the amount first.',
   // Made here, or not said yet: only stock the shop buys is ordered (OB-239).
   madeHere: (item: string) =>
     `You make ${item} yourself, so there is no supplier order. Plan how many to make in the prep plan.`,
@@ -106,6 +108,7 @@ const hi: OrderChangeCopy = {
     `पहले जाँच लें: सप्लायर ${item} ${supplierUnit} में बेचता है (कम से कम ${supplierQuantity}) और आप इसे ${unit} में गिनते हैं, इसलिए कोई ऑर्डर नहीं बना। इकाई और सप्लायर की न्यूनतम मात्रा देखें, या कोच से उतना माँगें जितना चाहिए।`,
   checkUse: (item) =>
     `मैं नहीं बता सकता कि आप कितना ${item} इस्तेमाल करते हैं, इसलिए कोई ऑर्डर नहीं बना। आप हफ़्ते में कितना खरीदते हैं? कोच को बताएँ।`,
+  tooBig: 'यह ऑर्डर आपके इस्तेमाल से बहुत बड़ा है। पहले मात्रा जाँच लें।',
   madeHere: (item) =>
     `${item} आप खुद बनाते हैं, इसलिए सप्लायर को ऑर्डर नहीं जाता। कितना बनाना है, यह तैयारी योजना में देखें।`,
   askSource: (item, services) =>

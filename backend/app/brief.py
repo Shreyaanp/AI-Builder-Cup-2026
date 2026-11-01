@@ -21,7 +21,7 @@ from .recap import Summary
 from .rescue import buffer_for, local_now
 from .settings import Settings
 from .sourcing import OPEN, shop_pin
-from .supply_chain import bought_names, runs_out
+from .supply_chain import runs_out
 
 
 class Weather(BaseModel):
@@ -162,7 +162,6 @@ def facts(
     low = []
     predictions = {"predictions": [p.model_dump(mode="json") for p in forecast.predictions]}
     category = str(business["fields"].get("category") or "")
-    bought_items = bought_names(context["inventory"], category)
     for product in context["inventory"]:
         stock = product.get("stock")
         source = source_of(product, category)
@@ -171,7 +170,7 @@ def facts(
             continue
         # The supply tile's own rule (tomorrow on, the forecast's upper bound), for every shop:
         # the brief, Today and the supply tile name the same day for the same item (OB-238).
-        found = runs_out(product, predictions, today, bought_items)
+        found = runs_out(product, predictions, today)
         runs_out_on = date.fromisoformat(found) if found else None
         if runs_out_on is not None or stock <= 5:
             low.append(

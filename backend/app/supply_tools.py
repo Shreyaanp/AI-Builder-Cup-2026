@@ -129,6 +129,16 @@ def set_supplier_rules(
     }
 
 
+def _forecaster() -> Any:
+    from .forecast import ForecastService
+
+    if coordinator.forecaster is not None:
+        return coordinator.forecaster
+    from .settings import Settings
+
+    return ForecastService(Settings(_env_file=None))  # type: ignore[call-arg]
+
+
 async def draft_reorder(
     item: str = "", quantity: float | None = None, anyway: bool = False, source: str = ""
 ) -> dict[str, Any]:
@@ -144,16 +154,10 @@ async def draft_reorder(
     another unit (status on_order_other_unit). source: "made" or "bought", only as the owner's
     answer to ask_make_or_buy."""
     from . import supply_chain
-    from .forecast import ForecastService
 
     ctx = current.get()
     if not ctx or not ctx.business_id:
         return {"status": "needs_business"}
-    service = coordinator.forecaster
-    if service is None:
-        from .settings import Settings
-
-        service = ForecastService(Settings(_env_file=None))  # type: ignore[call-arg]
     try:
         result = await supply_chain.draft_reorder(
             ctx.store,
@@ -161,7 +165,7 @@ async def draft_reorder(
             ctx.business_id,
             (item or "").strip()[:80],
             quantity if quantity and quantity > 0 else None,
-            service,
+            _forecaster(),
             _generator(),
             DEMO_OWNER_UID,
             anyway=anyway,
@@ -324,6 +328,9 @@ UNIT_NOISE = re.compile(
     r"\d+(?:[.,]\d+)?|\b(?:kg|kgs|g|l|litres?|liters?|ltr|pcs?|pieces?|packs?|of)\b"
 )
 RECEIVABLE = {"sent", "changed", "confirmed", "dispatched", "invoiced", "received"}
+# The same words as tooBig in orderChangeCopy.ts (OB-242).
+TOO_BIG = "This order is much bigger than you use. Check the amount first."
+TOO_BIG_HI = "यह ऑर्डर आपके इस्तेमाल से बहुत बड़ा है। पहले मात्रा जाँच लें।"
 
 
 def _supply_card(
@@ -482,7 +489,7 @@ def accept_order_change(order: str = "", accept: bool = True) -> dict[str, Any]:
     }
 
 
-def approve_and_send_po(order: str = "") -> dict[str, Any]:
+async def approve_and_send_po(order: str = "") -> dict[str, Any]:
     """Approve a drafted purchase order and send it to the supplier in the supplier's format
     (SAP IDoc, CSV, chat text or JSON) when the owner says so: "approve it", "send the flour
     order". order: number, supplier or item; empty for the newest draft. If a rule is broken
@@ -502,8 +509,19 @@ def approve_and_send_po(order: str = "") -> dict[str, Any]:
             "card_id": _card(ctx, "purchase_order", po),
         }
     try:
-        saved = supply_chain.approve(ctx.store, ctx.uid, ctx.business_id, po["id"], po["version"])
+        saved = await supply_chain.approve_checked(
+            ctx.store, ctx.uid, ctx.business_id, po["id"], po["version"], _forecaster()
+        )
     except HTTPException as error:
+        if error.detail == "TOO_BIG":
+            return {
+                **supply_chain.summary(po),
+                "status": "too_big",
+                "message": TOO_BIG,
+                "message_hi": TOO_BIG_HI,
+                "instruction": "Nothing was sent. Say message, or message_hi to a Hindi speaker, "
+                "and ask how much they want. Their amount goes to draft_reorder as quantity.",
+            }
         return _invalid(error, ctx)
     return {
         **supply_chain.summary(saved),

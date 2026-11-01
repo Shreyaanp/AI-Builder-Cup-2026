@@ -274,6 +274,8 @@ def io_reply(name: str, result: dict[str, Any]) -> str | None:
     if name == "approve_and_send_po":
         if status == "rules_broken":
             return "Offline coach: a supplier rule is broken; fix it on the card first."
+        if status == "too_big":
+            return f"Offline coach: {result['message']} I sent nothing. How much do you want?"
         if status != "sent":
             return "Offline coach: there is no drafted order to approve."
         return f"Offline coach: PO {result['po_number']} approved and sent to {result['supplier']}."

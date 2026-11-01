@@ -30,7 +30,7 @@ from __future__ import annotations
 
 import math
 import time
-from collections.abc import Callable, Collection
+from collections.abc import Callable
 from datetime import date, timedelta
 from typing import Any, Literal
 from uuid import uuid4
@@ -375,18 +375,7 @@ def bought(product: dict[str, Any], category: str = "") -> bool:
     return source_of(product, category) == "bought"
 
 
-def bought_names(inventory: list[dict[str, Any]], category: str = "") -> set[str]:
-    """The menu items this shop buys (casefolded): the only ones whose sales can count towards
-    another supply with a similar name (OB-242)."""
-    return {str(p.get("name") or "").casefold() for p in inventory if bought(p, category)}
-
-
-def runs_out(
-    product: dict[str, Any],
-    forecast: dict[str, Any],
-    today: date,
-    bought_items: Collection[str] = (),
-) -> str:
+def runs_out(product: dict[str, Any], forecast: dict[str, Any], today: date) -> str:
     """The day this item runs out, from tomorrow on: the one rule the supply tile, Today and the
     morning brief share, so one item never shows two days (OB-238)."""
     rows = [
@@ -394,9 +383,7 @@ def runs_out(
         for row in forecast.get("predictions") or []
         if isinstance(row, dict) and str(row.get("date") or "") > today.isoformat()
     ]
-    need = need_from_forecast(
-        product, {**forecast, "predictions": rows}, product["name"], today, bought_items
-    )
+    need = need_from_forecast(product, {**forecast, "predictions": rows}, product["name"], today)
     return str(need["runs_out"] or "")
 
 
@@ -405,12 +392,10 @@ def need_from_forecast(
     forecast: dict[str, Any],
     item: str,
     today: date,
-    bought_items: Collection[str] = (),
 ) -> dict[str, Any]:
     """Stock, run-out day and demand for one item from the forecast rows, in the item's unit.
-    `bought_items` names the menu items the shop buys (bought_names): only they can count."""
-    from .sourcing import convert, matches
-
+    Only the item's own sales rows count: 60 cups of Masala chai, Coconut rice or Rice flour are
+    never kilos of tea dust or rice, whatever their unit or source (OB-242)."""
     rows = [
         row
         for row in forecast.get("predictions") or []
@@ -418,29 +403,8 @@ def need_from_forecast(
         and row.get("item")
         and row.get("date")
         and row.get("quantity") is not None
-        and (matches(row["item"], item) or matches(item, row["item"]))
+        and str(row["item"]).casefold() == item.casefold()
     ]
-    # "Tea dust" also matches the chai brewed from it; its own sales rows, when there are any,
-    # are the demand for the kilos on the shelf, not the cups sold.
-    exact = [row for row in rows if row["item"].casefold() == item.casefold()]
-    unit = str((product or {}).get("unit") or "")
-    # Without them, a loose match counts only when it is on the menu, the shop buys it and its
-    # unit converts: 60 cups of chai, an unanswered Coconut rice or an off-menu Chai row are never
-    # kilos of tea dust or rice. No product, or no unit on the row, means nothing counts (OB-242).
-    loose: list[dict[str, Any]] = []
-    for row in rows:
-        rate = convert(1.0, str(row.get("unit") or ""), unit) if row.get("unit") else None
-        if rate is None or not product or str(row["item"]).casefold() not in bought_items:
-            continue
-        upper = row.get("upper")
-        loose.append(
-            {
-                **row,
-                "quantity": float(row["quantity"]) * rate,
-                "upper": float(upper) * rate if upper is not None else None,
-            }
-        )
-    rows = exact or loose
     rows.sort(key=lambda row: row["date"])
     stock = (product or {}).get("stock")
     known = stock is not None
@@ -486,12 +450,13 @@ async def draft_reorder(
         coming_orders,
         cover,
         covered,
-        no_use_on_record,
         on_order,
         resize,
         settle_drafts,
         sized_line,
         still_wanted,
+        withdraw,
+        wrong_size,
     )
 
     context = await anyio.to_thread.run_sync(_owned, store, uid, bid)
@@ -545,7 +510,7 @@ async def draft_reorder(
     )
     if not target:
         await anyio.to_thread.run_sync(
-            settle_drafts, store, uid, bid, inventory, forecast, today, known, "", category
+            settle_drafts, store, uid, bid, inventory, forecast, today, known, ""
         )
         return {"status": "needs_item"}
     named = next(
@@ -564,15 +529,14 @@ async def draft_reorder(
         # Items this reorder skipped as covered: their unsent drafts are sized again or withdrawn
         # too, so none stays approvable at an old size (#603).
         await anyio.to_thread.run_sync(
-            settle_drafts, store, uid, bid, inventory, forecast, today, known, target, category
+            settle_drafts, store, uid, bid, inventory, forecast, today, known, target
         )
     product = next(
         (p for p in inventory if p["name"].casefold() == target.casefold()),
         next((p for p in inventory if sourcing.matches(p["name"], target)), None),
     )
     unit = (product or {}).get("unit") or "kg"
-    sold_as_bought = bought_names(inventory, category)
-    need = need_from_forecast(product, forecast, target, today, sold_as_bought)
+    need = need_from_forecast(product, forecast, target, today)
     need_by = need["runs_out"] or ""
     coming = await anyio.to_thread.run_sync(on_order, store, uid, bid, target, unit, known)
     if quantity:
@@ -582,6 +546,13 @@ async def draft_reorder(
     else:
         wanted = 0.0
     done = not quantity and covered(need, coming["quantity"])
+    wrong = wrong_size(coming["draft"], inventory, forecast, today) if coming["draft"] else ""
+    if wrong and not quantity:
+        # Sized from sales that were never this item's use (540 kg of tea dust from 60 cups of
+        # chai, OB-242): it is withdrawn, never resized or sent, and this reorder goes on as a
+        # new one, to the same checks.
+        await anyio.to_thread.run_sync(withdraw, store, bid, coming["draft"], wrong)
+        coming = {**coming, "draft": None}
     if coming["draft"]:
         # One draft per need: the open one comes back, sized again for what is now on its way
         # (or with the owner's quantity, if named).
@@ -611,34 +582,6 @@ async def draft_reorder(
             waiting["status"] = "cancelled"
             await anyio.to_thread.run_sync(_save, store, bid, waiting)
             return {"status": "on_order", "item": target, "unit": unit, **coming, "draft": None}
-        if (
-            not quantity
-            and not need["daily"]
-            and no_use_on_record(waiting, inventory, forecast, today, sold_as_bought)
-        ):
-            # Sized from sales that were never this item's use (540 kg of tea dust from 60 cups
-            # of chai, OB-242): it is withdrawn, never sent, and the owner names the amount.
-            reason["withdrawn"] = "no_use"
-            waiting["status"] = "cancelled"
-            await anyio.to_thread.run_sync(_save, store, bid, waiting)
-            line, least = sized_line(store, bid, waiting, target, unit, 0.0) or (
-                waiting["lines"][0],
-                None,
-            )
-            least = least or line["quantity"]
-            amount = sourcing.convert(least, line["unit"], unit)
-            return {
-                "status": "check",
-                "reason": "no_history",
-                "item": target,
-                "unit": unit,
-                "quantity": round(amount, 2) if amount is not None else None,
-                "days": None,
-                "supplier": waiting["supplier"]["name"],
-                "supplier_item": line["item"],
-                "supplier_quantity": least,
-                "supplier_unit": line["unit"],
-            }
         if quantity or (
             need["daily"]
             and not reason.get("owner_quantity")
@@ -659,9 +602,18 @@ async def draft_reorder(
         # 2 pack is on its way and the shop counts litres: the app cannot tell if it is enough,
         # so the owner says before a second order goes out (#603).
         return {"status": "on_order_units", "item": target, "unit": unit, **coming}
-    candidates = await anyio.to_thread.run_sync(
-        supplier_candidates, store, bid, target, currency, category
-    )
+
+    def linked() -> list[dict[str, Any]]:
+        # The supplier's Milk is the shop's own Milk, not its Rose milk: Rose milk's sales never
+        # size it (OB-242). Only an amount the owner named can go to such a supplier.
+        shelf = {p["name"].casefold() for p in inventory} - {target.casefold()}
+        return [
+            candidate
+            for candidate in supplier_candidates(store, bid, target, currency, category)
+            if quantity or candidate["product"]["name"].casefold() not in shelf
+        ]
+
+    candidates = await anyio.to_thread.run_sync(linked)
     if not candidates:
         found = await sourcing.find(
             store, uid, bid, target, wanted or None, unit, generator, demo_owner
@@ -672,9 +624,7 @@ async def draft_reorder(
                 await anyio.to_thread.run_sync(
                     ensure_relationship, store, bid, shop, currency, index, business_size(fields)
                 )
-        candidates = await anyio.to_thread.run_sync(
-            supplier_candidates, store, bid, target, currency, category
-        )
+        candidates = await anyio.to_thread.run_sync(linked)
     if not candidates:
         return {"status": "no_supplier", "item": target}
 
@@ -697,17 +647,7 @@ async def draft_reorder(
             next((p for p in inventory if sourcing.matches(p["name"], supplied["name"])), None),
         )
         if stocked and stocked.get("unit"):
-            # Only the ingredient's own sales: the drinks' cups must not size an order in kg.
-            exact = {
-                **forecast,
-                "predictions": [
-                    row
-                    for row in forecast.get("predictions") or []
-                    if isinstance(row, dict)
-                    and str(row.get("item", "")).casefold() == stocked["name"].casefold()
-                ],
-            }
-            own = need_from_forecast(stocked, exact, stocked["name"], today)
+            own = need_from_forecast(stocked, forecast, stocked["name"], today)
             own_wanted = (
                 max(0.0, own["daily"] * (COVER_DAYS + 2) - own["stock"]) if own["daily"] else 0.0
             )
@@ -868,11 +808,10 @@ def pick_item(
         loose.sort(key=lambda p: not bought(p, category))
         return named or (loose[0]["name"] if loose else item.strip()[:80])
     soonest: tuple[bool, bool, str, str] | None = None
-    sold_as_bought = bought_names(inventory, category)
     for product in inventory:
         if product.get("stock") is None or not bought(product, category):
             continue
-        need = need_from_forecast(product, forecast, product["name"], today, sold_as_bought)
+        need = need_from_forecast(product, forecast, product["name"], today)
         if not need["runs_out"]:
             continue
         rank = (
@@ -1016,6 +955,8 @@ def apply_fix(
         if line is None or not 0 < value <= 1_000_000:
             raise HTTPException(422, "Pick a line and a quantity above zero.")
         line["quantity"] = round(value, 3)
+        # The owner set this amount, so it stays whatever the forecast says (OB-242).
+        po["reason"] = {**(po.get("reason") or {}), "owner_quantity": True}
     elif kind == "cash":
         po["terms_days"] = 0
         po["cash_this_time"] = True
@@ -1040,6 +981,29 @@ def approve(
     if po.get("blocked"):
         raise HTTPException(409, "RULES_BROKEN")
     return _send(store, bid, po, False)
+
+
+async def approve_checked(
+    store: MerchantRepository, uid: str, bid: str, po_id: str, version: int, forecaster: Any
+) -> dict[str, Any]:
+    """Approve, from the card or the coach, unless the amount is far beyond what the shop uses:
+    an open draft can outlive the reorder that would have withdrawn it (OB-242). It stays a draft,
+    so the owner can set the amount on the card or tell the coach."""
+    import anyio
+
+    from .supply_coming import wrong_size
+
+    context = await anyio.to_thread.run_sync(_owned, store, uid, bid)
+    po = await anyio.to_thread.run_sync(get_po, store, uid, bid, po_id)
+    _check_version(po, version)
+    if po["status"] == "draft" and not (po.get("reason") or {}).get("owner_quantity"):
+        rows = await anyio.to_thread.run_sync(store.sales_history, uid, bid)
+        today = shop_today(context)
+        inventory = context["inventory"]
+        forecast = (await forecaster.forecast(rows, today, inventory)).model_dump(mode="json")
+        if wrong_size(po, inventory, forecast, today):
+            raise HTTPException(409, "TOO_BIG")
+    return await anyio.to_thread.run_sync(approve, store, uid, bid, po_id, version)
 
 
 def _send(store: MerchantRepository, bid: str, po: dict[str, Any], auto: bool) -> dict[str, Any]:

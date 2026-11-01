@@ -26,7 +26,7 @@ from .product_source import Source, source_of
 from .region import shop_currency, shop_zone
 from .rescue import buffer_for, local_now
 from .shop_time import shop_timezone
-from .supply_chain import bought_names, runs_out
+from .supply_chain import runs_out
 
 router = APIRouter(prefix="/api/v1/businesses", tags=["today"])
 log = structlog.get_logger(__name__)
@@ -161,13 +161,12 @@ def low_stock(
     tile's (OB-238). Each row says if the shop buys it (an order), makes it (make more) or has
     not said (one question), so a made item never becomes a supplier order (OB-239)."""
     predictions = {"predictions": [p.model_dump(mode="json") for p in forecast.predictions]}
-    bought_items = bought_names(inventory, category)
     out = []
     for product in inventory:
         stock = product.get("stock")
         if stock is None or product.get("available") is False:
             continue
-        found = runs_out(product, predictions, today, bought_items)
+        found = runs_out(product, predictions, today)
         day = date.fromisoformat(found) if found else None
         if stock <= 5 or (day is not None and day <= today + timedelta(days=1)):
             out.append(
