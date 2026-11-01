@@ -196,8 +196,10 @@ for (const appearance of ['light', 'dark'] as const) {
     await page.getByRole('button', { name: /^Purchase orders/ }).click()
     await expect(page.getByRole('dialog', { name: 'Purchase orders' })).toBeVisible()
     await audit(page, 'purchase-orders')
-    await page.getByRole('button', { name: /PO 2026-0042/ }).click()
-    await expect(page.getByRole('article', { name: /^PO / })).toBeVisible()
+    await page.getByRole('button', { name: /Filter coffee.* from Fresh Farms/ }).click()
+    await expect(
+      page.getByRole('article', { name: /^Filter coffee.* from Fresh Farms/ }),
+    ).toBeVisible()
     await audit(page, 'purchase-order-detail')
   })
 }

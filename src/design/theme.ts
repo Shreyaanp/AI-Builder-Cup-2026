@@ -150,6 +150,18 @@ const compactScale: Record<TypeRole, TypeStyle> = {
   labelMedium: role(13, 18, 500, 0.3),
   labelSmall: role(12, 16, 500, 0.4),
 }
+// The owner app (simplify batch 1) reads at 16px body and 14px labels on phones, the same as the
+// desktop scale for those roles; only the headings step down. The customer app keeps the scale above.
+const ownerCompactScale: Record<TypeRole, TypeStyle> = {
+  ...compactScale,
+  titleMedium: typeScale.titleMedium,
+  titleSmall: typeScale.titleSmall,
+  bodyLarge: typeScale.bodyLarge,
+  bodyMedium: typeScale.bodyMedium,
+  bodySmall: typeScale.bodySmall,
+  labelLarge: typeScale.labelLarge,
+  labelMedium: typeScale.labelMedium,
+}
 // The phone sizes are CSS variables set on :root under the phone query (CssBaseline below), with
 // the larger sizes as fallbacks. A media query inside a variant would come after a component's own
 // sx in the same rule and override it (a 22px handwritten line set at the 15px body size).
@@ -169,19 +181,20 @@ const responsiveScale = Object.fromEntries(
 // The front doors' headline keeps its full display size on phones (36px, 1.1 leading, tight tracking).
 // It is not a role, so the 13 roles stay as they are: --type-hero-size/-line/-tracking.
 const heroPhone = role(36, 40, 700, -1.6)
-const compactTypeVars = Object.fromEntries(
-  [
-    ['--type-hero-size', heroPhone.fontSize],
-    ['--type-hero-line', heroPhone.lineHeight],
-    ['--type-hero-tracking', heroPhone.letterSpacing],
-  ].concat(
-    (Object.keys(compactScale) as TypeRole[]).flatMap((key) => [
-      [`--type-${key}-size`, compactScale[key].fontSize],
-      [`--type-${key}-line`, compactScale[key].lineHeight],
-      [`--type-${key}-tracking`, compactScale[key].letterSpacing],
-    ]),
-  ),
-)
+const compactTypeVars = (scale: Record<TypeRole, TypeStyle>) =>
+  Object.fromEntries(
+    [
+      ['--type-hero-size', heroPhone.fontSize],
+      ['--type-hero-line', heroPhone.lineHeight],
+      ['--type-hero-tracking', heroPhone.letterSpacing],
+    ].concat(
+      (Object.keys(scale) as TypeRole[]).flatMap((key) => [
+        [`--type-${key}-size`, scale[key].fontSize],
+        [`--type-${key}-line`, scale[key].lineHeight],
+        [`--type-${key}-tracking`, scale[key].letterSpacing],
+      ]),
+    ),
+  )
 // Fields stay 16px on phones (OB-198): iOS zooms into smaller inputs, and the floating label (75%
 // of this) stays at 12px.
 const fieldText = { fontSize: '1rem', lineHeight: '1.5rem' }
@@ -268,7 +281,9 @@ export function nivaTheme(
       MuiCssBaseline: {
         styleOverrides: {
           ':root': {
-            [compactQuery]: compactTypeVars,
+            [compactQuery]: compactTypeVars(
+              audience === 'customer' ? compactScale : ownerCompactScale,
+            ),
             // The logo's size, which the front doors' lead lines match on every window.
             '--type-logo-size': typeScale.titleLarge.fontSize,
             '--scrollbar-thumb': roles.outlineVariant,
@@ -418,6 +433,10 @@ export function nivaTheme(
           action: { paddingTop: 0 },
         },
       },
+      // Owner app: count badges read at the 14px label size, not MUI's 12px (simplify batch 1).
+      ...(audience === 'customer'
+        ? {}
+        : { MuiBadge: { styleOverrides: { badge: { fontSize: typeScale.labelLarge.fontSize } } } }),
       MuiChip: {
         styleOverrides: {
           label: { paddingInline: 12 },

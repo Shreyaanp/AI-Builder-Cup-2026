@@ -5,8 +5,8 @@ import { useLocale } from '../../state/hooks'
 const en = {
   forecastTitle: 'Next 7 days',
   forecastRange: 'likely range',
-  timesfm: 'TimesFM forecast',
-  weekdayAverage: 'Weekday average',
+  timesfm: 'Based on your last weeks',
+  weekdayAverage: 'Based on your last weeks',
   notEnough: 'Not enough sales yet: {items}',
   weekTitle: 'This week',
   vsLastWeek: 'vs last week',
@@ -158,8 +158,8 @@ const translations: Record<Exclude<Locale, 'en'>, ChartCopy> = {
   hi: {
     forecastTitle: 'अगले 7 दिन',
     forecastRange: 'संभावित दायरा',
-    timesfm: 'TimesFM अनुमान',
-    weekdayAverage: 'दिन के हिसाब से औसत',
+    timesfm: 'पिछले हफ़्तों की बिक्री से',
+    weekdayAverage: 'पिछले हफ़्तों की बिक्री से',
     notEnough: 'अभी बिक्री का डेटा कम है: {items}',
     weekTitle: 'इस हफ़्ते',
     vsLastWeek: 'पिछले हफ़्ते से',

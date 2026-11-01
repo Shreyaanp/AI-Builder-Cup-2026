@@ -30,3 +30,11 @@ export function termsLabel(
 ): string {
   return days == null ? '' : terms(days)
 }
+
+/** What an order is called on screen: the item and the supplier, never the order number. */
+export function orderLabel(
+  order: Pick<PurchaseOrder, 'lines' | 'supplier' | 'reason'>,
+  title: (item: string, supplier: string) => string,
+): string {
+  return title(order.reason?.item || order.lines?.[0]?.item || '', order.supplier.name)
+}

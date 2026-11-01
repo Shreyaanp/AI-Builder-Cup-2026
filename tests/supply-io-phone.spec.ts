@@ -23,11 +23,11 @@ test('Supply on a phone: forecast in → order → change → goods arrive → r
   await page.getByRole('button', { name: 'Grow', exact: true }).click()
   await page.getByRole('button', { name: /^Supply chain/ }).click()
   const hub = page.getByRole('dialog', { name: 'Supply chain' })
-  await hub.getByRole('button', { name: /^Coming in/ }).click()
+  await hub.getByRole('button', { name: /^On the way/ }).click()
   await expect(hub.getByRole('heading', { name: 'What’s coming in?' })).toBeVisible()
 
   // INBOUND: the local demo buyer sends text in the small shop's WhatsApp channel.
-  const next = hub.getByRole('button', { name: 'Partner sends next document (demo)' })
+  const next = hub.getByRole('button', { name: 'Show next step (demo)' })
   await next.click()
   await expect(hub).toContainText('Forecast')
   await expect(hub).toContainText(/Expects 20 l Milk/)
@@ -53,7 +53,7 @@ test('Supply on a phone: forecast in → order → change → goods arrive → r
   await cafe.getByRole('button', { name: 'Close', exact: true }).click()
 
   // OUTBOUND 1: goods arrive. Pre-filled from the order; the owner fixes only the difference.
-  await hub.getByRole('button', { name: /^Coming in/ }).click()
+  await hub.getByRole('button', { name: /^On the way/ }).click()
   await hub.getByRole('button', { name: /^Fresh Dairy \(Demo\)/ }).click()
   const dairy = page.getByRole('dialog', { name: 'Fresh Dairy (Demo)' })
   await dairy.getByRole('button', { name: 'Goods arrived', exact: true }).click()
@@ -64,7 +64,7 @@ test('Supply on a phone: forecast in → order → change → goods arrive → r
   const review = page.getByRole('dialog', { name: 'Check before saving' })
   await review.getByRole('button', { name: 'Confirm and save', exact: true }).click()
   await expect(review).toHaveCount(0)
-  await expect(dairy).toContainText('Goods received to Fresh Dairy (Demo) · SAP IDoc')
+  await expect(dairy).toContainText('Goods received to Fresh Dairy (Demo) · Supplier’s format')
   await expect(dairy.getByRole('status')).toContainText(/5 (l|litre) Milk short/)
   await noSideScroll(page)
   await page.screenshot({ path: 'output/playwright/supply-io-receipt.png' })
@@ -73,9 +73,9 @@ test('Supply on a phone: forecast in → order → change → goods arrive → r
   await expect(dairy.getByRole('button', { name: 'Undo', exact: true })).toBeVisible()
   await expect(dairy.getByText('Done', { exact: true })).toBeVisible({ timeout: 15_000 })
   // The explicitly configured SAP dairy still has a real STPPOD/DELVRY07 receipt preview.
-  await dairy.getByRole('button', { name: 'View as SAP', exact: true }).click()
-  const sap = page.getByRole('dialog', { name: 'View as SAP' })
-  await expect(sap.getByLabel('SAP IDoc')).toContainText('<IDOCTYP>DELVRY07</IDOCTYP>')
+  await dairy.getByRole('button', { name: 'See the supplier’s copy', exact: true }).click()
+  const sap = page.getByRole('dialog', { name: 'See the supplier’s copy' })
+  await expect(sap.getByLabel('Supplier’s format')).toContainText('<IDOCTYP>DELVRY07</IDOCTYP>')
   await expect(sap).toContainText('In plain words')
   await noSideScroll(page)
   await page.keyboard.press('Escape')
@@ -89,7 +89,7 @@ test('Supply on a phone: forecast in → order → change → goods arrive → r
   await expect(cafe).toContainText('15 l Milk')
   await noSideScroll(page)
   await cafe.getByRole('button', { name: 'Close', exact: true }).click()
-  await hub.getByRole('button', { name: /^Must send/ }).click()
+  await hub.getByRole('button', { name: /^To send/ }).click()
   await expect(hub).toContainText('Shipping notice')
   expect(
     (await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze())

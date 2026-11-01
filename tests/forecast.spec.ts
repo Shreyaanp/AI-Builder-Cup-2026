@@ -46,7 +46,7 @@ test('Prep plan uses approved sales, labels its method and passes axe on phone',
   await page.getByRole('button', { name: 'Continue local preview' }).click()
   await page.getByRole('button', { name: 'Grow', exact: true }).click()
   await expect(tile).toContainText('Kopi · 30')
-  await expect(tile).toContainText('Weekday average · seasonality and trend')
+  await expect(tile).toContainText('Based on your last weeks')
   const audit = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()
   expect(audit.violations).toEqual([])
   await tile.click()
@@ -54,14 +54,12 @@ test('Prep plan uses approved sales, labels its method and passes axe on phone',
     'How much should I prep tomorrow?',
   )
   await page.getByRole('button', { name: 'Send', exact: true }).click()
-  await expect(
-    page.getByText(/Offline coach:.*Kopi: 30 item.*Method: weekday average/),
-  ).toBeVisible()
+  await expect(page.getByText(/Kopi: 30 item.*Method: weekday average/)).toBeVisible()
   // The numbers behind the answer, drawn as a chart card in the chat (owner, 16 Oct).
   const chart = page.getByRole('figure', { name: /^Forecast chart: Kopi/ })
   await expect(chart).toBeVisible()
   await expect(chart).toContainText('Next 7 days')
-  await expect(chart).toContainText('Weekday average')
+  await expect(chart).toContainText('Based on your last weeks')
   await chart.scrollIntoViewIfNeeded()
   await page.waitForTimeout(1500)
   await page.screenshot({

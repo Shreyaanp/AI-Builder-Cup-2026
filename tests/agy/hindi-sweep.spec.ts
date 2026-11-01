@@ -33,6 +33,7 @@ const ALLOW = [
   'Your eighth chai is free',
   'SAP supplier',
   'Milk shop (Supply demo)',
+  'Fresh Dairy (Demo)',
   'Milk',
   'Grocery',
   'Cafe',
