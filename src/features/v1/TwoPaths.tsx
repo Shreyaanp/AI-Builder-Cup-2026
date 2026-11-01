@@ -74,8 +74,8 @@ export function ClosedTodaySwitch({ onReview }: { onReview: () => void }) {
   )
 }
 
-/** Messages: the language the app and coach use (the coach's set_reply_language). */
-export function ReplyLanguage() {
+/** Messages: the owner's own language for the app and the coach (the coach's set_reply_language). */
+export function YourLanguage() {
   const c = useTwoPathsCopy()
   const t = useCopy()
   const preferences = usePreferences()
@@ -84,8 +84,8 @@ export function ReplyLanguage() {
     <TextField
       select
       fullWidth
-      label={c.replyLanguage}
-      helperText={c.replyLanguageHint}
+      label={c.yourLanguage}
+      helperText={c.yourLanguageHint}
       value={preferences.language}
       onChange={(event) =>
         isLanguagePref(event.target.value) &&

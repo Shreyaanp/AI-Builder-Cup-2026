@@ -126,21 +126,84 @@ def _events(response) -> list[dict]:
     ]
 
 
-def test_demo_answers_every_chat_phrase_with_its_screen_path(app):  # noqa: F811
-    """Each "Or just ask" phrase, sent in the public demo, names the same feature's screen."""
+TOPICS = json.loads((ROOT / "tests/askTopics.json").read_text(encoding="utf-8"))
+# The change the phrase prepares for review, in English and in Hindi.
+PREPARES = {"sold_out", "closed_today", "add_menu"}
+
+
+def _ask(client, app, message: str) -> tuple[str, list[dict]]:  # noqa: F811
+    """One message in a fresh demo session: the reply text and the events."""
+    app.state.rate_limiter.counters.clear()
+    session = open_demo(client).json()["session_id"]
+    response = client.post(f"/api/v1/demo/sessions/{session}/coach", json={"message": message})
+    assert response.status_code == 200, (message, response.text)
+    events = _events(response)
+    return " ".join(e.get("text") or "" for e in events if e.get("kind") == "reply"), events
+
+
+def test_every_owner_feature_has_a_topic_word():
+    assert set(TOPICS) == {f.id for f in OWNER}
+    for feature in OWNER:
+        assert feature.what_hi and re.search(r"[ऀ-ॿ]", feature.what_hi), feature.id
+
+
+@pytest.mark.parametrize("lang", ["en", "hi"])
+@pytest.mark.parametrize("feature", OWNER, ids=lambda f: f.id)
+def test_demo_answers_every_chat_phrase_on_topic_with_its_screen_path(app, feature, lang):  # noqa: F811
+    """Each "Or just ask" phrase, English and Hindi, sent in a fresh public demo session, gets an
+    answer about that feature (its topic word) that names the same feature's screen path.
+    Hindi screens show ask_hi, so it must not dead-end or answer another topic (review of #633)."""
     with TestClient(app) as client:
         app.state.v1_settings.public_demo_enabled = True
-        app.state.rate_limiter.counters.clear()
-        session = open_demo(client).json()["session_id"]
-        for feature in OWNER:
-            app.state.rate_limiter.counters.clear()
-            response = client.post(
-                f"/api/v1/demo/sessions/{session}/coach", json={"message": feature.ask}
-            )
-            assert response.status_code == 200, (feature.ask, response.text)
-            events = _events(response)
-            reply = " ".join(e.get("text") or "" for e in events if e.get("kind") == "reply")
-            assert f"Next, open {feature.where}." in reply, (feature.ask, reply)
-            actions = [e["data"]["target"] for e in events if e.get("kind") == "action"]
-            if feature.screen in {"radar", "rider", "reminders"}:
-                assert actions == [feature.screen], feature.ask
+        message = feature.ask if lang == "en" else feature.ask_hi
+        reply, events = _ask(client, app, message)
+    line = f"Next, open {feature.where}." if lang == "en" else f"अब {feature.where} खोलें।"
+    assert reply.count(line) == 1, (message, reply)
+    assert re.search(TOPICS[feature.id][lang], reply, re.I), (message, reply)
+    actions = [e["data"]["target"] for e in events if e.get("kind") == "action"]
+    if feature.screen in {"radar", "rider", "reminders"}:
+        assert actions == [feature.screen], message
+    proposals = [e for e in events if e.get("kind") == "proposal"]
+    assert len(proposals) == (1 if feature.id in PREPARES else 0), (message, reply)
+
+
+@pytest.mark.parametrize(
+    ("message", "topic", "where"),
+    [
+        # Orders → Find a supplier sends the owner's item (sourcing/copy.ts lowMessage).
+        (
+            "My milk 20 litres is running low. Find suppliers.",
+            r"suppliers near you for milk 20 litres",
+            "Grow → Orders → Find a supplier",
+        ),
+        ("मेरा दूध 20 लीटर कम हो रहा है। सप्लायर खोजें।", r"सप्लायर.*दूध 20 लीटर", None),
+        # The PR's own "Owner looks at" phrases.
+        (
+            "how was this week",
+            r"In the last 7 days the demo shop sold [\d,]+ items for ₹[\d,]+\.",
+            "Grow → Your week",
+        ),
+        ("reorder milk", r"order for milk", "Grow → Purchase orders"),
+    ],
+)
+def test_demo_typed_supply_and_week_questions_stay_on_topic(app, message, topic, where):  # noqa: F811
+    with TestClient(app) as client:
+        app.state.v1_settings.public_demo_enabled = True
+        reply, _ = _ask(client, app, message)
+    assert re.search(topic, reply), (message, reply)
+    assert "Masala chai" not in reply, reply
+    if where:
+        assert reply.endswith(f"Next, open {where}."), reply
+
+
+def test_language_control_says_it_is_the_owners_own_language():
+    """In Messages, "Reply language" read as the language replies to customers go out in, but it
+    switches the whole app (review of #633): it is named for what it does, in every locale."""
+    feature = next(f for f in OWNER if f.id == "reply_language")
+    assert feature.path == ("Shop", "Messages", "Your language (app and coach)")
+    assert INNER_LABELS[("Shop", "Messages")] == frozenset({"Your language (app and coach)"})
+    copy = (ROOT / "src/features/v1/twoPathsCopy.ts").read_text(encoding="utf-8")
+    labels = re.findall(r"yourLanguage: '([^']+)'", copy)
+    assert len(labels) == len(re.findall(r"closedToday: '", copy)) == 15
+    assert "Your language (app and coach)" in labels and "आपकी भाषा (ऐप और कोच)" in labels
+    assert "Reply language" not in copy and "जवाब की भाषा" not in copy

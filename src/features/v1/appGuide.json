@@ -131,8 +131,8 @@
     },
     {
       "id": "reply_language",
-      "title": "Reply language",
-      "path": ["Shop", "Messages", "Reply language"],
+      "title": "Your language",
+      "path": ["Shop", "Messages", "Your language (app and coach)"],
       "ask": "Reply in Hindi",
       "ask_hi": "हिंदी में जवाब दो",
       "screen": "messages"

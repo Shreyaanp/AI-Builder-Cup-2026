@@ -6,7 +6,7 @@ import re
 from datetime import timedelta
 from typing import Any, cast
 
-from .app_guide import Feature, by_ask, next_line
+from .app_guide import Feature, by_ask, next_line, next_line_hi
 from .contracts import StreamEvent
 from .demo_food_words import FOOD_UNITS, NUMBER_WORDS, is_food, singular
 
@@ -24,6 +24,8 @@ SUGGESTIONS = (
     "What should I prep tomorrow?",
 )
 DEMO_NOTE = "This is the demo shop, so nothing reaches real customers."
+DEMO_NOTE_HI = "यह डेमो दुकान है, इसलिए कुछ भी असली ग्राहकों तक नहीं जाता।"
+HINDI = re.compile(r"[ऀ-ॿ]")
 # The offline coach is conservative: a review card only for a short request that is all one of
 # the patterns below. Anything more (a reason, a day, a "not") gets the examples instead, since
 # a wrong card is worse than none.
@@ -65,6 +67,11 @@ NEW_PRICE = re.compile(
     rf"(?:(?:please\s+)?(?:change|set|make)\s+(?:the\s+)?(?:price\s+of\s+(?P<of>{NAME})"
     rf"|(?P<own>{NAME})(?:'s)?\s+price)\s+to|(?P<name>{NAME})\s+price\s+(?:is\s+)?(?:now\s+)?)"
     rf"\s*{PRICE}",
+    re.I,
+)
+CLOSED_TODAY = re.compile(
+    r"(?:(?:we|i)\s+(?:are|am)\s+|we're\s+|i'm\s+|(?:the\s+|my\s+)?shop\s+is\s+)?"
+    r"(?P<state>closed|open\s+again)\s+today",
     re.I,
 )
 NEGATION = re.compile(
@@ -282,11 +289,40 @@ def _upkeep(ctx: Any, text: str) -> list[StreamEvent] | None:
     ]
 
 
+def _closed_today(ctx: Any, text: str) -> list[StreamEvent] | None:
+    """Closed for today only, or open again ("We are closed today"), as the real coach's
+    set_open_today prepares; the weekly hours stay the same."""
+    match = CLOSED_TODAY.fullmatch(text)
+    if not match:
+        return None
+    from .voice_tools import set_open_today
+
+    again = match["state"].casefold() != "closed"
+    result = set_open_today(again)
+    if result.get("status") == "no_change":
+        state = "open" if again else "closed"
+        return [StreamEvent(kind="reply", text=f"Your demo shop is already {state} today.")]
+    return _proposed(ctx, result)
+
+
+INTENTS = (_hours_change, _add_item, _upkeep, _closed_today)
 # The feature each prepared change belongs to, for its "Next, open …" line.
-TAUGHT = {"_hours_change": "hours", "_add_item": "add_menu"}
+TAUGHT = {"_hours_change": "hours", "_add_item": "add_menu", "_closed_today": "closed_today"}
 # Screens with no tool of their own: the demo opens them, as the real coach does.
 OPENS = {"radar", "rider", "reminders"}
-WHERE = re.compile(r" Next, open [^.]*\.$")
+# Features whose screen phrase the demo answers from its records (public_demo_reply); the
+# others get what the feature does. Several share a path (Shop → Shop details), so the path
+# alone does not say the answer is about the feature.
+RECORDS = {
+    "supply",
+    "suppliers",
+    "price_change",
+    "hours",
+    "messages",
+    "close_day",
+    "forecast",
+    "insights",
+}
 
 
 def _teach(events: list[StreamEvent], feature_id: str) -> list[StreamEvent]:
@@ -300,6 +336,12 @@ def _teach(events: list[StreamEvent], feature_id: str) -> list[StreamEvent]:
 
 def _guided(ctx: Any, feature: Feature) -> list[StreamEvent]:
     """What the feature does and where it is on screen; the screen-only ones open at once."""
+    events = _opened(ctx, feature)
+    text = f"{feature.title}: {feature.what} {next_line(feature.id)} {DEMO_NOTE}"
+    return [*events, StreamEvent(kind="reply", text=text)]
+
+
+def _opened(ctx: Any, feature: Feature) -> list[StreamEvent]:
     from .voice_tools import open_screen
 
     events: list[StreamEvent] = []
@@ -307,8 +349,25 @@ def _guided(ctx: Any, feature: Feature) -> list[StreamEvent]:
         card = ctx.cards.get(str(open_screen(feature.screen).get("card_id")))  # type: ignore[arg-type]
         if card:
             events.append(StreamEvent(kind="action", data=card[1]))
-    text = f"{feature.title}: {feature.what} {next_line(feature.id)} {DEMO_NOTE}"
-    return [*events, StreamEvent(kind="reply", text=text)]
+    return events
+
+
+def _hindi(ctx: Any, feature: Feature) -> list[StreamEvent]:
+    """A screen's Hindi phrase: the change its English phrase prepares, else what the feature
+    does, in Hindi and ending with the same path (this offline demo has no translation model)."""
+    text = _plain(feature.ask)
+    for intent in INTENTS:
+        events = intent(ctx, text) or []
+        if events and events[0].kind == "proposal":
+            reply = "मैंने यह आपके जाँचने के लिए तैयार किया है; स्क्रीन पर पक्का करें।"
+            return [
+                events[0],
+                StreamEvent(
+                    kind="reply", text=f"{reply} {DEMO_NOTE_HI} {next_line_hi(feature.id)}"
+                ),
+            ]
+    text = f"{feature.what_hi} {next_line_hi(feature.id)} {DEMO_NOTE_HI}"
+    return [*_opened(ctx, feature), StreamEvent(kind="reply", text=text)]
 
 
 def _unclear_change(question: str, text: str) -> bool:
@@ -373,24 +432,26 @@ async def public_demo_turn(ctx: Any, question: str) -> list[StreamEvent] | None:
         return None
     text = _plain(question)
     reply: str | None = None
-    if not re.search(r"[ऀ-ॿ]", question):
+    feature = by_ask(question)
+    if feature and HINDI.search(question):
+        return _hindi(ctx, feature)
+    if not HINDI.search(question):
         asked = "?" in question or ASKED.match(text)
         if not NEGATION.search(text):
-            for intent in () if asked else (_hours_change, _add_item, _upkeep):
+            for intent in () if asked else INTENTS:
                 events = intent(ctx, text)
                 if events:
                     taught = TAUGHT.get(intent.__name__, "sold_out")
                     return _teach(events, "price_change" if NEW_PRICE.fullmatch(text) else taught)
-    if not re.search(r"[ऀ-ॿ]", question):
+    if not HINDI.search(question):
         # The phrase a screen shows ("Or just ask: …") ends with its own feature's screen path:
-        # the demo's data answer when there is one, else what the feature does. Hindi keeps the
-        # Hindi answers below (the paths here are the English labels).
-        feature = by_ask(question)
+        # the demo's records answer when it is about that feature (it names the same path),
+        # else what the feature does.
         if feature:
-            known = None if feature.screen in OPENS else public_demo_reply(ctx, question)
-            if not known or known == FALLBACK:
+            known = public_demo_reply(ctx, question) if feature.id in RECORDS else None
+            if not known or not known.endswith(next_line(feature.id)):
                 return _guided(ctx, feature)
-            reply = WHERE.sub("", known) + " " + next_line(feature.id)
+            reply = known
         elif not NEGATION.search(text):
             if BEST_SELLERS.fullmatch(text):
                 return _best_sellers()
@@ -434,8 +495,8 @@ def public_demo_reply(ctx: Any, question: str) -> str | None:
     inquiries = store.inquiries(uid, bid)
     words = question.casefold()
     today = today_for(fields)
-    product = next((item for item in inventory if item["name"].casefold() in words), None)
-    product = product or next(iter(inventory), {"name": "your menu", "stock": 0, "unit": "items"})
+    named = next((item for item in inventory if item["name"].casefold() in words), None)
+    product = named or next(iter(inventory), {"name": "your menu", "stock": 0, "unit": "items"})
     name = product["name"]
     stock = product.get("stock") or 0  # a saved item may have no stock count
     # Saved prices are minor units (paise); the reply shows rupees.
@@ -444,6 +505,12 @@ def public_demo_reply(ctx: Any, question: str) -> str | None:
     if re.search(r"[\u0900-\u097f]", question):
         # This offline demo has no translation model. Keep its answers in the language of a
         # Devanagari question, with the same seeded facts used by the English replies.
+        low = re.search(r"मेरा\s+(?P<item>[^।?]{1,40}?)\s+कम\s+हो\s+रहा", words)
+        if low:
+            return (
+                f"असली दुकान में कोच पास के सप्लायर ढूँढकर {low['item']} का ऑर्डर तैयार करता है, "
+                "जिसे आप भेजते हैं। " + next_line_hi("suppliers")
+            )
         if any(term in words for term in ("आज", "बिक्री", "कमाई")):
             rows = [row for row in history if row["date"] == today.isoformat()]
             sold = sum(row["quantity"] for row in rows)
@@ -478,7 +545,7 @@ def public_demo_reply(ctx: Any, question: str) -> str | None:
     if re.search(r"\b(?:hours|open|opening|closed|timing|sunday)\b", words):
         return (
             f"Demo shop hours are {fields.get('hours', 'not listed')}. "
-            "In your real shop, a hours change waits for review. " + next_line("hours")
+            "In your real shop, an hours change waits for review. " + next_line("hours")
         )
     if "today" in words or "close the day" in words or "\u0906\u091c" in words:
         rows = [row for row in history if row["date"] == today.isoformat()]
@@ -497,6 +564,21 @@ def public_demo_reply(ctx: Any, question: str) -> str | None:
         orders = supply_chain.orders(store, uid, bid)
         po = next((order for order in orders if order.get("supplier")), None)
         supplier = po["supplier"]["name"] if po else "the demo supplier"
+        # "My milk is running low" (and Orders → Find a supplier) is about that item's suppliers.
+        low = re.search(r"\bmy\s+(?P<item>[^.!?]{1,40}?)\s+(?:is|are)\s+running\s+low\b", words)
+        if low:
+            return (
+                f"In your real shop, the coach finds suppliers near you for {low['item']} and "
+                f"prepares an order request for you to send. Demo supply records show {supplier}. "
+                + next_line("suppliers")
+            )
+        # "Reorder milk" names no menu item: never another item's stock.
+        wanted = re.search(r"\b(?:reorder|order|buy\s+more)\s+(?P<item>[a-z][a-z ]{0,30})$", words)
+        if not named and wanted:
+            return (
+                f"Demo supply records show {supplier}. In your real shop, this would draft an "
+                f"order for {wanted['item']} for review. " + next_line("supply")
+            )
         return (
             f"Demo supply records show {supplier}; {name} has {stock:g} in stock. "
             "In your real shop, this would draft an order for review. " + next_line("supply")
@@ -611,6 +693,16 @@ def public_demo_reply(ctx: Any, question: str) -> str | None:
         return (
             f"Your demo menu has {len(inventory)} items; {name} costs ₹{price:g}. "  # noqa: E501
             "In your real shop, edits wait for review. " + next_line("price_change")
+        )
+    if re.search(r"\bhow\b.*\b(?:this|last)\s+week\b", words):
+        week = {(today - timedelta(days=offset)).isoformat() for offset in range(7)}
+        rows = [row for row in history if row["date"] in week]
+        sold = sum(row["quantity"] for row in rows)
+        revenue = sum(row.get("revenue", row.get("amount", 0)) for row in rows)
+        rupees = to_major(int(revenue), shop_currency(business))  # saved in paise
+        return (
+            f"In the last 7 days the demo shop sold {sold:,.0f} items for ₹{rupees:,.0f}. "
+            "In your real shop, these figures come from saved sales. " + next_line("insights")
         )
     if "sales" in words or (
         "business" in words and any(term in words for term in ("how", "week", "going"))

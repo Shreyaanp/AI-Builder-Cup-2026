@@ -59,7 +59,7 @@ INNER_LABELS: dict[tuple[str, str], frozenset[str]] = {
     ("Shop", "Menu"): frozenset({"Add product"}),
     ("Shop", "Services"): frozenset({"Add product"}),
     ("Shop", "Shop details"): frozenset({"Closed today"}),
-    ("Shop", "Messages"): frozenset({"Reply language"}),
+    ("Shop", "Messages"): frozenset({"Your language (app and coach)"}),
     ("Grow", "Orders"): frozenset({"Find a supplier"}),
     ("Grow", "Payments & rides"): frozenset({"Send a rider"}),
     ("You", "Privacy & your data"): frozenset(
@@ -83,6 +83,8 @@ class Feature:
     ask_hi: str = ""
     # The open_screen target that shows this feature, when there is one.
     screen: str = ""
+    # What it does, in Hindi: the offline demo's answer to the Hindi phrase (no translation model).
+    what_hi: str = ""
 
     @property
     def where(self) -> str:
@@ -102,6 +104,7 @@ FEATURES: tuple[Feature, ...] = (
         "What should I do today?",
         "आज क्या करना है?",
         "today",
+        what_hi="आज की बिक्री और आज के ज़रूरी काम Coach में सबसे ऊपर दिखते हैं।",
     ),
     Feature(
         "details",
@@ -114,6 +117,7 @@ FEATURES: tuple[Feature, ...] = (
         "Change my phone number",
         "मेरा फ़ोन नंबर बदलो",
         "details",
+        what_hi="दुकान का नाम, प्रकार, पता या फ़ोन बदलें; पुराना → नया देखकर पक्का करें।",
     ),
     Feature(
         "games",
@@ -126,6 +130,7 @@ FEATURES: tuple[Feature, ...] = (
         "Show my perks",
         "मेरे इनाम दिखाओ",
         "games",
+        what_hi="ग्राहकों के आने पर मिलने वाले इनाम चुनें; ग्राहकों के गेम उनके पासपोर्ट में हैं।",
     ),
     Feature(
         "payments",
@@ -138,6 +143,7 @@ FEATURES: tuple[Feature, ...] = (
         "Make a payment link for 250",
         "250 का पेमेंट लिंक बनाओ",
         "payments",
+        what_hi="शेयर करने के लिए UPI पेमेंट लिंक या QR बनाएँ; ऐप पैसे नहीं संभालता।",
     ),
     Feature(
         "rider",
@@ -151,6 +157,8 @@ FEATURES: tuple[Feature, ...] = (
         "Send a rider",
         "राइडर बुलाओ",
         "rider",
+        what_hi="राइड ऐप खुलता है: पिकअप आपकी दुकान, ड्रॉप ग्राहक का पता; "
+        "ऐप राइडर बुक या भुगतान नहीं करता।",
     ),
     Feature(
         "supply",
@@ -164,6 +172,7 @@ FEATURES: tuple[Feature, ...] = (
         "Reorder tea dust",
         "चायपत्ती फिर से मँगाओ",
         "supply",
+        what_hi="अनुमान से दोबारा मँगाने का ऑर्डर बनता है; आपके पक्का करने पर ही सप्लायर को जाता है।",
     ),
     Feature(
         "deliveries",
@@ -176,6 +185,7 @@ FEATURES: tuple[Feature, ...] = (
         "What's coming today?",
         "आज क्या आने वाला है?",
         "supply",
+        what_hi="सप्लायर ने क्या पक्का किया, क्या रास्ते में है और क्या आ गया, यह डिलीवरी में दिखता है।",
     ),
     Feature(
         "playbook",
@@ -189,6 +199,7 @@ FEATURES: tuple[Feature, ...] = (
         "What do you know about my shop?",
         "तुम मेरी दुकान के बारे में क्या जानते हो?",
         "playbook",
+        what_hi="आपके लक्ष्य, ज़रूरी आँकड़े और नियमित ग्राहक: कोच यही जानता है। कुछ भी बदलें या हटाएँ।",
     ),
     Feature(
         "connect",
@@ -201,6 +212,7 @@ FEATURES: tuple[Feature, ...] = (
         "Connect my Petpooja",
         "मेरा Petpooja जोड़ो",
         "connect",
+        what_hi="बिलिंग ऐप की फ़ाइल से मेनू या बिक्री लाएँ; पहले आप कॉलम जाँचते हैं।",
     ),
     Feature(
         "customer_games",
@@ -223,6 +235,7 @@ FEATURES: tuple[Feature, ...] = (
         "Add cutting chai for 15 rupees",
         "कटिंग चाय 15 रुपये जोड़ो",
         "menu",
+        what_hi="मेनू की फ़ोटो लें तो कोच हर चीज़ और दाम पढ़ता है, या एक-एक चीज़ जोड़ें।",
     ),
     Feature(
         "price_change",
@@ -236,6 +249,7 @@ FEATURES: tuple[Feature, ...] = (
         "Samosa is 20 now",
         "समोसा अब 20 का",
         "menu",
+        what_hi="कोच को नया दाम बताइए; पुराना → नया दाम देखकर पक्का करें।",
     ),
     Feature(
         "sold_out",
@@ -248,6 +262,7 @@ FEATURES: tuple[Feature, ...] = (
         "Samosa is sold out",
         "समोसा ख़त्म",
         "sold_out",
+        what_hi="कोई चीज़ ख़त्म हो तो उसे ख़त्म दिखाएँ ताकि ग्राहक बेकार न आएँ; वापस आने पर फिर चालू करें।",
     ),
     Feature(
         "hours",
@@ -260,6 +275,7 @@ FEATURES: tuple[Feature, ...] = (
         "We open 7 to 9",
         "हम 7 से 9 खुले हैं",
         "details",
+        what_hi="हफ़्ते का खुलने और बंद होने का समय रखें; ग्राहक देखते हैं कि दुकान खुली है या बंद।",
     ),
     Feature(
         "closed_today",
@@ -273,6 +289,7 @@ FEATURES: tuple[Feature, ...] = (
         "We are closed today",
         "आज दुकान बंद है",
         "details",
+        what_hi="सिर्फ़ आज के लिए दुकान बंद करें; हफ़्ते का समय वही रहता है।",
     ),
     Feature(
         "share",
@@ -285,6 +302,7 @@ FEATURES: tuple[Feature, ...] = (
         "Share my page",
         "मेरा पेज भेजो",
         "share",
+        what_hi="अपना ग्राहक पेज चालू करें, फिर लिंक भेजें या काउंटर के लिए QR छापें।",
     ),
     Feature(
         "messages",
@@ -297,19 +315,21 @@ FEATURES: tuple[Feature, ...] = (
         "Any customer questions?",
         "ग्राहकों ने क्या पूछा?",
         "messages",
+        what_hi="ग्राहक आपके पेज पर सवाल पूछते हैं; कोच जवाब लिखता है और आप भेजें दबाते हैं।",
     ),
     Feature(
         "reply_language",
         "owner",
-        "Reply language",
+        "Your language",
         "Choose the language the app and the coach use with you; replies to customers still "
         "follow the customer's own language.",
         '"Reply in Hindi" or "English mein bolo".',
-        ("Shop", "Messages", "Reply language"),
+        ("Shop", "Messages", "Your language (app and coach)"),
         ("language", "hindi", "english", "tamil", "speak", "mein bolo"),
         "Reply in Hindi",
         "हिंदी में जवाब दो",
         "messages",
+        what_hi="ऐप और कोच आपसे किस भाषा में बात करें, यह चुनें; ग्राहकों को जवाब उनकी अपनी भाषा में जाते हैं।",
     ),
     Feature(
         "close_day",
@@ -322,6 +342,7 @@ FEATURES: tuple[Feature, ...] = (
         "Close the day",
         "आज का हिसाब",
         "close_day",
+        what_hi="आज की बिक्री की कॉपी या बिल बुक की फ़ोटो लें; कोच पढ़कर आज की बिक्री सहेजता है।",
     ),
     Feature(
         "rescue",
@@ -334,6 +355,7 @@ FEATURES: tuple[Feature, ...] = (
         "6 bun maska 30% off till 8",
         "6 बन मस्का 8 बजे तक 30% छूट",
         "grow",
+        what_hi="बची हुई चीज़ें बंद होने तक 20, 30 या 50% छूट पर दें; आस-पास के ग्राहक उन्हें रख सकते हैं।",
     ),
     Feature(
         "radar",
@@ -347,6 +369,7 @@ FEATURES: tuple[Feature, ...] = (
         "What are people nearby asking for?",
         "आस-पास लोग क्या माँग रहे हैं?",
         "radar",
+        what_hi="आस-पास लोग क्या माँग रहे हैं जो यहाँ कोई दुकान नहीं रखती; 5 अलग लोग पूछें तब दिखता है।",
     ),
     Feature(
         "forecast",
@@ -359,6 +382,7 @@ FEATURES: tuple[Feature, ...] = (
         "How much chai tomorrow?",
         "कल कितनी चाय बनाऊँ?",
         "plan",
+        what_hi="कल हर चीज़ कितनी बनानी है, पिछले हफ़्तों की बिक्री से।",
     ),
     Feature(
         "insights",
@@ -371,6 +395,7 @@ FEATURES: tuple[Feature, ...] = (
         "How was business this week?",
         "इस हफ़्ते बिक्री कैसी रही?",
         "grow",
+        what_hi="इस हफ़्ते की बिक्री: सबसे ज़्यादा बिकी चीज़ें, धीमी चीज़ें और पिछले हफ़्ते से तुलना।",
     ),
     Feature(
         "suppliers",
@@ -383,6 +408,7 @@ FEATURES: tuple[Feature, ...] = (
         "My milk is running low",
         "दूध ख़त्म होने वाला है",
         "grow",
+        what_hi="कोई चीज़ कम हो तो पास के सप्लायर ढूँढें, ऑर्डर तैयार करें और भेजें दबाएँ।",
     ),
     Feature(
         "import_sales",
@@ -395,6 +421,7 @@ FEATURES: tuple[Feature, ...] = (
         "Import my sales",
         "मेरी बिक्री इम्पोर्ट करो",
         "connect",
+        what_hi="POS या Excel फ़ाइल से अपनी बिक्री इम्पोर्ट करें; कोच कॉलम एक बार मिलाता है।",
     ),
     Feature(
         "google",
@@ -407,6 +434,7 @@ FEATURES: tuple[Feature, ...] = (
         "How do I get on Google?",
         "Google पर कैसे आऊँ?",
         "google",
+        what_hi="Google पर आने की जाँच-सूची; आख़िरी कदम आप Google के अपने पेज पर करते हैं।",
     ),
     Feature(
         "stamps",
@@ -419,6 +447,7 @@ FEATURES: tuple[Feature, ...] = (
         "Free chai after 8 visits",
         "8 बार आने पर एक चाय मुफ़्त",
         "stamps",
+        what_hi="इनाम चुनें और कितनी बार आने पर मिले; ग्राहक QR स्कैन करके स्टैम्प जमा करते हैं।",
     ),
     Feature(
         "photos",
@@ -431,6 +460,7 @@ FEATURES: tuple[Feature, ...] = (
         "Add a shop photo",
         "दुकान की फ़ोटो जोड़ो",
         "photo",
+        what_hi="ग्राहक पेज के लिए दुकान या खाने की फ़ोटो जोड़ें; कभी भी हटाएँ।",
     ),
     Feature(
         "icon",
@@ -443,6 +473,7 @@ FEATURES: tuple[Feature, ...] = (
         "Make my icon",
         "मेरा आइकन बनाओ",
         "icon",
+        what_hi="दुकान के नाम से चौकोर आइकन बनाएँ, या अपनी कोई फ़ोटो लगाएँ।",
     ),
     Feature(
         "memory",
@@ -455,6 +486,7 @@ FEATURES: tuple[Feature, ...] = (
         "Remember: closed on Mondays",
         "याद रखो: सोमवार को बंद",
         "details",
+        what_hi="कोच को पक्की बातें बताइए; वह याद रखता है और आप कभी भी नोट हटा सकते हैं।",
     ),
     Feature(
         "reminders",
@@ -468,6 +500,7 @@ FEATURES: tuple[Feature, ...] = (
         "Remind me every morning",
         "मुझे हर सुबह याद दिलाओ",
         "reminders",
+        what_hi="सुबह और शाम फ़ोन पर छोटा रिमाइंडर, सिर्फ़ जब कुछ ज़रूरी हो। कभी भी चालू या बंद करें।",
     ),
     Feature(
         "shops",
@@ -480,6 +513,7 @@ FEATURES: tuple[Feature, ...] = (
         "Add another shop",
         "एक और दुकान जोड़ो",
         "you",
+        what_hi="दूसरी दुकान जोड़ें या दुकानों के बीच बदलें; हर दुकान का अपना मेनू और कोच है।",
     ),
     Feature(
         "privacy",
@@ -492,6 +526,7 @@ FEATURES: tuple[Feature, ...] = (
         "Delete my data",
         "मेरा डेटा मिटाओ",
         "privacy",
+        what_hi="क्या सहेजा है देखें, डाउनलोड करें या अपना डेटा मिटाएँ; हर बार पहले पूछा जाता है।",
     ),
     Feature(
         "face_check",
@@ -504,6 +539,7 @@ FEATURES: tuple[Feature, ...] = (
         "Verify me",
         "मेरा चेहरा जाँचो",
         "trust",
+        what_hi="चेहरे की जाँच वैकल्पिक है; यह पहचान या मालिकाना हक़ साबित नहीं करती।",
     ),
     Feature(
         "help",
@@ -516,6 +552,7 @@ FEATURES: tuple[Feature, ...] = (
         "What can you do?",
         "तुम क्या कर सकते हो?",
         "you",
+        what_hi="अपनी दुकान के बारे में अपने शब्दों में कुछ भी पूछिए, या उदाहरणों वाली गाइड खोलें।",
     ),
     Feature(
         "find",
@@ -620,6 +657,11 @@ def where_line(feature_id: str) -> str:
 def next_line(feature_id: str) -> str:
     """The demo's closing line: the same screen path, as the next thing to open."""
     return f"Next, open {BY_ID[feature_id].where}."
+
+
+def next_line_hi(feature_id: str) -> str:
+    """next_line for a Hindi phrase; the path keeps the English labels from this map."""
+    return f"अब {BY_ID[feature_id].where} खोलें।"
 
 
 def as_dict(feature: Feature) -> dict[str, str]:
