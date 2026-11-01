@@ -454,6 +454,7 @@ async def draft_reorder(
         on_order,
         resize,
         settle_drafts,
+        sized_line,
         still_wanted,
     )
 
@@ -545,6 +546,24 @@ async def draft_reorder(
         # One draft per need: the open one comes back, sized again for what is now on its way
         # (or with the owner's quantity, if named).
         waiting: dict[str, Any] = coming["draft"]
+        sized = sized_line(store, bid, waiting, target, unit, wanted) if quantity else None
+        if quantity and sized:
+            # The same rule as a new draft: the open one keeps its amount, and the owner is told.
+            amount = sourcing.convert(sized[1], sized[0]["unit"], unit) if sized[1] else None
+            if cannot_meet(float(quantity), amount):
+                return {
+                    "status": "check",
+                    "reason": "named",
+                    "asked": float(quantity),
+                    "item": target,
+                    "unit": unit,
+                    "quantity": round(amount, 2) if amount is not None else None,
+                    "days": None,
+                    "supplier": waiting["supplier"]["name"],
+                    "supplier_item": sized[0]["item"],
+                    "supplier_quantity": sized[1] or sized[0]["quantity"],
+                    "supplier_unit": sized[0]["unit"],
+                }
         reason = waiting.setdefault("reason", {})
         if done and not reason.get("owner_quantity"):
             # What was sent since covers it: the draft would only over-order.
@@ -599,6 +618,12 @@ async def draft_reorder(
         # kg, #264): order the ingredient, sized by the shop's own stock of it when it keeps
         # some, else from the supplier's minimum; the owner reviews the draft either way.
         supplied = candidate["product"]
+        if quantity:
+            # The owner named an amount in a unit this supplier does not sell in: only its
+            # smallest order is quoted, and the check below says so (OB-239).
+            return quote(
+                store, bid, candidate, supplied["name"], supplied["unit"], 0.0, need_by, today
+            )
         stocked = next(
             (p for p in inventory if p["name"].casefold() == supplied["name"].casefold()),
             next((p for p in inventory if sourcing.matches(p["name"], supplied["name"])), None),
@@ -654,20 +679,33 @@ async def draft_reorder(
         "supplier_quantity": line["quantity"],
         "supplier_unit": line["unit"],
     }
+    if quantity and cannot_meet(float(quantity), amount):
+        # The owner named an amount the supplier cannot sell (its minimum, its packs or a unit
+        # that does not convert): say so, and never draft a different amount (OB-239).
+        return {
+            **check,
+            "reason": "named",
+            "asked": float(quantity),
+            "quantity": round(amount, 2) if amount is not None else None,
+        }
     if not quantity and amount is None:
         # The supplier sells it in a unit the shop's count does not convert to (Atta by the
         # pack with a minimum of 1000, counted here in kg): the app cannot tell how much that
         # is, so the owner checks it first and nothing is drafted (OB-239).
-        return check
-    if (
-        not quantity
-        and need["daily"]
-        and amount is not None
-        and amount > need["daily"] * CHECK_DAYS
-    ):
+        return {**check, "reason": "units"}
+    if not quantity and not need["daily"]:
+        # No sales of it yet (a new shop): nothing says how much it needs, so the supplier's
+        # minimum is never drafted unseen; the owner names the amount (OB-239).
+        return {
+            **check,
+            "reason": "no_history",
+            "quantity": round(amount, 2) if amount is not None else None,
+        }
+    if not quantity and amount is not None and amount > need["daily"] * CHECK_DAYS:
         # More than a month of use: the owner checks the item and its supplier (OB-239).
         return {
             **check,
+            "reason": "month",
             "quantity": round(amount, 2),
             "days": math.floor(amount / need["daily"]),
         }
@@ -776,6 +814,12 @@ def pick_item(
         if soonest is None or rank[:3] < soonest[:3]:
             soonest = rank
     return soonest[3] if soonest else ""
+
+
+def cannot_meet(named: float, amount: float | None) -> bool:
+    """The supplier's amount is not what the owner named: its minimum or packs are far off, or
+    its unit does not convert. Rounding up to a nearby pack is still what they asked for."""
+    return amount is None or amount > max(named * 1.25, named + 1) or amount < named * 0.8
 
 
 def answered_item(

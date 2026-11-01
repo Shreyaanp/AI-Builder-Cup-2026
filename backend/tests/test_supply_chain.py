@@ -675,8 +675,11 @@ def test_ob226_reorder_counts_what_is_on_its_way_and_never_duplicates(shop) -> N
     assert again["quantity"] == coming and again["arrives"] == sent["delivery"]
     assert len(supply_chain.orders(store, "alice", bid)) == 1
     # The owner can still order a named quantity on top.
-    extra = draft(store, bid, "atta", 5)
+    extra = draft(store, bid, "atta", coming)
     assert extra["status"] == "drafted" and extra["order"]["id"] != sent["id"]
+    assert extra["order"]["lines"][0]["quantity"] == coming
+    # Below the supplier's minimum it says so, and never drafts a different amount (OB-239).
+    assert draft(store, bid, "atta", 1)["reason"] == "named"
     # Cancelled orders are not on their way: the need comes back in full.
     supply_chain.cancel(store, "alice", bid, extra["order"]["id"], extra["order"]["version"])
     latest = supply_chain.get_po(store, "alice", bid, sent["id"])

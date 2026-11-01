@@ -347,6 +347,20 @@ def supply_reply(name: str, result: dict[str, Any]) -> str | None:
                 f"Offline coach: which item do you mean: {' or '.join(choices)}? I saved "
                 f'nothing yet. Say "I {verb} {choices[0]}" with the name you mean.'
             )
+        if result.get("status") == "check_quantity" and result.get("reason") == "named":
+            return (
+                f"Offline coach: {result['supplier']} can't sell {result['asked']:g} "
+                f"{result['unit']} {result['item']}: they sell it by the "
+                f"{result['supplier_unit']}, at least {result['supplier_quantity']:g}. I drafted "
+                "nothing. Name an amount they sell, or check the supplier."
+            )
+        if result.get("status") == "check_quantity" and result.get("reason") == "no_history":
+            return (
+                f"Offline coach: you have no sales of {result['item']} yet, so I can't tell how "
+                f"much you need and drafted nothing. {result['supplier']} sells at least "
+                f"{result['supplier_quantity']:g} {result['supplier_unit']}. Tell me how much "
+                "you want."
+            )
         if result.get("status") == "check_quantity":
             if result.get("days") is None:
                 return (

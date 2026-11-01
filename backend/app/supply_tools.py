@@ -226,16 +226,20 @@ async def draft_reorder(
     if result["status"] == "check":
         return {
             "status": "check_quantity",
+            "reason": result.get("reason", ""),
             "item": result["item"],
             "unit": result["unit"],
             "quantity": result["quantity"],
+            "asked": result.get("asked"),
             "days": result["days"],
             "supplier": result["supplier"],
             "supplier_quantity": result["supplier_quantity"],
             "supplier_unit": result["supplier_unit"],
-            "instruction": "No order was drafted: it is more than a month of what the shop uses, "
-            "or sold in a unit that does not compare (days is null). Ask the owner to check the "
-            "item and the supplier's minimum, or to name the quantity they want.",
+            "instruction": "No order was drafted. reason month: more than a month of what the "
+            "shop uses; units: sold in a unit that does not compare; no_history: no sales yet, "
+            "so the need is unknown; named: the supplier cannot sell the amount the owner asked "
+            "(asked) — say plainly what it sells instead and never order a different amount "
+            "unasked. Ask the owner to check, or to name an amount the supplier sells.",
         }
     order = result["order"]
     return {

@@ -57,8 +57,9 @@ def open_shop(
         for i in range(1, 36)
         for item, quantity, price in sales
     ]
-    prepared = store.prepare_sales("alice", bid, rows)
-    store.save_sales("alice", bid, prepared["id"], prepared["digest"])
+    if rows:
+        prepared = store.prepare_sales("alice", bid, rows)
+        store.save_sales("alice", bid, prepared["id"], prepared["digest"])
     return bid
 
 
@@ -89,14 +90,16 @@ def neighbour(
     supply_chain.ensure_relationship(store, bid, shared, "INR", 0)
 
 
-def draft(store: MerchantStore, bid: str, item: str = "", source: str = "") -> dict:
+def draft(
+    store: MerchantStore, bid: str, item: str = "", source: str = "", quantity: float | None = None
+) -> dict:
     return asyncio.run(
         supply_chain.draft_reorder(
             store,
             "alice",
             bid,
             item,
-            None,
+            quantity,
             ForecastService(offline()),
             SupplierGenerator(offline()),
             DEMO_OWNER_UID,
@@ -416,6 +419,8 @@ def test_the_offline_coach_reads_the_item_without_the_day() -> None:
     found = supply_call("Reorder milk for tomorrow", None)
     assert found is not None and found.function_call is not None
     assert found.function_call.args == {"item": "milk"}
+
+
 # Second review of PR #623, point 3: the owner's chat answer is saved only on the item it names.
 
 
@@ -588,3 +593,99 @@ def test_the_offline_model_routes_each_answer_to_the_item_it_asked_about(store) 
         assert part.function_call.args == {"item": "Masala chai", "source": source}, text
 
 
+# Second review of PR #623, point 5: the quantity cap has no holes.
+
+
+def minimum(store: MerchantStore, bid: str, moq: float) -> None:
+    for row in supply_chain.relationships(store, "alice", bid):
+        rules = supply_chain.rules_of(row)
+        items = [rule.model_copy(update={"moq": moq}) for rule in rules.items]
+        supply_chain.save_rules(
+            store,
+            "alice",
+            bid,
+            row["supplier"]["id"],
+            rules.model_copy(update={"items": items}),
+            row["version"],
+        )
+
+
+def test_a_new_shop_with_no_sales_is_checked_not_drafted_at_the_minimum(store) -> None:
+    # A new kirana with no Atta sales drafted 1000 kg of Atta with no check.
+    bid = open_shop(
+        store,
+        "Lakshmi Kirana",
+        "Grocery / Kirana",
+        [ProductFields(name="Atta", price=5500, unit="kg", stock=6)],
+        [],
+    )
+    kilos = [ProductFields(name="Atta", price=4000, unit="kg", stock=5000)]
+    neighbour(store, bid, "demo-ob239-kilos", "Kilo Wholesale (Demo)", "Wholesale", kilos, True)
+    minimum(store, bid, 1000.0)
+    result = draft(store, bid, "Atta")
+    assert result["status"] == "check" and result["reason"] == "no_history", result
+    assert supply_chain.orders(store, "alice", bid) == []
+    reply = supply_reply("draft_reorder", {**result, "status": "check_quantity"})
+    assert reply and "no sales of Atta yet" in reply and "drafted nothing" in reply
+    # Naming an amount the supplier sells drafts exactly that.
+    minimum(store, bid, 0.0)
+    named = draft(store, bid, "Atta", quantity=20)
+    assert named["status"] == "drafted", named
+    assert named["order"]["lines"][0]["quantity"] == 20
+
+
+def test_a_named_amount_the_supplier_cannot_sell_is_said_not_swapped(store) -> None:
+    # The check said "name the amount"; naming 5 then drafted 1000 packs.
+    bid = open_shop(
+        store,
+        "Lakshmi Kirana",
+        "Grocery / Kirana",
+        [ProductFields(name="Atta", price=5500, unit="kg", stock=6)],
+        [("Atta", 3, 5500)],
+    )
+    packs = [ProductFields(name="Atta", price=4000, unit="pack", stock=5000)]
+    neighbour(store, bid, "demo-ob239-packs", "Pack Wholesale (Demo)", "Wholesale", packs, True)
+    minimum(store, bid, 1000.0)
+    result = draft(store, bid, "Atta", quantity=5)
+    assert result["status"] == "check" and result["reason"] == "named", result
+    assert result["asked"] == 5 and result["supplier_quantity"] >= 1000
+    assert supply_chain.orders(store, "alice", bid) == []
+    reply = supply_reply("draft_reorder", {**result, "status": "check_quantity"})
+    assert reply and "can't sell 5 kg Atta" in reply and "drafted nothing" in reply
+
+
+def test_a_named_amount_on_an_open_draft_is_said_and_the_draft_keeps_its_amount(store) -> None:
+    # The open draft took any named amount and silently rounded it up to the minimum.
+    bid = open_shop(
+        store,
+        "Lakshmi Kirana",
+        "Grocery / Kirana",
+        [ProductFields(name="Atta", price=5500, unit="kg", stock=6)],
+        [("Atta", 3, 5500)],
+    )
+    kilos = [ProductFields(name="Atta", price=4000, unit="kg", stock=5000)]
+    neighbour(store, bid, "demo-ob239-kilos", "Kilo Wholesale (Demo)", "Wholesale", kilos, True)
+    minimum(store, bid, 0.0)
+    assert draft(store, bid, "Atta", quantity=20)["order"]["lines"][0]["quantity"] == 20
+    minimum(store, bid, 1000.0)
+    result = draft(store, bid, "Atta", quantity=5)
+    assert result["status"] == "check" and result["reason"] == "named", result
+    assert result["asked"] == 5 and result["supplier_quantity"] == 1000
+    open_orders = supply_chain.orders(store, "alice", bid)
+    assert [order["lines"][0]["quantity"] for order in open_orders] == [20]
+
+
+def test_a_named_amount_in_the_ingredient_path_is_respected_or_checked(store) -> None:
+    # Amul milk by the bottle, named 20: it drafted 10 litres of Milk, ignoring the 20.
+    bid = open_shop(
+        store,
+        "Lakshmi Kirana",
+        "Grocery / Kirana",
+        [ProductFields(name="Amul milk", price=3000, unit="bottle", stock=3)],
+        [("Amul milk", 10, 3000)],
+    )
+    milk = [ProductFields(name="Milk", price=6000, unit="litre", stock=500)]
+    neighbour(store, bid, "demo-ob239-dairy", "Dairy Wholesale (Demo)", "Wholesale", milk, True)
+    result = draft(store, bid, "Amul milk", quantity=20)
+    assert result["status"] == "check" and result["reason"] == "named", result
+    assert supply_chain.orders(store, "alice", bid) == []
