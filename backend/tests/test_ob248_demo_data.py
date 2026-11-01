@@ -1,6 +1,7 @@
 """OB-248: the demo's seed data is correct and consistent, shop by shop."""
 
 import re
+import time
 from datetime import date, timedelta
 
 import pytest
@@ -88,6 +89,37 @@ def test_OB_248_sandbox_orders_are_consistent(demo) -> None:
         inventory = owner(client, session, f"businesses/{bid}/inventory").json()
         for row in inventory:
             assert row.get("source") in {"made", "bought"}, row["name"]
+
+
+def test_OB_248_closed_orders_happened_in_the_past_with_their_whole_story(demo) -> None:
+    """FreshMart PO-FM-2210 and Metro Foods 4500091500 read "Done": every step is in the past,
+    in order, and the chat holds the owner's order, the yes, the dispatch, the goods and the
+    bill, never a delivery tomorrow or a step "Waiting"."""
+    client, session, businesses = demo
+    now = time.time()
+    closed = []
+    for business in businesses:
+        supply = owner(client, session, f"businesses/{business['id']}/supply").json()
+        closed += [order for order in supply["orders"] if order["status"] == "closed"]
+    assert {"PO-FM-2210", "4500091500"} <= {order["number"] for order in closed}
+    for order in closed:
+        number = order["number"]
+        assert order["received"], number
+        assert date.fromisoformat(order["delivery"]) < date.today(), number
+        kinds = [document["kind"] for document in order["documents"]]
+        for step in ("ORDERS", "ORDRSP", "DESADV", "RECEIPT", "INVOIC"):
+            assert step in kinds, f"{number}: no {step}"
+        at = [document["at"] for document in order["documents"]]
+        assert at == sorted(at) and at[-1] < now - 86400, f"{number}: steps out of order or new"
+        assert order["created"] <= at[0] and order["received_at"] < now - 86400, number
+        received = next(d for d in order["documents"] if d["kind"] == "RECEIPT")
+        assert abs(received["at"] - order["received_at"]) < 3600 * 6, number
+        for document in order["documents"]:
+            issued = date.fromisoformat(document["canonical"]["issued"])
+            assert issued < date.today(), f"{number} {document['kind']} issued {issued}"
+            # Its text too: no document of a closed order is dated today, in any format.
+            for today in (date.today().isoformat(), date.today().strftime("%Y%m%d")):
+                assert today not in document["raw"], f"{number} {document['kind']} dated today"
 
 
 def test_OB_248_run_out_dates_agree_and_follow_the_numbers(demo) -> None:

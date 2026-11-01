@@ -68,7 +68,8 @@ export function SupplierTalk({
   const messages: { key: string; at: number; mine: boolean; text: string }[] = []
   for (const document of order.documents) {
     const base = { key: document.id, at: document.at }
-    if (document.kind === 'ORDERS' && document.from === 'buyer') {
+    // The shop's order is its own ask, whether it sent it or the supplier's system wrote it up.
+    if (document.kind === 'ORDERS') {
       messages.push({ ...base, mine: true, text: c.ask(list, day) })
     } else if (document.kind === 'ORDRSP') {
       const short = linesOf(document).find((line) => line.status === 'backordered')
