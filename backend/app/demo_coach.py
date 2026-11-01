@@ -79,6 +79,8 @@ QUESTION = re.compile(r"(?:is|are|do|does|did|what|when|which|how|can|should|wil
 ASKED = re.compile(
     r"(?:what|how|why|can|could|should|is|are|do|does|did|will|would|kya|kaise)\b", re.I
 )
+# "ज़्यादा" is written with or without the nukta, precomposed or not.
+HINDI_BEST_SELLERS = re.compile(r"सबसे\s+\S*यादा\s+(?:\S+\s+)?बिक|बेस्ट\s*सेलर|टॉप\s*सेलर")
 BEST_SELLERS = re.compile(
     r"(?:(?:what\s+(?:are|were|is)|what's|show(?:\s+me)?|which\s+are)\s+)?(?:my\s+|the\s+)?"
     r"(?:best[\s-]*sell(?:ers?|ing\s+items?)|top[\s-]*sell(?:ers?|ing\s+items?)"
@@ -294,49 +296,25 @@ def _unclear_change(question: str, text: str) -> bool:
     return bool(upkeep) and "?" not in question and not QUESTION.match(text)
 
 
-def _last_week(result: dict[str, Any]) -> dict[str, Any]:
-    """The same answer for last week. On a Monday this week has no closed day yet (OB-248)."""
-    from .coordinator import current, local_now, recap_facts, shop_zone, time, to_major
-
-    ctx = current.get()
-    assert ctx is not None and ctx.business_id
-    shop = ctx.store.context(ctx.uid, ctx.business_id)["business"]
-    today = local_now(shop_zone(shop["fields"]), time.time()).date()
-    year, week, _ = (today - timedelta(days=7)).isocalendar()
-    facts = recap_facts(
-        f"{year}-W{week:02d}",
-        ctx.store.sales_history(ctx.uid, ctx.business_id),
-        ctx.store.recap_signals(ctx.uid, ctx.business_id),
-    )
-    currency = facts["currency"]
-    for key in ("revenue", "previous_revenue", "revenue_change"):
-        facts[key] = to_major(int(facts[key]), currency)
-    for group in ("top_sellers", "slow_movers"):
-        facts[group] = [
-            {**row, "revenue": to_major(int(row["revenue"]), currency)} for row in facts[group]
-        ]
-    return {**result, **facts}
-
-
 def _best_sellers() -> list[StreamEvent]:
     from .charts import insights_card
     from .coordinator import get_insights
 
     result = get_insights()
-    period = "This week's"
-    if not result.get("top_sellers"):
-        result = _last_week(result)
-        period = "Last week's"
     top = result.get("top_sellers") or []
     if not top:
-        return [StreamEvent(kind="reply", text="The demo shop has no sales saved yet.")]
+        return [
+            StreamEvent(
+                kind="reply", text="The demo shop has no sales saved in the last 7 days yet."
+            )
+        ]
     names = ", ".join(f"{row['item']} ({row['quantity']:g} sold)" for row in top[:3])
     card = insights_card(result)
     return [
         *([StreamEvent(kind="chart", data=card)] if card else []),
         StreamEvent(
             kind="reply",
-            text=f"{period} demo best sellers: {names}. "
+            text=f"In the last 7 days, the demo best sellers: {names}. "
             "In your real shop, these come from your saved sales; open Grow → Insights next.",
         ),
     ]
@@ -430,6 +408,14 @@ def public_demo_reply(ctx: Any, question: str) -> str | None:
     if re.search(r"[\u0900-\u097f]", question):
         # This offline demo has no translation model. Keep its answers in the language of a
         # Devanagari question, with the same seeded facts used by the English replies.
+        if HINDI_BEST_SELLERS.search(question):
+            from .coordinator import get_insights
+
+            top = get_insights().get("top_sellers") or []
+            if not top:
+                return "डेमो दुकान में पिछले 7 दिनों की कोई बिक्री अभी सेव नहीं है।"
+            names = ", ".join(f"{row['item']} ({row['quantity']:g} बिके)" for row in top[:3])
+            return f"पिछले 7 दिनों में डेमो के सबसे ज़्यादा बिकने वाले आइटम: {names}।"
         if any(term in words for term in ("आज", "बिक्री", "कमाई")):
             rows = [row for row in history if row["date"] == today.isoformat()]
             sold = sum(row["quantity"] for row in rows)

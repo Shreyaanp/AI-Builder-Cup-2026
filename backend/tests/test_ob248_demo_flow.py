@@ -328,28 +328,6 @@ def test_OB_248_uploads_refuse_a_shop_outside_the_sandbox(live_parent_demo) -> N
     assert response.status_code == 403
 
 
-def test_OB_248_best_sellers_answer_on_a_monday_too(
-    live_parent_demo,  # noqa: F811
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """On a Monday this week has no closed day yet: the demo said it had no sales at all."""
-    client, _app, session, _bid = live_parent_demo
-    from app import coordinator
-
-    real = coordinator.get_insights
-
-    def monday() -> dict[str, object]:
-        return {**real(), "top_sellers": []}
-
-    monkeypatch.setattr(coordinator, "get_insights", monday)
-    response = client.post(
-        f"/api/v1/demo/sessions/{session}/coach", json={"message": "what are my best sellers?"}
-    )
-    assert response.status_code == 200
-    assert "Last week's demo best sellers: Masala chai" in response.text
-    assert "no sales" not in response.text
-
-
 def test_OB_248_an_icon_comes_from_the_shops_own_gallery(live_parent_demo) -> None:  # noqa: F811
     client, _app, session, bid = live_parent_demo
     unknown = "00000000-0000-0000-0000-000000000000"
