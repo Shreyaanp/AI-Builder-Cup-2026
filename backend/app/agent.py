@@ -791,7 +791,9 @@ OFFLINE_HI = {
     "No problem. You can add your menu from Today. All the best!": (
         "कोई बात नहीं। आप अपना मेन्यू आज वाले पेज से जोड़ सकते हैं। शुभकामनाएँ!"
     ),
-    "Your shop is live now. ": "आपकी दुकान अब लाइव है। ",
+    "Your shop is saved. Only you can see it for now. ": (
+        "आपकी दुकान सेव हो गई। अभी सिर्फ़ आप इसे देख सकते हैं। "
+    ),
     "All set. You can add your menu from Today.": ("सब तैयार है। आप अपना मेन्यू आज वाले पेज से जोड़ सकते हैं।"),
     "Your shop is set up. ": "आपकी दुकान तैयार है। ",
     **{
@@ -931,14 +933,14 @@ def _new_shop_reply(
     done["sell"] = done.pop("category")
     done["location"] = done.pop("place")
     announced = any(
-        _says(part.text or "", "Your shop is live now. ")
+        _says(part.text or "", "Your shop is saved. Only you can see it for now. ")
         for content in earlier
         if content.role == "model"
         for part in content.parts or []
     )
     if draft and draft.live_id and not announced:
         # Said once, the moment it happens.
-        prefix += "Your shop is live now. "
+        prefix += "Your shop is saved. Only you can see it for now. "
     questions = dict((key, q) for key, q, _ in NEW_SHOP_TOPICS)
     question = next((questions[key] for key in order if not done[key] and key not in skipped), None)
     if not question and done["name"] and done["sell"] and done["location"]:

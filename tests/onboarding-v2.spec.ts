@@ -45,7 +45,7 @@ test('one sentence puts the shop live; no menu question; summary, skip face, Tod
   )
   // Name, kind and place in one go: live at once, and only what is missing is asked: the tea
   // stall's own follow-up first (#112), then the hours and the photo.
-  await expect(page.getByTestId('shop-live')).toHaveText('Live')
+  await expect(page.getByTestId('shop-live')).toHaveText('Saved')
   expect(next).toBe('followup')
   await expect(page.getByTestId('agent-action')).toHaveCount(0) // filled silently
   const shops = await (await page.request.get('/api/v1/businesses')).json()
@@ -250,7 +250,7 @@ test('"bas" ends the conversation with a goodbye; Continue carries on without re
   await ended.getByRole('button', { name: 'Continue' }).click()
   await expect(ended).toHaveCount(0)
   expect(await answer(page, 'location: Lajpat Nagar')).not.toBe('name')
-  await expect(page.getByTestId('shop-live')).toHaveText('Live')
+  await expect(page.getByTestId('shop-live')).toHaveText('Saved')
   const said = (await page.getByRole('log').locator('li').allInnerTexts()).join('\n')
   expect(said.split(ASKED.name).length - 1).toBeLessThanOrEqual(1)
 })
@@ -285,7 +285,7 @@ test('a self-cleaning helmet station is understood as a service: never a food qu
     page,
     'name: Clean Helmet Point; category: self-cleaning helmet station; location: MG Road metro',
   )
-  await expect(page.getByTestId('shop-live')).toHaveText('Live')
+  await expect(page.getByTestId('shop-live')).toHaveText('Saved')
   // "nahi, yeh service hai" fixes the kind silently: no confirmation, the next thing is asked.
   if (next) next = await answer(page, 'nahi, yeh service hai')
   while (next) next = await answer(page, next === 'hours' ? 'pata nahi' : 'baad mein')

@@ -80,7 +80,7 @@ SCREENS: dict[str, str] = {
     "payments": "Payments & rides",
     "supply": "Purchase orders",
     "playbook": "What Chalkboard knows about your shop",
-    "connect": "Connect your system",
+    "connect": "Link your billing app",
     "icon": "Shop icon",
     "radar": "Asked nearby",
     "rider": "Send a rider",

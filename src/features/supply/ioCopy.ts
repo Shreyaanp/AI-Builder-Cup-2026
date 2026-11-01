@@ -1,13 +1,13 @@
 import { useLocale } from '../../state/hooks'
 
-/** Words for partner documents in and out (Supply chain screens). Plain words, never codes. */
+/** Words for supplier documents in and out (Supply chain screens). Plain words, never codes. */
 const en = {
   title: 'Supply chain',
   tabs: {
     needs: 'Needs me now',
-    coming: 'Coming in',
+    coming: 'On the way',
     received: 'Received',
-    send: 'Must send',
+    send: 'To send',
   },
   question: {
     needs: 'What needs me now?',
@@ -17,7 +17,7 @@ const en = {
   },
   empty: {
     needs: 'Nothing needs you. Everything is on time.',
-    coming: 'Nothing has come in from partners yet.',
+    coming: 'Nothing has come in from suppliers yet.',
     received: 'Nothing received yet.',
     send: 'Everything is sent.',
   },
@@ -60,10 +60,10 @@ const en = {
     undo: 'Undo',
     approve: 'Approve and send',
     open: 'Open',
-    sap: 'View as SAP',
+    sap: 'See the supplier’s copy',
     dismiss: 'Mark as seen',
     retry: 'Retry',
-    demo: 'Partner sends next document (demo)',
+    demo: 'Show next step (demo)',
     sendAll: (n: number) => `Send all (${n})`,
   },
   change: {
@@ -90,9 +90,10 @@ const en = {
   fixOnly: 'Fix only what is different.',
   less: (item: string) => `Less ${item}`,
   more: (item: string) => `More ${item}`,
-  willSend: (what: string, partner: string, format: string) => `${what} to ${partner} · ${format}`,
-  format: { idoc: 'SAP IDoc', csv: 'CSV file', text: 'Message', json: 'JSON' },
-  simulated: 'Demo partner: sending is simulated.',
+  willSend: (what: string, supplier: string, format: string) =>
+    `${what} to ${supplier} · ${format}`,
+  format: { idoc: 'Supplier’s format', csv: 'CSV file', text: 'Message', json: 'JSON' },
+  simulated: 'Demo supplier: sending is simulated.',
   sendingIn: (n: number) => `Sending in ${n} s`,
   step: {
     created: 'Created',
@@ -108,11 +109,11 @@ const en = {
   due: (day: string) => `Due ${day}`,
   plain: 'In plain words',
   onTheWay: 'On the way to you',
-  fromPartners: 'From partners',
+  fromPartners: 'From suppliers',
   fromTo: (a: string, b: string) => `${a} → ${b}`,
   needsNow: (n: number) => (n === 1 ? '1 thing needs you now' : `${n} things need you now`),
-  allQuiet: 'Partners: all on time',
-  noPartners: 'No partners yet',
+  allQuiet: 'Suppliers: all on time',
+  noPartners: 'No suppliers yet',
   noPartnersHint: 'Suppliers show here after your first order',
   beforeClose: 'Before you close',
   notSent: (n: number) => (n === 1 ? '1 document not sent yet' : `${n} documents not sent yet`),
@@ -121,7 +122,7 @@ const en = {
   failed: 'Couldn’t load. Check your connection.',
   actionFailed: 'That didn’t work. Try again.',
   stale: 'This changed meanwhile. Showing the latest.',
-  demoDone: 'The demo partner has sent everything.',
+  demoDone: 'The demo supplier has sent everything.',
 }
 
 export type IoCopy = typeof en
@@ -142,7 +143,7 @@ const hi: IoCopy = {
   },
   empty: {
     needs: 'अभी कुछ नहीं करना। सब समय पर है।',
-    coming: 'साथियों से अभी कुछ नहीं आया।',
+    coming: 'सप्लायर से अभी कुछ नहीं आया।',
     received: 'अभी कुछ नहीं मिला।',
     send: 'सब भेज दिया गया है।',
   },
@@ -185,10 +186,10 @@ const hi: IoCopy = {
     undo: 'वापस लें',
     approve: 'मंज़ूर करके भेजें',
     open: 'खोलें',
-    sap: 'SAP में देखें',
+    sap: 'सप्लायर की कॉपी देखें',
     dismiss: 'देख लिया',
     retry: 'फिर कोशिश करें',
-    demo: 'साथी अगला दस्तावेज़ भेजे (डेमो)',
+    demo: 'अगला कदम दिखाएँ (डेमो)',
     sendAll: (n) => `सब भेजें (${n})`,
   },
   change: {
@@ -214,8 +215,8 @@ const hi: IoCopy = {
   less: (item) => `${item} कम करें`,
   more: (item) => `${item} बढ़ाएँ`,
   willSend: (what, partner, format) => `${partner} को ${what} · ${format}`,
-  format: { idoc: 'SAP IDoc', csv: 'CSV फ़ाइल', text: 'संदेश', json: 'JSON' },
-  simulated: 'डेमो साथी: भेजना नकली है।',
+  format: { idoc: 'सप्लायर का फ़ॉर्मैट', csv: 'CSV फ़ाइल', text: 'संदेश', json: 'JSON' },
+  simulated: 'डेमो सप्लायर: भेजना नकली है।',
   sendingIn: (n) => `${n} सेकंड में भेजेंगे`,
   step: {
     created: 'बना',
@@ -231,11 +232,11 @@ const hi: IoCopy = {
   due: (day) => `${day} तक`,
   plain: 'आसान शब्दों में',
   onTheWay: 'आपके पास आ रहा माल',
-  fromPartners: 'साथियों से',
+  fromPartners: 'सप्लायर से',
   fromTo: (a, b) => `${a} → ${b}`,
   needsNow: (n) => `${n} काम अभी आपके लिए`,
-  allQuiet: 'साथी: सब समय पर',
-  noPartners: 'अभी कोई साथी नहीं',
+  allQuiet: 'सप्लायर: सब समय पर',
+  noPartners: 'अभी कोई सप्लायर नहीं',
   noPartnersHint: 'पहले ऑर्डर के बाद सप्लायर यहाँ दिखेंगे',
   beforeClose: 'दुकान बंद करने से पहले',
   notSent: (n) => `${n} दस्तावेज़ अभी नहीं भेजे`,
@@ -244,7 +245,7 @@ const hi: IoCopy = {
   failed: 'लोड नहीं हुआ। इंटरनेट देखें।',
   actionFailed: 'नहीं हुआ। फिर कोशिश करें।',
   stale: 'इस बीच बदल गया। नया दिखा रहे हैं।',
-  demoDone: 'डेमो साथी सब भेज चुका है।',
+  demoDone: 'डेमो सप्लायर सब भेज चुका है।',
 }
 
 // Hindi and English are complete; other languages show English until translated, except the

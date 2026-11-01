@@ -27,7 +27,7 @@ import { useWorkspace } from '../v1/workspaceContext'
 import { useShowcaseCopy } from './showcaseCopy'
 import { Supporting, Tile } from '../v1/ShopTiles'
 import { useSupplyCopy } from './copy'
-import { orderTotal, poNumber, termsLabel } from './orderFormat'
+import { orderLabel, orderTotal, termsLabel } from './orderFormat'
 import { PurchaseOrderCard } from './PurchaseOrderCard'
 import { useDraftReorder, useRulesActions, useSupply } from './supplyData'
 import { useOrderChangeCopy } from './orderChangeCopy'
@@ -61,7 +61,9 @@ export function SupplyTile() {
         onClick={() => setOpen(true)}
       >
         <Supporting>
-          {latest ? `${s.po(poNumber(latest.number))} · ${s.status[latest.status]}` : s.tileEmpty}
+          {latest
+            ? `${orderLabel(latest, s.orderTitle)} · ${s.status[latest.status]}`
+            : s.tileEmpty}
         </Supporting>
       </Tile>
       <SupplySheet
@@ -133,7 +135,7 @@ export function SupplySheet({ open, onClose }: { open: boolean; onClose: () => v
             {back}
             <Box component="span" sx={{ minWidth: 0, overflowWrap: 'anywhere' }}>
               {view.kind === 'order' && selected
-                ? s.po(poNumber(selected.number))
+                ? orderLabel(selected, s.orderTitle)
                 : supplier
                   ? s.rulesFor(supplier.supplier.name)
                   : s.title}
@@ -252,7 +254,7 @@ export function SupplySheet({ open, onClose }: { open: boolean; onClose: () => v
                   >
                     <FileText size={20} color={roles.primary} aria-hidden="true" />
                     <ListItemText
-                      primary={`${s.po(poNumber(order.number))} · ${order.supplier.name}`}
+                      primary={orderLabel(order, s.orderTitle)}
                       secondary={`${s.status[order.status]} · ${money(order)}`}
                     />
                     <ChevronRight size={18} aria-hidden="true" />

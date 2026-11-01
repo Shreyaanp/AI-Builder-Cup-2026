@@ -67,8 +67,8 @@
     },
     {
       "id": "connect",
-      "title": "Connect your system",
-      "path": ["Shop", "Connect your system"],
+      "title": "Link your billing app",
+      "path": ["Shop", "Link your billing app"],
       "ask": "Connect my Petpooja",
       "ask_hi": "मेरा Petpooja जोड़ो",
       "screen": "connect"
@@ -188,7 +188,7 @@
     {
       "id": "import_sales",
       "title": "Connect your POS or sales file",
-      "path": ["Shop", "Connect your system"],
+      "path": ["Shop", "Link your billing app"],
       "ask": "Import my sales",
       "ask_hi": "मेरी बिक्री इम्पोर्ट करो",
       "screen": "connect"

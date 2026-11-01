@@ -44,8 +44,8 @@ const KNOWN_SYSTEMS = [
   { key: 'square', label: 'Square' },
   { key: 'loyverse', label: 'Loyverse' },
   { key: 'shopify', label: 'Shopify' },
-  { key: 'sap', label: 'SAP' },
-  { key: 'other', label: 'Other POS' },
+  { key: 'sap', label: 'Big-shop system' },
+  { key: 'other', label: 'Other billing app' },
 ] as const
 
 const TARGET_ROLE_KEYS = [

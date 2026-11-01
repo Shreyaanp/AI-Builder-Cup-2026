@@ -204,7 +204,7 @@ test('owner tour connects Today, forecast, payment preview and supplier timeline
   await page.getByLabel('Message', { exact: true }).fill('Forecast my sales')
   await page.getByRole('button', { name: 'Send', exact: true }).click()
   await expect(page.getByRole('figure', { name: /^Forecast chart:/ })).toBeVisible()
-  await expect(page.getByText('Weekday average', { exact: true })).toBeVisible()
+  await expect(page.getByText('Based on your last weeks', { exact: true })).toBeVisible()
   await page.screenshot({
     path: `output/playwright/tour-story/${info.project.name}-owner-forecast.png`,
     fullPage: true,
@@ -232,9 +232,13 @@ test('owner tour connects Today, forecast, payment preview and supplier timeline
   await expect(page.getByText('Recorded sample of SAP’s sandbox, not live')).toHaveCount(0)
   await page
     .getByRole('list', { name: 'Purchase orders', exact: true })
-    .getByRole('button', { name: /PO 4500000001.*Sri Lakshmi Provisions/ })
+    .getByRole('button', { name: 'Tea dust from Sri Lakshmi Provisions (Demo)' })
+    .first()
     .click()
-  const order = page.getByRole('article', { name: 'PO 4500000001', exact: true })
+  const order = page.getByRole('article', {
+    name: 'Tea dust from Sri Lakshmi Provisions (Demo)',
+    exact: true,
+  })
   await expect(order).toBeVisible()
   await expect(order).toContainText('Invoice in')
   await page.screenshot({

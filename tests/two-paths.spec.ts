@@ -20,9 +20,12 @@ const where = (feature: Feature) => feature.path.join(' → ')
 // up is Batch 3 (Shop and You layout) and Batch 4 (Grow list and "More tools"), not this batch.
 // The check is strict: once a row reaches the first view its test fails until it leaves this list.
 const BELOW_FIRST_VIEW = new Set([
+  // Batch 1's readable text sizes (#624) pushed these two below the fold.
+  'Sold out today',
+  'Photos',
   'Shop details',
   'Messages',
-  'Connect your system',
+  'Link your billing app',
   'Orders',
   'Close the day',
   'Purchase orders',

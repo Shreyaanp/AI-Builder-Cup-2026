@@ -30,7 +30,7 @@ TAB_LABELS: dict[str, frozenset[str]] = {
             "Photos",
             "Messages",
             "Customer page",
-            "Connect your system",
+            "Link your billing app",
         }
     ),
     "Grow": frozenset(
@@ -193,10 +193,10 @@ FEATURES: tuple[Feature, ...] = (
     Feature(
         "connect",
         "owner",
-        "Connect your system",
+        "Link your billing app",
         "Import your menu or sales from a billing app file; you check the mapped columns first.",
         '"Connect my Petpooja".',
-        ("Shop", "Connect your system"),
+        ("Shop", "Link your billing app"),
         ("connect", "erp", "petpooja", "shopify", "system"),
         "Connect my Petpooja",
         "मेरा Petpooja जोड़ो",
@@ -390,7 +390,7 @@ FEATURES: tuple[Feature, ...] = (
         "Connect your POS or sales file",
         "Upload a POS or Excel export (Petpooja, Tally, Square…); the coach maps the columns once.",
         '"Connect my POS" or "Import my sales".',
-        ("Shop", "Connect your system"),
+        ("Shop", "Link your billing app"),
         ("pos", "import", "excel", "csv", "tally", "export", "billing"),
         "Import my sales",
         "मेरी बिक्री इम्पोर्ट करो",
