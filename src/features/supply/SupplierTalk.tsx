@@ -102,7 +102,7 @@ export function SupplierTalk({
       } else {
         messages.push({ ...base, mine: false, text: c.yes(list, day) })
       }
-      if ((short || dearer) && order.status !== 'changed') {
+      if ((short || dearer) && order.changes_accepted) {
         messages.push({ key: `${document.id}-ok`, at: document.at + 1, mine: true, text: c.okay })
       }
     } else if (document.kind === 'DESADV' && document.from === 'supplier') {

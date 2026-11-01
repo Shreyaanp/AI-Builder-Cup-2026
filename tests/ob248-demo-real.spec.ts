@@ -151,3 +151,42 @@ test('OB-248 what touches the real world says it is pretend, plainly', async ({ 
   await expect(page.locator('body')).not.toContainText(BLOCKED)
   await expect(page.getByText('In the demo this is pretend: nothing is sent').first()).toBeVisible()
 })
+
+// "OK, go ahead." is the owner's own yes: an order cancelled instead must never show it. The list
+// hides cancelled orders, so this checks what the message depends on: the owner's acceptance.
+for (const accepted of [false, true]) {
+  test(`OB-248 a short reply when the owner ${accepted ? 'accepted' : 'did not accept'}`, async ({
+    page,
+  }) => {
+    await page.route('**/supply', async (route) => {
+      const response = await route.fetch()
+      const body = (await response.json()) as {
+        orders: {
+          status: string
+          changes_accepted?: boolean
+          documents: { kind: string; canonical: { lines: Record<string, unknown>[] } }[]
+        }[]
+      }
+      const order = body.orders[0]!
+      order.status = 'confirmed'
+      order.changes_accepted = accepted
+      const reply = order.documents.find((document) => document.kind === 'ORDRSP')!
+      Object.assign(reply.canonical.lines[0]!, {
+        status: 'backordered',
+        backorder_quantity: 3,
+        backorder_date: '2030-01-10',
+      })
+      await route.fulfill({ response, json: body })
+    })
+    await openDemo(page)
+    const sheet = await openOrders(page)
+    await sheet
+      .getByText(/Sri Lakshmi/)
+      .first()
+      .click()
+    const talk = sheet.getByTestId('supplier-talk')
+    await expect(talk).toContainText('The other 3 kg comes')
+    if (accepted) await expect(talk).toContainText('OK, go ahead.')
+    else await expect(talk).not.toContainText('OK, go ahead.')
+  })
+}

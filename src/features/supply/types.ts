@@ -170,6 +170,7 @@ export interface PurchaseOrder {
   documents: SupplyDocument[]
   backorders: { item: string; quantity: number; unit: string; date: string }[]
   changes?: OrderChange[]
+  changes_accepted?: boolean
   received: boolean
   received_at?: number
   received_stock?: Record<string, number>
