@@ -23,7 +23,7 @@ test('running low → demo suppliers → one-tap order → supplier reply → Or
   await openWithShop(page)
 
   await say(page, 'My flour is running low')
-  const carousel = page.getByRole('list', { name: /suppliers nearby/ })
+  const carousel = page.getByRole('list', { name: /suppliers? nearby/ })
   await expect(carousel).toBeVisible()
   const cards = carousel.getByRole('listitem')
   expect(await cards.count()).toBeGreaterThanOrEqual(3)

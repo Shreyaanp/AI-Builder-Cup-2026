@@ -94,7 +94,8 @@ for (const size of WIDTHS) {
     test.setTimeout(150_000)
     await startShop(page, size)
     await say(page, 'My onions are running low')
-    await expect(page.getByRole('list', { name: /suppliers nearby/ })).toBeVisible()
+    // One or more: another grocery nearby is never a supplier to this one (OB-239).
+    await expect(page.getByRole('list', { name: /suppliers? nearby/ })).toBeVisible()
     await say(page, 'order 20 kg onions from the first one')
     const send = page.getByRole('button', { name: /^Send to / })
     await expect(send).toHaveCount(1)
