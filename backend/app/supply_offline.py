@@ -232,7 +232,7 @@ def io_reply(name: str, result: dict[str, Any]) -> str | None:
             return "Offline coach: a supplier rule is broken; fix it on the card first."
         if status != "sent":
             return "Offline coach: there is no drafted order to approve."
-        return f"Offline coach: PO {result['po_number']} approved and sent to {result['supplier']}."
+        return f"Offline coach: the order is approved and sent to {result['supplier']}."
     if name == "record_goods_received":
         if status not in {"receipt_sent", "receipt_ready"}:
             return "Offline coach: no delivery is open. Which order arrived?"
@@ -301,7 +301,7 @@ def supply_reply(name: str, result: dict[str, Any]) -> str | None:
             else " Tap Approve to send it."
         )
         return (
-            f"Offline coach: I've drafted PO {result['po_number']}: {line['quantity']:g} "
+            f"Offline coach: I've drafted your order: {line['quantity']:g} "
             f"{line['unit']} {line['item']} from {result['supplier']}, {total}, deliver "
             f"{human_date(result['deliver_on'])}.{why}{demo}{broken}{tail}"
         )
@@ -328,7 +328,7 @@ def supply_reply(name: str, result: dict[str, Any]) -> str | None:
             return "Offline coach: no purchase orders yet."
         latest = rows[0]
         return (
-            f"Offline coach: PO {latest['po_number']} to {latest['supplier']} is "
+            f"Offline coach: your order to {latest['supplier']} is "
             f"{latest['status']}; documents so far: {', '.join(latest['documents']) or 'none'}."
         )
     return None

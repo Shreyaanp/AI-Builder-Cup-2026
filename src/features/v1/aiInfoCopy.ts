@@ -2,7 +2,7 @@ import type { Locale } from '../../i18n/locales.js'
 
 const en = {
   label: 'How this works',
-  forecast: 'Forecasts use TimesFM on BigQuery when available, or a weekday average of your sales.',
+  forecast: 'Forecasts are based on how your shop sold in recent weeks.',
   coach:
     'Gemini with ADK agents helps with your business when live AI is on; offline mode uses sample replies.',
   voice: 'Gemini Live lets you talk with the coach when live voice is available.',
@@ -16,8 +16,7 @@ const copy: Record<Locale, typeof en> = {
   en,
   hi: {
     label: 'यह कैसे काम करता है',
-    forecast:
-      'TimesFM और BigQuery उपलब्ध होने पर बिक्री का अनुमान लगाते हैं, वरना हफ़्ते के दिन की औसत बिक्री से अनुमान मिलता है।',
+    forecast: 'अनुमान पिछले हफ़्तों की आपकी बिक्री पर आधारित होता है।',
     coach:
       'लाइव AI चालू होने पर Gemini और ADK एजेंट आपके कारोबार में मदद करते हैं; ऑफ़लाइन मोड में नमूना जवाब मिलते हैं।',
     voice: 'लाइव आवाज़ उपलब्ध होने पर Gemini Live से आप कोच से बात कर सकते हैं।',

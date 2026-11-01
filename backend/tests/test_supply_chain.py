@@ -640,14 +640,14 @@ def test_coach_drafts_reorders_and_rule_changes_as_cards(settings) -> None:  # n
         events = stream("Reorder atta")
         order = next(e["data"] for e in events if e["kind"] == "purchase_order")
         reply = next(e["text"] for e in events if e["kind"] == "reply")
-        assert order["number"] in reply and "Approve" in reply
+        assert "drafted your order" in reply and order["number"] not in reply and "Approve" in reply
         events = stream("MOQ for atta is 20 kg and 30 days credit please")
         card = next(e["data"] for e in events if e["kind"] == "supply_rules")
         assert (
             card["pending"]["change"]["moq"] == 20 and card["pending"]["change"]["terms_days"] == 30
         )
         events = stream("Where is my flour order?")
-        assert "PO 4500012345" in next(e["text"] for e in events if e["kind"] == "reply")
+        assert "your order to" in next(e["text"] for e in events if e["kind"] == "reply")
 
 
 def test_sap_sandbox_route_shows_the_recorded_sample_when_off(client) -> None:

@@ -297,7 +297,7 @@ test('GAP 8: Close the day appears in evening needs you now and opens modal, Gro
   await closeButton.click()
   const dialog = page.getByRole('dialog', { name: 'Close the day' })
   await expect(dialog).toBeVisible()
-  await expect(dialog.getByText('Till or POS report')).toBeVisible()
+  await expect(dialog.getByText('Sales slip or notebook')).toBeVisible()
 
   await dialog.getByRole('button', { name: 'Close' }).click()
   await expect(dialog).toHaveCount(0)

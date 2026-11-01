@@ -181,7 +181,7 @@ export function MorningBrief({
                 <Stack direction="row" sx={{ gap: 2, alignItems: 'baseline', flexWrap: 'wrap' }}>
                   <Typography
                     component="p"
-                    variant="headlineSmall"
+                    variant="titleLarge"
                     sx={{ fontVariantNumeric: 'tabular-nums' }}
                   >
                     {new Intl.NumberFormat(locale, {
@@ -195,20 +195,25 @@ export function MorningBrief({
                   </Typography>
                   {brief.weather.demo && <Chip size="small" label={t.demo} />}
                 </Stack>
-                {/* Open-Meteo is CC BY 4.0: the attribution always shows with the data. */}
+                {/* Open-Meteo is CC BY 4.0: the attribution shows with real data. The demo shows
+                    sample numbers, so it carries no source name. */}
                 <Typography variant="bodySmall" color="text.secondary">
-                  <Link
-                    href={brief.weather.url}
-                    target="_blank"
-                    rel="noopener"
-                    color="inherit"
-                    sx={{ display: 'inline-flex', alignItems: 'center', gap: 1, minHeight: 48 }}
-                  >
-                    {fill(brief.weather.demo ? t.weatherDemoCredit : t.weatherCredit, {
-                      source: 'Open-Meteo (CC BY 4.0)',
-                    })}
-                    <ExternalLink size={14} aria-hidden="true" />
-                  </Link>
+                  {brief.weather.demo ? (
+                    fill(t.weatherDemoCredit, {})
+                  ) : (
+                    <Link
+                      href={brief.weather.url}
+                      target="_blank"
+                      rel="noopener"
+                      color="inherit"
+                      sx={{ display: 'inline-flex', alignItems: 'center', gap: 1, minHeight: 48 }}
+                    >
+                      {fill(t.weatherCredit, {
+                        source: 'Open-Meteo (CC BY 4.0)',
+                      })}
+                      <ExternalLink size={14} aria-hidden="true" />
+                    </Link>
+                  )}
                 </Typography>
               </Stack>
             ),

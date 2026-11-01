@@ -13,8 +13,8 @@ test('phone photos → merged rows → mapping review → explicit confirmation'
   await enter(page)
   await seedShop(page)
   await page.getByRole('button', { name: 'Shop', exact: true }).click()
-  await page.getByRole('button', { name: /Connect your system/i }).click()
-  const connect = page.getByRole('dialog', { name: 'Connect your system' })
+  await page.getByRole('button', { name: /Link your billing app/i }).click()
+  const connect = page.getByRole('dialog', { name: 'Link your billing app' })
   await expect(connect.getByText('Take a photo of your screen or printout')).toBeVisible()
   await expect(connect.getByTestId('screen-camera')).toHaveAttribute('capture', 'environment')
   await connect.getByTestId('screen-gallery').setInputFiles([photo('excel'), photo('petpooja')])
@@ -47,8 +47,8 @@ test('unreadable photo keeps a retry path and file upload', async ({ page }) => 
   await enter(page)
   await seedShop(page)
   await page.getByRole('button', { name: 'Shop', exact: true }).click()
-  await page.getByRole('button', { name: /Connect your system/i }).click()
-  const connect = page.getByRole('dialog', { name: 'Connect your system' })
+  await page.getByRole('button', { name: /Link your billing app/i }).click()
+  const connect = page.getByRole('dialog', { name: 'Link your billing app' })
   await connect.getByTestId('screen-gallery').setInputFiles({
     name: 'bad.png',
     mimeType: 'image/png',

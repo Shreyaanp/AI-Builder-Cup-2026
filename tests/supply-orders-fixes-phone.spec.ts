@@ -203,8 +203,8 @@ for (const size of WIDTHS) {
 
     // #596: cancel a sent purchase order, with a confirm and an undo window.
     await list.getByRole('button').first().click()
-    // The detail sheet is named after the order: "Purchase orders PO 45…".
-    const detail = page.getByRole('dialog', { name: /^Purchase orders PO \d+$/ })
+    // The detail sheet is named after the order: "Purchase orders Milk from Fresh Dairy".
+    const detail = page.getByRole('dialog', { name: /^Purchase orders .+ from / })
     await detail.getByRole('button', { name: 'Cancel order' }).click()
     await expect(detail).toContainText(
       'Cancel this order? Fresh Dairy (Demo) is a demo supplier: the app tells it.',
@@ -224,7 +224,7 @@ for (const size of WIDTHS) {
     await startShop(page, size)
     await page.getByRole('button', { name: 'Grow', exact: true }).click()
     const tile = page.getByRole('button', { name: /^Supply chain/ })
-    await expect(tile).toContainText('No partners yet')
+    await expect(tile).toContainText('No suppliers yet')
     await expect(tile).toContainText('Suppliers show here after your first order')
     await expect(tile).not.toContainText('all on time')
     await page.getByRole('button', { name: /^Purchase orders/ }).click()
@@ -317,7 +317,7 @@ for (const size of WIDTHS) {
     // Cancel one sent order on the same sheet, close it: no stale "24 l on order".
     await page.getByRole('button', { name: /^Purchase orders/ }).click()
     await sheet.getByRole('list', { name: 'Purchase orders' }).getByRole('button').first().click()
-    const detail = page.getByRole('dialog', { name: /^Purchase orders PO \d+$/ })
+    const detail = page.getByRole('dialog', { name: /^Purchase orders .+ from / })
     await detail.getByRole('button', { name: 'Cancel order' }).click()
     await detail.getByRole('button', { name: 'Cancel order' }).click()
     await expect(detail).toContainText('Cancelled. Fresh Dairy (Demo) was told.', {
@@ -346,7 +346,7 @@ for (const size of WIDTHS) {
     // Receive the whole order from the Supply chain sheet, close it: no stale "on order".
     await page.getByRole('button', { name: /^Supply chain/ }).click()
     const hub = page.getByRole('dialog', { name: 'Supply chain' })
-    await hub.getByRole('button', { name: /^Coming in/ }).click()
+    await hub.getByRole('button', { name: /^On the way/ }).click()
     await hub.getByRole('button', { name: /^Fresh Dairy \(Demo\)/ }).click()
     const dairy = page.getByRole('dialog', { name: 'Fresh Dairy (Demo)' })
     await dairy.getByRole('button', { name: 'Goods arrived', exact: true }).click()
@@ -379,8 +379,8 @@ for (const size of WIDTHS) {
     // The demo partner is a buyer: its order for 20 l Milk is one to ship, not stock coming in.
     await page.getByRole('button', { name: /^Supply chain/ }).click()
     const hub = page.getByRole('dialog', { name: 'Supply chain' })
-    await hub.getByRole('button', { name: /^Coming in/ }).click()
-    const next = hub.getByRole('button', { name: 'Partner sends next document (demo)' })
+    await hub.getByRole('button', { name: /^On the way/ }).click()
+    const next = hub.getByRole('button', { name: 'Show next step (demo)' })
     await next.click()
     await expect(hub).toContainText(/Forecast · Expects 20 l Milk/)
     await next.click()

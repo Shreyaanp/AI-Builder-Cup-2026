@@ -166,7 +166,7 @@ FEATURES: tuple[Feature, ...] = (
         "forecast",
         "owner",
         "How much to prepare",
-        "A forecast per item from your sales (TimesFM or a weekday average).",
+        "A forecast per item from your sales (based on your recent weeks).",
         '"How much chai should I make tomorrow?"',
         "Coach, or Grow → Prep plan and Plan tomorrow.",
         ("forecast", "prepare", "prep", "tomorrow", "demand", "how much", "plan"),

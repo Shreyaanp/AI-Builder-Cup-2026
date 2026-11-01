@@ -119,11 +119,11 @@ for (const lang of LANGS) {
           expect((await chip.boundingBox())!.height).toBeGreaterThanOrEqual(MIN)
       }
 
-      // Shop → Connect your system: system pills, tabs and the upload button.
+      // Shop → Link your billing app: system pills, tabs and the upload button.
       await page.locator('[data-tour="nav-shop"]').click()
       await page
         .locator(
-          'button:has-text("Connect your system"), button:has-text("बिक्री का हिसाब जोड़ें")',
+          'button:has-text("Link your billing app"), button:has-text("बिक्री का हिसाब जोड़ें")',
         )
         .first()
         .click()

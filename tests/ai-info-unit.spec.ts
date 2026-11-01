@@ -3,7 +3,7 @@ import { LOCALES } from '../src/i18n/locales.js'
 import { aiInfoCopy, type AiFeature } from '../src/features/v1/aiInfoCopy.js'
 
 const providers: Record<AiFeature, string[]> = {
-  forecast: ['TimesFM', 'BigQuery'],
+  forecast: [],
   coach: ['Gemini', 'ADK'],
   voice: ['Gemini Live'],
   photo: ['Gemini vision', 'Document AI'],
@@ -25,7 +25,9 @@ test('AI explanations name the capabilities and their fallback conditions in Eng
     expect(en[feature].match(/[.!?]/g)).toHaveLength(1)
     expect(hi[feature].match(/।/g)).toHaveLength(1)
   }
-  expect(en.forecast).toContain('or a weekday average')
+  // Simplify batch 1: the forecast explainer speaks plain words, no model or warehouse names.
+  expect(en.forecast).toContain('recent weeks')
+  expect(en.forecast).not.toMatch(/TimesFM|BigQuery/)
   expect(en.coach).toContain('offline mode')
   expect(en.voice).toContain('when live voice is available')
   expect(en.photo).toContain('when enabled')

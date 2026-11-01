@@ -170,7 +170,7 @@ test('B10: empty recap is compact, has no empty headings and uses a date range',
   await expect(sheet).toContainText('Customer messages: 0')
   await expect(sheet.getByRole('heading', { level: 3 })).toHaveCount(0)
   await expect(sheet.getByText('Written by AI', { exact: true })).toHaveCount(0)
-  await expect(sheet.getByText('Offline template', { exact: true })).toHaveCount(0)
+  await expect(sheet.getByText('Quick summary', { exact: true })).toHaveCount(0)
   await expect(sheet).not.toContainText('Import your sales to prepare')
   expect((await sheet.boundingBox())!.height).toBeLessThan(360)
   await proof(page, 'B10')
@@ -227,10 +227,10 @@ for (const mode of ['offline', 'gemini']) {
     await page.getByRole('button', { name: /^Weekly recap/ }).click()
     const sheet = page.getByRole('dialog', { name: 'Weekly recap' })
     await expect(
-      sheet.getByText(mode === 'offline' ? 'Offline template' : 'Written by AI', { exact: true }),
+      sheet.getByText(mode === 'offline' ? 'Quick summary' : 'Written by AI', { exact: true }),
     ).toBeVisible()
     await expect(
-      sheet.getByText(mode === 'offline' ? 'Written by AI' : 'Offline template', { exact: true }),
+      sheet.getByText(mode === 'offline' ? 'Written by AI' : 'Quick summary', { exact: true }),
     ).toHaveCount(0)
     await expect(sheet.getByRole('heading', { name: 'Top sellers' })).toBeVisible()
     await expect(sheet.getByRole('heading', { name: 'Slow movers' })).toHaveCount(0)

@@ -72,7 +72,12 @@ test('tabs stay tappable after load, also after a reload', async ({ page }) => {
 test('Coach: Reorder opens the purchase order draft', async ({ page }) => {
   await openDemo(page)
   await opensSheet(page, /^Reorder$/, /Purchase orders/)
-  await expect(page.getByRole('dialog').getByText(/PO /).first()).toBeVisible()
+  await expect(
+    page
+      .getByRole('dialog')
+      .getByText(/ from /)
+      .first(),
+  ).toBeVisible()
 })
 
 test('Coach: Reply opens the message thread', async ({ page }) => {
@@ -115,10 +120,10 @@ test('Shop: Customer page opens its sheet', async ({ page }) => {
   await opensSheet(page, /^Customer page/, /Customer page/)
 })
 
-test('Shop: Connect your system opens its sheet', async ({ page }) => {
+test('Shop: Link your billing app opens its sheet', async ({ page }) => {
   await openDemo(page)
   await tab(page, 'shop')
-  await opensSheet(page, /Connect your system/, /Connect your system/)
+  await opensSheet(page, /Link your billing app/, /Link your billing app/)
 })
 
 test('Shop: Messages opens the message thread', async ({ page }) => {

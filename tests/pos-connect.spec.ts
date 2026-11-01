@@ -16,9 +16,9 @@ test('owner connects a POS export, reviews mappings, and sees imported menu item
   await seedShop(page)
 
   await page.getByRole('button', { name: 'Shop', exact: true }).click()
-  await page.getByRole('button', { name: /Connect your system/i }).click()
+  await page.getByRole('button', { name: /Link your billing app/i }).click()
 
-  const connect = page.getByRole('dialog', { name: 'Connect your system' })
+  const connect = page.getByRole('dialog', { name: 'Link your billing app' })
   await expect(connect).toBeVisible()
   await connect.getByRole('button', { name: 'Petpooja', exact: true }).click()
   await connect.getByTestId('connector-file').setInputFiles({
@@ -111,8 +111,8 @@ test('owner confirms a POS sales export and sees it in Grow', async ({ page }) =
     .replace('2026-10-16', recapDate)
 
   await page.getByRole('button', { name: 'Shop', exact: true }).click()
-  await page.getByRole('button', { name: /Connect your system/i }).click()
-  const connect = page.getByRole('dialog', { name: 'Connect your system' })
+  await page.getByRole('button', { name: /Link your billing app/i }).click()
+  const connect = page.getByRole('dialog', { name: 'Link your billing app' })
   await connect.getByRole('button', { name: 'Tally', exact: true }).click()
   await connect.getByTestId('connector-file').setInputFiles({
     name: 'pos-sales.csv',

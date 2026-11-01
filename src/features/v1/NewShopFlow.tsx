@@ -44,6 +44,7 @@ import { visuallyHidden } from '@mui/utils'
 import { chatBubbleStyle } from '../coach/bubbleStyle'
 import { PlainText } from '../../design/PlainText'
 import { RichText } from '../../design/LazyRichText'
+import { stripOfflinePrefix } from './offlinePrefix'
 import { stripMarkdown } from '../../design/markdownUtils'
 import { RateLimitError, streamCoach, TooSlowError, TURN_IDLE_MS } from '../../api/stream'
 import type { CoachEvent } from '../../api/stream'
@@ -2292,7 +2293,7 @@ function ChatLine({ line }: { line: Exclude<Line, { role: 'camera' | 'map' | 'su
         <Typography component="span" sx={visuallyHidden}>
           {t.coach}:{' '}
         </Typography>
-        <RichText content={line.text} />
+        <RichText content={stripOfflinePrefix(line.text)} />
       </Box>
     </Stack>
   )

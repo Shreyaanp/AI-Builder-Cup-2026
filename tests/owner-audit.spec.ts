@@ -260,7 +260,7 @@ test('#5 #7 #9 a till photo that fails offers typed numbers; the review fits 360
   await page.getByRole('button', { name: 'Grow', exact: true }).click()
   await page.getByRole('button', { name: /^Close the day/ }).click()
   const day = page.getByRole('dialog', { name: 'Close the day' })
-  await day.getByRole('button', { name: /Till or POS report/ }).click()
+  await day.getByRole('button', { name: /Sales slip or notebook/ }).click()
   await day
     .locator('input[type=file]')
     .setInputFiles({ name: 'till.jpg', mimeType: 'image/jpeg', buffer: PHOTO })

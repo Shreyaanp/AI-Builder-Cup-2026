@@ -49,7 +49,7 @@ export const ownerTranslations: Record<Exclude<Locale, 'en'>, OwnerStrings> = {
     weather: 'मौसम',
     rain: 'बारिश की संभावना: {pct}%',
     weatherCredit: 'मौसम का डेटा: {source}',
-    weatherDemoCredit: 'ऑफ़लाइन मौसम नमूना। असली मौसम: {source}',
+    weatherDemoCredit: 'डेमो के लिए नमूना मौसम।',
     lowStock: 'कम हो रहा है',
     stockLeft: 'बाकी: {n}',
     runsOut: '{date} को खत्म',
