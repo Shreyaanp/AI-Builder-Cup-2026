@@ -38,7 +38,7 @@ import { shopCurrency, toMajor } from '../format'
 import { useCopy } from '../strings'
 import { useWorkspace } from '../workspaceContext'
 import { useOnboardingCopy } from '../onboardingCopy'
-import { lowStockAction, useTodayCopy, type Festival } from './todayCopy'
+import { useTodayCopy, type Festival } from './todayCopy'
 import type { CoachLine, Need, StepId, TodayPlan } from './todayPlan'
 import { useTodayPlan } from './useTodayPlan'
 import { FirstCustomers } from '../FirstCustomers'
@@ -482,10 +482,13 @@ function NeedRow({
   } else if (need.kind === 'low') {
     icon = <PackageMinus size={20} />
     text = tt.low(productName(need.item, locale), need.left)
-    const restock = lowStockAction(tt, locale, food, need.item)
     buttons = (
-      <Button variant={primary} sx={{ minHeight: 48 }} onClick={() => actions.ask(restock.ask)}>
-        {restock.label}
+      <Button
+        variant={primary}
+        sx={{ minHeight: 48 }}
+        onClick={() => actions.ask(tt.orderDraft(need.item))}
+      >
+        {tt.order}
       </Button>
     )
   } else if (need.kind === 'soldOut') {

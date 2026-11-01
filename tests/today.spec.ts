@@ -200,7 +200,7 @@ test('needs you now: at most three, most urgent first, each leaves when done', a
   await expect(rows.nth(2)).toContainText('Share your page')
 })
 
-// PR #624 review: "Make more" is for shops that make their stock; everyone else keeps "Order".
+// Low stock keeps "Order" and asks to order more.
 test('low stock: a kirana keeps Order and asks to order more', async ({ page }) => {
   await facts(page, { low_stock: [{ name: 'Toothpaste', stock: 4, runs_out: null }] })
   await shop(page, { name: 'Corner Kirana', ...FULL, category: 'Grocery', phone: '' }, [
@@ -214,18 +214,6 @@ test('low stock: a kirana keeps Order and asks to order more', async ({ page }) 
   await expect(page.getByRole('button', { name: 'Make more' })).toHaveCount(0)
   await row.getByRole('button', { name: 'Order', exact: true }).click()
   await expect(page.getByRole('log')).toContainText('Order more Toothpaste')
-})
-
-test('low stock: a cafe made item shows Make more', async ({ page }) => {
-  await facts(page, { low_stock: [{ name: 'Masala chai', stock: 4, runs_out: null }] })
-  await shop(page, { name: 'Courtyard Chai', ...FULL, phone: '' }, PRODUCTS)
-  const row = page
-    .getByTestId('today-needs')
-    .getByRole('listitem')
-    .filter({ hasText: 'Masala chai: only 4 left' })
-  await expect(row.getByRole('button', { name: 'Make more' })).toBeVisible()
-  await row.getByRole('button', { name: 'Make more' }).click()
-  await expect(page.getByRole('log')).toContainText('How much Masala chai should I make?')
 })
 
 test('all set: nothing pending means no card, one calm line and the pulse', async ({ page }) => {

@@ -889,21 +889,3 @@ export function todayCopyFor(locale: Locale): TodayCopy {
 export function useTodayCopy(): TodayCopy {
   return todayCopyFor(useLocale())
 }
-
-/** Food shops make their stock, so their low-stock row says "Make more"; elsewhere it stays "Order". */
-const makeMore: Partial<Record<Locale, { label: string; draft: (item: string) => string }>> = {
-  en: { label: 'Make more', draft: (item) => `How much ${item} should I make?` },
-  hi: { label: 'और बनाएँ', draft: (item) => `${item} कितना बनाना है?` },
-}
-
-export function lowStockAction(
-  tt: TodayCopy,
-  locale: Locale,
-  food: boolean,
-  item: string,
-): { label: string; ask: string } {
-  const make = food ? makeMore[locale] : undefined
-  return make
-    ? { label: make.label, ask: make.draft(item) }
-    : { label: tt.order, ask: tt.orderDraft(item) }
-}

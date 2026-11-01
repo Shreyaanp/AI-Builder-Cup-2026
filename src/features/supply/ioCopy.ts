@@ -143,7 +143,7 @@ const hi: IoCopy = {
   },
   empty: {
     needs: 'अभी कुछ नहीं करना। सब समय पर है।',
-    coming: 'साथियों से अभी कुछ नहीं आया।',
+    coming: 'सप्लायर से अभी कुछ नहीं आया।',
     received: 'अभी कुछ नहीं मिला।',
     send: 'सब भेज दिया गया है।',
   },
@@ -232,7 +232,7 @@ const hi: IoCopy = {
   due: (day) => `${day} तक`,
   plain: 'आसान शब्दों में',
   onTheWay: 'आपके पास आ रहा माल',
-  fromPartners: 'साथियों से',
+  fromPartners: 'सप्लायर से',
   fromTo: (a, b) => `${a} → ${b}`,
   needsNow: (n) => `${n} काम अभी आपके लिए`,
   allQuiet: 'सप्लायर: सब समय पर',
