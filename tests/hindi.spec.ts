@@ -148,7 +148,7 @@ test('the owner app reads in Hindi: Today, coach, Shop, Grow tools, You, privacy
   await test.step('coach text turn', async () => {
     await page.getByLabel('संदेश', { exact: true }).fill('आज कितने कप चाय बिकी?')
     await page.getByRole('button', { name: 'भेजें', exact: true }).click()
-    await expect(page.getByRole('log')).toContainText('ऑफ़लाइन नमूना')
+    await expect(page.getByRole('log')).toContainText('आपकी बात मिली')
     await readsInHindi(page, '02-coach-reply')
   })
 

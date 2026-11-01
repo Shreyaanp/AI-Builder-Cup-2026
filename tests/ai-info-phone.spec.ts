@@ -61,7 +61,7 @@ test('360px: AI help stays contextual across setup, Today, chat and imports', as
   await expect(page.getByTestId('today-pulse')).toBeVisible()
   await explain(page, 'forecast', 'based on how your shop sold in recent weeks')
   await page.getByTestId('today-pulse').click()
-  await expect(page.getByRole('log')).toContainText('Offline')
+  await expect(page.getByRole('log')).toContainText('I received your note')
   await explain(page, 'coach', 'Gemini with ADK agents')
   await page.screenshot({ path: test.info().outputPath('coach-360.png') })
 
