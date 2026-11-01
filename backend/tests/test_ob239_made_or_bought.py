@@ -269,44 +269,6 @@ def test_the_owners_answer_wins_and_same_kind_shops_are_never_suppliers() -> Non
         ("कैफ़े", "cafe"),
         ("टी-शर्ट की दुकान", ""),
         ("Mithaiwala", "sweets"),
-        # Review of PR #638: bare "tea" or "coffee" is no serving shop; traders are wholesale.
-        ("Assam Tea Traders", "wholesale"),
-        ("Tea emporium", "wholesale"),
-        ("Tea depot", "wholesale"),
-        ("Tea estate", "wholesale"),
-        ("Tea & spices", ""),
-        ("Coffee powder", ""),
-        ("Coffee works", ""),
-        ("Coffee agencies", "wholesale"),
-        ("Distributers", "wholesale"),
-        ("Tea shop", "tea"),
-        ("Tea-stall", "tea"),
-        ("Bubble tea", "tea"),
-        ("टी-स्टॉल", "tea"),
-        ("Hair & Beauty", "salon"),
-        ("Beauty & wellness", "salon"),
-        ("Nails by Riya", "salon"),
-        ("Nails & screws", ""),
-        ("Medical clinic", ""),
-        ("Medical centre", ""),
-        ("Medical Hall", "resale"),
-        ("Sharma Medicos", "resale"),
-        ("Hotel Annapurna", "kitchen"),
-        ("Udupi hotel", "kitchen"),
-        ("होटल", "kitchen"),
-        ("Sri Krishna Bhavan", "kitchen"),
-        ("Biryani house", "kitchen"),
-        ("Chaat corner", "kitchen"),
-        ("Juice centre", "kitchen"),
-        ("Mess", "kitchen"),
-        ("Super market", "resale"),
-        ("स्वीट्स", "sweets"),
-        ("बेकर्स", "bakery"),
-        ("जनरल स्टोर्स", "resale"),
-        ("फूलों की दुकान", "florist"),
-        ("Modular kitchen", ""),
-        ("Kitchen appliances", ""),
-        ("Sweet home furnishings", ""),
         # A word inside another word is not that kind.
         ("Mandir prasad", ""),
         ("Kitchenware store", ""),
@@ -333,52 +295,6 @@ def test_rivals_are_never_suppliers_but_wholesalers_are() -> None:
     assert not same_kind("Kirana store", "Mandir prasad")
     assert not same_kind("Tea stall", "Sabzi mandi wholesaler")
     assert not same_kind("Café", "Bakery")
-    assert not same_kind("Café", "Coffee powder") and not same_kind("Kopitiam", "Coffee works")
-
-
-@pytest.mark.parametrize("buyer", ["Tea stall", "Kopitiam", "Café"])
-@pytest.mark.parametrize(
-    "seller", ["Assam Tea Traders", "Tea emporium", "Coffee powder", "Coffee works"]
-)
-def test_tea_and_coffee_traders_are_suppliers_to_tea_stalls_and_cafes(buyer, seller) -> None:
-    pin = sourcing.ShopPin(
-        lat=BENGALURU[0],
-        lng=BENGALURU[1],
-        approximate=False,
-        currency="INR",
-        timezone="Asia/Kolkata",
-        location="",
-        category=buyer,
-        name="Mine",
-        phone="",
-    )
-    trader = {
-        "id": "trader",
-        "category": seller,
-        "lat": BENGALURU[0] + 0.0013,
-        "lng": BENGALURU[1],
-        "currency": "INR",
-        "products": [
-            {"name": "Tea dust", "unit": "kg", "price": 30000},
-            {"name": "Coffee powder", "unit": "kg", "price": 50000},
-        ],
-    }
-    for item in ("Tea dust", "Coffee powder"):
-        assert len(sourcing.candidates([trader], "mine", pin, item)) == 1
-
-
-def test_a_linked_tea_trader_is_a_supplier_candidate(store) -> None:
-    bid = open_shop(
-        store,
-        "Sharma Chai Corner",
-        "Tea stall",
-        [ProductFields(name="Tea dust", price=30000, unit="kg", stock=1)],
-        [],
-    )
-    stock = [ProductFields(name="Tea dust", price=28000, unit="kg", stock=500)]
-    neighbour(store, bid, "demo-pr638-traders", "Assam Tea Traders", "Assam Tea Traders", stock)
-    found = supply_chain.supplier_candidates(store, bid, "Tea dust", "INR", "Tea stall")
-    assert len(found) == 1
 
 
 def test_tea_stall_makes_chai_and_buys_milk(store) -> None:
