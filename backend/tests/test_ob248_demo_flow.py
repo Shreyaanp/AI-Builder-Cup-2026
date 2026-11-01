@@ -430,6 +430,19 @@ def test_OB_248_find_suppliers_lists_them_and_drafts_the_order_card(
     assert suppliers[0]["name"] in reply
 
 
+def test_OB_248_find_suppliers_for_an_item_the_shop_does_not_stock(
+    live_parent_demo,  # noqa: F811
+) -> None:
+    """It looks for what was asked, never quietly for something else on the menu."""
+    client, _app, session, _bid = live_parent_demo
+    response = client.post(
+        f"/api/v1/demo/sessions/{session}/coach", json={"message": "Find suppliers for rice"}
+    )
+    events = {event["kind"]: event for event in _coach_events(response)}
+    assert events["suppliers"]["data"]["item"] == "rice"
+    assert "for rice" in events["reply"]["text"] and "Tea dust" not in events["reply"]["text"]
+
+
 def test_OB_248_supply_question_names_a_tile_that_exists_with_the_unit(
     live_parent_demo,  # noqa: F811
 ) -> None:
