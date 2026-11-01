@@ -203,6 +203,57 @@ test('needs you now: at most three, most urgent first, each leaves when done', a
   await expect(rows.nth(2)).toContainText('Share your page')
 })
 
+for (const [language, preview, pointer, shopTile, tile, menu, draft] of [
+  [
+    'en',
+    'Continue local preview',
+    'Do you make it or buy it? Choose in Shop › Services.',
+    'Shop',
+    'Services',
+    'Menu',
+    'Draft a reorder',
+  ],
+  [
+    'hi',
+    'स्थानीय प्रीव्यू जारी रखें',
+    'आप इसे बनाते हैं या खरीदते हैं? दुकान › सेवाएँ में चुनें।',
+    'दुकान',
+    'सेवाएँ',
+    'मेन्यू',
+    'फिर से सामान मँगाएँ',
+  ],
+] as const) {
+  test(`OB-243: a salon is pointed to its real tile, 390 px ${language}`, async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await facts(page, { low_stock: [{ name: 'Shampoo', stock: 2, runs_out: null }] })
+    await shop(page, { name: 'Courtyard Salon', ...FULL, category: 'Hair salon' }, [
+      { name: 'Haircut', price: 30000, unit: 'service', category: 'Hair' },
+      { name: 'Shampoo', price: 20000, unit: 'bottle', category: 'Supplies', stock: 2 },
+    ])
+    await page.evaluate(
+      (value) => localStorage.setItem('niva.starter.preferences', JSON.stringify(value)),
+      { language },
+    )
+    await page.reload()
+    await page.getByRole('button', { name: preview }).click()
+    await expect(page.getByTestId('today-needs')).toContainText(pointer)
+    await axe(page)
+    await shot(page, `salon-pointer-${language}`)
+    await page.locator('[data-tour="nav-shop"]').click()
+    await expect(page.getByTestId('shop-tiles').getByText(tile, { exact: true })).toBeVisible()
+    // The reorder's question names the same tile.
+    await page.route('**/supply/reorder', (route) =>
+      route.fulfill({ json: { status: 'ask_source', item: 'Shampoo' } }),
+    )
+    await page.locator('[data-tour="nav-grow"]').click()
+    await page.locator('[data-tour="supply"]').click()
+    const sheet = page.getByRole('dialog')
+    await sheet.getByRole('button', { name: draft }).click()
+    await expect(sheet.getByRole('status')).toContainText(`${shopTile} › ${tile}`)
+    await expect(sheet.getByRole('status')).not.toContainText(menu)
+  })
+}
+
 test('all set: nothing pending means no card, one calm line and the pulse', async ({ page }) => {
   await facts(page, {
     yesterday: { sales: 615000, items: 300, views: 52, questions: 4 },

@@ -36,6 +36,7 @@ import { useLocale } from '../../../state/hooks'
 import { closeDayCopy } from '../../closeday/strings'
 import { shopCurrency, toMajor } from '../format'
 import { useCopy } from '../strings'
+import { isServiceShop } from '../tabsCopy'
 import { useWorkspace } from '../workspaceContext'
 import { useOnboardingCopy } from '../onboardingCopy'
 import { useSourceCopy } from './sourceCopy'
@@ -533,7 +534,7 @@ function NeedRow({
       )
     } else if (need.source === 'unknown') {
       // Not said, and no item to save the answer on: never an Order button (OB-243).
-      text = sc.askInMenu(name, need.left)
+      text = sc.askInMenu(name, need.left, isServiceShop(ws.active?.fields.category))
     } else {
       text = tt.low(name, need.left)
       buttons = (

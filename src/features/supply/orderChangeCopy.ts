@@ -55,8 +55,9 @@ const en = {
   // Made here, or not said yet: only stock the shop buys is ordered (OB-239).
   madeHere: (item: string) =>
     `You make ${item} yourself, so there is no supplier order. Plan how many to make in the prep plan.`,
-  askSource: (item: string) =>
-    `Do you make ${item} or buy it? Tell the coach, or choose in Shop › Menu.`,
+  // A service shop's tile is called Services, not Menu (OB-243).
+  askSource: (item: string, services: boolean) =>
+    `Do you make ${item} or buy it? Tell the coach, or choose in Shop › ${services ? 'Services' : 'Menu'}.`,
   orderMore: 'Order more',
   notNow: 'Not now',
   // Grow and Today lead with one need; the rest still to order.
@@ -107,8 +108,8 @@ const hi: OrderChangeCopy = {
     `मैं नहीं बता सकता कि आप कितना ${item} इस्तेमाल करते हैं, इसलिए कोई ऑर्डर नहीं बना। आप हफ़्ते में कितना खरीदते हैं? कोच को बताएँ।`,
   madeHere: (item) =>
     `${item} आप खुद बनाते हैं, इसलिए सप्लायर को ऑर्डर नहीं जाता। कितना बनाना है, यह तैयारी योजना में देखें।`,
-  askSource: (item) =>
-    `${item} आप बनाते हैं या खरीदते हैं? कोच को बताएँ, या दुकान › मेन्यू में चुनें।`,
+  askSource: (item, services) =>
+    `${item} आप बनाते हैं या खरीदते हैं? कोच को बताएँ, या दुकान › ${services ? 'सेवाएँ' : 'मेन्यू'} में चुनें।`,
   orderMore: 'और मँगाएँ',
   notNow: 'अभी नहीं',
   moreRunOut: (n) => (n === 1 ? '1 और चीज़ खत्म हो रही है' : `${n} और चीज़ें खत्म हो रही हैं`),

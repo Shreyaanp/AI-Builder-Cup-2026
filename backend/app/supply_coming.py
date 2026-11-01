@@ -8,6 +8,7 @@ after they were made.
 from __future__ import annotations
 
 import math
+from collections.abc import Collection
 from datetime import date
 from typing import Any
 
@@ -16,7 +17,7 @@ from .supply_chain import (
     COVER_DAYS,
     _save,
     all_orders,
-    made_names,
+    bought_names,
     need_from_forecast,
     recheck,
     relationship,
@@ -179,6 +180,23 @@ def resize(
         sized[0]["quantity"] = sized[1]
 
 
+def no_use_on_record(
+    po: dict[str, Any],
+    inventory: list[dict[str, Any]],
+    forecast: dict[str, Any],
+    today: date,
+    bought_items: Collection[str],
+) -> bool:
+    """A draft sized for an item with no use of its own on record, and not by the owner's own
+    quantity: it came from another item's sales, so it should not stay open (OB-242)."""
+    reason = po.get("reason") or {}
+    item = str(reason.get("item") or "")
+    if not item or reason.get("owner_quantity"):
+        return False
+    product = next((p for p in inventory if p["name"].casefold() == item.casefold()), None)
+    return not need_from_forecast(product, forecast, item, today, bought_items)["daily"]
+
+
 def settle_drafts(
     store: MerchantRepository,
     uid: str,
@@ -192,12 +210,23 @@ def settle_drafts(
 ) -> None:
     """Size again, or withdraw, the unsent drafts of the other items that run out. An order sent
     after a draft was made changes what it should ask for; one that covers the need leaves the
-    draft over-ordering, and it must not stay approvable (#603). The owner's own quantity stays."""
-    made = made_names(inventory, category)
+    draft over-ordering, and it must not stay approvable (#603). A draft with no use on record
+    is withdrawn, whatever else runs out (OB-242). The owner's own quantity stays."""
+    sold_as_bought = bought_names(inventory, category)
+    for po in known[0]:
+        if (
+            po["status"] == "draft"
+            and direction_of(po) == "in"
+            and str((po.get("reason") or {}).get("item") or "").casefold() != skip.casefold()
+            and no_use_on_record(po, inventory, forecast, today, sold_as_bought)
+        ):
+            po["reason"]["withdrawn"] = "no_use"
+            po["status"] = "cancelled"
+            _save(store, bid, po)
     for product in inventory:
         if product["name"] == skip or product.get("stock") is None:
             continue
-        need = need_from_forecast(product, forecast, product["name"], today, made)
+        need = need_from_forecast(product, forecast, product["name"], today, sold_as_bought)
         if not need["runs_out"]:
             continue
         unit = product.get("unit") or "kg"

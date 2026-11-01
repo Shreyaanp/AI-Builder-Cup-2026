@@ -94,7 +94,7 @@ async def overview(business_id: str, request: Request) -> dict[str, Any]:
     today = supply_chain.shop_today(context)
     forecast = await forecaster(request).forecast(history, today, context["inventory"])
     category = str(context["business"]["fields"].get("category") or "")
-    made = supply_chain.made_names(context["inventory"], category)
+    bought_items = supply_chain.bought_names(context["inventory"], category)
     needs = [
         {"item": product["name"], **need}
         for product in context["inventory"]
@@ -102,7 +102,7 @@ async def overview(business_id: str, request: Request) -> dict[str, Any]:
         if supply_chain.bought(product, category)
         and (
             need := supply_chain.need_from_forecast(
-                product, forecast.model_dump(mode="json"), product["name"], today, made
+                product, forecast.model_dump(mode="json"), product["name"], today, bought_items
             )
         )["runs_out"]
         and need["stock_known"]

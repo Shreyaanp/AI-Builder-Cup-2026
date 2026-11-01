@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { ApiError, type Api, type Proposal } from '../v1/api'
+import { isServiceShop } from '../v1/tabsCopy'
 import { useWorkspace } from '../v1/workspaceContext'
 import { useLocale } from '../../state/hooks'
 import { productName } from '../../i18n/productNames'
@@ -209,7 +210,8 @@ interface ReorderResult {
  * "Order more", which drafts again with `anyway` (#603).
  */
 export function useDraftReorder() {
-  const { api, activeId } = useWorkspace()
+  const { api, activeId, active } = useWorkspace()
+  const services = isServiceShop(active?.fields.category)
   const s = useSupplyCopy()
   const c = useOrderChangeCopy()
   const locale = useLocale()
@@ -260,7 +262,8 @@ export function useDraftReorder() {
                     ),
           }
         if (result.status === 'made') return { order: null, note: c.madeHere(name) }
-        if (result.status === 'ask_source') return { order: null, note: c.askSource(name) }
+        if (result.status === 'ask_source')
+          return { order: null, note: c.askSource(name, services) }
         const note =
           result.status === 'on_order'
             ? c.onOrder(
@@ -277,7 +280,7 @@ export function useDraftReorder() {
         return { order: null, note: s.failed }
       }
     },
-    [api, activeId, s, c, locale],
+    [api, activeId, services, s, c, locale],
   )
 }
 

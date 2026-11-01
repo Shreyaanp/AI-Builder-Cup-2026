@@ -375,15 +375,17 @@ def bought(product: dict[str, Any], category: str = "") -> bool:
     return source_of(product, category) == "bought"
 
 
-def made_names(inventory: list[dict[str, Any]], category: str = "") -> set[str]:
-    """The items this shop makes (casefolded): their sales are never a supply's use (OB-242)."""
-    return {
-        str(p.get("name") or "").casefold() for p in inventory if source_of(p, category) == "made"
-    }
+def bought_names(inventory: list[dict[str, Any]], category: str = "") -> set[str]:
+    """The menu items this shop buys (casefolded): the only ones whose sales can count towards
+    another supply with a similar name (OB-242)."""
+    return {str(p.get("name") or "").casefold() for p in inventory if bought(p, category)}
 
 
 def runs_out(
-    product: dict[str, Any], forecast: dict[str, Any], today: date, made: Collection[str] = ()
+    product: dict[str, Any],
+    forecast: dict[str, Any],
+    today: date,
+    bought_items: Collection[str] = (),
 ) -> str:
     """The day this item runs out, from tomorrow on: the one rule the supply tile, Today and the
     morning brief share, so one item never shows two days (OB-238)."""
@@ -393,7 +395,7 @@ def runs_out(
         if isinstance(row, dict) and str(row.get("date") or "") > today.isoformat()
     ]
     need = need_from_forecast(
-        product, {**forecast, "predictions": rows}, product["name"], today, made
+        product, {**forecast, "predictions": rows}, product["name"], today, bought_items
     )
     return str(need["runs_out"] or "")
 
@@ -403,10 +405,10 @@ def need_from_forecast(
     forecast: dict[str, Any],
     item: str,
     today: date,
-    made: Collection[str] = (),
+    bought_items: Collection[str] = (),
 ) -> dict[str, Any]:
-    """Stock, run-out day and demand for one item from the forecast rows. `made` names the
-    items the shop makes (made_names): their sales are never this item's use."""
+    """Stock, run-out day and demand for one item from the forecast rows, in the item's unit.
+    `bought_items` names the menu items the shop buys (bought_names): only they can count."""
     from .sourcing import convert, matches
 
     rows = [
@@ -422,14 +424,23 @@ def need_from_forecast(
     # are the demand for the kilos on the shelf, not the cups sold.
     exact = [row for row in rows if row["item"].casefold() == item.casefold()]
     unit = str((product or {}).get("unit") or "")
-    # Without them, a loose match counts only when it is sold in a unit that converts and is not
-    # something the shop makes: 60 cups of chai a day are never 60 kg of tea dust (OB-242).
-    rows = exact or [
-        row
-        for row in rows
-        if str(row["item"]).casefold() not in made
-        and (not unit or convert(1.0, str(row.get("unit") or ""), unit) is not None)
-    ]
+    # Without them, a loose match counts only when it is on the menu, the shop buys it and its
+    # unit converts: 60 cups of chai, an unanswered Coconut rice or an off-menu Chai row are never
+    # kilos of tea dust or rice. No product, or no unit on the row, means nothing counts (OB-242).
+    loose: list[dict[str, Any]] = []
+    for row in rows:
+        rate = convert(1.0, str(row.get("unit") or ""), unit) if row.get("unit") else None
+        if rate is None or not product or str(row["item"]).casefold() not in bought_items:
+            continue
+        upper = row.get("upper")
+        loose.append(
+            {
+                **row,
+                "quantity": float(row["quantity"]) * rate,
+                "upper": float(upper) * rate if upper is not None else None,
+            }
+        )
+    rows = exact or loose
     rows.sort(key=lambda row: row["date"])
     stock = (product or {}).get("stock")
     known = stock is not None
@@ -475,6 +486,7 @@ async def draft_reorder(
         coming_orders,
         cover,
         covered,
+        no_use_on_record,
         on_order,
         resize,
         settle_drafts,
@@ -532,6 +544,9 @@ async def draft_reorder(
         )
     )
     if not target:
+        await anyio.to_thread.run_sync(
+            settle_drafts, store, uid, bid, inventory, forecast, today, known, "", category
+        )
         return {"status": "needs_item"}
     named = next(
         (p for p in inventory if p["name"].casefold() == target.casefold()),
@@ -556,7 +571,8 @@ async def draft_reorder(
         next((p for p in inventory if sourcing.matches(p["name"], target)), None),
     )
     unit = (product or {}).get("unit") or "kg"
-    need = need_from_forecast(product, forecast, target, today, made_names(inventory, category))
+    sold_as_bought = bought_names(inventory, category)
+    need = need_from_forecast(product, forecast, target, today, sold_as_bought)
     need_by = need["runs_out"] or ""
     coming = await anyio.to_thread.run_sync(on_order, store, uid, bid, target, unit, known)
     if quantity:
@@ -595,6 +611,34 @@ async def draft_reorder(
             waiting["status"] = "cancelled"
             await anyio.to_thread.run_sync(_save, store, bid, waiting)
             return {"status": "on_order", "item": target, "unit": unit, **coming, "draft": None}
+        if (
+            not quantity
+            and not need["daily"]
+            and no_use_on_record(waiting, inventory, forecast, today, sold_as_bought)
+        ):
+            # Sized from sales that were never this item's use (540 kg of tea dust from 60 cups
+            # of chai, OB-242): it is withdrawn, never sent, and the owner names the amount.
+            reason["withdrawn"] = "no_use"
+            waiting["status"] = "cancelled"
+            await anyio.to_thread.run_sync(_save, store, bid, waiting)
+            line, least = sized_line(store, bid, waiting, target, unit, 0.0) or (
+                waiting["lines"][0],
+                None,
+            )
+            least = least or line["quantity"]
+            amount = sourcing.convert(least, line["unit"], unit)
+            return {
+                "status": "check",
+                "reason": "no_history",
+                "item": target,
+                "unit": unit,
+                "quantity": round(amount, 2) if amount is not None else None,
+                "days": None,
+                "supplier": waiting["supplier"]["name"],
+                "supplier_item": line["item"],
+                "supplier_quantity": least,
+                "supplier_unit": line["unit"],
+            }
         if quantity or (
             need["daily"]
             and not reason.get("owner_quantity")
@@ -824,11 +868,11 @@ def pick_item(
         loose.sort(key=lambda p: not bought(p, category))
         return named or (loose[0]["name"] if loose else item.strip()[:80])
     soonest: tuple[bool, bool, str, str] | None = None
-    made = made_names(inventory, category)
+    sold_as_bought = bought_names(inventory, category)
     for product in inventory:
         if product.get("stock") is None or not bought(product, category):
             continue
-        need = need_from_forecast(product, forecast, product["name"], today, made)
+        need = need_from_forecast(product, forecast, product["name"], today, sold_as_bought)
         if not need["runs_out"]:
             continue
         rank = (
