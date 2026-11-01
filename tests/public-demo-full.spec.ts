@@ -48,7 +48,12 @@ test('public demo walks the whole owner lifecycle at 390 px', async ({ page }, i
   const coach = page.getByRole('textbox', { name: 'Message', exact: true })
   await coach.fill('My masala chai is running low. Find suppliers.')
   await page.getByRole('button', { name: 'Send', exact: true }).click()
-  await expect(page.getByRole('log')).toContainText('Grow → Supplies', { timeout: 30_000 })
+  // OB-127: suppliers live on Grow. Simplify batch 2 replaced the stale "Grow → Supplies" with the
+  // tile owners see.
+  await expect(page.getByRole('log')).toContainText('Next, open Grow → Purchase orders.', {
+    timeout: 30_000,
+  })
+  await expect(page.getByRole('log')).not.toContainText('Grow → Supplies')
   await expect(page.getByRole('log')).not.toContainText('Shop → Supplies')
 
   // OB-129: demo message cards show a name and plain question, with a shared button edge.

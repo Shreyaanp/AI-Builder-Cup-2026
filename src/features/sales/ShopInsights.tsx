@@ -20,6 +20,7 @@ import type { components } from '../../api/generated'
 import { formatLocale, type Locale } from '../../i18n/locales'
 import { useLocale } from '../../state/hooks'
 import { shape } from '../../design/theme'
+import { AskHint } from '../v1/AskHint'
 import { Sheet } from '../v1/Sheet'
 import { Tile, Supporting } from '../v1/ShopTiles'
 import { formatShopPrice } from '../v1/format'
@@ -189,13 +190,7 @@ export function RecapTile({ mondayOnly = false }: { mondayOnly?: boolean }) {
       >
         <Supporting>{t.recapHint}</Supporting>
       </Tile>
-      <Sheet
-        open={open}
-        onClose={() => setOpen(false)}
-        titleId="recap-title"
-        ask="insights"
-        title={t.recapTitle}
-      >
+      <Sheet open={open} onClose={() => setOpen(false)} titleId="recap-title" title={t.recapTitle}>
         {open && <RecapDetails week={value.recap_week} />}
       </Sheet>
     </>
@@ -306,6 +301,8 @@ function RecapDetails({ week }: { week: string }) {
       <Typography variant="bodyMedium">
         {t.customerQuestionCount}: {recap.customer_questions_count}
       </Typography>
+      {/* An empty week stays compact (B10); the chat path shows once there is a week to ask about. */}
+      {recap.sales_days > 0 && <AskHint id="insights" />}
     </Stack>
   )
 }
