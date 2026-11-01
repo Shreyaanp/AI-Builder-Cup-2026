@@ -411,7 +411,9 @@ export function PurchaseOrderCard({
               </Box>
             )}
           </Sheet>
-          {demo && order.simulated && <SupplierTalk order={order} refresh={actions.refresh} />}
+          {demo && order.simulated && (
+            <SupplierTalk order={order} refresh={actions.refresh} write={actions.talk} />
+          )}
           <Timeline order={order} busy={busy} act={act} actions={actions} />
           <NextStep order={order} busy={busy} act={act} actions={actions} />
           {/* A sent order can still be cancelled until the supplier confirms it (OB-225). */}

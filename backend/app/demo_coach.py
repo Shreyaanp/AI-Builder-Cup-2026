@@ -23,6 +23,11 @@ SUGGESTIONS = (
     "What should I prep tomorrow?",
 )
 DEMO_NOTE = "This is the demo shop, so nothing reaches real customers."
+# Asks for a supplier or says a supply is low: the demo finds them and drafts the order.
+FIND_SUPPLIERS = re.compile(
+    r"\b(?:suppliers?|running low|low on|run out of|restock)\b|सप्लायर", re.I
+)
+DRAFT_QUANTITY = 10
 # The offline coach is conservative: a review card only for a short request that is all one of
 # the patterns below. Anything more (a reason, a day, a "not") gets the examples instead, since
 # a wrong card is worse than none.
@@ -342,6 +347,66 @@ def _visits(ctx: Any) -> list[StreamEvent]:
     ]
 
 
+async def _find_suppliers(ctx: Any, question: str) -> list[StreamEvent] | None:
+    """What the real coach does for "find suppliers": list them, then draft the order card to the
+    first one, on the sandbox's demo suppliers. Nothing goes until the visitor sends it."""
+    from .coordinator import find_suppliers, prepare_order
+    from .money import to_minor
+    from .sourcing import money_text
+    from .sourcing_offline import sourcing_call
+
+    inventory = ctx.store.inventory(ctx.uid, ctx.business_id)
+    words = question.casefold()
+    named = [item for item in inventory if item["name"].casefold() in words]
+    product = max(named, key=lambda item: len(item["name"]), default=None)
+    bought = next((item for item in inventory if item.get("source") == "bought"), None)
+    made = product["name"] if product and product.get("source") == "made" else ""
+    # The shop makes it itself, so what it can run out of is what it buys.
+    if product and not made:
+        item = product["name"]
+    elif bought:
+        item = bought["name"]
+    else:
+        call = sourcing_call(question, [], ctx)
+        function = call.function_call if call else None
+        if not function or function.name != "find_suppliers":
+            return None
+        item = str((function.args or {}).get("item") or "")
+    found = await find_suppliers(item)
+    if found.get("status") != "found":
+        return None
+    suppliers = found["suppliers"]
+    first = suppliers[0]
+    unit = first["item"]["unit"]
+    drafted = prepare_order(
+        first["id"], [{"name": first["item"]["name"], "quantity": DRAFT_QUANTITY, "unit": unit}]
+    )
+    if drafted.get("status") != "needs_owner_tap":
+        return None
+    currency = found["currency"]
+    names = "; ".join(
+        f"{rank}. {row['name']}, {row['distance_km']:g} km, "
+        f"{money_text(to_minor(row['item']['price'], currency), currency)} a {row['item']['unit']}"
+        for rank, row in enumerate(suppliers[:3], 1)
+    )
+    if re.search(r"[ऀ-ॿ]", question):
+        text = (
+            f"{item} के डेमो सप्लायर: {names}। {first['name']} के लिए ऑर्डर तैयार है: "
+            f"{DRAFT_QUANTITY:g} {unit}। आपके भेजे बिना कुछ नहीं जाता, और यह सिर्फ़ डेमो है।"
+        )
+    else:
+        lead = f"You make {made} yourself, so these are for {item}. " if made else ""
+        text = (
+            f"{lead}Demo suppliers near you for {item}: {names}. I drafted {DRAFT_QUANTITY:g} {unit} "
+            f"from {first['name']} below. It goes only when you tap Send, and only in the demo."
+        )
+    return [
+        StreamEvent(kind="suppliers", data=ctx.cards[found["card_id"]][1]),
+        StreamEvent(kind="order", data=ctx.cards[drafted["card_id"]][1]),
+        StreamEvent(kind="reply", text=text),
+    ]
+
+
 async def public_demo_turn(ctx: Any, question: str) -> list[StreamEvent] | None:
     """A whole offline demo turn: the proposal and chart cards the real coach would show, then
     the reply. Deterministic and model-free, so the public demo never calls a paid model."""
@@ -349,6 +414,10 @@ async def public_demo_turn(ctx: Any, question: str) -> list[StreamEvent] | None:
         return None
     text = _plain(question)
     reply: str | None = None
+    if FIND_SUPPLIERS.search(question) and not NEGATION.search(text):
+        events = await _find_suppliers(ctx, question)
+        if events:
+            return events
     if not re.search(r"[ऀ-ॿ]", question):
         asked = "?" in question or ASKED.match(text)
         if not NEGATION.search(text):
@@ -431,7 +500,7 @@ def public_demo_reply(ctx: Any, question: str) -> str | None:
             orders = supply_chain.orders(store, uid, bid)
             po = next((order for order in orders if order.get("supplier")), None)
             supplier = po["supplier"]["name"] if po else "डेमो सप्लायर"
-            return f"डेमो सप्लायर {supplier} है। {name} का स्टॉक {stock:g} है।"
+            return f"डेमो सप्लायर {supplier} है। {name} का स्टॉक {stock:g} {product.get('unit', '')} है।"
         if any(term in words for term in ("कल", "तैयार", "बनाऊँ")):
             return f"कल {name} की तैयारी के लिए डेमो बिक्री का औसत देखें।"
         if any(term in words for term in ("समय", "खुला", "खुलती", "बंद")):
@@ -476,9 +545,10 @@ def public_demo_reply(ctx: Any, question: str) -> str | None:
         orders = supply_chain.orders(store, uid, bid)
         po = next((order for order in orders if order.get("supplier")), None)
         supplier = po["supplier"]["name"] if po else "the demo supplier"
+        count = f"{stock:g} {product.get('unit', 'items')}"
         return (
-            f"Demo supply records show {supplier}; {name} has {stock:g} in stock. "
-            "In your real shop, this would draft an order for review; open Grow → Supplies next."
+            f"Demo supply records show {supplier}; {name} has {count} in stock. "
+            "To order more, open Grow → Purchase orders next."
         )
     if any(
         term in words

@@ -1,8 +1,9 @@
-import { useEffect } from 'react'
-import { Box, Stack, Typography, useTheme } from '@mui/material'
+import { useEffect, useState } from 'react'
+import { Box, Button, Stack, TextField, Typography, useTheme } from '@mui/material'
 import { useLocale } from '../../state/hooks'
 import { shape } from '../../design/theme'
 import { productName } from '../../i18n/productNames'
+import { useDemoCopy } from '../frontdoors/strings'
 import { useShopCopy } from '../shop/strings'
 import { unitLabel } from '../shop/units'
 import { formatShopPrice } from '../v1/format'
@@ -26,6 +27,7 @@ const linesOf = (document: SupplyDocument | undefined): Line[] => document?.cano
 
 /** A demo order the visitor sent themselves, while the scripted supplier still owes a reply. */
 function waitingForDemoSupplier(order: PurchaseOrder): boolean {
+  if (order.simulated && order.talk?.at(-1)?.text) return true
   if (!order.simulated || order.documents[0]?.reader !== 'template') return false
   return (
     order.status === 'sent' ||
@@ -42,11 +44,16 @@ function waitingForDemoSupplier(order: PurchaseOrder): boolean {
 export function SupplierTalk({
   order,
   refresh,
+  write,
 }: {
   order: PurchaseOrder
   refresh: (order: PurchaseOrder) => Promise<void>
+  write: (order: PurchaseOrder, text: string) => Promise<PurchaseOrder | null>
 }) {
   const c = useSupplierTalkCopy()
+  const demoCopy = useDemoCopy()
+  const [draft, setDraft] = useState('')
+  const [sending, setSending] = useState(false)
   const shopCopy = useShopCopy()
   const locale = useLocale()
   const roles = useTheme().material
@@ -112,11 +119,28 @@ export function SupplierTalk({
       messages.push({ ...base, mine: false, text: c.bill(money(document.canonical?.total)) })
     }
   }
+  for (const entry of order.talk ?? []) {
+    const base = { key: entry.id, at: entry.at }
+    if (entry.text) messages.push({ ...base, mine: true, text: entry.text })
+    else if (entry.answer === 'when') {
+      messages.push({ ...base, mine: false, text: c.answerWhen(day) })
+    } else if (entry.answer === 'price') {
+      messages.push({ ...base, mine: false, text: c.answerPrice })
+    } else messages.push({ ...base, mine: false, text: c.answerNoted })
+  }
   if (order.received) {
     const at = order.received_at ?? Number.MAX_SAFE_INTEGER
     messages.push({ key: 'received', at, mine: true, text: c.gotIt })
   }
   messages.sort((a, b) => a.at - b.at)
+  const canWrite = !['draft', 'closed', 'cancelled'].includes(order.status)
+  async function send() {
+    const text = draft.trim()
+    if (!text || sending) return
+    setSending(true)
+    if (await write(order, text)) setDraft('')
+    setSending(false)
+  }
 
   return (
     <Box component="section" aria-label={c.heading(order.supplier.name)}>
@@ -142,12 +166,40 @@ export function SupplierTalk({
             {message.text}
           </Typography>
         ))}
-        {order.status === 'sent' && waiting && (
+        {(order.talk?.at(-1)?.text || (order.status === 'sent' && waiting)) && (
           <Typography variant="bodyMedium" color="text.secondary">
             {c.waiting(order.supplier.name)}
           </Typography>
         )}
       </Stack>
+      {canWrite && (
+        <Stack
+          component="form"
+          spacing={1}
+          sx={{ mt: 3 }}
+          onSubmit={(event) => {
+            event.preventDefault()
+            void send()
+          }}
+        >
+          <TextField
+            label={c.write}
+            value={draft}
+            disabled={sending}
+            helperText={demoCopy.readOnly}
+            onChange={(event) => setDraft(event.target.value)}
+            slotProps={{ htmlInput: { maxLength: 300 } }}
+          />
+          <Button
+            type="submit"
+            variant="outlined"
+            disabled={sending || !draft.trim()}
+            sx={{ alignSelf: 'flex-end' }}
+          >
+            {c.send}
+          </Button>
+        </Stack>
+      )}
     </Box>
   )
 }

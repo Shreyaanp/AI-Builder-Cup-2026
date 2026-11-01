@@ -1,8 +1,10 @@
 """OB-248: vendor-to-vendor in the demo, end to end, and no owner feature blocked."""
 
+import json
 from unittest.mock import Mock
 
 import pytest
+from fastapi import HTTPException
 
 from app import demo_supplier
 from tests.test_photos import app, jpeg  # noqa: F401
@@ -397,3 +399,91 @@ def test_OB_248_google_question_points_to_the_practice_tile(live_parent_demo) ->
     assert response.status_code == 200
     assert "Grow → Get on Google" in response.text
     assert "nothing is sent to Google" in response.text
+
+
+def _coach_events(response) -> list[dict]:
+    return [
+        json.loads(line[len("data: ") :])
+        for line in response.text.splitlines()
+        if line.startswith("data: ")
+    ]
+
+
+def test_OB_248_find_suppliers_lists_them_and_drafts_the_order_card(
+    live_parent_demo,  # noqa: F811
+) -> None:
+    client, _app, session, bid = live_parent_demo
+    response = client.post(
+        f"/api/v1/demo/sessions/{session}/coach",
+        json={"message": "My masala chai is running low. Find suppliers."},
+    )
+    assert response.status_code == 200
+    events = {event["kind"]: event for event in _coach_events(response)}
+    suppliers = events["suppliers"]["data"]["suppliers"]
+    assert suppliers and all(row["demo"] for row in suppliers)
+    order = events["order"]["data"]
+    assert order["status"] == "draft" and order["supplier"]["id"] == suppliers[0]["id"]
+    assert order["lines"][0]["quantity"] == 10 and order["lines"][0]["unit"]
+    reply = events["reply"]["text"]
+    assert "You make Masala chai yourself" in reply and "Tea dust" in reply
+    assert "In your real shop" not in reply and "Supplies" not in reply
+    assert suppliers[0]["name"] in reply
+
+
+def test_OB_248_supply_question_names_a_tile_that_exists_with_the_unit(
+    live_parent_demo,  # noqa: F811
+) -> None:
+    client, _app, session, _bid = live_parent_demo
+    response = client.post(
+        f"/api/v1/demo/sessions/{session}/coach", json={"message": "how do I order tea dust?"}
+    )
+    assert "Tea dust has 6 kg in stock" in response.text
+    assert "Grow → Purchase orders" in response.text
+    assert "Supplies" not in response.text
+
+
+@pytest.mark.parametrize(
+    ("text", "kind"),
+    [
+        ("When will it reach me?", "when"),
+        ("Any discount on the rate?", "price"),
+        ("कब तक आएगा?", "when"),
+        ("Please pack it well", "noted"),
+    ],
+)
+def test_OB_248_a_visitor_writes_to_the_supplier_and_gets_a_scripted_answer(
+    live_parent_demo,  # noqa: F811
+    monkeypatch: pytest.MonkeyPatch,
+    text: str,
+    kind: str,
+) -> None:
+    client, _app, session, bid = live_parent_demo
+    order = draft_and_send(client, session, bid)
+    path = f"businesses/{bid}/supply/orders/{order['id']}"
+    written = owner(
+        client, session, f"{path}/talk", "POST", json={"version": order["version"], "text": text}
+    )
+    assert written.status_code == 200
+    assert written.json()["talk"][-1]["text"] == text
+    assert "answer" not in written.json()["talk"][-1]
+    # Not yet: the supplier takes a moment.
+    assert "answer" not in owner(client, session, path).json()["talk"][-1]
+    monkeypatch.setattr(demo_supplier, "REPLY_SECONDS", 0.0)
+    assert owner(client, session, path).json()["talk"][-1]["answer"] == kind
+
+
+def test_OB_248_writing_to_a_supplier_is_for_an_open_order_in_the_demo_only(
+    live_parent_demo,  # noqa: F811
+) -> None:
+    client, _app, session, bid = live_parent_demo
+    reorder = owner(client, session, f"businesses/{bid}/supply/reorder", "POST", json={})
+    order = reorder.json()["order"]
+    path = f"businesses/{bid}/supply/orders/{order['id']}/talk"
+    body = {"version": order["version"], "text": "Hello"}
+    assert owner(client, session, path, "POST", json=body).status_code == 409  # still a draft
+    blank = {"version": order["version"], "text": "   "}
+    assert owner(client, session, path, "POST", json=blank).status_code == 422
+    # A real owner's order: the route is not there for them, whatever the order.
+    with pytest.raises(HTTPException) as refused:
+        demo_supplier.write(None, "firebase:someone", bid, order["id"], 1, "Hello")  # type: ignore[arg-type]
+    assert refused.value.status_code == 404

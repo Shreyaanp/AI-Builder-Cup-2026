@@ -204,6 +204,8 @@ export function usePoActions(onChange: (order: PurchaseOrder) => void) {
     received: (order: PurchaseOrder) => run(order, 'received'),
     /** The same items from the same supplier, as a new draft to review (OB-248). */
     again: (order: PurchaseOrder) => run(order, 'again'),
+    /** Public demo: a message to the scripted supplier; nothing is sent to anyone. */
+    talk: (order: PurchaseOrder, text: string) => run(order, 'talk', { text }),
   }
 }
 

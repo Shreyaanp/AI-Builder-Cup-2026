@@ -339,3 +339,43 @@ test('OB-248 Get on Google: a visitor walks the whole practice, and it says noth
   await expect(sim.getByRole('link')).toHaveCount(0)
   await expect(sim).not.toContainText('Reviewer controls')
 })
+
+test('OB-248 a visitor writes to the supplier on an open order and gets an answer', async ({
+  page,
+}) => {
+  await openDemo(page)
+  const sheet = await openOrders(page)
+  const card = sheet.locator('article')
+  const talk = card.getByTestId('supplier-talk')
+  await sheet.getByRole('button', { name: 'Draft a reorder' }).click()
+  await expect(card.getByRole('textbox', { name: 'Write to the supplier' })).toHaveCount(0)
+  await card.getByRole('button', { name: 'Approve and send', exact: true }).click()
+  await expect(talk).toContainText('Yes, confirmed', { timeout: 20_000 })
+
+  const box = card.getByRole('textbox', { name: 'Write to the supplier' })
+  await expect(card.getByText('In the demo this is pretend: nothing is sent')).toBeVisible()
+  await box.fill('When will it reach me?')
+  await card.getByRole('button', { name: 'Send', exact: true }).click()
+  await expect(talk).toContainText('When will it reach me?')
+  await expect(box).toHaveValue('')
+  await expect(talk).toContainText(/It reaches you \w+/, { timeout: 20_000 })
+  await box.fill('Please pack it well')
+  await box.press('Enter')
+  await expect(talk).toContainText('Noted, thank you', { timeout: 20_000 })
+})
+
+test('OB-248 Find suppliers lists the demo suppliers and drafts the order to send', async ({
+  page,
+}) => {
+  await openDemo(page)
+  const coach = page.getByRole('textbox', { name: 'Message', exact: true })
+  await coach.fill('My tea dust is running low. Find suppliers.')
+  await page.getByRole('button', { name: 'Send', exact: true }).click()
+  const log = page.getByRole('log')
+  await expect(log).toContainText('I drafted 10', { timeout: 30_000 })
+  await expect(log).toContainText('(Demo)')
+  await expect(log).not.toContainText('In your real shop')
+  // Sending works too, and the demo supplier answers: nothing reaches a real business.
+  await log.getByRole('button', { name: /^Send/ }).first().click()
+  await expect(log).toContainText('Automatic demo reply', { timeout: 20_000 })
+})
