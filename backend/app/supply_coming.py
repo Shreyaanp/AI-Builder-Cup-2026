@@ -11,8 +11,11 @@ import math
 from datetime import date
 from typing import Any
 
+from fastapi import HTTPException
+
 from .merchant import MerchantRepository
 from .supply_chain import (
+    CHECK_DAYS,
     COVER_DAYS,
     _save,
     all_orders,
@@ -178,6 +181,73 @@ def resize(
         sized[0]["quantity"] = sized[1]
 
 
+def wrong_size(
+    po: dict[str, Any],
+    inventory: list[dict[str, Any]],
+    forecast: dict[str, Any],
+    today: date,
+) -> str:
+    """Why an open draft must not go out: "no_use" when its item has no use of its own on record,
+    "too_big" when it is more than a month of that use, else "". The owner's own quantity is
+    always fine, and an amount in a unit that does not convert cannot be judged (OB-242)."""
+    from .sourcing import convert, matches
+
+    reason = po.get("reason") or {}
+    item = str(reason.get("item") or "")
+    if (
+        po["status"] != "draft"
+        or direction_of(po) != "in"
+        or not item
+        or reason.get("owner_quantity")
+    ):
+        return ""
+    product = next((p for p in inventory if p["name"].casefold() == item.casefold()), None)
+    need = need_from_forecast(product, forecast, item, today)
+    if not need["daily"]:
+        return "no_use"
+    unit = (product or {}).get("unit") or reason.get("unit") or "kg"
+    amounts = [
+        convert(line["quantity"], line["unit"], unit)
+        for line in po["lines"]
+        if matches(line["item"], item) or matches(item, line["item"])
+    ]
+    amount = sum(known for known in amounts if known is not None)
+    return "too_big" if amount > need["daily"] * CHECK_DAYS else ""
+
+
+def withdraw(store: MerchantRepository, bid: str, po: dict[str, Any], why: str) -> None:
+    """Cancel an unsent draft. Losing a race with the owner's own change leaves it as it is: the
+    next reorder, or the check on approving, sees it again."""
+    changed = {
+        **po,
+        "status": "cancelled",
+        "reason": {**(po.get("reason") or {}), "withdrawn": why},
+    }
+    try:
+        po.update(_save(store, bid, changed))
+    except HTTPException as error:
+        if error.status_code != 409:
+            raise
+
+
+def withdraw_wrong_sizes(
+    store: MerchantRepository,
+    bid: str,
+    orders: list[dict[str, Any]],
+    inventory: list[dict[str, Any]],
+    forecast: dict[str, Any],
+    today: date,
+    skip: str = "",
+) -> None:
+    """Withdraw every open draft of a wrong size (wrong_size), except the item named `skip`."""
+    for po in orders:
+        if str((po.get("reason") or {}).get("item") or "").casefold() == skip.casefold():
+            continue
+        why = wrong_size(po, inventory, forecast, today)
+        if why:
+            withdraw(store, bid, po, why)
+
+
 def settle_drafts(
     store: MerchantRepository,
     uid: str,
@@ -190,7 +260,9 @@ def settle_drafts(
 ) -> None:
     """Size again, or withdraw, the unsent drafts of the other items that run out. An order sent
     after a draft was made changes what it should ask for; one that covers the need leaves the
-    draft over-ordering, and it must not stay approvable (#603). The owner's own quantity stays."""
+    draft over-ordering, and it must not stay approvable (#603). A draft of a wrong size is
+    withdrawn, whatever else runs out (OB-242). The owner's own quantity stays."""
+    withdraw_wrong_sizes(store, bid, known[0], inventory, forecast, today, skip)
     for product in inventory:
         if product["name"] == skip or product.get("stock") is None:
             continue

@@ -93,17 +93,28 @@ async def overview(business_id: str, request: Request) -> dict[str, Any]:
     history = await anyio.to_thread.run_sync(store(request).sales_history, uid, business_id)
     today = supply_chain.shop_today(context)
     forecast = await forecaster(request).forecast(history, today, context["inventory"])
+    predicted = forecast.model_dump(mode="json")
+    # A draft of a wrong size never reaches the screen with a Send button, even if no reorder has
+    # run since it was saved (OB-242).
+    await anyio.to_thread.run_sync(
+        supply_coming.withdraw_wrong_sizes,
+        store(request),
+        business_id,
+        orders,
+        context["inventory"],
+        predicted,
+        today,
+    )
+    orders = [po for po in orders if po["status"] != "cancelled" or po["sent"]]
     category = str(context["business"]["fields"].get("category") or "")
     needs = [
         {"item": product["name"], **need}
         for product in context["inventory"]
         # Only stock the shop buys runs out here: a menu item is made from it (OB-239).
         if supply_chain.bought(product, category)
-        and (
-            need := supply_chain.need_from_forecast(
-                product, forecast.model_dump(mode="json"), product["name"], today
-            )
-        )["runs_out"]
+        and (need := supply_chain.need_from_forecast(product, predicted, product["name"], today))[
+            "runs_out"
+        ]
         and need["stock_known"]
     ]
     currency = supply_chain.shop_currency(context["business"]["fields"])
@@ -243,8 +254,8 @@ async def approve_order(
     business_id: str, order_id: str, body: Version, request: Request
 ) -> dict[str, Any]:
     uid = await consented_owner(request)
-    return await anyio.to_thread.run_sync(
-        supply_chain.approve, store(request), uid, business_id, order_id, body.version
+    return await supply_chain.approve_checked(
+        store(request), uid, business_id, order_id, body.version, forecaster(request)
     )
 
 

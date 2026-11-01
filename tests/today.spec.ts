@@ -184,6 +184,9 @@ test('needs you now: at most three, most urgent first, each leaves when done', a
   await expect(rows).toHaveCount(3)
   await expect(rows.nth(0)).toContainText('Still the same menu today?')
   await expect(rows.nth(1)).toContainText('Masala chai: only 4 left')
+  // OB-243: a low row without a made/bought answer asks; it never offers Order.
+  await expect(rows.nth(1)).toContainText('Do you make it or buy it? Choose in Shop › Menu.')
+  await expect(rows.nth(1).getByRole('button', { name: 'Order', exact: true })).toHaveCount(0)
   await expect(rows.nth(2)).toContainText('Add a phone number')
   // One primary action: only the top row's button is filled.
   await expect(card.locator('.MuiButton-contained')).toHaveCount(1)
@@ -200,9 +203,62 @@ test('needs you now: at most three, most urgent first, each leaves when done', a
   await expect(rows.nth(2)).toContainText('Share your page')
 })
 
+for (const [language, preview, pointer, shopTile, tile, menu, draft] of [
+  [
+    'en',
+    'Continue local preview',
+    'Do you make it or buy it? Choose in Shop › Services.',
+    'Shop',
+    'Services',
+    'Menu',
+    'Draft a reorder',
+  ],
+  [
+    'hi',
+    'स्थानीय प्रीव्यू जारी रखें',
+    'आप इसे बनाते हैं या खरीदते हैं? दुकान › सेवाएँ में चुनें।',
+    'दुकान',
+    'सेवाएँ',
+    'मेन्यू',
+    'फिर से सामान मँगाएँ',
+  ],
+] as const) {
+  test(`OB-243: a salon is pointed to its real tile, 390 px ${language}`, async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await facts(page, { low_stock: [{ name: 'Shampoo', stock: 2, runs_out: null }] })
+    await shop(page, { name: 'Courtyard Salon', ...FULL, category: 'Hair salon' }, [
+      { name: 'Haircut', price: 30000, unit: 'service', category: 'Hair' },
+      { name: 'Shampoo', price: 20000, unit: 'bottle', category: 'Supplies', stock: 2 },
+    ])
+    await page.evaluate(
+      (value) => localStorage.setItem('niva.starter.preferences', JSON.stringify(value)),
+      { language },
+    )
+    await page.reload()
+    await page.getByRole('button', { name: preview }).click()
+    await expect(page.getByTestId('today-needs')).toContainText(pointer)
+    await axe(page)
+    await shot(page, `salon-pointer-${language}`)
+    await page.locator('[data-tour="nav-shop"]').click()
+    await expect(page.getByTestId('shop-tiles').getByText(tile, { exact: true })).toBeVisible()
+    // The reorder's question names the same tile.
+    await page.route('**/supply/reorder', (route) =>
+      route.fulfill({ json: { status: 'ask_source', item: 'Shampoo' } }),
+    )
+    await page.locator('[data-tour="nav-grow"]').click()
+    await page.locator('[data-tour="supply"]').click()
+    const sheet = page.getByRole('dialog')
+    await sheet.getByRole('button', { name: draft }).click()
+    await expect(sheet.getByRole('status')).toContainText(`${shopTile} › ${tile}`)
+    await expect(sheet.getByRole('status')).not.toContainText(menu)
+  })
+}
+
 // Low stock keeps "Order" and asks to order more.
 test('low stock: a kirana keeps Order and asks to order more', async ({ page }) => {
-  await facts(page, { low_stock: [{ name: 'Toothpaste', stock: 4, runs_out: null }] })
+  await facts(page, {
+    low_stock: [{ name: 'Toothpaste', stock: 4, runs_out: null, source: 'bought' }],
+  })
   await shop(page, { name: 'Corner Kirana', ...FULL, category: 'Grocery', phone: '' }, [
     { name: 'Toothpaste', price: 9000, unit: 'tube', category: 'Care', stock: 4 },
   ])

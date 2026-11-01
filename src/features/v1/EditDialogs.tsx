@@ -123,6 +123,8 @@ function ProductForm({ product }: { product: Product | null }) {
   const [item, setItem] = useState(initial)
   const [source, setSource] = useState(product?.source)
   const [savingSource, setSavingSource] = useState(false)
+  // The tap saves at once, so Cancel does not undo it: the note says so (OB-243).
+  const [sourceSaved, setSourceSaved] = useState(false)
   const sourceTapped = useRef(false)
   const shopId = active?.id
   const productId = product?.id
@@ -155,6 +157,7 @@ function ProductForm({ product }: { product: Product | null }) {
     const before = source
     setSource(next)
     setSavingSource(true)
+    setSourceSaved(false)
     setError('')
     try {
       await api(`/businesses/${active.id}/inventory/${encodeURIComponent(product.id)}/source`, {
@@ -162,6 +165,7 @@ function ProductForm({ product }: { product: Product | null }) {
         body: JSON.stringify({ source: next }),
       })
       await reload()
+      setSourceSaved(true)
     } catch (cause) {
       setSource(before)
       setError(cause instanceof Error ? cause.message : t.actionFailed)
@@ -297,6 +301,14 @@ function ProductForm({ product }: { product: Product | null }) {
               <ToggleButton value="made">{sourceCopy.make}</ToggleButton>
               <ToggleButton value="bought">{sourceCopy.buy}</ToggleButton>
             </ToggleButtonGroup>
+            <Typography
+              role="status"
+              data-testid="product-source-saved"
+              variant="bodyMedium"
+              color="text.secondary"
+            >
+              {sourceSaved ? sourceCopy.saved : ''}
+            </Typography>
           </Stack>
           {error && <Alert severity="error">{error}</Alert>}
           <button type="submit" hidden />
