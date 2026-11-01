@@ -232,9 +232,13 @@ test('owner tour connects Today, forecast, payment preview and supplier timeline
   await expect(page.getByText('Recorded sample of SAP’s sandbox, not live')).toHaveCount(0)
   await page
     .getByRole('list', { name: 'Purchase orders', exact: true })
-    .getByRole('button', { name: /Sri Lakshmi Provisions/ })
+    .getByRole('button', { name: 'Tea dust from Sri Lakshmi Provisions (Demo)' })
+    .first()
     .click()
-  const order = page.getByRole('article', { name: /Sri Lakshmi Provisions/ })
+  const order = page.getByRole('article', {
+    name: 'Tea dust from Sri Lakshmi Provisions (Demo)',
+    exact: true,
+  })
   await expect(order).toBeVisible()
   await expect(order).toContainText('Invoice in')
   await page.screenshot({

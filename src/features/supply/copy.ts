@@ -1736,7 +1736,7 @@ const hi: SupplyCopy = {
   cameAs: (s) => `${s} में आया`,
   reader: {
     gemini: 'Gemini ने अनुवाद किया',
-    parser: 'ऑफ़लाइन अनुवाद (तय पार्सर)',
+    parser: 'दस्तावेज़ से पढ़ा गया',
     template: 'आपकी माँग से लिखा गया',
   },
   partial: (now, later, unit, day) =>

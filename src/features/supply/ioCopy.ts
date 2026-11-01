@@ -189,7 +189,7 @@ const hi: IoCopy = {
     sap: 'सप्लायर की कॉपी देखें',
     dismiss: 'देख लिया',
     retry: 'फिर कोशिश करें',
-    demo: 'साथी अगला दस्तावेज़ भेजे (डेमो)',
+    demo: 'अगला कदम दिखाएँ (डेमो)',
     sendAll: (n) => `सब भेजें (${n})`,
   },
   change: {
@@ -216,7 +216,7 @@ const hi: IoCopy = {
   more: (item) => `${item} बढ़ाएँ`,
   willSend: (what, partner, format) => `${partner} को ${what} · ${format}`,
   format: { idoc: 'सप्लायर का फ़ॉर्मैट', csv: 'CSV फ़ाइल', text: 'संदेश', json: 'JSON' },
-  simulated: 'डेमो साथी: भेजना नकली है।',
+  simulated: 'डेमो सप्लायर: भेजना नकली है।',
   sendingIn: (n) => `${n} सेकंड में भेजेंगे`,
   step: {
     created: 'बना',
@@ -235,8 +235,8 @@ const hi: IoCopy = {
   fromPartners: 'साथियों से',
   fromTo: (a, b) => `${a} → ${b}`,
   needsNow: (n) => `${n} काम अभी आपके लिए`,
-  allQuiet: 'साथी: सब समय पर',
-  noPartners: 'अभी कोई साथी नहीं',
+  allQuiet: 'सप्लायर: सब समय पर',
+  noPartners: 'अभी कोई सप्लायर नहीं',
   noPartnersHint: 'पहले ऑर्डर के बाद सप्लायर यहाँ दिखेंगे',
   beforeClose: 'दुकान बंद करने से पहले',
   notSent: (n) => `${n} दस्तावेज़ अभी नहीं भेजे`,
@@ -245,7 +245,7 @@ const hi: IoCopy = {
   failed: 'लोड नहीं हुआ। इंटरनेट देखें।',
   actionFailed: 'नहीं हुआ। फिर कोशिश करें।',
   stale: 'इस बीच बदल गया। नया दिखा रहे हैं।',
-  demoDone: 'डेमो साथी सब भेज चुका है।',
+  demoDone: 'डेमो सप्लायर सब भेज चुका है।',
 }
 
 // Hindi and English are complete; other languages show English until translated, except the

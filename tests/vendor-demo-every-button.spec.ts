@@ -75,7 +75,7 @@ test('Coach: Reorder opens the purchase order draft', async ({ page }) => {
   await expect(
     page
       .getByRole('dialog')
-      .getByText(/ from /)
+      .getByText(/^Tea dust from Sri Lakshmi Provisions \(Demo\)$/)
       .first(),
   ).toBeVisible()
 })

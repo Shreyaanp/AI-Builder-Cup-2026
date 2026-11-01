@@ -123,7 +123,10 @@ test('S11 · forecast → PO → ORDRSP (partial) → ASN → invoice, translate
   await test.step('1 · the coach drafts the PO from the forecast and the rules', async () => {
     await page.getByRole('textbox', { name: 'Message', exact: true }).fill('Reorder atta')
     await page.getByRole('button', { name: 'Send', exact: true }).click()
-    const card = page.getByRole('article', { name: / from / })
+    const card = page.getByRole('article', {
+      name: 'Atta (wheat flour) from Little Lantern Kirana (Demo)',
+      exact: true,
+    })
     await expect(card).toBeVisible()
     // The authored kirana sells Atta; the older supplier fixture calls it Wheat flour.
     await expect(card).toContainText(/kg (?:Wheat flour|Atta) · deliver/)
@@ -150,7 +153,10 @@ test('S11 · forecast → PO → ORDRSP (partial) → ASN → invoice, translate
     await expect(card).not.toContainText('<MESTYP>')
   })
 
-  const card = page.getByRole('article', { name: / from / })
+  const card = page.getByRole('article', {
+    name: 'Atta (wheat flour) from Little Lantern Kirana (Demo)',
+    exact: true,
+  })
   await test.step('2 · ORDRSP: part now, the rest back-ordered', async () => {
     await card.getByRole('button', { name: 'Confirm part, back-order the rest' }).click()
     await status(card, 'Changes to check')
@@ -208,7 +214,7 @@ test('S11 · forecast → PO → ORDRSP (partial) → ASN → invoice, translate
     await page.getByRole('button', { name: 'Grow', exact: true }).click()
     await page.getByRole('button', { name: /^Purchase orders/ }).click()
     const sheet = page.getByRole('dialog', { name: 'Purchase orders' })
-    await expect(sheet).toContainText(' from ')
+    await expect(sheet).toContainText('Atta (wheat flour) from Little Lantern Kirana (Demo)')
     await sheet
       .getByRole('list', { name: 'Suppliers and rules' })
       .getByRole('button')

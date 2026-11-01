@@ -68,8 +68,8 @@ const copy: Record<Locale, TodayCopy> = {
     yes: 'Yes',
     changed: 'Changed',
     low: (item, left) => `${item}: only ${left} left`,
-    order: 'Make more',
-    orderDraft: (item) => `How much ${item} should I make?`,
+    order: 'Order',
+    orderDraft: (item) => `Order more ${item}`,
     soldOut: (item) => `${item} is sold out`,
     soldOutMany: (n) => `${n} items are sold out`,
     backInStock: 'Back in stock',
@@ -122,8 +122,8 @@ const copy: Record<Locale, TodayCopy> = {
     yes: 'हाँ',
     changed: 'बदला है',
     low: (item, left) => `${item}: सिर्फ़ ${left} बचे`,
-    order: 'और बनाएँ',
-    orderDraft: (item) => `${item} कितना बनाना है?`,
+    order: 'ऑर्डर करें',
+    orderDraft: (item) => `और ${item} ऑर्डर करो`,
     soldOut: (item) => `${item} खत्म हो गया`,
     soldOutMany: (n) => `${n} चीज़ें खत्म हैं`,
     backInStock: 'फिर से उपलब्ध',
@@ -888,4 +888,22 @@ export function todayCopyFor(locale: Locale): TodayCopy {
 
 export function useTodayCopy(): TodayCopy {
   return todayCopyFor(useLocale())
+}
+
+/** Food shops make their stock, so their low-stock row says "Make more"; elsewhere it stays "Order". */
+const makeMore: Partial<Record<Locale, { label: string; draft: (item: string) => string }>> = {
+  en: { label: 'Make more', draft: (item) => `How much ${item} should I make?` },
+  hi: { label: 'और बनाएँ', draft: (item) => `${item} कितना बनाना है?` },
+}
+
+export function lowStockAction(
+  tt: TodayCopy,
+  locale: Locale,
+  food: boolean,
+  item: string,
+): { label: string; ask: string } {
+  const make = food ? makeMore[locale] : undefined
+  return make
+    ? { label: make.label, ask: make.draft(item) }
+    : { label: tt.order, ask: tt.orderDraft(item) }
 }
