@@ -193,10 +193,7 @@ export function SupplierCarousel({
     formatShopPrice(toMinor(major, result.currency), result.currency, locale)
   const anyDemo = result.suppliers.some((card) => card.demo)
   return (
-    <Box
-      component="li"
-      sx={{ pl: { xs: 0, sm: 10 }, minWidth: 0, width: '100%', maxWidth: '100%', ...enterRise }}
-    >
+    <Box sx={{ pl: { xs: 0, sm: 10 }, minWidth: 0, width: '100%', maxWidth: '100%', ...enterRise }}>
       <Stack spacing={0.5} sx={{ pl: { xs: 10, sm: 0 }, pb: 2 }}>
         <Typography variant="titleSmall">{s.suppliersNear(result.suppliers.length)}</Typography>
         {anyDemo && (
@@ -394,7 +391,7 @@ export function OrderCard({
     }
   }
   return (
-    <Box component="li" sx={{ pl: { xs: 0, sm: 10 }, ...enterRise }}>
+    <Box sx={{ pl: { xs: 0, sm: 10 }, ...enterRise }}>
       <Box
         sx={{
           position: 'relative',

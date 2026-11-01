@@ -52,6 +52,8 @@ import {
   ImagePlus,
   ImageUp,
   FileSpreadsheet,
+  FileText,
+  Handshake,
   Layers,
   Paperclip,
   Leaf,
@@ -61,8 +63,12 @@ import {
   PackagePlus,
   Share2,
   Square,
+  Send,
   Store,
   Tag,
+  TrendingUp,
+  Truck,
+  Wallet,
   Volume2,
   VolumeX,
   ZapOff,
@@ -103,7 +109,10 @@ import type { SupplyCardData } from '../../supply/SupplyEntry'
 import type { PurchaseOrder, Relationship } from '../../supply/types'
 import { utter } from '../phoneVoice'
 import { useLanguageSwitch } from '../languageSwitch'
-import { ActionChip, MenuLinkChip, ReplyCard } from '../CoachActions'
+import { ActionChip, MenuLinkChip, ReplyCard, ReplyLineAction } from '../CoachActions'
+import { CollapsibleCard, LineAction } from '../CollapsibleCard'
+import { sendPrepared, useCardFold, type ReplyState } from '../chatCards'
+import { cardSummary, type SummaryInput } from '../cardSummary'
 import { useNextStepsCopy } from '../nextStepsCopy'
 import { asCoachAction, NEEDS_TAP, type CoachAction } from '../coachAction'
 import { requestOpen } from '../openRequest'
@@ -133,6 +142,12 @@ const PurchaseOrderCard = lazy(() =>
 )
 const RulesChangeCard = lazy(() =>
   import('../../supply/Supply').then((m) => ({ default: m.RulesChangeCard })),
+)
+const PoLineAction = lazy(() =>
+  import('../../supply/PurchaseOrderCard').then((m) => ({ default: m.PoLineAction })),
+)
+const RulesLineAction = lazy(() =>
+  import('../../supply/Supply').then((m) => ({ default: m.RulesLineAction })),
 )
 
 const PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp']
@@ -261,6 +276,8 @@ function CoachScreen({
   const [prompts, setPrompts] = useState<string[]>([])
   const [orders, setOrders] = useState<Record<string, Order>>({})
   const [pos, setPos] = useState<Record<string, PurchaseOrder>>({})
+  // Prepared customer replies: sent or set aside (their folded line says which, OB-249).
+  const [replies, setReplies] = useState<Record<string, ReplyState>>({})
   const [thread, setThread] = useState<string | null>(null)
   const watching = useRef(new Set<string>())
   const receiveOrder = useReceiveOrder()
@@ -967,6 +984,54 @@ function CoachScreen({
   // A typed reply streams as tokens; a spoken one appears as it is said.
   const liveReply = reply || reveal.shown
   const empty = messages.length === 0 && !liveReply
+  // OB-249: every card in the chat, by key; only the newest (or the one the owner opened) is full.
+  function cardOf(message: Message): [string, SummaryInput] | null {
+    if (message.role === 'order')
+      return orders[message.orderId]
+        ? [message.orderId, { kind: 'order', order: orders[message.orderId]! }]
+        : null
+    if (message.role === 'po')
+      return pos[message.poId] ? [message.poId, { kind: 'po', order: pos[message.poId]! }] : null
+    if (message.role === 'supply')
+      return message.data.order ? [message.key, { kind: 'po', order: message.data.order }] : null
+    if (message.role === 'suppliers')
+      return [message.key, { kind: 'suppliers', result: message.result }]
+    if (message.role === 'chart') return [message.key, { kind: 'chart', chart: message.chart }]
+    if (message.role === 'payment')
+      return [message.key, { kind: 'payment', payment: message.payment }]
+    if (message.role === 'rules') return [message.key, { kind: 'rules', row: message.row }]
+    if (message.role === 'action' && message.action.target === 'reply')
+      return replies[message.key] === 'dismissed'
+        ? null
+        : [
+            message.key,
+            { kind: 'reply', action: message.action, sent: replies[message.key] === 'sent' },
+          ]
+    return null
+  }
+  const rulesChanged = (key: string) => (row: Relationship) =>
+    setMessages((items) =>
+      items.map((item) => (item.role === 'rules' && item.key === key ? { ...item, row } : item)),
+    )
+  const fold = useCardFold(messages.flatMap((message) => cardOf(message)?.[0] ?? []))
+  /** One card of the chat, folded to its summary line unless it is the open one. */
+  function folded(message: Message, icon: ReactElement, card: ReactElement, action?: ReactElement) {
+    const [key, input] = cardOf(message)!
+    const summary = cardSummary(input, language)
+    return (
+      <CollapsibleCard
+        key={key}
+        open={fold.open(key)}
+        newest={fold.newest(key)}
+        summary={summary}
+        icon={icon}
+        action={summary.needsYou ? action : undefined}
+        onToggle={() => fold.toggle(key)}
+      >
+        {card}
+      </CollapsibleCard>
+    )
+  }
   // OB-38: "How this works" goes away once the owner has sent 2+ messages in this shop (remembered
   // per shop so it stays hidden on reload); it stays reachable in the + sheet.
   const helpSeenKey = activeId ? `niva.coach.helpSeen.${activeId}` : null
@@ -1349,7 +1414,26 @@ function CoachScreen({
                     )
                   ) : message.role === 'action' ? (
                     message.action.target === 'reply' ? (
-                      <ReplyCard key={message.key} action={message.action} onSend={sendReply} />
+                      cardOf(message) &&
+                      folded(
+                        message,
+                        <MessageSquare size={18} />,
+                        <ReplyCard
+                          action={message.action}
+                          state={replies[message.key] ?? 'ready'}
+                          onState={(state) =>
+                            setReplies((known) => ({ ...known, [message.key]: state }))
+                          }
+                          onSend={sendReply}
+                        />,
+                        <ReplyLineAction
+                          onRun={() =>
+                            sendPrepared(message.action, sendReply, (state) =>
+                              setReplies((known) => ({ ...known, [message.key]: state })),
+                            )
+                          }
+                        />,
+                      )
                     ) : (
                       <ActionChip
                         key={message.key}
@@ -1358,67 +1442,98 @@ function CoachScreen({
                       />
                     )
                   ) : message.role === 'payment' ? (
-                    <Box component="li" key={message.key}>
+                    folded(
+                      message,
+                      <Wallet size={18} />,
                       <Suspense fallback={null}>
                         <PaymentCard payment={message.payment} />
-                      </Suspense>
-                    </Box>
+                      </Suspense>,
+                    )
                   ) : message.role === 'chart' ? (
-                    <Box component="li" key={message.key} sx={{ display: 'flex' }}>
-                      <Suspense fallback={null}>
-                        <CoachChart chart={message.chart} />
-                      </Suspense>
-                    </Box>
+                    folded(
+                      message,
+                      <TrendingUp size={18} />,
+                      <Box sx={{ display: 'flex' }}>
+                        <Suspense fallback={null}>
+                          <CoachChart chart={message.chart} />
+                        </Suspense>
+                      </Box>,
+                    )
                   ) : message.role === 'suppliers' ? (
-                    <Suspense key={message.key} fallback={null}>
-                      <SupplierCarousel
-                        result={message.result}
-                        onChoose={(card) => {
-                          const amount = message.result.quantity
-                            ? `${message.result.quantity} ${message.result.unit} `
-                            : ''
-                          setNote(s.chooseDraft(card.rank, `${amount}${message.result.item}`))
-                          messageInput.current?.focus()
-                        }}
-                      />
-                    </Suspense>
+                    folded(
+                      message,
+                      <Store size={18} />,
+                      <Suspense fallback={null}>
+                        <SupplierCarousel
+                          result={message.result}
+                          onChoose={(card) => {
+                            const amount = message.result.quantity
+                              ? `${message.result.quantity} ${message.result.unit} `
+                              : ''
+                            setNote(s.chooseDraft(card.rank, `${amount}${message.result.item}`))
+                            messageInput.current?.focus()
+                          }}
+                        />
+                      </Suspense>,
+                    )
                   ) : message.role === 'po' ? (
-                    pos[message.poId] && (
-                      <Box component="li" key={message.poId} sx={{ pl: { xs: 0, sm: 10 } }}>
+                    pos[message.poId] &&
+                    folded(
+                      message,
+                      <FileText size={18} />,
+                      <Box sx={{ pl: { xs: 0, sm: 10 } }}>
                         <Suspense fallback={null}>
                           <PurchaseOrderCard
                             order={pos[message.poId]!}
                             onChange={(po) => setPos((known) => ({ ...known, [po.id]: po }))}
                           />
                         </Suspense>
-                      </Box>
+                      </Box>,
+                      <Suspense fallback={null}>
+                        <PoLineAction
+                          order={pos[message.poId]!}
+                          onChange={(po) => setPos((known) => ({ ...known, [po.id]: po }))}
+                        />
+                      </Suspense>,
                     )
                   ) : message.role === 'supply' ? (
-                    <Box component="li" key={message.key} sx={{ pl: { xs: 0, sm: 10 } }}>
-                      <Suspense fallback={null}>
-                        <SupplyChatCard data={message.data} />
-                      </Suspense>
-                    </Box>
+                    message.data.order ? (
+                      folded(
+                        message,
+                        <FileText size={18} />,
+                        <Box sx={{ pl: { xs: 0, sm: 10 } }}>
+                          <Suspense fallback={null}>
+                            <SupplyChatCard data={message.data} />
+                          </Suspense>
+                        </Box>,
+                      )
+                    ) : (
+                      // A link to the supply screens: one line already.
+                      <Box component="li" key={message.key} sx={{ pl: { xs: 0, sm: 10 } }}>
+                        <Suspense fallback={null}>
+                          <SupplyChatCard data={message.data} />
+                        </Suspense>
+                      </Box>
+                    )
                   ) : message.role === 'rules' ? (
-                    <Box component="li" key={message.key} sx={{ pl: { xs: 0, sm: 10 } }}>
+                    folded(
+                      message,
+                      <Handshake size={18} />,
+                      <Box sx={{ pl: { xs: 0, sm: 10 } }}>
+                        <Suspense fallback={null}>
+                          <RulesChangeCard row={message.row} onChange={rulesChanged(message.key)} />
+                        </Suspense>
+                      </Box>,
                       <Suspense fallback={null}>
-                        <RulesChangeCard
-                          row={message.row}
-                          onChange={(row) =>
-                            setMessages((items) =>
-                              items.map((item) =>
-                                item.role === 'rules' && item.key === message.key
-                                  ? { ...item, row }
-                                  : item,
-                              ),
-                            )
-                          }
-                        />
-                      </Suspense>
-                    </Box>
+                        <RulesLineAction row={message.row} onChange={rulesChanged(message.key)} />
+                      </Suspense>,
+                    )
                   ) : message.role === 'order' ? (
-                    orders[message.orderId] && (
-                      <Suspense key={message.orderId} fallback={null}>
+                    orders[message.orderId] &&
+                    folded(
+                      message,
+                      <Truck size={18} />,
+                      <Suspense fallback={null}>
                         <OrderCard
                           order={orders[message.orderId]!}
                           onSend={sendOrder}
@@ -1431,7 +1546,13 @@ function CoachScreen({
                             })
                           }
                         />
-                      </Suspense>
+                      </Suspense>,
+                      <LineAction
+                        label={s.send}
+                        name={s.sendTo(orders[message.orderId]!.supplier.name)}
+                        icon={<Send size={18} />}
+                        onRun={() => sendOrder(orders[message.orderId]!)}
+                      />,
                     )
                   ) : (
                     <Bubble key={index} message={message} you={t.you} coach={t.coach} />
