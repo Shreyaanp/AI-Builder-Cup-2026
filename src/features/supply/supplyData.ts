@@ -242,14 +242,23 @@ interface ReorderResult {
  * Some on order in a unit that does not convert sets `ask` to the item: the caller offers
  * "Order more", which drafts again with `anyway` (#603).
  */
+/** An order's unit: as saved in English ("12 l"), in the owner's words otherwise ("12 लीटर"). */
+export function useOrderUnit(): (raw: string) => string {
+  const locale = useLocale()
+  const shopCopy = useShopCopy()
+  return useCallback(
+    (raw: string) => (locale.startsWith('en') ? raw : unitLabel(raw, shopCopy)),
+    [locale, shopCopy],
+  )
+}
+
 export function useDraftReorder() {
   const { api, activeId, active } = useWorkspace()
   const services = isServiceShop(active?.fields.category)
   const s = useSupplyCopy()
   const c = useOrderChangeCopy()
   const locale = useLocale()
-  const shopCopy = useShopCopy()
-  const unit = useCallback((raw: string) => unitLabel(raw, shopCopy), [shopCopy])
+  const unit = useOrderUnit()
   return useCallback(
     async (
       item = '',
@@ -375,25 +384,23 @@ export function dayLabel(iso: string, locale: string): string {
 export function useOnOrderText() {
   const c = useOrderChangeCopy()
   const locale = useLocale()
-  const shopCopy = useShopCopy()
+  const unit = useOrderUnit()
   const { products } = useWorkspace()
   return useCallback(
     (need: SupplyNeed) => {
       const number = new Intl.NumberFormat(locale, { maximumFractionDigits: 2 })
-      const unit = products.find((p) => p.name === need.item)?.unit ?? ''
+      const saved = products.find((p) => p.name === need.item)?.unit ?? ''
       return [
-        ...(need.on_order ? [{ quantity: need.on_order, unit, arrives: need.arrives ?? '' }] : []),
+        ...(need.on_order
+          ? [{ quantity: need.on_order, unit: saved, arrives: need.arrives ?? '' }]
+          : []),
         ...(need.on_order_other ?? []),
       ]
         .map((row) =>
-          c.onOrderLine(
-            number.format(row.quantity),
-            unitLabel(row.unit, shopCopy),
-            dayLabel(row.arrives, locale),
-          ),
+          c.onOrderLine(number.format(row.quantity), unit(row.unit), dayLabel(row.arrives, locale)),
         )
         .join(' · ')
     },
-    [c, locale, products, shopCopy],
+    [c, locale, products, unit],
   )
 }

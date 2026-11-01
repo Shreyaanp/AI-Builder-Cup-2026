@@ -29,8 +29,6 @@ import { enterRise, fieldFade, shape } from '../../design/theme'
 import { chalkWrite, stampThud } from '../../design/chalkMotion'
 import { formatShopPrice } from '../v1/format'
 import { productName } from '../../i18n/productNames'
-import { useShopCopy } from '../shop/strings'
-import { unitLabel } from '../shop/units'
 import { Sheet } from '../v1/Sheet'
 import { useWorkspace } from '../v1/workspaceContext'
 import { SupplierTalk } from './SupplierTalk'
@@ -40,7 +38,7 @@ import { useOrderChangeCopy } from './orderChangeCopy'
 import { useShowcaseCopy } from './showcaseCopy'
 import { orderLabel, orderTotal } from './orderFormat'
 import { useSupplyCopy, type SupplyCopy } from './copy'
-import { dayLabel, usePoActions, type SimVariant } from './supplyData'
+import { dayLabel, useOrderUnit, usePoActions, type SimVariant } from './supplyData'
 import type { DocFlag, DocKind, PurchaseOrder, RuleCheck, SupplyDocument } from './types'
 
 const STEPS: DocKind[] = ['ORDERS', 'ORDRSP', 'DESADV', 'INVOIC']
@@ -60,13 +58,13 @@ const NEXT: Partial<Record<PurchaseOrder['status'], DocKind>> = {
 
 function useFormat(order: PurchaseOrder) {
   const locale = useLocale()
-  const shopCopy = useShopCopy()
+  const unit = useOrderUnit()
   const number = new Intl.NumberFormat(locale, { maximumFractionDigits: 2 })
   return {
     locale,
     // Item names and units in the owner's language (चाय पत्ती, किलो), as stored otherwise.
     item: (name: string) => productName(name, locale),
-    unit: (raw: string) => unitLabel(raw, shopCopy),
+    unit,
     money: (minor: number | null | undefined) =>
       minor == null ? '–' : formatShopPrice(minor, order.currency, locale),
     qty: (value: number | null | undefined) => number.format(value ?? 0),

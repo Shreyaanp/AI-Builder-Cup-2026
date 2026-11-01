@@ -28,11 +28,9 @@ import { useWorkspace } from '../v1/workspaceContext'
 import { useShowcaseCopy } from './showcaseCopy'
 import { Supporting, Tile } from '../v1/ShopTiles'
 import { useSupplyCopy } from './copy'
-import { useShopCopy } from '../shop/strings'
-import { unitLabel } from '../shop/units'
 import { orderLabel, orderSize, orderTotal, termsLabel } from './orderFormat'
 import { PurchaseOrderCard } from './PurchaseOrderCard'
-import { useDraftReorder, useRulesActions, useSupply } from './supplyData'
+import { useDraftReorder, useOrderUnit, useRulesActions, useSupply } from './supplyData'
 import { useOrderChangeCopy } from './orderChangeCopy'
 import type { ItemRule, PurchaseOrder, Relationship, RuleSet, SystemFormat } from './types'
 
@@ -91,7 +89,7 @@ export function SupplySheet({ open, onClose }: { open: boolean; onClose: () => v
   const ws = useWorkspace()
   const roles = useTheme().material
   const locale = useLocale()
-  const shopCopy = useShopCopy()
+  const unit = useOrderUnit()
   const money = (order: PurchaseOrder) => {
     const total = orderTotal(order)
     return total == null ? '–' : formatShopPrice(total, order.currency, locale)
@@ -263,7 +261,7 @@ export function SupplySheet({ open, onClose }: { open: boolean; onClose: () => v
                     <FileText size={20} color={roles.primary} aria-hidden="true" />
                     <ListItemText
                       primary={orderLabel(order, s.orderTitle, (item) => productName(item, locale))}
-                      secondary={`${orderSize(order, locale, (raw) => unitLabel(raw, shopCopy))} · ${s.status[order.status]} · ${money(order)}`}
+                      secondary={`${orderSize(order, locale, unit)} · ${s.status[order.status]} · ${money(order)}`}
                     />
                     <ChevronRight size={18} aria-hidden="true" />
                   </ListItemButton>
