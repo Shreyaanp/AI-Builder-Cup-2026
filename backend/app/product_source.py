@@ -124,6 +124,8 @@ SUPPLY_WORDS = {
     "chana",
     "all-purpose",
 }
+# Work done here (a haircut, an hour of alterations), never stock on a shelf.
+SERVICE_UNITS = {"service", "hour"}
 
 
 def shop_kind(category: str) -> str:
@@ -149,15 +151,21 @@ def source_of(product: dict[str, Any], category: str = "") -> Source:
     saved = product.get("source")
     if saved in {"made", "bought"}:
         return saved
-    if unit_of(product.get("unit") or "") in SERVED_UNITS:
+    kind = shop_kind(category)
+    # A kirana's "Soap gift set" or "Steel glass" is on the shelf to resell, never made.
+    if kind in RESALE:
+        return "bought"
+    unit = unit_of(product.get("unit") or "")
+    if kind in SERVICES:
+        # A haircut or an hour of alterations is work done here; shampoo, roses or thread may
+        # be stock the shop buys, so anything else is asked, never "Make more".
+        if unit in SERVICE_UNITS:
+            return "made"
+        return "bought" if raw_ingredient(product.get("name") or "") else "unknown"
+    if unit in SERVED_UNITS:
         return "made"
     if raw_ingredient(product.get("name") or ""):
         return "bought"
-    kind = shop_kind(category)
-    if kind in RESALE:
-        return "bought"
-    if kind in SERVICES:
-        return "made"
     return "unknown"
 
 

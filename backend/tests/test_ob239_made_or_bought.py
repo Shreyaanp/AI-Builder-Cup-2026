@@ -142,9 +142,8 @@ def store(tmp_path: Path):
         ("Lemon rice", "pack", "Home kitchen", "unknown"),
         ("Maggi noodles", "pack", "Grocery / Kirana", "bought"),
         ("Crocin", "strip", "Pharmacy", "bought"),
-        ("Curtain shortening", "piece", "Tailor", "made"),
-        ("Small bouquet", "bunch", "Florist", "made"),
         ("Haircut", "service", "Salon", "made"),
+        ("Blouse stitching", "hour", "Tailor", "made"),
         # Second review of PR #623: a dish whose last word is a raw ingredient was "bought", so
         # Today offered Order and the brief said "order Palak paneer". Only a bare raw name or
         # a known supply phrase is bought; anything else is asked.
@@ -167,6 +166,17 @@ def store(tmp_path: Path):
         ("Cream cheese", "item", "Café", "unknown"),
         ("Fortune sunflower oil", "item", "Restaurant", "bought"),
         ("Amul full cream milk", "item", "Café", "bought"),
+        # Resale is checked before served units: a kirana's set or glass is stock it resells.
+        ("Soap gift set", "set", "Grocery / Kirana", "bought"),
+        ("Steel glass", "glass", "Grocery / Kirana", "bought"),
+        ("Pen set", "set", "Stationery shop", "bought"),
+        # A service shop makes only its services: physical stock is asked, never "Make more".
+        ("Shampoo", "bottle", "Salon", "unknown"),
+        ("Red roses", "bunch", "Florist", "unknown"),
+        ("Sunflower stems", "stem", "Florist", "unknown"),
+        ("Thread", "item", "Tailor", "unknown"),
+        ("Curtain shortening", "piece", "Tailor", "unknown"),
+        ("Small bouquet", "bunch", "Florist", "unknown"),
     ],
 )
 def test_made_or_bought_is_inferred_on_the_safe_side(name, unit, category, expected) -> None:
@@ -248,10 +258,11 @@ def test_kirana_still_reorders_everything_it_resells(store) -> None:
         [("Maggi noodles", 6, 1400), ("Amul milk", 10, 3000)],
     )
     assert low_rows(store, bid) == {"Maggi noodles": "bought", "Amul milk": "bought"}
-    for item in ("Maggi noodles", "Amul milk"):
-        result = draft(store, bid, item)
-        assert result["status"] in {"drafted", "check"}, result
-        assert result["status"] != "ask_source"
+    maggi = draft(store, bid, "Maggi noodles")
+    assert maggi["status"] == "drafted", maggi
+    assert maggi["order"]["reason"]["item"] == "Maggi noodles"
+    result = draft(store, bid, "Amul milk")
+    assert result["status"] in {"drafted", "check"}, result
 
 
 def cafe(store: MerchantStore) -> str:
