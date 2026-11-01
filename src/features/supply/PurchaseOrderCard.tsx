@@ -32,7 +32,7 @@ import { Code } from './Code'
 import { ConfirmUndo } from './ConfirmUndo'
 import { useOrderChangeCopy } from './orderChangeCopy'
 import { useShowcaseCopy } from './showcaseCopy'
-import { orderTotal, poNumber } from './orderFormat'
+import { orderLabel, orderTotal } from './orderFormat'
 import { useSupplyCopy, type SupplyCopy } from './copy'
 import { dayLabel, usePoActions, type SimVariant } from './supplyData'
 import type { DocFlag, DocKind, PurchaseOrder, RuleCheck, SupplyDocument } from './types'
@@ -178,7 +178,7 @@ export function PurchaseOrderCard({
   return (
     <Box
       component="article"
-      aria-label={s.po(poNumber(order.number))}
+      aria-label={orderLabel(order, s.orderTitle)}
       sx={{
         borderRadius: `${shape.xl}px`,
         bgcolor: draft ? roles.surfaceContainerLow : roles.surfaceContainer,
@@ -196,9 +196,9 @@ export function PurchaseOrderCard({
         <Typography
           variant="labelLarge"
           color="text.secondary"
-          sx={{ flex: 1, minWidth: 'max-content' }}
+          sx={{ flex: '1 1 160px', minWidth: 0, overflowWrap: 'anywhere' }}
         >
-          {s.po(poNumber(order.number))}
+          {orderLabel(order, s.orderTitle)}
         </Typography>
         {order.simulated && (
           <Chip

@@ -2,9 +2,9 @@ import { useLocale } from '../../state/hooks'
 import type { Locale } from '../../i18n/locales'
 
 const en = {
-  connectTitle: 'Connect your system',
-  connectType: 'POS / ERP',
-  connectSubtitle: 'Plug in your POS, ERP or billing software instead of re-entering data',
+  connectTitle: 'Link your billing app',
+  connectType: 'Billing app',
+  connectSubtitle: 'Link your billing app instead of typing your sales again',
   pickSystem: 'Pick your system',
   uploadOrPaste: 'Upload export or paste sample',
   mappingTitle: 'Column mapping',
@@ -49,8 +49,8 @@ const en = {
     zoho: 'Zoho',
     square: 'Square',
     shopify: 'Shopify',
-    sap: 'SAP',
-    other: 'Other POS',
+    sap: 'Big-shop system',
+    other: 'Other billing app',
   },
 }
 

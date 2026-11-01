@@ -66,9 +66,9 @@ test.describe('POS import flows on phone (390px)', () => {
     await seedShop(page)
 
     await page.getByRole('button', { name: 'Shop', exact: true }).click()
-    await page.getByRole('button', { name: /Connect your system/i }).click()
+    await page.getByRole('button', { name: /Link your billing app/i }).click()
 
-    const connectDialog = page.getByRole('dialog', { name: 'Connect your system' })
+    const connectDialog = page.getByRole('dialog', { name: 'Link your billing app' })
     await expect(connectDialog).toBeVisible()
 
     // Pick Petpooja system
@@ -113,9 +113,9 @@ test.describe('POS import flows on phone (390px)', () => {
     await seedShop(page)
 
     await page.getByRole('button', { name: 'Shop', exact: true }).click()
-    await page.getByRole('button', { name: /Connect your system/i }).click()
+    await page.getByRole('button', { name: /Link your billing app/i }).click()
 
-    const connectDialog = page.getByRole('dialog', { name: 'Connect your system' })
+    const connectDialog = page.getByRole('dialog', { name: 'Link your billing app' })
     await expect(connectDialog).toBeVisible()
 
     await connectDialog.getByRole('button', { name: 'Petpooja', exact: true }).click()
@@ -147,9 +147,9 @@ test.describe('POS import flows on phone (390px)', () => {
     await seedShop(page)
 
     await page.getByRole('button', { name: 'Shop', exact: true }).click()
-    await page.getByRole('button', { name: /Connect your system/i }).click()
+    await page.getByRole('button', { name: /Link your billing app/i }).click()
 
-    const connectDialog = page.getByRole('dialog', { name: 'Connect your system' })
+    const connectDialog = page.getByRole('dialog', { name: 'Link your billing app' })
     await expect(connectDialog).toBeVisible()
 
     await connectDialog.getByTestId('connector-file').setInputFiles({
@@ -181,9 +181,9 @@ test.describe('POS import flows on phone (390px)', () => {
     await seedShop(page)
 
     await page.getByRole('button', { name: 'Shop', exact: true }).click()
-    await page.getByRole('button', { name: /Connect your system/i }).click()
+    await page.getByRole('button', { name: /Link your billing app/i }).click()
 
-    const connectDialog = page.getByRole('dialog', { name: 'Connect your system' })
+    const connectDialog = page.getByRole('dialog', { name: 'Link your billing app' })
     await expect(connectDialog).toBeVisible()
     await expect(connectDialog.getByText('Take a photo of your screen or printout')).toBeVisible()
 

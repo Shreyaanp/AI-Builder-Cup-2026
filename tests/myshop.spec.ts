@@ -401,7 +401,7 @@ test('B16: one attach button offers Take photo, Photo library and Document; docu
     'Take photo',
     'Photo library',
     'Document (PDF, Excel, CSV)',
-    'Connect your system',
+    'Link your billing app',
   ])
   await axe(page)
   let imports = 0

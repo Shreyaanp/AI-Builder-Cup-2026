@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 import { enter, localOnly, seedShop } from './stories/support.js'
 
 // #118 #119 #120: on a phone the Shop tab scrolls clear of the fixed bottom bar, and a purchase
-// order that omits total/backorders lists cleanly ("PO 2026-0042", never "PO PO-" or ₹NaN) and opens.
+// order that omits total/backorders lists cleanly ("Milk from Fresh Farms", never "PO PO-" or ₹NaN) and opens.
 test.describe.configure({ timeout: 90_000 })
 
 const order = {
@@ -56,8 +56,8 @@ for (const width of [360, 390]) {
     await page.getByRole('button', { name: 'Grow', exact: true }).click()
     await page.getByRole('button', { name: /^Purchase orders/ }).click()
     const row = page.getByRole('button', { name: /Fresh Farms/ })
-    await expect(row).toContainText('PO 2026-0042')
-    await expect(row).not.toContainText('PO PO-')
+    await expect(row).toContainText('Milk from Fresh Farms')
+    await expect(row).not.toContainText('PO ')
     await expect(row).not.toContainText('NaN')
     await row.click()
     await expect(page.getByText('Fresh Farms').first()).toBeVisible()

@@ -72,7 +72,7 @@ test.describe('Onboarding end-to-end flows on phone (390px)', () => {
     await confirmPinBtn.click()
 
     // Now all 3 fields are present; shop is live
-    await expect(page.getByTestId('shop-live')).toHaveText('Live', { timeout: 15_000 })
+    await expect(page.getByTestId('shop-live')).toHaveText('Saved', { timeout: 15_000 })
 
     // Clicking end-conversation ends chat; then Review my shop goes to Congratulations
     await page.getByTestId('end-conversation').click()
@@ -106,7 +106,7 @@ test.describe('Onboarding end-to-end flows on phone (390px)', () => {
       page,
       'name: Golden Bakes; category: Bakery; location: Koramangala 4th Block, Bengaluru',
     )
-    await expect(page.getByTestId('shop-live')).toHaveText('Live', { timeout: 15_000 })
+    await expect(page.getByTestId('shop-live')).toHaveText('Saved', { timeout: 15_000 })
 
     // Ending conversation and reviewing goes directly to congratulations
     await page.getByTestId('end-conversation').click()

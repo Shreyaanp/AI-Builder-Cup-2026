@@ -2,7 +2,7 @@ import { useLocale } from '../../state/hooks'
 import type { Locale } from '../../i18n/locales'
 
 const en = {
-  otherPos: 'Other POS',
+  otherPos: 'Other billing app',
   close: 'Close',
   connected: 'Connected',
   analyzeFileFailed: 'Could not analyze file. Please verify the format.',

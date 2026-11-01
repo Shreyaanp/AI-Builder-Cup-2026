@@ -8,7 +8,7 @@ const px = (rem: unknown) => parseFloat(String(rem)) * 16
 const PHONE = '@media (max-width:599px)'
 type Style = { fontSize: string; [query: string]: unknown }
 
-test('OB-198: every type role is smaller or equal on phones, body 15px, nothing under 12px', () => {
+test('OB-198: every type role is smaller or equal on phones, owner body 16px, nothing under 12px', () => {
   // Each role reads its size from a :root variable set under the phone query, with the larger
   // size as the fallback (a component's own sx size still wins over it).
   const theme = nivaTheme('light')
@@ -30,9 +30,12 @@ test('OB-198: every type role is smaller or equal on phones, body 15px, nothing 
   }
   const phone = (key: string) => sizes(key)!.phone
   const desktop = (key: string) => sizes(key)!.desktop
-  expect(phone('bodyLarge')).toBe(15)
-  expect(phone('bodyMedium')).toBe(15)
-  expect(phone('body1')).toBe(15)
+  // Simplify batch 1: the owner app reads at 16px body and 14px labels on phones.
+  expect(phone('bodyLarge')).toBe(16)
+  expect(phone('bodyMedium')).toBe(16)
+  expect(phone('body1')).toBe(16)
+  expect(phone('labelLarge')).toBe(14)
+  expect(phone('bodySmall')).toBe(14)
   expect(desktop('body1')).toBe(16)
   expect(phone('headlineSmall')).toBeLessThan(desktop('headlineSmall'))
   expect(phone('titleLarge')).toBeLessThan(desktop('titleLarge'))
@@ -44,6 +47,15 @@ test('OB-198: every type role is smaller or equal on phones, body 15px, nothing 
     expect(root(k).fontSize, k).toBe('1rem')
     expect(px(root(k).fontSize), k).toBe(16)
   }
+})
+
+test('OB-198: the customer app keeps body 15px and labels 13px on phones', () => {
+  const theme = nivaTheme('light', undefined, 'customer')
+  const css = (theme.components!.MuiCssBaseline as { styleOverrides: Record<string, Style> })
+    .styleOverrides[':root']!
+  const vars = css[PHONE] as Record<string, string>
+  expect(px(vars['--type-bodyLarge-size'])).toBe(15)
+  expect(px(vars['--type-labelLarge-size'])).toBe(13)
 })
 
 async function openDemo(page: Page, width: number, appearance: string) {
@@ -83,8 +95,8 @@ test.describe('phone', () => {
         }
         await expect.poll(gap).toBeGreaterThanOrEqual(-1)
         expect(await gap()).toBeLessThanOrEqual(1)
-        // Phone text is one step smaller; the composer's controls keep 48px targets.
-        expect(await page.evaluate(() => getComputedStyle(document.body).fontSize)).toBe('15px')
+        // Owner phone text is 16px (simplify batch 1); the composer's controls keep 48px targets.
+        expect(await page.evaluate(() => getComputedStyle(document.body).fontSize)).toBe('16px')
         for (const button of await composer.getByRole('button').all()) {
           const box = await button.boundingBox()
           expect(box!.height).toBeGreaterThanOrEqual(48)

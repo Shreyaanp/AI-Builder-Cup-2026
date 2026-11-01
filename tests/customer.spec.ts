@@ -164,9 +164,7 @@ test('Signed-in customer and owner have a live two-way conversation', async ({
     await composer.press('Enter')
     await expect(messages).toContainText('Thank you!', { timeout: 5_000 })
     await messages.getByRole('button', { name: 'See translation', exact: true }).last().click()
-    await expect(messages).toContainText(
-      'Simulated translation \u00b7 offline fixture, no live AI connected',
-    )
+    await expect(messages).toContainText('Sample translation for the demo')
     await messages.getByRole('button', { name: 'Close conversation', exact: true }).click()
     await expect(customer.getByText('This conversation is closed.')).toBeVisible({
       timeout: 5_000,

@@ -7,10 +7,10 @@ const en = {
   title: 'Close the day',
   tileValue: 'Snap today’s numbers',
   tileEvening: 'Ready to close today?',
-  tileHint: 'Till report, deliveries and stock in a few photos. You check once.',
+  tileHint: 'Sales slip, deliveries and stock in a few photos. You check once.',
   intro:
     'Take a photo of each. Chalkboard reads them; you check everything once before it’s saved.',
-  till: 'Till or POS report',
+  till: 'Sales slip or notebook',
   tillHint: 'Z report, sales slip or your sales notebook page',
   delivery: 'Deliveries received',
   deliveryHint: 'Supplier receipts or delivery notes: adds to your stock',
@@ -25,8 +25,7 @@ const en = {
   readAs: 'Read as “{text}”',
   notOnMenu: 'Not on your menu: skipped',
   remove: 'Remove',
-  fixture:
-    'Offline mode: these lines are sample data from your own items, not read from the photo.',
+  fixture: 'These lines are samples from your own items, not read from the photo.',
   back: 'Add more',
   reviewEmpty:
     'Nothing to save yet: we could not read items with quantities. Add a clearer, flat photo of the report.',

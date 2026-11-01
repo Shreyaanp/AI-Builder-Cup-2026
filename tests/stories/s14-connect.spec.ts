@@ -5,20 +5,22 @@ import { confirm, enter, localOnly, phone, reviewName, seedShop } from './suppor
 test.use(phone)
 test.skip(({ isMobile }) => !isMobile, 'Story evidence uses the phone project')
 
-test('S14 · Connect your system (POS/ERP import, AI mapping, sync & review)', async ({ page }) => {
+test('S14 · Link your billing app (POS/ERP import, AI mapping, sync & review)', async ({
+  page,
+}) => {
   test.setTimeout(120_000)
   await localOnly(page)
   await enter(page)
   await seedShop(page)
 
   // Step 1: Open Shop and open Connect sheet
-  await test.step('1 · Open Shop and open Connect your system', async () => {
+  await test.step('1 · Open Shop and open Link your billing app', async () => {
     await page.getByRole('button', { name: 'Shop', exact: true }).click()
-    const connectTile = page.getByRole('button', { name: /Connect your system/i })
+    const connectTile = page.getByRole('button', { name: /Link your billing app/i })
     await expect(connectTile).toBeVisible()
     await connectTile.click()
 
-    const dialog = page.getByRole('dialog', { name: 'Connect your system' })
+    const dialog = page.getByRole('dialog', { name: 'Link your billing app' })
     await expect(dialog).toBeVisible()
     await expect(dialog.getByRole('tab', { name: /Upload/i })).toBeVisible()
     await expect(dialog.getByRole('tab', { name: /Paste/i })).toBeVisible()
@@ -41,7 +43,7 @@ test('S14 · Connect your system (POS/ERP import, AI mapping, sync & review)', a
 
   // Step 2: Paste data, analyze and view AI field mapping
   await test.step('2 · Paste data, analyze and view AI field mapping', async () => {
-    const dialog = page.getByRole('dialog', { name: 'Connect your system' })
+    const dialog = page.getByRole('dialog', { name: 'Link your billing app' })
     await dialog.getByRole('tab', { name: /Paste/i }).click()
 
     const sampleCsv = `Item Name,Rate,Category,Available Qty,Unit
@@ -76,7 +78,7 @@ Bun Maska,35.00,Snacks,25,piece`
 
   // Step 3: Diff and Preview
   await test.step('3 · View preview rows and diff summary', async () => {
-    const dialog = page.getByRole('dialog', { name: 'Connect your system' })
+    const dialog = page.getByRole('dialog', { name: 'Link your billing app' })
     await expect(dialog.getByText(/Mapped preview/i)).toBeVisible()
     await expect(dialog.getByText(/Sync diff/i)).toBeVisible()
 
@@ -94,7 +96,7 @@ Bun Maska,35.00,Snacks,25,piece`
 
   // Step 4: Confirm & Review proposal
   await test.step('4 · Confirm mapping and review import proposal', async () => {
-    const dialog = page.getByRole('dialog', { name: 'Connect your system' })
+    const dialog = page.getByRole('dialog', { name: 'Link your billing app' })
     await dialog.getByRole('button', { name: /Confirm & review import/i }).click()
 
     // Review proposal sheet opens before writing
@@ -105,11 +107,11 @@ Bun Maska,35.00,Snacks,25,piece`
 
   // Step 5: Verify Saved mapping and Last Synced status
   await test.step('5 · Re-open connect sheet and verify saved mapping & last synced', async () => {
-    const connectTile = page.getByRole('button', { name: /Connect your system/i })
+    const connectTile = page.getByRole('button', { name: /Link your billing app/i })
     await expect(connectTile).toBeVisible()
     await connectTile.click()
 
-    const dialog = page.getByRole('dialog', { name: 'Connect your system' })
+    const dialog = page.getByRole('dialog', { name: 'Link your billing app' })
     await expect(dialog).toBeVisible()
     await expect(dialog.getByText(/Connected/i)).toBeVisible()
     await expect(dialog.getByText(/Last synced/i)).toBeVisible()
@@ -129,11 +131,11 @@ Bun Maska,35.00,Snacks,25,piece`
     await expect(attachButton).toBeVisible()
     await attachButton.click()
 
-    const connectMenuItem = page.getByRole('menuitem', { name: 'Connect your system' })
+    const connectMenuItem = page.getByRole('menuitem', { name: 'Link your billing app' })
     await expect(connectMenuItem).toBeVisible()
     await connectMenuItem.click()
 
-    const dialog = page.getByRole('dialog', { name: 'Connect your system' })
+    const dialog = page.getByRole('dialog', { name: 'Link your billing app' })
     await expect(dialog).toBeVisible()
     await dialog.getByRole('button', { name: 'Close' }).first().click()
   })
@@ -142,11 +144,11 @@ Bun Maska,35.00,Snacks,25,piece`
   await test.step('7 · Desktop responsive check', async () => {
     await page.setViewportSize({ width: 1440, height: 1000 })
     await page.getByRole('button', { name: 'Shop', exact: true }).click()
-    const connectTile = page.getByRole('button', { name: /Connect your system/i })
+    const connectTile = page.getByRole('button', { name: /Link your billing app/i })
     await expect(connectTile).toBeVisible()
     await connectTile.click()
 
-    const dialog = page.getByRole('dialog', { name: 'Connect your system' })
+    const dialog = page.getByRole('dialog', { name: 'Link your billing app' })
     await expect(dialog).toBeVisible()
 
     await page.evaluate(async () => {
@@ -170,11 +172,11 @@ Bun Maska,35.00,Snacks,25,piece`
     await page.getByRole('button', { name: 'Dark', exact: true }).click()
 
     await page.getByRole('button', { name: 'Shop', exact: true }).click()
-    const connectTile = page.getByRole('button', { name: /Connect your system/i })
+    const connectTile = page.getByRole('button', { name: /Link your billing app/i })
     await expect(connectTile).toBeVisible()
     await connectTile.click()
 
-    const dialog = page.getByRole('dialog', { name: 'Connect your system' })
+    const dialog = page.getByRole('dialog', { name: 'Link your billing app' })
     await expect(dialog).toBeVisible()
 
     await page.evaluate(async () => {

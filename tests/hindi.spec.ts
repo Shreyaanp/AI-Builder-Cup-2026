@@ -148,7 +148,7 @@ test('the owner app reads in Hindi: Today, coach, Shop, Grow tools, You, privacy
   await test.step('coach text turn', async () => {
     await page.getByLabel('संदेश', { exact: true }).fill('आज कितने कप चाय बिकी?')
     await page.getByRole('button', { name: 'भेजें', exact: true }).click()
-    await expect(page.getByRole('log')).toContainText('ऑफ़लाइन नमूना')
+    await expect(page.getByRole('log')).toContainText('आपकी बात मिली')
     await readsInHindi(page, '02-coach-reply')
   })
 
@@ -184,7 +184,7 @@ test('the owner app reads in Hindi: Today, coach, Shop, Grow tools, You, privacy
   await test.step('Close the day: photo read and review', async () => {
     await growCard(page, /^दिन बंद करें/)
     const dialog = page.getByRole('dialog')
-    await dialog.getByRole('button', { name: /बिलिंग या POS रिपोर्ट/ }).click()
+    await dialog.getByRole('button', { name: /बिक्री पर्ची या कॉपी/ }).click()
     await dialog
       .locator('input[type=file]')
       .first()

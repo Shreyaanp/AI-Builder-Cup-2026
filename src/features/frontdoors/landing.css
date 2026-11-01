@@ -9,6 +9,36 @@
   overflow-x: clip;
   min-height: 100vh;
 }
+/* The app's phone text is 16px body / 14px labels (simplify batch 1). The landing page keeps the
+   smaller sizes it was approved with, so these roles are set back here. */
+@media (max-width: 599px) {
+  .lp {
+    font-size: var(--type-bodyMedium-size);
+    line-height: var(--type-bodyMedium-line);
+    --type-titleMedium-size: 0.9375rem;
+    --type-titleMedium-line: 1.375rem;
+    --type-titleMedium-tracking: 0.00667em;
+    --type-titleSmall-size: 0.8125rem;
+    --type-titleSmall-line: 1.125rem;
+    --type-titleSmall-tracking: 0.00769em;
+    --type-bodyLarge-size: 0.9375rem;
+    --type-bodyLarge-line: 1.375rem;
+    --type-bodyLarge-tracking: 0.01em;
+    --type-bodyMedium-size: 0.9375rem;
+    --type-bodyMedium-line: 1.375rem;
+    --type-bodyMedium-tracking: 0.00667em;
+    --type-bodySmall-size: 0.8125rem;
+    --type-bodySmall-line: 1.125rem;
+    --type-bodySmall-tracking: 0.01538em;
+    --type-labelLarge-size: 0.8125rem;
+    --type-labelLarge-line: 1.125rem;
+    --type-labelLarge-tracking: 0.00385em;
+    --type-labelMedium-size: 0.8125rem;
+    --type-labelMedium-line: 1.125rem;
+    --type-labelMedium-tracking: 0.02308em;
+  }
+}
+
 .lp a:not(.MuiButton-root) {
   color: inherit;
 }

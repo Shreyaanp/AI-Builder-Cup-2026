@@ -13,11 +13,11 @@ test('Close the day requires a photo, supports back, discloses fixture and saves
   const id = await open(page)
   const dialog = page.getByRole('dialog', { name: 'Close the day' })
   await expect(dialog.getByRole('button', { name: /^Review/ })).toBeDisabled()
-  await dialog.getByRole('button', { name: /Till or POS report/ }).click()
+  await dialog.getByRole('button', { name: /Sales slip or notebook/ }).click()
   await dialog.locator('input[type=file]').setInputFiles(await image(page))
   await expect(dialog.getByText(/\d+ lines$/)).toBeVisible()
   await dialog.getByRole('button', { name: /^Review/ }).click()
-  await expect(dialog).toContainText(/Offline mode/)
+  await expect(dialog).toContainText(/samples from your own items/)
   expect(await (await page.request.get(`/api/v1/businesses/${id}/sales`)).json()).toEqual([])
   await dialog.getByRole('button', { name: 'Add more', exact: true }).click()
   await dialog.getByRole('button', { name: /^Review/ }).click()
@@ -34,7 +34,7 @@ test('failed photo can be cancelled without saving', async ({ page }) => {
   const id = await open(page)
   await page.route('**/day/read?*', (r) => r.fulfill({ status: 503, json: {} }))
   const dialog = page.getByRole('dialog', { name: 'Close the day' })
-  await dialog.getByRole('button', { name: /Till or POS report/ }).click()
+  await dialog.getByRole('button', { name: /Sales slip or notebook/ }).click()
   await dialog.locator('input[type=file]').setInputFiles(await image(page))
   await expect(dialog.getByText('Couldn’t read')).toBeVisible()
   await expect(dialog.getByRole('button', { name: /^Review/ })).toBeDisabled()
@@ -46,7 +46,7 @@ test('failed photo can be cancelled without saving', async ({ page }) => {
 test('retry after sales failure must not count the same delivery twice', async ({ page }) => {
   const id = await open(page)
   const dialog = page.getByRole('dialog', { name: 'Close the day' })
-  for (const name of [/Till or POS report/, /Deliveries received/]) {
+  for (const name of [/Sales slip or notebook/, /Deliveries received/]) {
     await dialog.getByRole('button', { name }).click()
     await dialog.locator('input[type=file]').setInputFiles(await image(page))
   }
@@ -125,7 +125,7 @@ test('Close the day honours reduced motion while a photo is being read', async (
   })
   try {
     const dialog = page.getByRole('dialog', { name: 'Close the day' })
-    await dialog.getByRole('button', { name: /Till or POS report/ }).click()
+    await dialog.getByRole('button', { name: /Sales slip or notebook/ }).click()
     await dialog.locator('input[type=file]').setInputFiles(await image(page))
     await expect(dialog.getByText('Reading…')).toBeVisible()
     const running = await dialog.evaluate((el) =>

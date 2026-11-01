@@ -69,7 +69,7 @@ for (const unavailable of [false, true]) {
     const note = page.getByLabel('Message', { exact: true })
     await note.fill('Hello kopi stall')
     await page.getByRole('button', { name: 'Send', exact: true }).click()
-    await expect(page.getByRole('log')).toContainText('Offline demo:')
+    await expect(page.getByRole('log')).toContainText('I received your note')
     await context.setOffline(true)
     await expect(page.getByRole('status').filter({ hasText: /^Offline$/ })).toBeVisible()
     await context.setOffline(false)

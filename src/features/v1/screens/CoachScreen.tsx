@@ -123,6 +123,7 @@ import {
   SupplyChatCard,
 } from './coachDeferred'
 import type { PaymentLink } from '../../owner-tools/links'
+import { stripOfflinePrefix } from '../offlinePrefix'
 
 // Charts, purchase orders and rules cards only appear mid-conversation; their code loads then.
 const CoachChart = lazy(() => import('../CoachChart').then((m) => ({ default: m.CoachChart })))
@@ -1891,7 +1892,7 @@ function Bubble({
         <Typography component="span" sx={visuallyHidden}>
           {coach}:{' '}
         </Typography>
-        <RichText content={message.text} streaming={streaming} />
+        <RichText content={stripOfflinePrefix(message.text)} streaming={streaming} />
       </Box>
     </Stack>
   )
