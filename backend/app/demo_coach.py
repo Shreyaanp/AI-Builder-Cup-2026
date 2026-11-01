@@ -79,6 +79,8 @@ QUESTION = re.compile(r"(?:is|are|do|does|did|what|when|which|how|can|should|wil
 ASKED = re.compile(
     r"(?:what|how|why|can|could|should|is|are|do|does|did|will|would|kya|kaise)\b", re.I
 )
+# "ज़्यादा" is written with or without the nukta, precomposed or not.
+HINDI_BEST_SELLERS = re.compile(r"सबसे\s+\S*यादा\s+(?:\S+\s+)?बिक|बेस्ट\s*सेलर|टॉप\s*सेलर")
 BEST_SELLERS = re.compile(
     r"(?:(?:what\s+(?:are|were|is)|what's|show(?:\s+me)?|which\s+are)\s+)?(?:my\s+|the\s+)?"
     r"(?:best[\s-]*sell(?:ers?|ing\s+items?)|top[\s-]*sell(?:ers?|ing\s+items?)"
@@ -301,14 +303,18 @@ def _best_sellers() -> list[StreamEvent]:
     result = get_insights()
     top = result.get("top_sellers") or []
     if not top:
-        return [StreamEvent(kind="reply", text="The demo shop has no sales saved this week yet.")]
+        return [
+            StreamEvent(
+                kind="reply", text="The demo shop has no sales saved in the last 7 days yet."
+            )
+        ]
     names = ", ".join(f"{row['item']} ({row['quantity']:g} sold)" for row in top[:3])
     card = insights_card(result)
     return [
         *([StreamEvent(kind="chart", data=card)] if card else []),
         StreamEvent(
             kind="reply",
-            text=f"This week's demo best sellers: {names}. "
+            text=f"In the last 7 days, the demo best sellers: {names}. "
             "In your real shop, these come from your saved sales; open Grow → Insights next.",
         ),
     ]
@@ -402,6 +408,14 @@ def public_demo_reply(ctx: Any, question: str) -> str | None:
     if re.search(r"[\u0900-\u097f]", question):
         # This offline demo has no translation model. Keep its answers in the language of a
         # Devanagari question, with the same seeded facts used by the English replies.
+        if HINDI_BEST_SELLERS.search(question):
+            from .coordinator import get_insights
+
+            top = get_insights().get("top_sellers") or []
+            if not top:
+                return "डेमो दुकान में पिछले 7 दिनों की कोई बिक्री अभी सेव नहीं है।"
+            names = ", ".join(f"{row['item']} ({row['quantity']:g} बिके)" for row in top[:3])
+            return f"पिछले 7 दिनों में डेमो के सबसे ज़्यादा बिकने वाले आइटम: {names}।"
         if any(term in words for term in ("आज", "बिक्री", "कमाई")):
             rows = [row for row in history if row["date"] == today.isoformat()]
             sold = sum(row["quantity"] for row in rows)
