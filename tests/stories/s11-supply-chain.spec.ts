@@ -124,7 +124,7 @@ test('S11 · forecast → PO → ORDRSP (partial) → ASN → invoice, translate
     await page.getByRole('textbox', { name: 'Message', exact: true }).fill('Reorder atta')
     await page.getByRole('button', { name: 'Send', exact: true }).click()
     const card = page.getByRole('article', {
-      name: 'Atta (wheat flour) from Little Lantern Kirana (Demo)',
+      name: 'Atta (wheat flour) from Kaveri Fresh & Dairy Supply',
       exact: true,
     })
     await expect(card).toBeVisible()
@@ -154,7 +154,7 @@ test('S11 · forecast → PO → ORDRSP (partial) → ASN → invoice, translate
   })
 
   const card = page.getByRole('article', {
-    name: 'Atta (wheat flour) from Little Lantern Kirana (Demo)',
+    name: 'Atta (wheat flour) from Kaveri Fresh & Dairy Supply',
     exact: true,
   })
   await test.step('2 · ORDRSP: part now, the rest back-ordered', async () => {
@@ -214,7 +214,7 @@ test('S11 · forecast → PO → ORDRSP (partial) → ASN → invoice, translate
     await page.getByRole('button', { name: 'Grow', exact: true }).click()
     await page.getByRole('button', { name: /^Purchase orders/ }).click()
     const sheet = page.getByRole('dialog', { name: 'Purchase orders' })
-    await expect(sheet).toContainText('Atta (wheat flour) from Little Lantern Kirana (Demo)')
+    await expect(sheet).toContainText('Atta (wheat flour) from Kaveri Fresh & Dairy Supply')
     await sheet
       .getByRole('list', { name: 'Suppliers and rules' })
       .getByRole('button')
