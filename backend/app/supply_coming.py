@@ -137,6 +137,12 @@ def cover(need: dict[str, Any], coming: dict[str, Any]) -> str:
     return "partly" if coming["quantity"] else "none"
 
 
+def cannot_meet(named: float, amount: float | None) -> bool:
+    """The supplier's amount is not what the owner named: its minimum or packs are far off, or
+    its unit does not convert. Rounding up to a nearby pack is still what they asked for."""
+    return amount is None or amount > max(named * 1.25, named + 1) or amount < named * 0.8
+
+
 def sized_line(
     store: MerchantRepository, bid: str, po: dict[str, Any], item: str, unit: str, wanted: float
 ) -> tuple[dict[str, Any], float | None] | None:

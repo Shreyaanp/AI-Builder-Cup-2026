@@ -29,7 +29,6 @@ per relationship (`supply_rules`) and per order (`supply_po`), scoped to the sho
 from __future__ import annotations
 
 import math
-import re
 import time
 from collections.abc import Callable
 from datetime import date, timedelta
@@ -42,7 +41,7 @@ from pydantic import ValidationError
 
 from .merchant import SUPPLY_KINDS, MerchantRepository, ProductFields
 from .money import exponent, to_major
-from .product_source import raw_ingredient, same_kind, source_of
+from .product_source import answered_item, same_kind, source_of
 from .region import shop_currency
 from .supply_docs import (
     MAPPING,
@@ -448,6 +447,7 @@ async def draft_reorder(
 
     from . import sourcing
     from .supply_coming import (
+        cannot_meet,
         coming_orders,
         cover,
         covered,
@@ -814,41 +814,6 @@ def pick_item(
         if soonest is None or rank[:3] < soonest[:3]:
             soonest = rank
     return soonest[3] if soonest else ""
-
-
-def cannot_meet(named: float, amount: float | None) -> bool:
-    """The supplier's amount is not what the owner named: its minimum or packs are far off, or
-    its unit does not convert. Rounding up to a nearby pack is still what they asked for."""
-    return amount is None or amount > max(named * 1.25, named + 1) or amount < named * 0.8
-
-
-def answered_item(
-    item: str, inventory: list[dict[str, Any]], source: str
-) -> tuple[dict[str, Any] | None, list[str]]:
-    """The one item an owner's "I make chai" is about: the exact name, else the only item whose
-    name ends with it and fits the answer: "Masala chai" is made, "Amul milk" is bought. Never
-    "Milk bread" for "milk", "Tea dust" for "chai" or "Coconut rice" for "I buy rice". Otherwise
-    None, and the items they may mean, to ask which (OB-239)."""
-    from .sourcing import matches
-
-    def said(name: str) -> list[str]:
-        text = re.sub(r"\(.*?\)", " ", name.casefold())
-        return [w[:-1] if len(w) > 3 and w.endswith("s") else w for w in re.findall(r"\w+", text)]
-
-    wanted = said(item)
-    if not wanted:
-        return None, []
-    exact = [p for p in inventory if said(p["name"]) == wanted]
-    ends = exact or [
-        p
-        for p in inventory
-        if said(p["name"])[-len(wanted) :] == wanted
-        and raw_ingredient(p["name"]) == (source == "bought")
-    ]
-    if len(ends) == 1:
-        return ends[0], []
-    loose = ends or [p for p in inventory if matches(p["name"], item)]
-    return None, [p["name"] for p in loose][:4]
 
 
 def supplier_candidates(

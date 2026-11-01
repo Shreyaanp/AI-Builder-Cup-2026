@@ -178,3 +178,32 @@ def same_kind(category: str, other: str, other_is_supplier: bool = False) -> boo
     if mine and mine == theirs:
         return mine != "wholesale"
     return bool(category.strip()) and category.strip().casefold() == other.strip().casefold()
+
+
+def answered_item(
+    item: str, inventory: list[dict[str, Any]], source: str
+) -> tuple[dict[str, Any] | None, list[str]]:
+    """The one item an owner's "I make chai" is about: the exact name, else the only item whose
+    name ends with it and fits the answer: "Masala chai" is made, "Amul milk" is bought. Never
+    "Milk bread" for "milk", "Tea dust" for "chai" or "Coconut rice" for "I buy rice". Otherwise
+    None, and the items they may mean, to ask which (OB-239)."""
+    from .sourcing import matches
+
+    def said(name: str) -> list[str]:
+        text = re.sub(r"\(.*?\)", " ", name.casefold())
+        return [w[:-1] if len(w) > 3 and w.endswith("s") else w for w in re.findall(r"\w+", text)]
+
+    wanted = said(item)
+    if not wanted:
+        return None, []
+    exact = [p for p in inventory if said(p["name"]) == wanted]
+    ends = exact or [
+        p
+        for p in inventory
+        if said(p["name"])[-len(wanted) :] == wanted
+        and raw_ingredient(p["name"]) == (source == "bought")
+    ]
+    if len(ends) == 1:
+        return ends[0], []
+    loose = ends or [p for p in inventory if matches(p["name"], item)]
+    return None, [p["name"] for p in loose][:4]
