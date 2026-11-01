@@ -782,6 +782,65 @@ async def draft_reorder(
     return {"status": "drafted", "order": po}
 
 
+def order_again(store: MerchantRepository, uid: str, bid: str, po_id: str) -> dict[str, Any]:
+    """ "Order again" on an order that came: the same items and amounts from the same supplier,
+    as a new draft at today's prices. Nothing is sent; the owner reviews it like any draft."""
+    context = _owned(store, uid, bid)
+    old = get_po(store, uid, bid, po_id)
+    if not (old.get("received") or old["status"] == "closed"):
+        raise HTTPException(409, "NOT_RECEIVED")
+    row = relationship(store, bid, old["supplier"]["id"])
+    if not row or not old["lines"]:
+        raise HTTPException(409, "NO_SUPPLIER")
+    lines = [
+        {
+            "line": 10 * (n + 1),
+            **{
+                key: line.get(key)
+                for key in ("item", "buyer_code", "supplier_code", "quantity", "unit", "list_price")
+            },
+        }
+        for n, line in enumerate(old["lines"])
+    ]
+    today = shop_today(context)
+    first = lines[0]
+    po: dict[str, Any] = {
+        "id": uuid4().hex[:16],
+        "number": po_number(_next_number(store, bid, "po")),
+        "status": "draft",
+        "sent": False,
+        "auto_sent": False,
+        "created": time.time(),
+        "currency": old["currency"],
+        "buyer": old["buyer"],
+        "supplier": old["supplier"],
+        "terms_days": rules_of(row).terms_days,
+        "lines": lines,
+        "total": 0,
+        "need_by": "",
+        "delivery": "",
+        "reason": {
+            **(old.get("reason") or {}),
+            "item": first["item"],
+            "unit": first["unit"],
+            "runs_out": "",
+            "wanted": first["quantity"],
+            "owner_quantity": True,
+            "tier_min": 0,
+            "again": old["number"],
+        },
+        "alternatives": [],
+        "faster_supplier": None,
+        "documents": [],
+        "backorders": [],
+        "received": False,
+        "simulated": bool(old.get("simulated")),
+        "version": 0,
+    }
+    recheck(store, bid, po, today)
+    return _save(store, bid, po)
+
+
 def pick_item(
     item: str,
     inventory: list[dict[str, Any]],

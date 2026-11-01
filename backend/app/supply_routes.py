@@ -269,6 +269,14 @@ async def cancel_order(
     )
 
 
+@router.post("/businesses/{business_id}/supply/orders/{order_id}/again")
+async def order_again(business_id: str, order_id: str, request: Request) -> dict[str, Any]:
+    uid = await consented_owner(request)
+    return await anyio.to_thread.run_sync(
+        supply_chain.order_again, store(request), uid, business_id, order_id
+    )
+
+
 @router.post("/businesses/{business_id}/supply/orders/{order_id}/simulate")
 async def simulate(
     business_id: str, order_id: str, body: SimulateBody, request: Request

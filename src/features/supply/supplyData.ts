@@ -200,6 +200,8 @@ export function usePoActions(onChange: (order: PurchaseOrder) => void) {
       run(order, `flags/${encodeURIComponent(flagId)}`, { value }),
     accept: (order: PurchaseOrder) => run(order, 'accept'),
     received: (order: PurchaseOrder) => run(order, 'received'),
+    /** The same items from the same supplier, as a new draft to review (OB-248). */
+    again: (order: PurchaseOrder) => run(order, 'again'),
   }
 }
 

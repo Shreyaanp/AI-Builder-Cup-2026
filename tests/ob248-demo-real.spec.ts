@@ -211,3 +211,44 @@ test('OB-248 a failed orders read says so and tries again, never "–" as if emp
   await expect(tile).toContainText(/\d+ open|None open/, { timeout: 30_000 })
   await expect(tile).not.toContainText('Couldn’t load orders')
 })
+
+test('OB-248 three plain orders bring a yes, a short reply and a new price', async ({ page }) => {
+  test.setTimeout(240_000)
+  await openDemo(page)
+  const sheet = await openOrders(page)
+  const card = sheet.locator('article')
+  const talk = card.getByTestId('supplier-talk')
+
+  async function delivered() {
+    await expect(talk).toContainText('Your order is on the way', { timeout: 20_000 })
+    await card.getByRole('button', { name: 'Goods arrived', exact: true }).click()
+    const review = page.getByRole('dialog').filter({ hasText: 'Tea dust' }).last()
+    await review.getByRole('button', { name: 'Confirm and save', exact: true }).click()
+    await expect(talk).toContainText('Here is the bill', { timeout: 20_000 })
+  }
+
+  // 1: Draft a reorder, as the first walk-through does: a plain yes.
+  await sheet.getByRole('button', { name: 'Draft a reorder' }).click()
+  await card.getByRole('button', { name: 'Approve and send', exact: true }).click()
+  await expect(talk).toContainText('Yes, confirmed', { timeout: 20_000 })
+  await delivered()
+
+  // 2: Order again on what came: the supplier is short and asks first.
+  await card.getByRole('button', { name: 'Order again', exact: true }).click()
+  await expect(card).toContainText('Draft')
+  await card.getByRole('button', { name: 'Approve and send', exact: true }).click()
+  await expect(talk).toContainText(/I have only \d+ kg Tea dust today\. The other \d+ kg comes/, {
+    timeout: 20_000,
+  })
+  await card.getByRole('button', { name: 'Accept changes', exact: true }).click()
+  await expect(talk).toContainText('OK, go ahead.')
+  await delivered()
+
+  // 3: Order again once more: the price went up, and it waits for the owner.
+  await card.getByRole('button', { name: 'Order again', exact: true }).click()
+  await card.getByRole('button', { name: 'Approve and send', exact: true }).click()
+  await expect(talk).toContainText(/Tea dust has gone up: ₹[\d,]+ a kg now, it was ₹[\d,]+/, {
+    timeout: 20_000,
+  })
+  await expect(card.getByRole('button', { name: 'Accept changes', exact: true })).toBeVisible()
+})

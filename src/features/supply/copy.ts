@@ -6,6 +6,7 @@ import type { CheckCode, DocFlag, DocKind, PoStatus, SystemFormat } from './type
  * Its own module like the sourcing copy: a new locale falls back to English, never breaks.
  */
 const en = {
+  orderAgain: 'Order again',
   title: 'Purchase orders',
   tileValue: (open: number) => (open === 0 ? 'None open' : `${open} open`),
   tileEmpty: 'Orders drafted from your forecast',
@@ -192,6 +193,8 @@ export type SupplyCopy = typeof en
 
 const zhHans: SupplyCopy = {
   ...en,
+
+  orderAgain: '再订一次',
   title: '采购单',
   tileValue: (open) => (open === 0 ? '没有进行中的' : `${open} 个进行中`),
   tileEmpty: '助手会根据预测为您起草订单',
@@ -355,6 +358,8 @@ const zhHans: SupplyCopy = {
 
 const ms: SupplyCopy = {
   ...en,
+
+  orderAgain: 'Pesan lagi',
   title: 'Pesanan belian',
   tileValue: (open) => (open === 0 ? 'Tiada yang terbuka' : `${open} terbuka`),
   tileEmpty: 'Jurulatih menyediakan pesanan daripada ramalan anda',
@@ -519,6 +524,7 @@ const ms: SupplyCopy = {
 
 const id: SupplyCopy = {
   ...ms,
+  orderAgain: 'Pesan lagi',
   title: 'Pesanan pembelian',
   tileValue: (open) => (open === 0 ? 'Tidak ada yang terbuka' : `${open} terbuka`),
   tileEmpty: 'Pelatih menyusun pesanan dari prakiraan Anda',
@@ -684,6 +690,8 @@ const id: SupplyCopy = {
 
 const fil: SupplyCopy = {
   ...en,
+
+  orderAgain: 'Umorder ulit',
   title: 'Mga purchase order',
   tileValue: (open) => (open === 0 ? 'Walang bukas' : `${open} bukas`),
   tileEmpty: 'Gumagawa ang coach ng order mula sa forecast mo',
@@ -850,6 +858,8 @@ const fil: SupplyCopy = {
 
 const ja: SupplyCopy = {
   ...en,
+
+  orderAgain: 'もう一度発注',
   title: '発注書',
   tileValue: (open) => (open === 0 ? '進行中なし' : `${open} 件進行中`),
   tileEmpty: 'コーチが予測から発注を下書きします',
@@ -1013,6 +1023,8 @@ const ja: SupplyCopy = {
 
 const ko: SupplyCopy = {
   ...en,
+
+  orderAgain: '다시 발주',
   title: '발주서',
   tileValue: (open) => (open === 0 ? '진행 중 없음' : `${open}건 진행 중`),
   tileEmpty: '코치가 예측으로 발주를 작성해요',
@@ -1176,6 +1188,8 @@ const ko: SupplyCopy = {
 
 const th: SupplyCopy = {
   ...en,
+
+  orderAgain: 'สั่งอีกครั้ง',
   title: 'ใบสั่งซื้อ',
   tileValue: (open) => (open === 0 ? 'ไม่มีที่ค้างอยู่' : `ค้างอยู่ ${open} รายการ`),
   tileEmpty: 'โค้ชร่างใบสั่งซื้อจากการพยากรณ์ของคุณ',
@@ -1343,6 +1357,8 @@ const th: SupplyCopy = {
 
 const vi: SupplyCopy = {
   ...en,
+
+  orderAgain: 'Đặt lại',
   title: 'Đơn mua hàng',
   tileValue: (open) => (open === 0 ? 'Không có đơn mở' : `${open} đơn mở`),
   tileEmpty: 'Trợ lý soạn đơn từ dự báo của bạn',
@@ -1510,6 +1526,8 @@ const vi: SupplyCopy = {
 
 const ta: SupplyCopy = {
   ...en,
+
+  orderAgain: 'மீண்டும் ஆர்டர் செய்',
   title: 'கொள்முதல் ஆணைகள்',
   tileValue: (open) => (open === 0 ? 'திறந்தவை இல்லை' : `${open} திறந்துள்ளன`),
   tileEmpty: 'உங்கள் முன்கணிப்பிலிருந்து பயிற்சியாளர் ஆணைகளை வரைகிறார்',
@@ -1686,6 +1704,8 @@ const ta: SupplyCopy = {
 
 const hi: SupplyCopy = {
   ...en,
+
+  orderAgain: 'फिर से ऑर्डर करें',
   title: 'खरीद पर्चियाँ',
   tileValue: (open) => (open === 0 ? 'कोई खुला नहीं' : `${open} खुले`),
   tileEmpty: 'कोच आपके अनुमान से खरीद पर्ची तैयार करता है',
@@ -1855,6 +1875,8 @@ const hi: SupplyCopy = {
 
 const bn: SupplyCopy = {
   ...en,
+
+  orderAgain: 'আবার অর্ডার করুন',
   title: 'ক্রয় অর্ডার',
   tileValue: (open) => (open === 0 ? 'কোনো খোলা নেই' : `${open}টি খোলা`),
   tileEmpty: 'কোচ আপনার পূর্বাভাস থেকে অর্ডার তৈরি করে',
@@ -2019,6 +2041,8 @@ const bn: SupplyCopy = {
 
 const te: SupplyCopy = {
   ...en,
+
+  orderAgain: 'మళ్లీ ఆర్డర్ చేయండి',
   title: 'కొనుగోలు ఆర్డర్లు',
   tileValue: (open) => (open === 0 ? 'తెరిచినవి లేవు' : `${open} తెరిచి ఉన్నాయి`),
   tileEmpty: 'మీ అంచనా నుండి కోచ్ ఆర్డర్లు సిద్ధం చేస్తుంది',
@@ -2183,6 +2207,8 @@ const te: SupplyCopy = {
 
 const mr: SupplyCopy = {
   ...en,
+
+  orderAgain: 'पुन्हा ऑर्डर करा',
   title: 'खरेदी ऑर्डर',
   tileValue: (open) => (open === 0 ? 'एकही उघडा नाही' : `${open} उघडे`),
   tileEmpty: 'कोच तुमच्या अंदाजावरून ऑर्डर तयार करतो',
@@ -2347,6 +2373,8 @@ const mr: SupplyCopy = {
 
 const kn: SupplyCopy = {
   ...en,
+
+  orderAgain: 'ಮತ್ತೆ ಆರ್ಡರ್ ಮಾಡಿ',
   title: 'ಖರೀದಿ ಆರ್ಡರ್‌ಗಳು',
   tileValue: (open) => (open === 0 ? 'ಯಾವುದೂ ತೆರೆದಿಲ್ಲ' : `${open} ತೆರೆದಿವೆ`),
   tileEmpty: 'ನಿಮ್ಮ ಮುನ್ಸೂಚನೆಯಿಂದ ಕೋಚ್ ಆರ್ಡರ್ ಸಿದ್ಧಪಡಿಸುತ್ತದೆ',

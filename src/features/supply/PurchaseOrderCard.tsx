@@ -20,6 +20,7 @@ import {
   FlaskConical,
   PackageCheck,
   Receipt,
+  RotateCcw,
   Send,
   Truck,
 } from 'lucide-react'
@@ -852,6 +853,17 @@ function NextStep({
           <Check size={18} aria-hidden="true" color={roles.primary} />
           {s.closed}
         </Typography>
+      )}
+      {order.received && (order.status === 'closed' || order.status === 'invoiced') && (
+        <Button
+          variant="outlined"
+          disabled={busy !== null}
+          onClick={() => void act('again', () => actions.again(order))}
+          startIcon={icon('again', <RotateCcw size={18} />)}
+          sx={{ alignSelf: 'flex-start', minHeight: 48 }}
+        >
+          {s.orderAgain}
+        </Button>
       )}
       {waitingFor && !(order.status === 'received' && invoiced) && (
         <Box

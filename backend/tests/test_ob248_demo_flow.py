@@ -96,46 +96,123 @@ def test_OB_248_full_order_goes_draft_sent_reply_on_the_way_delivered_stock_up(
     assert closed.status_code == 200 and closed.json()["status"] == "closed"
 
 
-@pytest.mark.parametrize(
-    ("variant", "code"),
-    [("partial", "partial"), ("price_change", "price_changed")],
-)
-def test_OB_248_a_short_or_dearer_reply_waits_for_the_owner_then_carries_on(
+def send(client, session, bid, order):
+    sent = owner(
+        client,
+        session,
+        f"businesses/{bid}/supply/orders/{order['id']}/approve",
+        "POST",
+        json={"version": order["version"]},
+    )
+    assert sent.status_code == 200, sent.text
+    return sent.json()
+
+
+def receive(client, session, bid, oid):
+    """Goods arrived, as the visitor taps it once the order is on the way."""
+    on_the_way = order_of(client, session, bid, oid)
+    assert on_the_way["status"] == "dispatched", on_the_way["status"]
+    came = owner(
+        client,
+        session,
+        f"businesses/{bid}/supply/orders/{oid}/received",
+        "POST",
+        json={"version": on_the_way["version"]},
+    )
+    assert came.status_code == 200, came.text
+    proposal = came.json()["proposal"]
+    saved = owner(
+        client,
+        session,
+        f"proposals/{proposal['id']}/approve",
+        "POST",
+        json={"digest": proposal["digest"]},
+    )
+    assert saved.status_code == 200, saved.text
+    return came.json()
+
+
+def again(client, session, bid, oid):
+    drafted = owner(client, session, f"businesses/{bid}/supply/orders/{oid}/again", "POST")
+    assert drafted.status_code == 200, drafted.text
+    order = drafted.json()
+    assert order["status"] == "draft" and not order["sent"]
+    return order
+
+
+def test_OB_248_a_visitor_sees_yes_then_short_then_dearer_in_three_plain_orders(
     live_parent_demo,  # noqa: F811
     instant,
-    monkeypatch: pytest.MonkeyPatch,
-    variant: str,
-    code: str,
 ) -> None:
+    """No patching: Draft a reorder, then Order again on what came, twice (OB-248)."""
     client, _app, session, bid = live_parent_demo
-    monkeypatch.setattr(demo_supplier, "SCRIPT", (variant,))
-    sent = draft_and_send(client, session, bid)
-    changed = order_of(client, session, bid, sent["id"])
-    assert changed["status"] == "changed"
-    assert code in {change["code"] for change in changed["changes"]}
-    assert not any(d.get("flags") for d in changed["documents"]), "nothing here needs a fix-up"
-    if variant == "price_change":
-        was, now = sent["lines"][0]["price"], changed["lines"][0]["confirmed_price"]
-        assert was < now <= was * 1.1 + 100 and now % 100 == 0
+    first = draft_and_send(client, session, bid)
+    assert order_of(client, session, bid, first["id"])["status"] == "confirmed"
+    receive(client, session, bid, first["id"])
+
+    # Tea dust is covered now, so a plain reorder adds nothing; Order again is the way.
+    assert (
+        owner(client, session, f"businesses/{bid}/supply/reorder", "POST", json={}).json()["status"]
+        == "on_order"
+    )
+    second = send(client, session, bid, again(client, session, bid, first["id"]))
+    assert second["lines"][0]["quantity"] == first["lines"][0]["quantity"]
+    short = order_of(client, session, bid, second["id"])
+    assert short["status"] == "changed"
+    assert "partial" in {change["code"] for change in short["changes"]}
+    assert not any(d.get("flags") for d in short["documents"]), "nothing here needs a fix-up"
     # It waits: reading again never answers for the owner.
-    assert order_of(client, session, bid, sent["id"])["status"] == "changed"
+    assert order_of(client, session, bid, second["id"])["status"] == "changed"
     accepted = owner(
         client,
         session,
-        f"businesses/{bid}/supply/orders/{sent['id']}/accept",
+        f"businesses/{bid}/supply/orders/{second['id']}/accept",
         "POST",
-        json={"version": changed["version"]},
+        json={"version": short["version"]},
     )
     assert accepted.status_code == 200 and accepted.json()["status"] == "confirmed"
-    assert order_of(client, session, bid, sent["id"])["status"] == "dispatched"
+    receive(client, session, bid, second["id"])
+
+    third = send(client, session, bid, again(client, session, bid, second["id"]))
+    dearer = order_of(client, session, bid, third["id"])
+    assert dearer["status"] == "changed"
+    assert "price_changed" in {change["code"] for change in dearer["changes"]}
+    was, now = third["lines"][0]["price"], dearer["lines"][0]["confirmed_price"]
+    assert was < now <= was * 1.1 + 100 and now % 100 == 0
+
+
+def test_OB_248_a_cancelled_draft_never_shifts_the_replies(
+    live_parent_demo,  # noqa: F811
+    instant,
+) -> None:
+    client, _app, session, bid = live_parent_demo
+    drafted = owner(client, session, f"businesses/{bid}/supply/reorder", "POST", json={})
+    order = drafted.json()["order"]
+    cancelled = owner(
+        client,
+        session,
+        f"businesses/{bid}/supply/orders/{order['id']}/cancel",
+        "POST",
+        json={"version": order["version"]},
+    )
+    assert cancelled.status_code == 200, cancelled.text
+    sent = draft_and_send(client, session, bid)
+    assert order_of(client, session, bid, sent["id"])["status"] == "confirmed"
+
+
+def test_OB_248_order_again_only_on_what_came(live_parent_demo) -> None:  # noqa: F811
+    client, _app, session, bid = live_parent_demo
+    sent = draft_and_send(client, session, bid)
+    early = owner(client, session, f"businesses/{bid}/supply/orders/{sent['id']}/again", "POST")
+    assert early.status_code == 409
 
 
 def test_OB_248_script_is_deterministic_and_starts_with_a_plain_yes() -> None:
     first = {"simulated": True, "status": "sent", "updated": 0.0, "number": "4500012346"}
     first["documents"] = [{"reader": "template"}]
-    assert demo_supplier.next_reply(first, 1000.0) == "full"
-    assert demo_supplier.next_reply({**first, "number": "4500012347"}, 1000.0) == "partial"
-    assert demo_supplier.next_reply({**first, "number": "4500012348"}, 1000.0) == "price_change"
+    assert demo_supplier.next_reply(first, 1000.0, 0) == "full"
+    assert demo_supplier.next_reply(first, 1000.0, 1) == "partial"
+    assert demo_supplier.next_reply(first, 1000.0, 2) == "price_change"
     # Not before the delay, and never on a seeded order's authored story or a real supplier's.
     assert demo_supplier.next_reply({**first, "updated": 999.0}, 1000.0) is None
     assert demo_supplier.next_reply({**first, "documents": [{"reader": "parser"}]}, 1000.0) is None

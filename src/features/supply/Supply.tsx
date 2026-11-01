@@ -114,6 +114,8 @@ export function SupplySheet({ open, onClose }: { open: boolean; onClose: () => v
     view.kind === 'rules' ? data?.suppliers.find((row) => row.supplier.id === view.id) : undefined
   function update(order: PurchaseOrder) {
     setLocal((known) => ({ ...known, [order.id]: order }))
+    // "Order again" answers with the new draft: show it, ready to review and send.
+    if (view.kind === 'order' && order.id !== view.id) setView({ kind: 'order', id: order.id })
   }
   function close() {
     setView({ kind: 'list' })

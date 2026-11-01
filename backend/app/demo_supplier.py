@@ -6,7 +6,6 @@ leaves the sandbox: the only caller is the public demo's owner API, and real own
 affected. What the reply says on screen is written by the app, in the owner's language.
 """
 
-import re
 import time
 from typing import Any
 
@@ -19,9 +18,9 @@ from .merchant import MerchantRepository
 
 log = structlog.get_logger()
 REPLY_SECONDS = 4.0
-# By order number, so a visitor's first order is confirmed, the next comes short and the third
-# comes at a new price. The seed's sequence makes the first new number land on "full".
-SCRIPT = ("price_change", "full", "partial")
+# By how many orders the visitor has sent here: the first is confirmed, the second comes short
+# and the third at a new price, then round again. A cancelled draft never shifts it.
+SCRIPT = ("full", "partial", "price_change")
 
 
 def owner_sent(po: dict[str, Any]) -> bool:
@@ -30,14 +29,15 @@ def owner_sent(po: dict[str, Any]) -> bool:
     return bool(documents) and documents[0].get("reader") == "template"
 
 
-def next_reply(po: dict[str, Any], now: float) -> str | None:
-    """The variant of the supplier's next document, once its short delay has passed."""
+def next_reply(po: dict[str, Any], now: float, turn: int = 0) -> str | None:
+    """The variant of the supplier's next document, once its short delay has passed. `turn` is
+    this order's place among the visitor's sent orders, from 0."""
     if not po.get("simulated") or not owner_sent(po):
         return None
     if now - float(po.get("updated") or 0) < REPLY_SECONDS:
         return None
     if po["status"] == "sent":
-        return SCRIPT[int(re.sub(r"\D", "", str(po["number"])) or 0) % len(SCRIPT)]
+        return SCRIPT[turn % len(SCRIPT)]
     if po["status"] == "confirmed":
         return "full"
     if po["status"] == "received" and not po.get("invoiced"):
@@ -50,8 +50,12 @@ async def settle(store: MerchantRepository, uid: str, bid: str) -> bool:
     now = time.time()
     changed = False
     orders = await anyio.to_thread.run_sync(supply_chain.all_orders, store, bid)
+    sent = sorted(
+        (po for po in orders if owner_sent(po)), key=lambda po: float(po["documents"][0]["at"])
+    )
+    turns = {po["id"]: turn for turn, po in enumerate(sent)}
     for po in orders:
-        variant = next_reply(po, now)
+        variant = next_reply(po, now, turns.get(po["id"], 0))
         if variant is None:
             continue
         try:
