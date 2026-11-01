@@ -47,7 +47,7 @@ def forecast_card(result: dict[str, Any]) -> dict[str, Any] | None:
 
 
 def insights_card(result: dict[str, Any]) -> dict[str, Any] | None:
-    """The last 7 days against the 7 days before: revenue, the daily trend, top sellers and slow movers."""
+    """Last 7 days against the 7 days before: revenue, daily trend, top sellers, slow movers."""
     if not result.get("has_sales_data"):
         return None
 

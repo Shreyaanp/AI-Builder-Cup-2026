@@ -108,7 +108,8 @@ const translations: Record<Exclude<Locale, 'en'>, ChartCopy> = {
     slow: 'Kurang laku',
     soldOut: '{n} habis dalam 7 hari terakhir',
     summaryForecast: 'Grafik prakiraan: {items}',
-    summaryWeek: 'Grafik penjualan: {revenue} dalam 7 hari terakhir, {change} dibanding 7 hari sebelumnya',
+    summaryWeek:
+      'Grafik penjualan: {revenue} dalam 7 hari terakhir, {change} dibanding 7 hari sebelumnya',
   },
   th: {
     forecastTitle: '7 วันข้างหน้า',
@@ -153,7 +154,8 @@ const translations: Record<Exclude<Locale, 'en'>, ChartCopy> = {
     slow: 'Mabagal mabenta',
     soldOut: '{n} naubos sa nakaraang 7 araw',
     summaryForecast: 'Forecast chart: {items}',
-    summaryWeek: 'Chart ng benta: {revenue} sa nakaraang 7 araw, {change} kumpara sa 7 araw bago nito',
+    summaryWeek:
+      'Chart ng benta: {revenue} sa nakaraang 7 araw, {change} kumpara sa 7 araw bago nito',
   },
   hi: {
     forecastTitle: 'अगले 7 दिन',
