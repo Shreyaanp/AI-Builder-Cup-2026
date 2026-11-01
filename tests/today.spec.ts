@@ -256,7 +256,9 @@ for (const [language, preview, pointer, shopTile, tile, menu, draft] of [
 
 // Low stock keeps "Order" and asks to order more.
 test('low stock: a kirana keeps Order and asks to order more', async ({ page }) => {
-  await facts(page, { low_stock: [{ name: 'Toothpaste', stock: 4, runs_out: null }] })
+  await facts(page, {
+    low_stock: [{ name: 'Toothpaste', stock: 4, runs_out: null, source: 'bought' }],
+  })
   await shop(page, { name: 'Corner Kirana', ...FULL, category: 'Grocery', phone: '' }, [
     { name: 'Toothpaste', price: 9000, unit: 'tube', category: 'Care', stock: 4 },
   ])
