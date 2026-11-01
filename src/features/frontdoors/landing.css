@@ -13,6 +13,8 @@
    smaller sizes it was approved with, so these roles are set back here. */
 @media (max-width: 599px) {
   .lp {
+    font-size: var(--type-bodyMedium-size);
+    line-height: var(--type-bodyMedium-line);
     --type-titleMedium-size: 0.9375rem;
     --type-titleMedium-line: 1.375rem;
     --type-titleMedium-tracking: 0.00667em;
