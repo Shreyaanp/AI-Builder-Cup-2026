@@ -54,7 +54,12 @@ const en = {
   addPhone: 'Add your shop phone number first so the supplier can reach you.',
   sendFailed: 'Couldn’t send. Try again.',
   markReceived: 'Mark as received',
-  runsOut: (item: string, day: string, _feminine?: boolean) => `${item} runs out ${day}`,
+  // `feminine` is for Hindi grammar (चाय पत्ती … खत्म होगी); English has no need of it.
+  runsOut: ((item: string, day: string) => `${item} runs out ${day}`) as (
+    item: string,
+    day: string,
+    feminine?: boolean,
+  ) => string,
   choose: 'Choose',
   sendTo: (name: string) => `Send to ${name}`,
   // Starts the owner's order in the composer; they add what and how much.
