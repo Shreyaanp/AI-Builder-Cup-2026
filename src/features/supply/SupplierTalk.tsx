@@ -74,7 +74,7 @@ export function SupplierTalk({
       const short = linesOf(document).find((line) => line.status === 'backordered')
       const dearer = linesOf(document).find((line) => {
         const asked = order.lines.find((row) => row.item === line.item)
-        return asked?.price != null && line.price != null && line.price !== asked.price
+        return asked?.price != null && line.price != null && line.price > asked.price
       })
       if (short) {
         messages.push({

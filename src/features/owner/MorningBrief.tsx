@@ -1,3 +1,5 @@
+import { useShopCopy } from '../shop/strings'
+import { unitLabel } from '../shop/units'
 import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Box, Button, Chip, IconButton, Link, Stack, Typography, useTheme } from '@mui/material'
@@ -60,6 +62,7 @@ export function MorningBrief({
   onRadar: () => void
 }) {
   const t = useOwnerCopy()
+  const shopCopy = useShopCopy()
   const locale = useLocale()
   const theme = useTheme()
   const roles = theme.material
@@ -240,7 +243,9 @@ export function MorningBrief({
                 {row.name}
               </Typography>
               <Typography variant="bodyMedium" sx={{ fontVariantNumeric: 'tabular-nums' }}>
-                {fill(t.stockLeft, { n: `${number(row.stock)} ${row.unit ?? ''}`.trim() })}
+                {fill(t.stockLeft, {
+                  n: `${number(row.stock)} ${unitLabel(row.unit ?? '', shopCopy)}`.trim(),
+                })}
               </Typography>
               {typeof row.runs_out === 'string' && (
                 <Typography variant="bodySmall" color="text.secondary">

@@ -79,6 +79,8 @@ test('OB-248 the supplier talks in the owner language', async ({ page }) => {
   )
   await openDemo(page, 'छोड़ें')
   await page.locator('[data-tour="nav-grow"]').click()
+  // The Morning brief's stock line carries the Hindi unit too.
+  await expect(page.getByText(/^बचा: \S+ किलो$/).first()).toBeVisible({ timeout: 15_000 })
   await page.locator('[data-tour="supply"]').click()
   const sheet = page.getByRole('dialog')
   await expect(sheet.getByText(/Sri Lakshmi/).first()).toBeVisible({ timeout: 15_000 })
