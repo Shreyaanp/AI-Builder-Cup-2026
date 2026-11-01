@@ -4899,6 +4899,11 @@ export interface components {
             name: string;
             /** Stock */
             stock: number;
+            /**
+             * Unit
+             * @default
+             */
+            unit: string;
             /** Runs Out */
             runs_out: string | null;
             /**

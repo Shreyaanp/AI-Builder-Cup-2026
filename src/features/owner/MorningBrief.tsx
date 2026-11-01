@@ -240,7 +240,7 @@ export function MorningBrief({
                 {row.name}
               </Typography>
               <Typography variant="bodyMedium" sx={{ fontVariantNumeric: 'tabular-nums' }}>
-                {fill(t.stockLeft, { n: number(row.stock) })}
+                {fill(t.stockLeft, { n: `${number(row.stock)} ${row.unit ?? ''}`.trim() })}
               </Typography>
               {typeof row.runs_out === 'string' && (
                 <Typography variant="bodySmall" color="text.secondary">

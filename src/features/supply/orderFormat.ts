@@ -38,3 +38,11 @@ export function orderLabel(
 ): string {
   return title(order.reason?.item || order.lines?.[0]?.item || '', order.supplier.name)
 }
+
+/** "18 kg +3": what an order is for at a glance, so two orders of one item never read alike. */
+export function orderSize(order: Pick<PurchaseOrder, 'lines'>): string {
+  const [first, ...rest] = order.lines ?? []
+  if (!first) return ''
+  const size = `${first.quantity ?? 0} ${first.unit ?? ''}`.trim()
+  return rest.length ? `${size} +${rest.length}` : size
+}

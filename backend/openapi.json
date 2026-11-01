@@ -13660,6 +13660,11 @@
             "type": "integer",
             "title": "Stock"
           },
+          "unit": {
+            "type": "string",
+            "title": "Unit",
+            "default": ""
+          },
           "runs_out": {
             "anyOf": [
               {

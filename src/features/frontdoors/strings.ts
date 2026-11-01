@@ -1347,7 +1347,7 @@ const demoEnglish = {
   askPrep:
     'Tomorrow, make 40 cups of chai, 30 samosas and 2 trays of poha. Based on the last 14 days; Saturdays sell about a fifth more. This is a sample.',
   askSuppliers:
-    'Three nearby wholesalers sell this: Shree Traders (1.2 km), Metro Cash and Carry (3 km) and City Dairy (2 km). In the live app the coach drafts the WhatsApp order for you. This is a sample.',
+    'Three nearby wholesalers sell this: Shree Traders (Demo, 1.2 km), Lakeview Wholesale (Demo, 3 km) and City Dairy (Demo, 2 km). In the live app the coach drafts the WhatsApp order for you. This is a sample.',
   askOther: 'In the live app this opens for your own shop. This demo shows sample data only.',
   close: 'Close',
 }

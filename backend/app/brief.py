@@ -96,6 +96,7 @@ class PrepRow(BaseModel):
 class LowStock(BaseModel):
     name: str
     stock: int
+    unit: str = ""
     runs_out: date | None
     # Only bought stock becomes "Order X now" (OB-239).
     source: Source = "bought"
@@ -177,6 +178,7 @@ def facts(
                 LowStock(
                     name=product["name"],
                     stock=stock,
+                    unit=str(product.get("unit") or ""),
                     runs_out=runs_out_on,
                     source=source,
                 )
