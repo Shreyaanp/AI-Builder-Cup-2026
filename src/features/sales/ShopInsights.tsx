@@ -189,7 +189,13 @@ export function RecapTile({ mondayOnly = false }: { mondayOnly?: boolean }) {
       >
         <Supporting>{t.recapHint}</Supporting>
       </Tile>
-      <Sheet open={open} onClose={() => setOpen(false)} titleId="recap-title" title={t.recapTitle}>
+      <Sheet
+        open={open}
+        onClose={() => setOpen(false)}
+        titleId="recap-title"
+        ask="insights"
+        title={t.recapTitle}
+      >
         {open && <RecapDetails week={value.recap_week} />}
       </Sheet>
     </>

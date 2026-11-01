@@ -76,6 +76,7 @@ export function MenuSheet({
         open={open}
         onClose={onClose}
         titleId="menu-sheet-title"
+        ask="add_menu"
         title={t.menu}
         onEntered={() => {
           if (!focus) return

@@ -21,6 +21,7 @@ import { useCopy } from '../strings'
 import { useTabsCopy } from '../tabsCopy'
 import { useWorkspace } from '../workspaceContext'
 import { ShopGate } from './ShopScreen'
+import { AskHint } from '../AskHint'
 import { MorningBrief } from '../../owner/MorningBrief'
 import { RadarSheet, RadarTile } from '../../owner/RadarTile'
 import { RescueTile } from '../../owner/RescueTile'
@@ -179,6 +180,7 @@ function GrowTiles() {
       <Box data-testid="grow-tiles" sx={tileGrid}>
         {cards}
       </Box>
+      <AskHint id="forecast" />
       <ShopSheets
         kind={sheet ?? (planOpen ? 'plan' : null)}
         onClose={() => {

@@ -124,6 +124,7 @@ function RescueSheet({
       open={open}
       onClose={onClose}
       titleId="rescue-sheet-title"
+      ask="rescue"
       title={t.rescueTitle}
       keepMounted={false}
     >

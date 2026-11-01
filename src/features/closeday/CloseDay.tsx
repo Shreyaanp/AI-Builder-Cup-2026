@@ -24,6 +24,7 @@ import { useWorkspace } from '../v1/workspaceContext'
 import { useIdentity } from '../../auth/useIdentity'
 import { dismissFreshness } from '../sales/freshnessDismissal'
 import { closeDayCopy } from './strings'
+import { AskHint } from '../v1/AskHint'
 
 export type Kind = 'sales' | 'stock_count' | 'delivery'
 type Line = {
@@ -451,6 +452,7 @@ export function CloseDay({
                 onAdd={(line) => setTyped((all) => [...all, line])}
               />
             )}
+            <AskHint id="close_day" />
           </>
         )}
 

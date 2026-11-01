@@ -27,6 +27,7 @@ import { fill, useGoogleCopy } from '../../google/strings'
 import { useGallery } from '../../google/useGallery'
 import { GalleryEditor } from '../../google/GalleryEditor'
 import { TrustCard } from '../../trust/TrustCard'
+import { AskHint } from '../AskHint'
 
 const EASE = 'cubic-bezier(0.2, 0, 0, 1)' // M3 emphasized decelerate
 
@@ -338,6 +339,7 @@ export function GoogleScreen() {
           </Stack>
         )}
       </Stack>
+      <AskHint id="google" />
     </Box>
   )
 }

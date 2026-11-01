@@ -33,6 +33,7 @@ import type { PaymentLink, RiderProvider } from './links'
 import { useRegionCopy } from './regionCopy'
 import { railCurrency, shopRegion } from '../../region/region'
 import { formatAmount, formatPrice, shopCurrency, toMinor } from '../v1/format'
+import { AskHint } from '../v1/AskHint'
 
 /** Used unchanged by the feature screen and the coach tool's card. */
 export function PaymentCard({ payment }: { payment: PaymentLink }) {
@@ -501,6 +502,7 @@ export function PaymentsScreen() {
           </Box>
         </>
       )}
+      <AskHint id="payments" />
     </Stack>
   )
 }

@@ -41,6 +41,7 @@ import { MenuSheet } from '../shop/MenuSheet'
 import { FreshnessCard } from '../sales/ShopInsights'
 import { ConnectTile } from '../connect/ConnectTile'
 import { Sheet } from './Sheet'
+import { AskHint } from './AskHint'
 import { ShopQr } from './ShopQr'
 import { OwnerPerks } from '../passport/games/OwnerPerks'
 import { useUnread } from './useUnread'
@@ -183,6 +184,7 @@ export function ShopOverview({ narrow = false }: { narrow?: boolean }) {
       )}
       <ShopTiles unread={unread} onSheet={setSheet} />
       {!narrow && <FreshnessCard compact />}
+      {!narrow && <AskHint id="sold_out" />}
       <ShopSheets
         kind={sheet}
         onClose={() => {
@@ -482,6 +484,7 @@ export function ShopSheets({
         <Sheet
           {...common}
           titleId="details-sheet-title"
+          ask="closed_today"
           title={shop.fields.name}
           actions={editDetails}
         >
@@ -585,7 +588,7 @@ export function ShopSheets({
       return <MenuSheet {...common} focus={menuFocus} />
     case 'soldOut':
       return (
-        <Sheet {...common} titleId="soldout-sheet-title" title={t.soldOutToday}>
+        <Sheet {...common} titleId="soldout-sheet-title" ask="sold_out" title={t.soldOutToday}>
           <Typography variant="bodyMedium" color="text.secondary" sx={{ mb: 4 }}>
             {ws.products.length ? t.soldOutHint : t.productsEmpty}
           </Typography>
@@ -631,33 +634,39 @@ export function ShopSheets({
       )
     case 'customer':
       return (
-        <Sheet {...common} titleId="customer-sheet-title" title={t.customerPage}>
+        <Sheet {...common} titleId="customer-sheet-title" ask="share" title={t.customerPage}>
           <CustomerPage onReview={onClose} />
         </Sheet>
       )
     case 'photos':
       return (
-        <Sheet {...common} titleId="photos-sheet-title" title={tabs.photos}>
+        <Sheet {...common} titleId="photos-sheet-title" ask="photos" title={tabs.photos}>
           {kind === 'photos' && <ShopPhotos />}
         </Sheet>
       )
     case 'messages':
       // Messages brings its own "Messages (n)" heading, which names the sheet.
       return (
-        <Sheet {...common} titleId="messages-title">
+        <Sheet {...common} titleId="messages-title" ask="messages">
           <Messages key={`messages-${shop.id}`} businessId={shop.id} />
         </Sheet>
       )
     case 'plan':
       // Planning brings its own "Plan tomorrow" heading; it needs a saved product first.
       return ws.products.some((product) => product.id) ? (
-        <Sheet {...common} titleId="plan-title">
+        <Sheet {...common} titleId="plan-title" ask="forecast">
           <Box sx={{ pt: 2 }}>
             <PlanTomorrow key={`plan-${shop.id}`} />
           </Box>
         </Sheet>
       ) : (
-        <Sheet {...common} titleId="plan-sheet-title" title={plan.title} actions={addProduct}>
+        <Sheet
+          {...common}
+          titleId="plan-sheet-title"
+          ask="forecast"
+          title={plan.title}
+          actions={addProduct}
+        >
           <Typography variant="bodyMedium" color="text.secondary">
             {t.productsEmpty}
           </Typography>
@@ -678,6 +687,7 @@ export function ShopSheets({
         <Sheet
           {...common}
           titleId="readiness-sheet-title"
+          ask="google"
           title={t.readiness(done, total)}
           actions={
             <>
