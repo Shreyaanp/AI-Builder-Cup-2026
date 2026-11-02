@@ -195,7 +195,7 @@ export function MorningBrief({
                     }).format(brief.weather.temperature_c)}
                   </Typography>
                   <Typography variant="bodyLarge">
-                    {fill(t.rain, { pct: Math.round(brief.weather.rain_probability) })}
+                    {fill(t.rain, { pct: number(Math.round(brief.weather.rain_probability)) })}
                   </Typography>
                   {brief.weather.demo && <Chip size="small" label={t.demo} />}
                 </Stack>

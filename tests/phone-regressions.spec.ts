@@ -280,7 +280,7 @@ test('PHONE-3: the Google flow ends with official links and an honest waiting st
   await page.getByRole('button', { name: 'Grow', exact: true }).tap()
   await page.getByRole('button', { name: /^Get on Google/ }).tap()
   await page.getByRole('button', { name: 'Step 4 of 4: Google', exact: true }).tap()
-  await expect(page.getByText('Waiting for Google API access', { exact: true })).toBeVisible()
+  await expect(page.getByText('Waiting for Google’s permission', { exact: true })).toBeVisible()
   const maps = page.getByRole('link', { name: 'Find & claim on Maps', exact: true })
   await expect(maps).toHaveAttribute(
     'href',

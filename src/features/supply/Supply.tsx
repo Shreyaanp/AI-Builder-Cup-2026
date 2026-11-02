@@ -47,6 +47,7 @@ const OPEN = new Set([
 /** My shop: the Purchase orders tile, opening the sheet. */
 export function SupplyTile() {
   const s = useSupplyCopy()
+  const locale = useLocale()
   const [open, setOpen] = useState(false)
   const { data, refresh } = useSupply(true)
   const orders = data?.orders ?? []
@@ -63,7 +64,7 @@ export function SupplyTile() {
       >
         <Supporting>
           {latest
-            ? `${orderLabel(latest, s.orderTitle)} · ${s.status[latest.status]}`
+            ? `${orderLabel(latest, s.orderTitle, locale)} · ${s.status[latest.status]}`
             : s.tileEmpty}
         </Supporting>
       </Tile>
@@ -90,6 +91,14 @@ export function SupplySheet({ open, onClose }: { open: boolean; onClose: () => v
     const total = orderTotal(order)
     return total == null ? '–' : formatShopPrice(total, order.currency, locale)
   }
+  // The day and time it was drafted, so two orders for the same item read differently.
+  const placed = (order: PurchaseOrder) =>
+    new Intl.DateTimeFormat(locale, {
+      day: 'numeric',
+      month: 'short',
+      hour: 'numeric',
+      minute: '2-digit',
+    }).format(new Date(order.created * 1000))
   const { data, refresh } = useSupply(open)
   const [view, setView] = useState<View>({ kind: 'list' })
   const [local, setLocal] = useState<Record<string, PurchaseOrder>>({})
@@ -136,7 +145,7 @@ export function SupplySheet({ open, onClose }: { open: boolean; onClose: () => v
             {back}
             <Box component="span" sx={{ minWidth: 0, overflowWrap: 'anywhere' }}>
               {view.kind === 'order' && selected
-                ? orderLabel(selected, s.orderTitle)
+                ? orderLabel(selected, s.orderTitle, locale)
                 : supplier
                   ? s.rulesFor(supplier.supplier.name)
                   : s.title}
@@ -255,8 +264,8 @@ export function SupplySheet({ open, onClose }: { open: boolean; onClose: () => v
                   >
                     <FileText size={20} color={roles.primary} aria-hidden="true" />
                     <ListItemText
-                      primary={orderLabel(order, s.orderTitle)}
-                      secondary={`${s.status[order.status]} · ${money(order)}`}
+                      primary={orderLabel(order, s.orderTitle, locale)}
+                      secondary={`${s.status[order.status]} · ${money(order)} · ${placed(order)}`}
                     />
                     <ChevronRight size={18} aria-hidden="true" />
                   </ListItemButton>

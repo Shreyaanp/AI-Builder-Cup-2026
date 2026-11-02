@@ -140,6 +140,7 @@ export function PurchaseOrderCard({
 }) {
   const roles = useTheme().material
   const s = useSupplyCopy()
+  const locale = useLocale()
   const f = useFormat(order)
   const showcase = useShowcaseCopy()
   const [sapOpen, setSapOpen] = useState(false)
@@ -179,7 +180,7 @@ export function PurchaseOrderCard({
   return (
     <Box
       component="article"
-      aria-label={orderLabel(order, s.orderTitle)}
+      aria-label={orderLabel(order, s.orderTitle, locale)}
       sx={{
         borderRadius: `${shape.xl}px`,
         bgcolor: draft ? roles.surfaceContainerLow : roles.surfaceContainer,
@@ -199,7 +200,7 @@ export function PurchaseOrderCard({
           color="text.secondary"
           sx={{ flex: '1 1 160px', minWidth: 0, overflowWrap: 'anywhere' }}
         >
-          {orderLabel(order, s.orderTitle)}
+          {orderLabel(order, s.orderTitle, locale)}
         </Typography>
         {order.simulated && (
           <Chip

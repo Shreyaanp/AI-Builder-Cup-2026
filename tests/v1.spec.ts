@@ -142,7 +142,7 @@ test('Google flow: details, photos, preview, then official links', async ({ page
   await expect(flow.getByRole('heading', { name: 'Your profile' })).toBeVisible()
   await expect(flow.getByRole('heading', { name: 'Morning Crumb' })).toBeVisible()
   await flow.getByRole('button', { name: 'Next' }).click()
-  await expect(flow.getByText('Waiting for Google API access')).toBeVisible()
+  await expect(flow.getByText('Waiting for Google’s permission')).toBeVisible()
   await expect(page.getByRole('link', { name: 'Add on Google' })).toHaveAttribute(
     'href',
     'https://business.google.com/add',

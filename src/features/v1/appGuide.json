@@ -187,7 +187,7 @@
     },
     {
       "id": "import_sales",
-      "title": "Connect your POS or sales file",
+      "title": "Link your billing app",
       "path": ["Shop", "Link your billing app"],
       "ask": "Import my sales",
       "ask_hi": "मेरी बिक्री इम्पोर्ट करो",

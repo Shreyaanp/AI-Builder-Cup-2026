@@ -1,3 +1,4 @@
+import { productName } from '../../i18n/productNames.ts'
 import type { PurchaseOrder } from './types.ts'
 
 /** The number without a leading "PO-"/"PO " so the copy's own "PO" prefix is not doubled. */
@@ -35,6 +36,8 @@ export function termsLabel(
 export function orderLabel(
   order: Pick<PurchaseOrder, 'lines' | 'supplier' | 'reason'>,
   title: (item: string, supplier: string) => string,
+  locale: string,
 ): string {
-  return title(order.reason?.item || order.lines?.[0]?.item || '', order.supplier.name)
+  const item = order.reason?.item || order.lines?.[0]?.item || ''
+  return title(productName(item, locale), order.supplier.name)
 }

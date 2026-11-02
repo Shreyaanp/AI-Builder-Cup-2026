@@ -48,7 +48,7 @@ test('B37: details, real photo upload, profile preview and the honest Google ste
   await page.waitForTimeout(500)
   await page.screenshot({ path: 'docs/bugs/B37-preview.png' })
   await flow.getByRole('button', { name: 'Next' }).tap()
-  await expect(flow.getByText('Waiting for Google API access')).toBeVisible()
+  await expect(flow.getByText('Waiting for Google’s permission')).toBeVisible()
   await expect(flow.getByText('Photos added')).toBeVisible()
   await page.waitForTimeout(900)
   await page.screenshot({ path: 'docs/bugs/B37-google.png', fullPage: true })
