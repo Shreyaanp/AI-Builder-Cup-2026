@@ -1,7 +1,7 @@
 import { mkdirSync } from 'node:fs'
 import { expect, test, type Page } from '@playwright/test'
 import { enter, image, localOnly, otherOwnersWords, seedShop, share } from './stories/support.js'
-import { growTool, openGrowRows, openGrowTool } from './support/grow.js'
+import { growTool, openGrowTool } from './support/grow.js'
 
 // Hindi end to end at 360px. The owner app set to Hindi and a customer
 // whose phone is in Hindi walk the main screens; each must read in Hindi: no English UI words
@@ -222,15 +222,15 @@ test('the owner app reads in Hindi: Today, coach, Shop, Grow tools, You, privacy
     await closeSheet(page)
   })
 
-  await test.step('purchase order', async () => {
-    await tab(page, 'बढ़ाएँ').click()
-    await openGrowRows(page)
-    const purchaseCard = page
-      .getByRole('button')
-      .filter({ has: page.getByText('खरीद पर्चियाँ', { exact: true }) })
-    await expect(purchaseCard).toHaveCount(1)
-    await purchaseCard.click()
-    await expect(page.getByRole('dialog')).toBeVisible()
+  await test.step('purchase order: Buy stock → My suppliers', async () => {
+    // Purchase orders now live in माल मँगाएँ (Buy stock) → मेरे सप्लायर (batch 4b).
+    await growCard(page, /^माल मँगाएँ/)
+    const suppliers = page
+      .getByRole('dialog')
+      .getByRole('button', { name: /^मेरे सप्लायर/ })
+      .first()
+    await suppliers.click()
+    await expect(suppliers).toHaveAttribute('aria-pressed', 'true')
     // The sandbox supplier's name comes from the imported SAP document (data, not interface copy).
     await readsInHindi(page, '09-purchase-order', ['SAP supplier'])
     await closeSheet(page)
