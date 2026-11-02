@@ -23,7 +23,7 @@ const translations: Record<Exclude<Locale, 'en'>, ChartCopy> = {
   'zh-Hans': {
     forecastTitle: '未来 7 天',
     forecastRange: '可能范围',
-    timesfm: 'TimesFM 预测',
+    timesfm: '根据您最近几周的销售',
     weekdayAverage: '按星期平均',
     notEnough: '销售数据还不够：{items}',
     weekTitle: '近 7 天',
@@ -38,7 +38,7 @@ const translations: Record<Exclude<Locale, 'en'>, ChartCopy> = {
   ms: {
     forecastTitle: '7 hari akan datang',
     forecastRange: 'julat munasabah',
-    timesfm: 'Ramalan TimesFM',
+    timesfm: 'Berdasarkan beberapa minggu lalu',
     weekdayAverage: 'Purata hari minggu',
     notEnough: 'Jualan belum cukup: {items}',
     weekTitle: '7 hari lalu',
@@ -53,7 +53,7 @@ const translations: Record<Exclude<Locale, 'en'>, ChartCopy> = {
   ta: {
     forecastTitle: 'அடுத்த 7 நாட்கள்',
     forecastRange: 'சாத்தியமான வரம்பு',
-    timesfm: 'TimesFM கணிப்பு',
+    timesfm: 'கடந்த வாரங்களின் விற்பனையின் அடிப்படையில்',
     weekdayAverage: 'வாரநாள் சராசரி',
     notEnough: 'இன்னும் போதிய விற்பனை இல்லை: {items}',
     weekTitle: 'கடந்த 7 நாட்கள்',
@@ -68,7 +68,7 @@ const translations: Record<Exclude<Locale, 'en'>, ChartCopy> = {
   ja: {
     forecastTitle: 'この先7日間',
     forecastRange: '想定の幅',
-    timesfm: 'TimesFM 予測',
+    timesfm: '直近数週間の売上をもとに',
     weekdayAverage: '曜日ごとの平均',
     notEnough: '売上データがまだ足りません：{items}',
     weekTitle: '直近7日間',
@@ -83,7 +83,7 @@ const translations: Record<Exclude<Locale, 'en'>, ChartCopy> = {
   ko: {
     forecastTitle: '앞으로 7일',
     forecastRange: '예상 범위',
-    timesfm: 'TimesFM 예측',
+    timesfm: '최근 몇 주 판매 기준',
     weekdayAverage: '요일별 평균',
     notEnough: '아직 판매 데이터가 부족해요: {items}',
     weekTitle: '최근 7일',
@@ -98,7 +98,7 @@ const translations: Record<Exclude<Locale, 'en'>, ChartCopy> = {
   id: {
     forecastTitle: '7 hari ke depan',
     forecastRange: 'kisaran wajar',
-    timesfm: 'Prakiraan TimesFM',
+    timesfm: 'Berdasarkan beberapa minggu terakhir',
     weekdayAverage: 'Rata-rata per hari',
     notEnough: 'Penjualan belum cukup: {items}',
     weekTitle: '7 hari terakhir',
@@ -114,7 +114,7 @@ const translations: Record<Exclude<Locale, 'en'>, ChartCopy> = {
   th: {
     forecastTitle: '7 วันข้างหน้า',
     forecastRange: 'ช่วงที่น่าจะเป็น',
-    timesfm: 'พยากรณ์ TimesFM',
+    timesfm: 'จากยอดขายไม่กี่สัปดาห์ที่ผ่านมา',
     weekdayAverage: 'ค่าเฉลี่ยตามวัน',
     notEnough: 'ยอดขายยังไม่พอ: {items}',
     weekTitle: '7 วันที่ผ่านมา',
@@ -129,7 +129,7 @@ const translations: Record<Exclude<Locale, 'en'>, ChartCopy> = {
   vi: {
     forecastTitle: '7 ngày tới',
     forecastRange: 'khoảng dự kiến',
-    timesfm: 'Dự báo TimesFM',
+    timesfm: 'Dựa trên vài tuần gần đây',
     weekdayAverage: 'Trung bình theo thứ',
     notEnough: 'Chưa đủ dữ liệu bán: {items}',
     weekTitle: '7 ngày qua',
@@ -144,7 +144,7 @@ const translations: Record<Exclude<Locale, 'en'>, ChartCopy> = {
   fil: {
     forecastTitle: 'Susunod na 7 araw',
     forecastRange: 'malamang na saklaw',
-    timesfm: 'TimesFM forecast',
+    timesfm: 'Batay sa nakaraang mga linggo',
     weekdayAverage: 'Average kada araw',
     notEnough: 'Kulang pa ang benta: {items}',
     weekTitle: 'Nakaraang 7 araw',
@@ -175,7 +175,7 @@ const translations: Record<Exclude<Locale, 'en'>, ChartCopy> = {
   bn: {
     forecastTitle: 'আগামী ৭ দিন',
     forecastRange: 'সম্ভাব্য পরিসর',
-    timesfm: 'TimesFM পূর্বাভাস',
+    timesfm: 'গত কয়েক সপ্তাহের বিক্রির ভিত্তিতে',
     weekdayAverage: 'বার অনুযায়ী গড়',
     notEnough: 'এখনও যথেষ্ট বিক্রি নেই: {items}',
     weekTitle: 'গত ৭ দিন',
@@ -190,7 +190,7 @@ const translations: Record<Exclude<Locale, 'en'>, ChartCopy> = {
   te: {
     forecastTitle: 'రాబోయే 7 రోజులు',
     forecastRange: 'అంచనా పరిధి',
-    timesfm: 'TimesFM అంచనా',
+    timesfm: 'గత కొన్ని వారాల అమ్మకాల ఆధారంగా',
     weekdayAverage: 'వారం రోజు సగటు',
     notEnough: 'ఇంకా తగినంత అమ్మకాలు లేవు: {items}',
     weekTitle: 'గత 7 రోజులు',
@@ -205,7 +205,7 @@ const translations: Record<Exclude<Locale, 'en'>, ChartCopy> = {
   mr: {
     forecastTitle: 'पुढचे 7 दिवस',
     forecastRange: 'संभाव्य मर्यादा',
-    timesfm: 'TimesFM अंदाज',
+    timesfm: 'मागील काही आठवड्यांच्या विक्रीवरून',
     weekdayAverage: 'वारानुसार सरासरी',
     notEnough: 'अजून पुरेशी विक्री नाही: {items}',
     weekTitle: 'गेले ७ दिवस',
@@ -220,7 +220,7 @@ const translations: Record<Exclude<Locale, 'en'>, ChartCopy> = {
   kn: {
     forecastTitle: 'ಮುಂದಿನ 7 ದಿನಗಳು',
     forecastRange: 'ಸಂಭಾವ್ಯ ವ್ಯಾಪ್ತಿ',
-    timesfm: 'TimesFM ಮುನ್ಸೂಚನೆ',
+    timesfm: 'ಕಳೆದ ಕೆಲವು ವಾರಗಳ ಮಾರಾಟದ ಆಧಾರದ ಮೇಲೆ',
     weekdayAverage: 'ವಾರದ ದಿನದ ಸರಾಸರಿ',
     notEnough: 'ಇನ್ನೂ ಸಾಕಷ್ಟು ಮಾರಾಟವಿಲ್ಲ: {items}',
     weekTitle: 'ಕಳೆದ 7 ದಿನಗಳು',

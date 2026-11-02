@@ -291,7 +291,7 @@ const zhHans: SupplyCopy = {
   sent: (s) => `您发送的 · ${s}`,
   theyReceive: (s) => `对方收到 · ${s}`,
   mapping: '字段对应',
-  simTitle: '供应商模拟器（演示）',
+  simTitle: '演示供应商',
   simFull: '全部确认',
   simPartial: '部分确认，其余延后',
   simSubstitute: '提供替代品',

@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
 import { expect, test } from '@playwright/test'
 import { LOCALES } from '../src/i18n/locales.js'
 import { aiInfoCopy } from '../src/features/v1/aiInfoCopy.js'
@@ -7,7 +7,7 @@ import { aiInfoCopy } from '../src/features/v1/aiInfoCopy.js'
 // locale, may carry a developer word. Plan: SIMPLIFY-owner.md §5.
 
 const JARGON =
-  /\b(?:POS|ERP|API|XML|SAP|ADK|IDoc|TimesFM|BigQuery|fixture|parser|offline|(?:connect )?your system)\b|पार्सर|ऑफ़?लाइन|অফলাইন|ఆఫ్‌?లైన్|ಆಫ್‌?ಲೈನ್|ஆஃப்லைன்|离线|オフライン|오프라인|ออฟไลน์|luar talian|ngoại tuyến/i
+  /\b(?:POS|ERP|API|XML|SAP|ADK|IDoc|TimesFM|BigQuery|fixture|parser|offline|(?:connect )?your system)\b|पार्सर|ऑफ़?लाइन|অফলাইন|ఆఫ్‌?లైన్|ಆಫ್‌?ಲೈನ್|ஆஃப்லைன்|离线|オフライン|오프라인|ออฟไลน์|luar talian|ngoại tuyến|シミュレーション|模拟|模擬|시뮬레이션|luring/i
 
 const FILES = [
   'closeday/translations.ts',
@@ -26,6 +26,35 @@ const FILES = [
   'planning/strings.ts',
   'v1/strings.ts',
   'v1/tabsCopy.ts',
+  'v1/chartCopy.ts',
+  'coach/photoCopy.ts',
+  'coach/photoRouteCopy.ts',
+  'discover/askStrings.ts',
+  'discover/mapCopy.ts',
+  'discover/searchCopy.ts',
+  'discover/strings.ts',
+  'first-run/copy.ts',
+  'owner-tools/copy.ts',
+  'owner-tools/regionCopy.ts',
+  'rewards/cardCopy.ts',
+  'rewards/strings.ts',
+  'shop/strings.ts',
+  'trust/copy.ts',
+  'trust/demoBadgeCopy.ts',
+  'v1/askPhrases.ts',
+  'v1/inChatCopy.ts',
+  'v1/newShopCopy.ts',
+  'v1/onboardingCopy.ts',
+  'v1/playbook/playbookCopy.ts',
+  'v1/today/todayCopy.ts',
+  'v1/twoPathsCopy.ts',
+  'v1/voiceModeCopy.ts',
+
+  'supply/showcaseCopy.ts',
+  'inquiries/Messages.tsx',
+  ...readdirSync(new URL('../src/features/v1/locales/', import.meta.url))
+    .filter((name) => name.endsWith('.ts') && name !== 'index.ts' && name !== 'legal.ts')
+    .map((name) => `v1/locales/${name}`),
 ]
 
 /** The quoted strings of a source file, comments left out (keys and identifiers are not copy). */
@@ -37,7 +66,8 @@ function literals(file: string): string[] {
   for (const match of source.matchAll(
     /'((?:[^'\\\n]|\\.)*)'|"((?:[^"\\\n]|\\.)*)"|`((?:[^`\\]|\\.)*)`/g,
   )) {
-    found.push(match[1] ?? match[2] ?? match[3] ?? '')
+    const text = match[1] ?? match[2] ?? match[3] ?? ''
+    if (!text.startsWith('.')) found.push(text)
   }
   return found
 }
