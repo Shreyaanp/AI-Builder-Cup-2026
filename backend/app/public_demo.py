@@ -154,6 +154,9 @@ class DemoSession:
     turns: int = 0
     reminders: dict[str, Any] = field(default_factory=dict)
     revision: int = 0
+    # The last request that used this sandbox, and how many are using it right now.
+    used: float = 0.0
+    busy: int = 0
 
     def close(self) -> None:
         if self.directory is not None:
@@ -170,6 +173,21 @@ def sessions(request: Request) -> dict[str, DemoSession]:
         if saved[key].expires <= time.time():
             saved.pop(key).close()
     return saved
+
+
+def make_room(saved: dict[str, DemoSession]) -> bool:
+    """OB-255: frees the least recently used sandbox that no request is using.
+
+    Every change is already saved (demo_sessions), so that visitor's next request restores the
+    sandbox from its snapshot: a new visitor still gets a demo, nobody loses theirs, and the
+    sandboxes held in memory stay at MAX_SESSIONS.
+    """
+    idle = [key for key, entry in saved.items() if not entry.busy]
+    if not idle:
+        return False
+    saved.pop(min(idle, key=lambda key: saved[key].used)).close()
+    log.info("demo_sandbox_released")
+    return True
 
 
 def sandbox(zone: str) -> tuple[DemoSession, date]:
@@ -246,16 +264,19 @@ async def open_workspace(request: Request, zone: str) -> dict[str, Any]:
         raise HTTPException(429, "RATE_LIMITED", headers={"Retry-After": str(retry)})
     await anyio.to_thread.run_sync(repository(request).purge_before, KIND, time.time())
     # Reserve before yielding so concurrent allocations cannot exceed the memory bound.
-    if len(saved) >= MAX_SESSIONS:
+    # Only when every sandbox is answering a request at once does a visitor wait.
+    if len(saved) >= MAX_SESSIONS and not make_room(saved):
         raise HTTPException(429, "DEMO_BUSY", headers={"Retry-After": "60"})
     key = token_urlsafe(24)
-    saved[key] = DemoSession(time.time() + TTL_SECONDS, {})
+    # Busy until its first snapshot is saved: before that there is nothing to restore it from.
+    saved[key] = DemoSession(time.time() + TTL_SECONDS, {}, busy=1)
     try:
         entry, _today = await anyio.to_thread.run_sync(sandbox, zone)
     except BaseException:
         saved.pop(key, None)
         raise
     entry.expires = saved[key].expires
+    entry.used, entry.busy = time.time(), 1
     if key in saved:
         saved[key] = entry
     else:
@@ -266,6 +287,8 @@ async def open_workspace(request: Request, zone: str) -> dict[str, Any]:
         saved.pop(key, None)
         entry.close()
         raise
+    finally:
+        entry.busy -= 1
     return {"session_id": key, "expires_at": entry.expires}
 
 
@@ -302,8 +325,15 @@ async def live(request: Request, session_id: str) -> AsyncIterator[DemoSession]:
     # restore the shared revision, including writes made by another instance.
     cached = saved.get(session_id)
     hosted = request.app.state.v1_settings.merchant_backend == "firestore"
+    if cached is not None:
+        cached.used = time.time()
     if cached is not None and not hosted:
-        yield cached
+        # Never released while a request (or a streamed coach answer) is using it.
+        cached.busy += 1
+        try:
+            yield cached
+        finally:
+            cached.busy -= 1
         return
 
     entry = await anyio.to_thread.run_sync(restore, repository(request), session_id)
