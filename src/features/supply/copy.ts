@@ -1749,6 +1749,10 @@ const hi: SupplyCopy = {
   discard: 'हटाएँ',
   discarded: 'हटा दिया। कुछ नहीं भेजा गया।',
   autoSent: 'अपने-आप भेजा गया: आपकी मंज़ूरी सीमा से कम',
+  justSent: (supplier: string, simulated: boolean) =>
+    simulated
+      ? `भेजा गया। डेमो में ${supplier} को WhatsApp का दिखावटी संदेश मिलता है; असल में कुछ नहीं गया।`
+      : `भेजा गया। Chalkboard यह ऑर्डर अपने पास रखता है; इसे ${supplier} को वैसे ही भेजें जैसे आप आमतौर पर भेजते हैं।`,
   status: {
     draft: 'मंज़ूरी चाहिए',
     sent: 'भेजा गया',

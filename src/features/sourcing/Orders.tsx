@@ -16,6 +16,7 @@ import {
 } from '@mui/material'
 import { ArrowLeft, ArrowUp, PackageCheck, Truck } from 'lucide-react'
 import { useLocale } from '../../state/hooks'
+import { productName } from '../../i18n/productNames'
 import { enterRise, shape } from '../../design/theme'
 import { formatShopPrice } from '../v1/format'
 import { formatMoneyText } from '../inquiries/formatMoneyText'
@@ -24,6 +25,7 @@ import { FindSupplier } from '../v1/TwoPaths'
 import { Supporting, Tile } from '../v1/ShopTiles'
 import { useWorkspace } from '../v1/workspaceContext'
 import { ConfirmUndo } from '../supply/ConfirmUndo'
+import { useOrderUnit } from '../supply/supplyData'
 import { supplyChanged } from '../supply/supplyEvents'
 import { useOrderChangeCopy } from '../supply/orderChangeCopy'
 import { useSourcingCopy } from './copy'
@@ -91,6 +93,7 @@ export function OrdersSheet({
 }) {
   const s = useSourcingCopy()
   const locale = useLocale()
+  const unit = useOrderUnit()
   const roles = useTheme().material
   const { orders, refresh } = useOrders(open)
   const [picked, setPicked] = useState<string | null>(null)
@@ -189,7 +192,10 @@ export function OrdersSheet({
                   secondary={
                     <>
                       {order.lines
-                        .map((line) => `${line.quantity} ${line.unit} ${line.name}`)
+                        .map(
+                          (line) =>
+                            `${line.quantity} ${unit(line.unit)} ${productName(line.name, locale)}`,
+                        )
                         .join(', ')}
                       <Box component="span" sx={{ display: 'block' }}>
                         {formatShopPrice(order.total, order.currency, locale)} ·{' '}

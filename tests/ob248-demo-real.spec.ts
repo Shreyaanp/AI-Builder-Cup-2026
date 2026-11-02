@@ -308,6 +308,58 @@ test('OB-248 Hindi: Coach, Purchase orders, order card and supplier chat name ev
   expect(seen).toEqual([])
 })
 
+test('OB-248 Hindi: morning brief, prep plan, the card after sending and chat answers have no English item or unit', async ({
+  page,
+}) => {
+  await page.addInitScript(() =>
+    localStorage.setItem('niva.starter.preferences', JSON.stringify({ language: 'hi' })),
+  )
+  await openDemo(page, 'छोड़ें')
+  const seen: string[] = []
+  const check = (where: string, text: string) => {
+    const latin = LATIN_ITEM.exec(text)
+    if (latin)
+      seen.push(
+        `${where}: "${latin[0]}" in ${text.slice(Math.max(0, latin.index - 40), latin.index + 40)}`,
+      )
+  }
+  // Coach: three questions typed in Hindi, each answered about the item it names.
+  const asked = [
+    ['चाय पत्ती का स्टॉक कितना है?', 'चाय पत्ती का स्टॉक 6 किलो है'],
+    ['कल क्या तैयार करूँ?', 'कल की तैयारी: '],
+    ['मेरा दूध कम हो रहा है। सप्लायर खोजें।', 'दूध के लिए पास के डेमो सप्लायर'],
+  ] as const
+  const log = page.getByRole('log')
+  for (const [question, answer] of asked) {
+    await page.getByRole('textbox', { name: 'संदेश', exact: true }).fill(question)
+    await page.getByRole('button', { name: 'भेजें', exact: true }).click()
+    await expect(log).toContainText(answer, { timeout: 30_000 })
+  }
+  await expect(log).not.toContainText('असली दुकान')
+  check('Coach answers', await log.innerText())
+  // Grow: the morning brief's prep rows, the prep plan tile and its sheet.
+  await page.locator('[data-tour="nav-grow"]').click()
+  const prepTile = page.locator('[data-tour="prep"]')
+  await expect(prepTile).toContainText('मसाला चाय', { timeout: 15_000 })
+  await expect(page.getByText(/^\S+ कप$/).first()).toBeAttached({ timeout: 15_000 })
+  check('Grow', (await page.locator('body').textContent()) ?? '')
+  await prepTile.click()
+  const prep = page.getByRole('dialog')
+  await expect(prep).toContainText(/\d कप/)
+  check('Prep plan', await prep.innerText())
+  await prep.getByRole('button', { name: 'बंद करें', exact: true }).click()
+  // An order card just after sending, its note included.
+  await page.locator('[data-tour="supply"]').click()
+  const sheet = page.getByRole('dialog')
+  await sheet.getByRole('button', { name: 'फिर से सामान मँगाएँ' }).click()
+  const card = sheet.locator('article')
+  await card.getByRole('button', { name: 'मंज़ूर करके भेजें', exact: true }).click()
+  await expect(card.getByRole('status').first()).toContainText('असल में कुछ नहीं गया')
+  await expect(card).not.toContainText('Marked Sent')
+  check('Sent card', await card.innerText())
+  expect(seen).toEqual([])
+})
+
 test('OB-248 Get on Google: a visitor walks the whole practice, and it says nothing is sent', async ({
   page,
 }) => {

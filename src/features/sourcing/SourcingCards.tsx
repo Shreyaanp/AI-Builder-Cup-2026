@@ -22,6 +22,8 @@ import {
   Truck,
 } from 'lucide-react'
 import { useLocale } from '../../state/hooks'
+import { productName } from '../../i18n/productNames'
+import { useOrderUnit } from '../supply/supplyData'
 import { enterRise, fieldFade, motion, scrollArea, shape } from '../../design/theme'
 import { formatShopPrice, toMinor } from '../v1/format'
 import { formatMoneyText } from '../inquiries/formatMoneyText'
@@ -188,6 +190,7 @@ export function SupplierCarousel({
   const roles = useTheme().material
   const s = useSourcingCopy()
   const locale = useLocale()
+  const unit = useOrderUnit()
   const km = new Intl.NumberFormat(locale, { maximumFractionDigits: 1 })
   const money = (major: number) =>
     formatShopPrice(toMinor(major, result.currency), result.currency, locale)
@@ -285,11 +288,11 @@ export function SupplierCarousel({
                 variant="titleLarge"
                 sx={{ fontVariantNumeric: 'tabular-nums', color: roles.onSurface }}
               >
-                {s.perUnit(money(card.item.price), card.item.unit)}
+                {s.perUnit(money(card.item.price), unit(card.item.unit))}
               </Typography>
               <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
                 <Typography variant="bodyMedium" color="text.secondary" noWrap>
-                  {card.item.name}
+                  {productName(card.item.name, locale)}
                 </Typography>
                 {!card.item.available && (
                   <Chip size="small" label={s.outOfStock} sx={{ height: 20 }} component="span" />
@@ -312,7 +315,7 @@ export function SupplierCarousel({
                   overflow: 'hidden',
                 }}
               >
-                {s.alsoStocks}: {card.in_stock.join(', ')}
+                {s.alsoStocks}: {card.in_stock.map((name) => productName(name, locale)).join(', ')}
               </Typography>
             )}
             <Box sx={{ flex: 1 }} />
@@ -376,6 +379,7 @@ export function OrderCard({
   const [busy, setBusy] = useState(false)
   // Plays the flight once, when this card's own Send succeeds.
   const [flying, setFlying] = useState(false)
+  const unit = useOrderUnit()
   const money = (minor: number) => formatShopPrice(minor, order.currency, locale)
   const number = new Intl.NumberFormat(locale, { maximumFractionDigits: 2 })
   const actionable = order.status === 'draft' || Boolean(order.pending)
@@ -467,9 +471,9 @@ export function OrderCard({
                 }}
               >
                 <Box component="span" sx={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>
-                  {number.format(line.quantity)} {line.unit}
+                  {number.format(line.quantity)} {unit(line.unit)}
                 </Box>{' '}
-                {line.name}
+                {productName(line.name, locale)}
               </Typography>
               <Typography
                 variant="bodyLarge"
