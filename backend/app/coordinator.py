@@ -1224,7 +1224,9 @@ def prepare_order(
         else None
     )
     now = clock.time()
-    order = sourcing.new_order(shop, pin, items, note, delivery, distance, now)
+    from .agent import ui_language
+
+    order = sourcing.new_order(shop, pin, items, note, delivery, distance, now, ui_language.get())
     if replaces_order_id:
         order["replaces"] = replaces_order_id
         # The old draft is superseded at once (OB-222): only the new card can be sent.

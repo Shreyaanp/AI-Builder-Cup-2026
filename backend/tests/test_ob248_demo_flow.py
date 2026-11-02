@@ -618,6 +618,8 @@ def _hindi_reply(client, session: str, message: str) -> str:
         ("बन मस्का का स्टॉक कितना है?", r"डेमो में बन मस्का का स्टॉक 4 पीस है।"),
         ("दूध का स्टॉक कितना है?", r"डेमो दुकान में दूध का स्टॉक दर्ज नहीं है।"),
         ("चीनी का दाम क्या है?", r"चीनी डेमो दुकान के मेन्यू में नहीं है।"),
+        ("चीनी का ऑर्डर करो", r"डेमो दुकान में चीनी का स्टॉक दर्ज नहीं है।"),
+        ("दूध ऑर्डर करो", r"डेमो दुकान में दूध का स्टॉक दर्ज नहीं है।"),
         # Asked without a name: the item the shop counts, not the first one on the menu.
         ("स्टॉक कितना है?", r"डेमो में चाय पत्ती का स्टॉक 6 किलो है।"),
     ],
@@ -685,6 +687,68 @@ def test_OB_248_hindi_find_suppliers_does_the_real_work(
     reply = events["reply"]["text"]
     assert words in reply and suppliers[0]["name"] in reply
     assert "असली दुकान" not in reply and not re.search(r"(?:Milk|Sugar|Tea dust|kg|litre)", reply)
+
+
+@pytest.mark.parametrize(
+    ("message", "reply"),
+    [
+        (
+            "मेरा दूध कम हो रहा है। सप्लायर खोजें।",
+            r"पुष्टि: 10 लीटर दूध, ₹[\d,.]+। कल सुबह 09:00 बजे पहुँचेगा।",
+        ),
+        (
+            "मेरा पनीर कम हो रहा है। सप्लायर खोजें।",
+            r"पुष्टि: 10 किलो पनीर, ₹[\d,.]+। \S+ \S+ \d\d:\d\d बजे पहुँचेगा।",
+        ),
+    ],
+)
+def test_OB_248_hindi_find_suppliers_ends_in_a_hindi_supplier_reply(
+    live_parent_demo,  # noqa: F811
+    monkeypatch: pytest.MonkeyPatch,
+    message: str,
+    reply: str,
+) -> None:
+    """Send the drafted card: the supplier answers in the owner's language, in Hindi names."""
+    monkeypatch.setattr("app.sourcing.DEMO_REPLY_SECONDS", 0.0)
+    client, _app, session, bid = live_parent_demo
+    response = client.post(
+        f"/api/v1/demo/sessions/{session}/coach", json={"message": message, "language": "hi"}
+    )
+    order = {event["kind"]: event for event in _coach_events(response)}["order"]["data"]
+    base = f"businesses/{bid}/orders/{order['id']}"
+    sent = owner(client, session, f"{base}/send", "POST", json={"version": order["version"]})
+    assert sent.status_code == 200, sent.text
+    messages = owner(client, session, base).json()["messages"]
+    text = messages[-1]["text"]
+    assert messages[-1]["author"] == "supplier" and re.fullmatch(reply, text), text
+    assert not re.search(r"[A-Za-z]", text)
+
+
+def test_OB_248_the_demo_supplier_answers_every_kind_of_message_in_hindi() -> None:
+    from app.sourcing import demo_reply
+
+    order = {
+        "lang": "hi",
+        "currency": "INR",
+        "delivery": "tomorrow at 09:00",
+        "status": "sent",
+        "total": 54000,
+        "lines": [
+            {"name": "Paneer", "quantity": 2, "unit": "kg", "price": 1, "available": False},
+            {"name": "Milk", "quantity": 1, "unit": "litre", "price": 1, "available": True},
+        ],
+    }
+    out, status = demo_reply(order, {"kind": "order", "text": ""})
+    assert status == "needs_reply" and "पनीर" in out and "कल सुबह 09:00 बजे" in out
+    assert demo_reply(order, {"kind": "cancel", "text": ""}) == (
+        "कोई बात नहीं, ऑर्डर रद्द कर दिया गया है।",
+        "cancelled",
+    )
+    for text in ("कल सुबह 8 बजे भेजें", "रविवार को भेजें", "धन्यवाद", "दाम कम करें"):
+        reply, _status = demo_reply(order, {"kind": "text", "text": text})
+        assert not re.search(r"[A-Za-z]", reply), reply
+    english = demo_reply({**order, "lang": "en"}, {"kind": "cancel", "text": ""})
+    assert english == ("No problem, the order is cancelled.", "cancelled")
 
 
 def test_OB_248_google_practice_has_no_reviewer_jargon_in_any_language() -> None:

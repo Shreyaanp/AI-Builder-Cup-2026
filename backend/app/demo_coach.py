@@ -497,7 +497,14 @@ async def _find_suppliers(ctx: Any, question: str) -> list[StreamEvent] | None:
     first = suppliers[0]
     unit = first["item"]["unit"]
     line = OrderItem(name=first["item"]["name"], quantity=DRAFT_QUANTITY, unit=unit)
-    drafted = prepare_order(first["id"], [line])
+    # A Hindi question gets a card whose supplier answers in Hindi.
+    from .agent import ui_language
+
+    token = ui_language.set("hi" if HINDI.search(question) else ui_language.get())
+    try:
+        drafted = prepare_order(first["id"], [line])
+    finally:
+        ui_language.reset(token)
     if drafted.get("status") != "needs_owner_tap":
         return None
     currency = found["currency"]

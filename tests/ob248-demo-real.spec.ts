@@ -373,6 +373,46 @@ test('OB-248 Hindi: morning brief, prep plan, the card after sending and chat an
   expect(seen).toEqual([])
 })
 
+test('OB-248 Hindi: Find suppliers through Send gets a Hindi supplier reply', async ({ page }) => {
+  await page.addInitScript(() =>
+    localStorage.setItem('niva.starter.preferences', JSON.stringify({ language: 'hi' })),
+  )
+  await openDemo(page, 'छोड़ें')
+  const log = page.getByRole('log')
+  await page
+    .getByRole('textbox', { name: 'संदेश', exact: true })
+    .fill('मेरा पनीर कम हो रहा है। सप्लायर खोजें।')
+  await page.getByRole('button', { name: 'भेजें', exact: true }).click()
+  await expect(log).toContainText('पनीर के लिए पास के डेमो सप्लायर', { timeout: 30_000 })
+  await expect(log).toContainText('10 किलो पनीर')
+  await log.getByRole('button', { name: / को भेजें$/ }).click()
+  await expect(log).toContainText(/पुष्टि: 10 किलो पनीर, ₹[\d,.]+। .* बजे पहुँचेगा।/, {
+    timeout: 30_000,
+  })
+  await expect(log).not.toContainText(/Confirmed|Paneer|Delivering/)
+})
+
+test('OB-248 Hindi: the Goods arrived check sheet shows the item, category and unit in Hindi', async ({
+  page,
+}) => {
+  await page.addInitScript(() =>
+    localStorage.setItem('niva.starter.preferences', JSON.stringify({ language: 'hi' })),
+  )
+  await openDemo(page, 'छोड़ें')
+  await page.locator('[data-tour="nav-grow"]').click()
+  await page.locator('[data-tour="supply"]').click()
+  const sheet = page.getByRole('dialog')
+  await sheet.getByRole('button', { name: 'फिर से सामान मँगाएँ' }).click()
+  const card = sheet.locator('article')
+  await card.getByRole('button', { name: 'मंज़ूर करके भेजें', exact: true }).click()
+  await card.getByRole('button', { name: 'माल आ गया', exact: true }).click({ timeout: 30_000 })
+  const review = page.getByRole('dialog').filter({ hasText: 'चाय पत्ती' }).last()
+  await expect(review).toContainText(/स्टॉक: \d+ किलो/)
+  await expect(review).toContainText('श्रेणी: चाय की दुकान')
+  await expect(review).toContainText(/₹\d+ \/ किलो/)
+  await expect(review).not.toContainText(/Tea dust|Tea stall|\bkg\b/)
+})
+
 test('OB-248 Get on Google: a visitor walks the whole practice, and it says nothing is sent', async ({
   page,
 }) => {

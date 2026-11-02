@@ -30,6 +30,7 @@ from fastapi import HTTPException
 from pydantic import BaseModel, Field
 
 from .customer import InquiryInput
+from .demo_item_names import HINDI_UNITS, hindi_item
 from .gemini_schema import gemini_schema, parse_reply
 from .latin_names import sounds_like
 from .merchant import BusinessFields, CustomFact, MerchantRepository, ProductFields
@@ -916,6 +917,7 @@ def new_order(
     delivery: str,
     distance_km: float | None,
     now: float,
+    lang: str = "en",
 ) -> dict[str, Any]:
     lines, total = build_lines(shop, items, own.currency)
     when, words_ = delivery_slot(shop, own.timezone, now)
@@ -932,6 +934,7 @@ def new_order(
             "min_order": shop.get("min_order", ""),
         },
         "shop_name": own.name,
+        "lang": lang.split("-")[0].lower(),
         "currency": own.currency,
         "lines": lines,
         "total": total,
@@ -998,8 +1001,92 @@ def message(
 HOUR = re.compile(r"\b(?:by|before|at|around)\s*(\d{1,2})(?::(\d{2}))?\s*(am|pm)?", re.I)
 
 
+DEVANAGARI = re.compile(r"[ऀ-ॿ]")
+HINDI_DAYS = {
+    "today": "आज",
+    "tomorrow": "कल",
+    "Monday": "सोमवार",
+    "Tuesday": "मंगलवार",
+    "Wednesday": "बुधवार",
+    "Thursday": "गुरुवार",
+    "Friday": "शुक्रवार",
+    "Saturday": "शनिवार",
+    "Sunday": "रविवार",
+}
+
+
+def _hindi_when(delivery: str) -> str:
+    """'tomorrow at 09:00' as 'कल सुबह 09:00 बजे'; words the owner typed stay as they are."""
+    match = re.fullmatch(r"(\w+) at (\d{1,2}):(\d{2})", delivery.strip())
+    if not match or match.group(1) not in HINDI_DAYS:
+        return delivery
+    hour = int(match.group(2))
+    part = "सुबह" if hour < 12 else "दोपहर" if hour < 16 else "शाम" if hour < 20 else "रात"
+    return f"{HINDI_DAYS[match.group(1)]} {part} {match.group(2)}:{match.group(3)} बजे"
+
+
+def _hindi_line(line: dict[str, Any]) -> str:
+    unit = HINDI_UNITS.get(line["unit"], line["unit"])
+    return f"{line['quantity']:g} {unit} {hindi_item(line['name'])}"
+
+
+def demo_reply_hindi(order: dict[str, Any], trigger: dict[str, Any]) -> tuple[str, str]:
+    """The demo wholesaler's answers in Hindi, with the screens' item names and units."""
+    currency = order["currency"]
+    when = _hindi_when(order["delivery"])
+    if trigger["kind"] == "order":
+        unavailable = [
+            line for line in order["lines"] if line["price"] is None or not line["available"]
+        ]
+        if unavailable:
+            names = ", ".join(hindi_item(line["name"]) for line in unavailable[:2])
+            return (
+                f"धन्यवाद! अभी हमारे पास {names} नहीं है। क्या बाकी ऑर्डर {when} भेज दें?",
+                "needs_reply",
+            )
+        items = ", ".join(_hindi_line(line) for line in order["lines"])
+        return (
+            f"पुष्टि: {items}, {money_text(order['total'], currency)}। {when} पहुँचेगा।",
+            "confirmed",
+        )
+    if trigger["kind"] == "cancel":
+        return ("कोई बात नहीं, ऑर्डर रद्द कर दिया गया है।", "cancelled")
+    text = trigger["text"].casefold()
+    if "sunday" in text or "रविवार" in text:
+        return (
+            "माफ़ कीजिए, हम रविवार को डिलीवरी नहीं करते। सोमवार सुबह हो सकती है। क्या वह ठीक रहेगा?",
+            "needs_reply",
+        )
+    hour = HOUR.search(trigger["text"])
+    if hour:
+        value = int(hour.group(1)) % 24
+        if (hour.group(3) or "").lower() == "pm" and value < 12:
+            value += 12
+        clock = f"{value}:{hour.group(2) or '00'}"
+        if 7 <= value <= 20:
+            return (f"जी, हम {clock} बजे तक पहुँचा देंगे। तब मिलते हैं।", "confirmed")
+        return (f"हमारी सबसे जल्दी डिलीवरी 7:00 बजे है। {clock} की जगह वह ठीक रहेगा?", "needs_reply")
+    if re.search(r"(change|make it|instead|update|quantity)", text) or "बदल" in text:
+        return ("ठीक है, आपका ऑर्डर बदल दिया है। डिलीवरी का समय वही रहेगा।", "confirmed")
+    if re.search(r"(price|discount|cheaper|rate)", text) or re.search(
+        r"दाम|कीमत|भाव|सस्ता|छूट", text
+    ):
+        return ("माफ़ कीजिए, यही हमारा सबसे अच्छा थोक भाव है।", order["status"])
+    if re.search(r"(thank|thanks|ok|okay|great)", text) or re.search(
+        r"धन्यवाद|शुक्रिया|ठीक|अच्छा", text
+    ):
+        return (
+            "आपका स्वागत है!",
+            order["status"] if order["status"] != "needs_reply" else "confirmed",
+        )
+    return ("ठीक है, हम इसका ध्यान रखेंगे।", "confirmed")
+
+
 def demo_reply(order: dict[str, Any], trigger: dict[str, Any]) -> tuple[str, str]:
-    """(reply, new status) of a demo wholesaler: plausible, deterministic, English."""
+    """(reply, new status) of a demo wholesaler: plausible, deterministic, in the owner's
+    language (Hindi, otherwise English)."""
+    if order.get("lang") == "hi" or DEVANAGARI.search(trigger.get("text") or ""):
+        return demo_reply_hindi(order, trigger)
     currency = order["currency"]
     if trigger["kind"] == "order":
         missing = [line for line in order["lines"] if line["price"] is None]

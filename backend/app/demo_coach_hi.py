@@ -9,11 +9,10 @@ from datetime import date
 from typing import Any, cast
 
 from .app_guide import next_line_hi
-from .demo_item_names import hindi_item, item_named_in
+from .demo_item_names import HINDI_UNITS, hindi_item, item_named_in
 
 # "मेरा दूध कम हो रहा है" or "मेरी चीनी कम हो रही है": the words between are the item.
 LOW_HI = re.compile(r"मेर[ाी]\s+(?P<item>[^।?]{1,40}?)\s+कम\s+हो\s+रह[ाी]")
-HINDI_UNITS = {"kg": "किलो", "litre": "लीटर", "pack": "पैक", "cup": "कप", "piece": "पीस"}
 HINDI_BEST_SELLERS = re.compile(r"सबसे\s+\S*यादा\s+(?:\S+\s+)?बिक|बेस्ट\s*सेलर|टॉप\s*सेलर")
 
 
@@ -89,6 +88,8 @@ def hindi_reply(
         rupees = to_major(cast(int, priced.get("price", 0)), shop_currency(business))
         return f"डेमो में {hindi_item(str(priced['name']))} की कीमत ₹{rupees:g} है।"
     if any(term in words for term in ("ऑर्डर", "सप्लायर", "मंगाऊँ", "खरीद")):
+        if said and not saved:
+            return f"डेमो दुकान में {hindi_item(said)} का स्टॉक दर्ज नहीं है।"
         orders = supply_chain.orders(store, uid, bid)
         po = next((order for order in orders if order.get("supplier")), None)
         supplier = po["supplier"]["name"] if po else "डेमो सप्लायर"
