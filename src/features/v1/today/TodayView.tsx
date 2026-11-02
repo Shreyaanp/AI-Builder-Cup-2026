@@ -43,6 +43,7 @@ import { useSourceCopy } from './sourceCopy'
 import { useTodayCopy, type Festival } from './todayCopy'
 import type { CoachLine, Need, StepId, TodayPlan } from './todayPlan'
 import { useTodayPlan } from './useTodayPlan'
+import { countAction, countShown } from './habitCount'
 import { FirstCustomers } from '../FirstCustomers'
 import { TodaySupply } from '../../supply/TodaySupply'
 import { TodaySupplyNeeds } from '../../supply/SupplyEntry'
@@ -76,6 +77,12 @@ export function TodayView({
   const { name } = useIdentity()
   const { plan, answerMenu, firstCustomers } = useTodayPlan(actions.unread)
   const shop = ws.active
+  const shown = plan?.needs.map((need) => need.kind).join(',') ?? null
+  useEffect(() => {
+    if (shown !== null) countShown(ws, shown ? shown.split(',') : [])
+    // Counted when what Today shows changes, not on every workspace update.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shown, ws.active?.id])
   if (!shop) return null
   if (!plan) {
     return (
@@ -598,6 +605,9 @@ function NeedRow({
     <Box
       component="li"
       data-need={need.kind}
+      onClickCapture={(event) => {
+        if ((event.target as HTMLElement).closest('button')) countAction(ws, need.kind)
+      }}
       aria-hidden={leaving || undefined}
       inert={leaving || undefined}
       sx={{
