@@ -28,6 +28,7 @@ import { enterRise, fieldFade, shape } from '../../design/theme'
 import { chalkWrite, stampThud } from '../../design/chalkMotion'
 import { formatShopPrice } from '../v1/format'
 import { Sheet } from '../v1/Sheet'
+import { LineAction } from '../v1/CollapsibleCard'
 import { Code } from './Code'
 import { ConfirmUndo } from './ConfirmUndo'
 import { useOrderChangeCopy } from './orderChangeCopy'
@@ -425,6 +426,27 @@ export function PurchaseOrderCard({
         </>
       )}
     </Box>
+  )
+}
+
+/** OB-249: a folded draft's "Approve and send", on its one-line summary in the chat. */
+export function PoLineAction({
+  order,
+  onChange,
+}: {
+  order: PurchaseOrder
+  onChange: (order: PurchaseOrder) => void
+}) {
+  const s = useSupplyCopy()
+  const actions = usePoActions(onChange)
+  if (order.status !== 'draft') return null
+  return (
+    <LineAction
+      label={s.approve}
+      icon={<Send size={18} />}
+      disabled={order.blocked}
+      onRun={() => actions.approve(order)}
+    />
   )
 }
 

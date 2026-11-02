@@ -23,6 +23,7 @@ import { useLocale } from '../../state/hooks'
 import { enterRise, shape } from '../../design/theme'
 import { formatShopPrice, toMajor, toMinor } from '../v1/format'
 import { Sheet } from '../v1/Sheet'
+import { LineAction } from '../v1/CollapsibleCard'
 import { useWorkspace } from '../v1/workspaceContext'
 import { useShowcaseCopy } from './showcaseCopy'
 import { Supporting, Tile } from '../v1/ShopTiles'
@@ -553,6 +554,27 @@ export function RulesEditor({ row, onSaved }: { row: Relationship; onSaved: () =
         {s.save}
       </Button>
     </Stack>
+  )
+}
+
+/** OB-249: a folded rule change's "Confirm", on its one-line summary in the chat. */
+export function RulesLineAction({
+  row,
+  onChange,
+}: {
+  row: Relationship
+  onChange: (row: Relationship) => void
+}) {
+  const s = useSupplyCopy()
+  const { confirm } = useRulesActions()
+  return (
+    <LineAction
+      label={s.confirm}
+      onRun={async () => {
+        const saved = await confirm(row, true)
+        if (saved) onChange(saved)
+      }}
+    />
   )
 }
 
