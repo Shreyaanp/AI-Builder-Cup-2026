@@ -122,7 +122,7 @@ export function SupplierTalk({
   for (const entry of order.talk ?? []) {
     const base = { key: entry.id, at: entry.at }
     if (entry.text) messages.push({ ...base, mine: true, text: entry.text })
-    else if (entry.answer === 'when') {
+    else if (entry.answer === 'when' && day) {
       messages.push({ ...base, mine: false, text: c.answerWhen(day) })
     } else if (entry.answer === 'price') {
       messages.push({ ...base, mine: false, text: c.answerPrice })

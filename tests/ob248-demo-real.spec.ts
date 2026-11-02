@@ -301,7 +301,7 @@ test('OB-248 Hindi: Coach, Purchase orders, order card and supplier chat name ev
   await expect(sheet.locator('article')).toBeVisible({ timeout: 15_000 })
   await check('Draft card', await sheet.locator('article').innerText())
   // Back on Coach once everything has loaded: rows that came later (sold out, prep plan) too.
-  await page.keyboard.press('Escape')
+  await sheet.getByRole('button', { name: 'बंद करें', exact: true }).click()
   await page.locator('[data-tour="nav-coach"]').click()
   await expect(page.getByTestId('today')).toContainText('चाय पत्ती', { timeout: 15_000 })
   await check('Coach again', await page.getByTestId('today').innerText())
