@@ -1,6 +1,7 @@
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
 import { enter, localOnly, seedShop, share } from './stories/support.js'
+import { growTool } from './support/grow.js'
 
 // Owner tabs (16 Oct): Coach, Shop (customer page first), Grow (every owner tool as a card) and
 // You (settings, verify, privacy). Evidence: docs/stories/tabs-*.png, phone and desktop, both themes.
@@ -52,7 +53,8 @@ for (const scheme of ['light', 'dark'] as const) {
     await axe(page)
     await capture(page, 'shop', isMobile, scheme)
 
-    // Grow: each tool a card with its live status; Get on Google opens the guided flow.
+    // Grow: each tool by its name, in a row or one tap into its row (batch 4a); Get on Google
+    // opens the guided flow.
     await page.getByRole('button', { name: 'Grow', exact: true }).click()
     for (const card of [
       /^Prep plan/,
@@ -66,7 +68,7 @@ for (const scheme of ['light', 'dark'] as const) {
       /^Payments & rides/,
       /^Purchase orders/,
     ])
-      await expect(page.getByRole('button', { name: card })).toBeVisible()
+      await expect(await growTool(page, card)).toBeVisible()
     // Connecting a POS lives on Shop, not Grow.
     await expect(page.getByRole('button', { name: /POS/ })).toHaveCount(0)
     await axe(page)

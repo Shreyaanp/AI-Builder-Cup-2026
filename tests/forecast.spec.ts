@@ -1,6 +1,7 @@
 import { createShop } from './stories/support.js'
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
+import { growTool } from './support/grow.js'
 
 test.use({ reducedMotion: 'reduce' })
 
@@ -37,7 +38,7 @@ test('Prep plan uses approved sales, labels its method and passes axe on phone',
     })
     .then((r) => r.json())
   await page.getByRole('button', { name: 'Grow', exact: true }).click()
-  const tile = page.getByRole('button', { name: /^Prep plan/ })
+  const tile = await growTool(page, /^Prep plan/)
   await expect(tile).toContainText('Import and save at least 4 weeks')
   await page.request.post(`/api/v1/businesses/${bid}/import/${proposed.import_id}/approve`, {
     data: { digest: proposed.digest },

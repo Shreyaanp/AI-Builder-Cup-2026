@@ -28,18 +28,12 @@ const pathLine = (feature: Feature, lang: Lang) =>
   lang === 'en' ? `Next, open ${where(feature)}.` : `अब ${where(feature)} खोलें।`
 
 // Rows that are reachable in 2 taps but still sit below the first view at 390 x 844. Moving them
-// up is Batch 3 (Shop and You layout) and Batch 4 (Grow list and "More tools"), not this batch.
+// up is Batch 3 (Shop and You layout); Grow's rows and More tools all fit since batch 4a.
 // The check is strict: once a row reaches the first view its test fails until it leaves this list.
 const BELOW_FIRST_VIEW = new Set([
   'Shop details',
   'Messages',
   'Link your billing app',
-  'Orders',
-  'Close the day',
-  'Purchase orders',
-  'Supply chain',
-  'Stamps & perks',
-  'Your week',
   'Privacy & your data',
   'Talk to your coach',
 ])
@@ -155,8 +149,9 @@ for (const name of ['Shop', 'Grow', 'You']) {
     expect(rows.length).toBeGreaterThan(0)
     for (const feature of rows) {
       await tab(page, name)
+      // Grow's rows settle once the brief has loaded (its row shows then).
       if (name === 'Grow')
-        await expect(page.getByRole('heading', { name: 'Morning brief' })).toBeVisible()
+        await expect(page.getByRole('button', { name: /^Morning brief/ })).toBeVisible()
       const row = feature.path[1]
       if (NOT_IN_DEMO.has(row)) continue
       const target = entry(page, row)

@@ -1,5 +1,6 @@
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
+import { openGrowTool } from './support/grow.js'
 
 async function openShop(page: Page) {
   await page.route('**/*', (route) => {
@@ -36,7 +37,7 @@ async function openShop(page: Page) {
   await page.getByRole('button', { name: 'Continue local preview' }).click()
   await page.getByRole('button', { name: 'Grow', exact: true }).click()
   // Planning lives in the Plan tomorrow tile's sheet.
-  await page.getByRole('button', { name: /^Plan tomorrow/ }).click()
+  await openGrowTool(page, /^Plan tomorrow/)
   return receipt.business_id as string
 }
 

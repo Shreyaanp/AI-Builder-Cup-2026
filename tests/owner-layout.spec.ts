@@ -1,5 +1,6 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
 import { enter, localOnly } from './stories/support.js'
+import { openGrowRows } from './support/grow.js'
 
 // Owner CSS fixes from the heatmap audit (#69): touch targets are at least 48px and nothing
 // clips or overflows at 360, 390 and 412px, in English and Hindi. Phone project only.
@@ -165,7 +166,8 @@ for (const lang of LANGS) {
 
       // Grow: carousel dots, Your week spacing and the Rescue discount chips.
       await page.locator('[data-tour="nav-grow"]').click()
-      await expect(page.getByTestId('grow-tiles')).toBeVisible()
+      // Grow's rows open in place (batch 4a): the brief's slides and Your week show then.
+      await openGrowRows(page)
       const slides = await page.locator('[aria-roledescription="slide"]').count()
       if (slides) {
         const sizes = await page.evaluate(() => {
@@ -184,7 +186,9 @@ for (const lang of LANGS) {
 
       await page
         .locator(
-          'button:has-text("Your week"), button:has-text("Week pulse"), button:has-text("हफ़्ते"), button:has-text("हफ़्ता")',
+          ['Your week', 'Week pulse', 'हफ़्ते', 'हफ़्ता']
+            .map((name) => `button:not([data-grow-group]):has-text("${name}")`)
+            .join(', '),
         )
         .first()
         .click()

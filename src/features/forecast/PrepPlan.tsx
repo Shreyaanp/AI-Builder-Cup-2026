@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useContext, useEffect, useState } from 'react'
 import { Button, Stack, Typography } from '@mui/material'
 import { CalendarClock, PackageSearch } from 'lucide-react'
 import type { components } from '../../api/generated'
@@ -8,6 +8,7 @@ import { Tile, Supporting } from '../v1/ShopTiles'
 import { useCopy } from '../v1/strings'
 import { useWorkspace } from '../v1/workspaceContext'
 import type { Api } from '../v1/api'
+import { TileLayoutContext } from '../v1/growLayout'
 import { useSourcingCopy } from '../sourcing/copy'
 import { Sheet } from '../v1/Sheet'
 import { dayLabel, leadNeed, useOnOrderText, useOrderUnit, useSupply } from '../supply/supplyData'
@@ -71,6 +72,10 @@ export function PrepPlanTile({ show }: { show?: 'plan' | 'runsOut' } = {}) {
   const tomorrowRows = value?.predictions?.filter((row) => row.date === tomorrow) ?? []
   const rows = tomorrowRows.slice(0, 3)
   const number = new Intl.NumberFormat(locale, { maximumFractionDigits: 1 })
+  const line = (row: (typeof rows)[number]) =>
+    `${productName(row.item, locale)} · ${number.format(row.quantity)} ${unit(row.unit)}`
+  // A Grow row has one status line: tomorrow's numbers themselves, not the word "Tomorrow".
+  const asRow = useContext(TileLayoutContext) !== 'card'
   // Runs out and on order come from the supply needs only, the list Today reads, so the two
   // screens cannot disagree (#603): the first need not yet covered leads, with how many more.
   // Only items with no forecast at all fall back to "running low" at a stock of 5 or less.
@@ -98,7 +103,9 @@ export function PrepPlanTile({ show }: { show?: 'plan' | 'runsOut' } = {}) {
                 ? t.prepLoading
                 : value.status === 'insufficient'
                   ? t.prepEmpty
-                  : t.prepTomorrow
+                  : asRow && rows.length
+                    ? rows.map(line).join(' · ')
+                    : t.prepTomorrow
           }
           onClick={() => {
             if (state?.error) retry((n) => n + 1)
@@ -115,7 +122,7 @@ export function PrepPlanTile({ show }: { show?: 'plan' | 'runsOut' } = {}) {
                   variant="bodyMedium"
                   sx={{ overflowWrap: 'anywhere', fontVariantNumeric: 'tabular-nums' }}
                 >
-                  {productName(row.item, locale)} · {number.format(row.quantity)} {unit(row.unit)}
+                  {line(row)}
                 </Typography>
               ))}
             </Stack>

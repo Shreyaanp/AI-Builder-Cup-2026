@@ -1,6 +1,7 @@
 import { mkdirSync } from 'node:fs'
 import { expect, test, type Page } from '@playwright/test'
 import { enter, image, localOnly, otherOwnersWords, seedShop, share } from './stories/support.js'
+import { growTool, openGrowRows, openGrowTool } from './support/grow.js'
 
 // Hindi end to end at 360px. The owner app set to Hindi and a customer
 // whose phone is in Hindi walk the main screens; each must read in Hindi: no English UI words
@@ -128,7 +129,8 @@ const tab = (page: Page, name: string) =>
 
 async function growCard(page: Page, name: RegExp) {
   await tab(page, 'बढ़ाएँ').click()
-  await page.getByRole('button', { name }).click()
+  // A tool in a row (कितना बनाना है, माल मँगाएँ, मेरी बिक्री) is one tap in (batch 4a).
+  await openGrowTool(page, name)
   await expect(page.getByRole('dialog')).toBeVisible()
 }
 
@@ -177,7 +179,7 @@ test('the owner app reads in Hindi: Today, coach, Shop, Grow tools, You, privacy
 
   await test.step('Grow: Hindi dates', async () => {
     await tab(page, 'बढ़ाएँ').click()
-    await expect(page.getByRole('button', { name: /^हफ़्ते का सार/ })).toContainText('अक्टू')
+    await expect(await growTool(page, /^हफ़्ते का सार/)).toContainText('अक्टू')
     await readsInHindi(page, '05-grow')
   })
 
@@ -208,6 +210,8 @@ test('the owner app reads in Hindi: Today, coach, Shop, Grow tools, You, privacy
   })
 
   await test.step('purchase order', async () => {
+    await tab(page, 'बढ़ाएँ').click()
+    await openGrowRows(page)
     const purchaseCard = page
       .getByRole('button')
       .filter({ has: page.getByText('खरीद पर्चियाँ', { exact: true }) })

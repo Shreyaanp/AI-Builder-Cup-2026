@@ -1,6 +1,7 @@
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Browser, type Page } from '@playwright/test'
 import { closeSheet, enter, localOnly, phone, shareSigned, shot, collectStamp } from './support.js'
+import { showInGrow } from '../support/grow.js'
 
 /**
  * A rescue needs a pickup time later today and no later than closing, whatever the wall clock
@@ -121,8 +122,9 @@ async function ownerSends(page: Page, mode: Mode) {
   const evidence = recorder(mode)
   await test.step('1 · Grow: the morning brief, a quiet Rescue tile and Asked nearby', async () => {
     await page.getByRole('button', { name: 'Grow', exact: true }).click()
+    // The brief opens in place from its Morning brief row (batch 4a).
     const brief = page.getByRole('region', { name: 'Morning brief' })
-    await expect(brief).toBeVisible()
+    await showInGrow(page, brief)
     await expect(brief.getByRole('heading', { name: 'Prep today' })).toBeVisible()
     await expect(brief.getByRole('button', { name: /^Slide 1 of / })).toBeVisible()
     await expect(page.getByRole('button', { name: /^Rescue/ })).toContainText('Leftovers?')
