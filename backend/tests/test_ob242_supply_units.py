@@ -592,13 +592,15 @@ def http_wrong_draft(client: TestClient) -> tuple[str, MerchantStore, str, dict]
     return base, repo, bid, supply_chain._save(repo, bid, po)
 
 
-def test_ob242_the_supply_overview_withdraws_a_wrong_size_before_showing_it(client) -> None:
+def test_ob242_the_supply_overview_flags_a_wrong_size_with_send_off(client) -> None:
+    # OB-250: the overview flags it and the next reorder withdraws it; reading never cancels.
     base, repo, bid, wrong = http_wrong_draft(client)
-    shown = client.get(base).json()["orders"]
-    assert wrong["id"] not in {po["id"] for po in shown}
+    shown = next(po for po in client.get(base).json()["orders"] if po["id"] == wrong["id"])
+    assert shown["status"] == "draft" and shown["blocked"]
+    assert shown["checks"][0]["code"] == "too_big" and shown["checks"][0]["blocking"]
     after = next(po for po in supply_chain.all_orders(repo, bid) if po["id"] == wrong["id"])
-    assert after["status"] == "cancelled" and after["reason"]["withdrawn"] == "too_big"
-    assert not after["sent"]
+    assert after["status"] == "draft" and after["version"] == wrong["version"]
+    assert after["lines"] == wrong["lines"] and "withdrawn" not in after["reason"]
 
 
 def test_ob242_the_overview_keeps_a_draft_sized_for_real_use(client) -> None:

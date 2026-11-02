@@ -98,10 +98,10 @@ async def overview(business_id: str, request: Request) -> dict[str, Any]:
     today = supply_chain.shop_today(context)
     forecast = await forecaster(request).forecast(history, today, context["inventory"])
     predicted = forecast.model_dump(mode="json")
-    # A draft of a wrong size never reaches the screen with a Send button, even if no reorder has
-    # run since it was saved (OB-242).
-    await anyio.to_thread.run_sync(
-        supply_coming.withdraw_wrong_sizes,
+    # A draft of a wrong size shows flagged, with Send off, even if no reorder has run since it
+    # was saved (OB-242). Reading never writes: the next reorder withdraws it (OB-250).
+    orders = await anyio.to_thread.run_sync(
+        supply_coming.flag_wrong_sizes,
         store(request),
         business_id,
         orders,
@@ -109,7 +109,6 @@ async def overview(business_id: str, request: Request) -> dict[str, Any]:
         predicted,
         today,
     )
-    orders = [po for po in orders if po["status"] != "cancelled" or po["sent"]]
     category = str(context["business"]["fields"].get("category") or "")
     needs = [
         {"item": product["name"], **need}
@@ -229,12 +228,34 @@ async def reorder(business_id: str, body: ReorderBody, request: Request) -> dict
     )
 
 
+async def _flagged(request: Request, uid: str, bid: str, po: dict[str, Any]) -> dict[str, Any]:
+    """One order as the overview shows it: a draft of a wrong size flagged, with Send off, so a
+    card refreshed from it never offers Send (OB-250). Nothing is saved."""
+    if po["status"] != "draft" or (po.get("reason") or {}).get("owner_quantity"):
+        return po
+    context = await anyio.to_thread.run_sync(store(request).context, uid, bid)
+    history = await anyio.to_thread.run_sync(store(request).sales_history, uid, bid)
+    today = supply_chain.shop_today(context)
+    forecast = await forecaster(request).forecast(history, today, context["inventory"])
+    shown = await anyio.to_thread.run_sync(
+        supply_coming.flag_wrong_sizes,
+        store(request),
+        bid,
+        [po],
+        context["inventory"],
+        forecast.model_dump(mode="json"),
+        today,
+    )
+    return shown[0]
+
+
 @router.get("/businesses/{business_id}/supply/orders/{order_id}")
 async def read_order(business_id: str, order_id: str, request: Request) -> dict[str, Any]:
     uid = await owner(request)
-    return await anyio.to_thread.run_sync(
+    po = await anyio.to_thread.run_sync(
         supply_chain.get_po, store(request), uid, business_id, order_id
     )
+    return await _flagged(request, uid, business_id, po)
 
 
 @router.post("/businesses/{business_id}/supply/orders/{order_id}/fix")
@@ -242,7 +263,7 @@ async def fix_order(
     business_id: str, order_id: str, body: FixBody, request: Request
 ) -> dict[str, Any]:
     uid = await consented_owner(request)
-    return await anyio.to_thread.run_sync(
+    po = await anyio.to_thread.run_sync(
         supply_chain.apply_fix,
         store(request),
         uid,
@@ -251,6 +272,7 @@ async def fix_order(
         body.version,
         body.fix.model_dump(),
     )
+    return await _flagged(request, uid, business_id, po)
 
 
 @router.post("/businesses/{business_id}/supply/orders/{order_id}/approve")

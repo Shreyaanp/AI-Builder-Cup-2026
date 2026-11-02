@@ -25,6 +25,44 @@ REORDER_ITEM = re.compile(
     r"([^\W\d_]+(?:\s[^\W\d_]+)?)",
     re.I,
 )
+# Approving a draft far beyond what the shop uses (OB-242), in each app locale; others get
+# English (OB-250).
+TOO_BIG_REPLY = {
+    "en": "Offline coach: This order is much bigger than you use. Check the amount first. "
+    "I sent nothing. How much do you want?",
+    "zh-Hans": "离线教练：这个订单远超过您的用量。请先检查数量。我什么都没发送。您需要多少？",
+    "ms": "Jurulatih luar talian: Pesanan ini jauh lebih besar daripada yang anda guna. Semak "
+    "jumlahnya dahulu. Saya tidak menghantar apa-apa. Berapa banyak yang anda mahu?",
+    "id": "Pelatih offline: Pesanan ini jauh lebih besar dari yang Anda pakai. Periksa "
+    "jumlahnya dulu. Saya tidak mengirim apa pun. Berapa banyak yang Anda mau?",
+    "fil": "Offline coach: Mas malaki ang order na ito kaysa sa ginagamit mo. Tingnan muna ang "
+    "dami. Wala akong ipinadala. Ilan ang gusto mo?",
+    "ja": "オフラインコーチ：この注文は使う量よりかなり多いです。先に数量を確認してください。"
+    "何も送っていません。どれくらい必要ですか？",
+    "ko": "오프라인 코치: 이 주문은 쓰는 양보다 훨씬 많아요. 먼저 수량을 확인하세요. "
+    "아무것도 보내지 않았어요. 얼마나 필요하세요?",
+    "th": "โค้ชออฟไลน์: คำสั่งซื้อนี้มากกว่าที่คุณใช้มาก ตรวจสอบจำนวนก่อน ยังไม่ได้ส่งอะไรไป คุณต้องการเท่าไร",
+    "vi": "Trợ lý ngoại tuyến: Đơn này lớn hơn nhiều so với lượng bạn dùng. Hãy kiểm tra số "
+    "lượng trước. Tôi chưa gửi gì. Bạn cần bao nhiêu?",
+    "ta": "ஆஃப்லைன் பயிற்சியாளர்: இந்த ஆர்டர் நீங்கள் பயன்படுத்துவதை விட மிகப் பெரியது. "
+    "முதலில் அளவைச் சரிபாருங்கள். நான் எதையும் அனுப்பவில்லை. உங்களுக்கு எவ்வளவு வேண்டும்?",
+    "hi": "ऑफ़लाइन कोच: यह ऑर्डर आपके इस्तेमाल से बहुत बड़ा है। पहले मात्रा जाँच लें। "
+    "मैंने कुछ नहीं भेजा। आपको कितना चाहिए?",
+    "bn": "অফলাইন কোচ: এই অর্ডার আপনার ব্যবহারের চেয়ে অনেক বড়। আগে পরিমাণটা দেখে নিন। "
+    "আমি কিছু পাঠাইনি। আপনার কতটা লাগবে?",
+    "te": "ఆఫ్‌లైన్ కోచ్: ఈ ఆర్డర్ మీరు వాడే దానికంటే చాలా ఎక్కువ. ముందు పరిమాణం చూసుకోండి. నేను ఏమీ పంపలేదు. మీకు ఎంత కావాలి?",
+    "mr": "ऑफलाइन कोच: ही ऑर्डर तुमच्या वापरापेक्षा खूप मोठी आहे. आधी प्रमाण तपासा. "
+    "मी काहीही पाठवले नाही. तुम्हाला किती हवे?",
+    "kn": "ಆಫ್‌ಲೈನ್ ಕೋಚ್: ಈ ಆರ್ಡರ್ ನೀವು ಬಳಸುವುದಕ್ಕಿಂತ ತುಂಬಾ ದೊಡ್ಡದು. ಮೊದಲು ಪ್ರಮಾಣವನ್ನು "
+    "ಪರಿಶೀಲಿಸಿ. ನಾನು ಏನನ್ನೂ ಕಳುಹಿಸಿಲ್ಲ. ನಿಮಗೆ ಎಷ್ಟು ಬೇಕು?",
+}
+
+
+def in_language(replies: dict[str, str], language: str) -> str:
+    """The reply in the owner's app locale (zh-Hans, or hi for hi-IN), else English."""
+    return replies.get(language) or replies.get(language.split("-")[0]) or replies["en"]
+
+
 RULE_WORDS = re.compile(
     r"\b(?:moq|minimum order|credit|approval|approve|auto-?send|lead time|price tier|"
     r"substitut\w*|back-?orders?|partial)\b",
@@ -250,7 +288,7 @@ def _qty(row: dict[str, Any]) -> str:
     return f"{float(row['quantity']):g} {row['unit']} {row['item']}"
 
 
-def io_reply(name: str, result: dict[str, Any]) -> str | None:
+def io_reply(name: str, result: dict[str, Any], language: str = "en") -> str | None:
     status = result.get("status")
     demo = " (simulated: demo partner)" if result.get("demo_partner") else ""
     if name == "show_inbound":
@@ -275,7 +313,7 @@ def io_reply(name: str, result: dict[str, Any]) -> str | None:
         if status == "rules_broken":
             return "Offline coach: a supplier rule is broken; fix it on the card first."
         if status == "too_big":
-            return f"Offline coach: {result['message']} I sent nothing. How much do you want?"
+            return in_language(TOO_BIG_REPLY, language)
         if status != "sent":
             return "Offline coach: there is no drafted order to approve."
         return f"Offline coach: the order is approved and sent to {result['supplier']}."
@@ -316,8 +354,8 @@ def io_reply(name: str, result: dict[str, Any]) -> str | None:
     return None
 
 
-def supply_reply(name: str, result: dict[str, Any]) -> str | None:
-    io = io_reply(name, result)
+def supply_reply(name: str, result: dict[str, Any], language: str = "en") -> str | None:
+    io = io_reply(name, result, language)
     if io is not None:
         return io
     if name == "draft_reorder":
