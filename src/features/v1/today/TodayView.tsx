@@ -50,7 +50,6 @@ import { promiseSaid, usePromiseSettle } from './promiseSettle'
 import { countAction, countShown } from './habitCount'
 import { useLocalDay } from './useLocalDay'
 import { FirstCustomers } from '../FirstCustomers'
-import { TodaySupply } from '../../supply/TodaySupply'
 import { TodaySupplyNeeds } from '../../supply/SupplyEntry'
 
 /** What the Coach screen lets Today do: talk to the coach, open sheets, start the mic. */
@@ -362,7 +361,6 @@ export function NeedsCard({
   footer?: ReactNode
 }) {
   const tt = useTodayCopy()
-  const ws = useWorkspace()
   const roles = useTheme().material
   const rows = useLeaving(plan.needs, plan.more)
   const moreRows = useLeaving(plan.more, plan.needs)
@@ -371,15 +369,11 @@ export function NeedsCard({
   const [open, setOpen] = useState(false)
   const moreId = useId()
   const row = ({ need, leaving }: { need: Need; leaving: boolean }, first: boolean) =>
-    need.kind === 'supply' ? (
-      leaving ? null : (
-        <TodaySupply key={need.id} first={first} onAct={() => countAction(ws, 'supply')} />
-      )
-    ) : need.kind === 'promise' && need.supply ? (
+    need.kind === 'supply' || (need.kind === 'promise' && need.supply) ? (
       leaving ? null : (
         <PromiseSupplyRow
           key={need.id}
-          promise={need.promise}
+          promise={need.kind === 'promise' ? need.promise : null}
           first={first}
           answerPromise={answerPromise}
         />

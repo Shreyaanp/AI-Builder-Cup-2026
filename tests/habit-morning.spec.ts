@@ -441,15 +441,68 @@ for (const lang of ['en', 'hi'] as const) {
     await expect(row.locator('[data-tour="reorder"]')).toHaveClass(/MuiButton-contained/)
     expect(await fitsWidth(page)).toBe(true)
     await page.screenshot({ path: test.info().outputPath(`promise-supply-${lang}-390.png`) })
-    if (lang === 'hi') return
-    // Reorder answers the promise and opens the same order sheet as the supply row: Milk is on
-    // order already, so it asks first. The row stays, as the supply row, run-out day and all.
+    // Reorder answers the promise and asks the supply row's own question: Milk is on order
+    // already. The row stays, as the supply row, run-out day and all, and the question survives.
+    // The first draft answers "on order in another unit": the supply row asks first.
+    let drafts = 0
+    await page.route('**/supply/reorder', (route) =>
+      drafts++ === 0
+        ? route.fulfill({
+            json: {
+              status: 'on_order_units',
+              item: 'Milk',
+              other: [{ quantity: 2, unit: 'pack', arrives: tomorrow }],
+            },
+          })
+        : route.continue(),
+    )
     await reorder.click()
     await expect(row).toHaveCount(0)
-    await expect(supplyRow).toContainText(`Milk runs out ${runsOut}`)
+    if (lang === 'en') await expect(supplyRow).toContainText(`Milk runs out ${runsOut}`)
+    await expect(supplyRow.getByRole('status')).toContainText(/Milk/)
     await expect.poll(() => promiseFor(page, id, tomorrow)).toBeNull()
+    if (lang === 'hi') {
+      await expect(supplyRow.getByRole('group')).toBeVisible()
+      return
+    }
+    // The question is the supply row's own: "Not now" puts the Reorder button back.
+    await supplyRow.getByRole('button', { name: 'Not now' }).click()
+    await expect(supplyRow.getByRole('button', { name: 'Reorder' })).toBeVisible()
+    expect(await promiseFor(page, id, tomorrow)).toBeNull()
   })
 }
+
+test('en: Reorder on the promise row opens the purchase order sheet, then the promise stays cleared', async ({
+  page,
+}) => {
+  test.setTimeout(180_000)
+  await page.setViewportSize({ width: 390, height: 844 })
+  const tomorrow = shopDay(-1)
+  await localOnly(page)
+  await enter(page)
+  const name = 'Sheet Lane Chai'
+  const id = await teaStall(page, name, [
+    { name: 'Masala chai', price: 2000, unit: 'cup', category: 'Drinks', stock: 40 },
+    { name: 'Milk', price: 6000, unit: 'pack', stock: 12 },
+  ])
+  await fourWeeks(page, id)
+  const made = await page.request.post(`/api/v1/businesses/${id}/promise`, {
+    data: { text: 'order milk', kind: 'order', item: 'Milk' },
+  })
+  expect(made.ok()).toBe(true)
+  await morningOf(page, id, tomorrow)
+  await open(page, name)
+  const row = page.getByTestId('today').locator('[data-need="promise"]')
+  await expect(row).toContainText('Last night you said: order Milk')
+  await row.getByRole('button', { name: 'Reorder' }).click()
+  // Nothing on order: the draft opens in the purchase order sheet, exactly like the supply row.
+  await expect(page.getByRole('dialog')).toBeVisible({ timeout: 15_000 })
+  await expect.poll(() => promiseFor(page, id, tomorrow)).toBeNull()
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await expect(page.locator('[data-need="promise"]')).toHaveCount(0)
+  expect(await promiseFor(page, id, tomorrow)).toBeNull()
+})
 
 test('Hindi: the close screen’s own Hindi hint, typed into the chat, writes the promise down', async ({
   page,

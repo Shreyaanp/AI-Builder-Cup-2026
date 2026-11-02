@@ -10,13 +10,15 @@ import { countAction } from './habitCount'
 /**
  * Last night's promise names the supply row's item: one row says both, with the run-out day,
  * the on-order line and "N more", and its Reorder is the supply row's own (the purchase order).
+ * The plain supply row (no promise) is this same component, so answering the promise on Reorder
+ * does not remount it and lose the order sheet / "already on order" question.
  */
 export function PromiseSupplyRow({
   promise,
   first,
   answerPromise,
 }: {
-  promise: TodayPromise
+  promise: TodayPromise | null
   first: boolean
   answerPromise: (day: string) => void
 }) {
@@ -27,23 +29,27 @@ export function PromiseSupplyRow({
   return (
     <TodaySupply
       first={first}
-      onAct={() => countAction(ws, 'promise')}
-      promise={{
-        said: promiseSaid(promise, locale),
-        busy,
-        onReorder: () => settle('done'),
-        // Clearing it is not a useful action: never action_done, never the first action.
-        extra: (
-          <Button
-            disabled={busy}
-            data-uncounted
-            sx={{ minHeight: 48 }}
-            onClick={() => settle('skipped')}
-          >
-            {pc.notToday}
-          </Button>
-        ),
-      }}
+      onAct={() => countAction(ws, promise ? 'promise' : 'supply')}
+      promise={
+        promise
+          ? {
+              said: promiseSaid(promise, locale),
+              busy,
+              onReorder: () => settle('done'),
+              // Clearing it is not a useful action: never action_done, never the first action.
+              extra: (
+                <Button
+                  disabled={busy}
+                  data-uncounted
+                  sx={{ minHeight: 48 }}
+                  onClick={() => settle('skipped')}
+                >
+                  {pc.notToday}
+                </Button>
+              ),
+            }
+          : undefined
+      }
     />
   )
 }
