@@ -110,7 +110,8 @@ def test_ob242_a_dish_sold_in_the_supplys_unit_never_sizes_it(
         store,
         "Test shop",
         category,
-        [product(supply, unit), product(dish, dish_unit, 5)],
+        # Answered "buy": Paneer by the item at a restaurant is asked first (OB-244).
+        [product(supply, unit, source="bought"), product(dish, dish_unit, 5)],
         [(dish, daily, 5000)],
     )
     wholesale = [ProductFields(name=supply, price=8000, unit=unit, stock=5000)]

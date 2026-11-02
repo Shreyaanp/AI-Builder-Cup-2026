@@ -430,6 +430,27 @@ def test_OB_248_find_suppliers_lists_them_and_drafts_the_order_card(
     assert suppliers[0]["name"] in reply
 
 
+@pytest.mark.parametrize(
+    ("message", "words"),
+    [
+        ("My milk is running low", "Demo suppliers near you for Milk"),
+        ("दूध ख़त्म होने वाला है", "पास के डेमो सप्लायर"),
+    ],
+)
+def test_OB_248_the_screens_own_phrase_does_the_work(
+    live_parent_demo,  # noqa: F811
+    message: str,
+    words: str,
+) -> None:
+    """Grow → Orders → Find a supplier sends this phrase, in English or Hindi."""
+    client, _app, session, _bid = live_parent_demo
+    response = client.post(f"/api/v1/demo/sessions/{session}/coach", json={"message": message})
+    events = {event["kind"]: event for event in _coach_events(response)}
+    assert events["order"]["data"]["lines"][0]["name"] == "Milk"
+    assert words in events["reply"]["text"]
+    assert "Grow → Orders → Find a supplier" in events["reply"]["text"]
+
+
 def test_OB_248_find_suppliers_for_an_item_the_shop_does_not_stock(
     live_parent_demo,  # noqa: F811
 ) -> None:

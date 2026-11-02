@@ -17,6 +17,8 @@ import { X } from 'lucide-react'
 import { motion, shape, windowClass } from '../../design/theme'
 import { useBackClose } from './backStack'
 import { useCopy } from './strings'
+import { AskHint } from './AskHint'
+import type { GuideId } from './askPhrases'
 
 const timing = { enter: motion.duration.enter, exit: motion.duration.exit }
 
@@ -39,6 +41,7 @@ export function Sheet({
   dirty = false,
   dismissInActions = false,
   ownsHistory = true,
+  ask,
 }: {
   open: boolean
   onClose: () => void
@@ -57,6 +60,8 @@ export function Sheet({
   dismissInActions?: boolean
   /** False when the sheet's own address is its history entry (the map's `?view=map`). */
   ownsHistory?: boolean
+  /** The chat path to this sheet's feature: one "Or just ask" line under the content. */
+  ask?: GuideId
 }) {
   const roles = useTheme().material
   const t = useCopy()
@@ -145,6 +150,7 @@ export function Sheet({
           }}
         >
           {children}
+          {ask && <AskHint id={ask} />}
         </Box>
         {(actions || !dismissInActions) && (
           <Stack
@@ -197,7 +203,10 @@ export function Sheet({
           {title}
         </DialogTitle>
       )}
-      <DialogContent>{children}</DialogContent>
+      <DialogContent>
+        {children}
+        {ask && <AskHint id={ask} />}
+      </DialogContent>
       {actions && <DialogActions sx={{ px: 6, pb: 6 }}>{actions}</DialogActions>}
     </Dialog>
   )

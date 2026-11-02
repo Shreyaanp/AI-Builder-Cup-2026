@@ -178,7 +178,12 @@ def low_stock(
                     product_id=product.get("id"),
                 )
             )
-    return sorted(out, key=lambda item: item.stock)[:3]
+    # Made items never push out a supply the shop must order: what it buys or has not said comes
+    # first, the one that runs out first leading, then the fewest left (OB-244).
+    return sorted(
+        out,
+        key=lambda item: (item.source == "made", item.runs_out or date.max, item.stock),
+    )[:3]
 
 
 def coach_line(

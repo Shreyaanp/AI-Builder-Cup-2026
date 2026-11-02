@@ -133,6 +133,7 @@ export function SupplySheet({ open, onClose }: { open: boolean; onClose: () => v
       open={open}
       onClose={close}
       titleId="supply-sheet-title"
+      ask="supply"
       title={
         view.kind === 'list' ? (
           s.title

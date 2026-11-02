@@ -20,6 +20,7 @@ import { enterRise, shape } from '../../design/theme'
 import { formatShopPrice } from '../v1/format'
 import { formatMoneyText } from '../inquiries/formatMoneyText'
 import { Sheet } from '../v1/Sheet'
+import { FindSupplier } from '../v1/TwoPaths'
 import { Supporting, Tile } from '../v1/ShopTiles'
 import { useWorkspace } from '../v1/workspaceContext'
 import { ConfirmUndo } from '../supply/ConfirmUndo'
@@ -111,6 +112,7 @@ export function OrdersSheet({
       open={open}
       onClose={close}
       titleId="orders-sheet-title"
+      ask="suppliers"
       title={
         selected ? (
           <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
@@ -127,6 +129,8 @@ export function OrdersSheet({
         )
       }
     >
+      {/* Always a screen way in, beside "tell the coach" (simplify batch 2). */}
+      {!selected && <FindSupplier onStart={close} />}
       {selected ? (
         <Thread
           key={selected.id}

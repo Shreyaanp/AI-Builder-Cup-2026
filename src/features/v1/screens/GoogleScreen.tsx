@@ -30,6 +30,7 @@ import { TrustCard } from '../../trust/TrustCard'
 import { useIdentity } from '../../../auth/useIdentity'
 import { GoogleSimulator } from '../../google-sim/GoogleSimulator'
 import { useSimCopy } from '../../google-sim/strings'
+import { AskHint } from '../AskHint'
 
 const EASE = 'cubic-bezier(0.2, 0, 0, 1)' // M3 emphasized decelerate
 
@@ -366,6 +367,7 @@ function GoogleGuide() {
           </Stack>
         )}
       </Stack>
+      <AskHint id="google" />
     </Box>
   )
 }

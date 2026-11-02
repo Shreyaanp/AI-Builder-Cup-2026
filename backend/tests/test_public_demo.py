@@ -183,7 +183,8 @@ def test_OB_59_public_demo_coach_answers_Hindi_in_Hindi(app):  # noqa: N802, F81
         ("नमक खत्म है", "डेमो में"),
         ("कीमत बदलो", "कीमत"),
         ("ऑर्डर और सामान", "डेमो सप्लायर"),
-        ("We are closed today", "Demo shop hours"),
+        # Closed for today only is prepared for review, as on Shop details (#633).
+        ("We are closed today", "Closed today ("),
         ("What is my business called?", "I can help with"),
     ]
     with TestClient(app) as client:
