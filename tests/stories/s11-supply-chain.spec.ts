@@ -98,6 +98,9 @@ async function axe(page: Page) {
 async function theme(page: Page, name: 'Dark' | 'Light') {
   // Appearance lives on You; the coach stays mounted, so its cards keep their state.
   await page.getByRole('button', { name: 'You', exact: true }).click()
+  // Look is one row on You; its choices open under it (simplify batch 3).
+  const look = page.getByRole('button', { name: /^Look/ })
+  if ((await look.getAttribute('aria-expanded')) !== 'true') await look.click()
   await page.getByRole('button', { name, exact: true }).click()
   await page.getByRole('button', { name: 'Coach', exact: true }).click()
   await expect(page.getByRole('dialog')).toHaveCount(0)

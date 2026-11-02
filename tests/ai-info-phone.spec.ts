@@ -1,6 +1,7 @@
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
 import { enter, localOnly, seedShop } from './stories/support.js'
+import { shopMore } from './support/shopMore.js'
 
 test.use({ viewport: { width: 360, height: 800 }, reducedMotion: 'reduce' })
 
@@ -75,6 +76,8 @@ test('360px: AI help stays contextual across setup, Today, chat and imports', as
   await expect(page.getByRole('dialog')).toHaveCount(1)
   await fits(page)
   await menu.getByRole('button', { name: 'Close', exact: true }).click()
+
+  await shopMore(page)
 
   await page.getByRole('button', { name: /Link your billing app/i }).click()
   const connect = page.getByRole('dialog', { name: 'Link your billing app' })

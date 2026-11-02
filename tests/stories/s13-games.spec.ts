@@ -1,6 +1,7 @@
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Browser, type Page } from '@playwright/test'
 import { enter, localOnly, phone, shareSigned, collectStamp } from './support.js'
+import { shopMore } from '../support/shopMore.js'
 
 /**
  * S13 · The passport games. An owner sets a scratch-card prize
@@ -108,7 +109,13 @@ async function ownerSetsPerks(page: Page, mode: Mode, name: string) {
   const at = { lat: 13.2 + Math.random() * 0.8, lng: west + Math.random() * 0.6 }
   await seedChaiStall(page, name, at)
   const { qr } = await shareSigned(page)
-  // The Customer page sheet holds the owner's thank-you perks: calm fields, one save.
+  // Shop → More → Stamp card → More rewards holds the owner's thank-you perks: calm fields, one
+  // save (simplify batch 3; they used to sit in the Customer page sheet).
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await shopMore(page)
+  await page.getByRole('button', { name: /^Stamp card/ }).click()
+  await page.getByRole('button', { name: 'More rewards', exact: true }).click()
   const perks = page.getByRole('region', { name: 'Thank-you perks' })
   await perks.scrollIntoViewIfNeeded()
   await perks.getByLabel('A scratch-card prize').fill('Free bun maska with any chai')

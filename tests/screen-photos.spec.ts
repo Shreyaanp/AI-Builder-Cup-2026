@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test'
 import { fileURLToPath } from 'node:url'
 import { confirm, enter, localOnly, reviewName, seedShop } from './stories/support.js'
+import { shopMore } from './support/shopMore.js'
 
 const photo = (name: string) =>
   fileURLToPath(
@@ -13,6 +14,7 @@ test('phone photos → merged rows → mapping review → explicit confirmation'
   await enter(page)
   await seedShop(page)
   await page.getByRole('button', { name: 'Shop', exact: true }).click()
+  await shopMore(page)
   await page.getByRole('button', { name: /Link your billing app/i }).click()
   const connect = page.getByRole('dialog', { name: 'Link your billing app' })
   await expect(connect.getByText('Take a photo of your screen or printout')).toBeVisible()
@@ -47,6 +49,7 @@ test('unreadable photo keeps a retry path and file upload', async ({ page }) => 
   await enter(page)
   await seedShop(page)
   await page.getByRole('button', { name: 'Shop', exact: true }).click()
+  await shopMore(page)
   await page.getByRole('button', { name: /Link your billing app/i }).click()
   const connect = page.getByRole('dialog', { name: 'Link your billing app' })
   await connect.getByTestId('screen-gallery').setInputFiles({

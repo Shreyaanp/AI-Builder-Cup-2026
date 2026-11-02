@@ -146,7 +146,8 @@ test('O-3 the Shop tab Photos card opens the shop photos', async ({ page }) => {
 test('O-4 a demo location is found under the pin and saves', async ({ page }) => {
   const refused = await openDemo(page)
   await page.locator('[data-tour="nav-shop"]').click()
-  await page.locator('[data-tour="customer"] button').first().click()
+  // The page card's pencil edits the details (the card itself opens the page sheet).
+  await page.locator('[data-tour="customer"] button').last().click()
   const wizard = page.getByTestId('guided-details')
   await wizard.getByRole('button', { name: 'Location', exact: true }).click()
   await expect(wizard).toHaveAttribute('data-step', 'location')

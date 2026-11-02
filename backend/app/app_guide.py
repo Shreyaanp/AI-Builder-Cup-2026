@@ -23,14 +23,14 @@ TAB_LABELS: dict[str, frozenset[str]] = {
     "Coach": frozenset(),
     "Shop": frozenset(
         {
+            "Your shop page",
             "Menu",
             "Services",
-            "Sold out today",
-            "Shop details",
-            "Photos",
+            "Sold out",
             "Messages",
-            "Customer page",
-            "Link your billing app",
+            "Photos",
+            "Shop details",
+            "More",
         }
     ),
     "Grow": frozenset(
@@ -51,7 +51,14 @@ TAB_LABELS: dict[str, frozenset[str]] = {
         }
     ),
     "You": frozenset(
-        {"Remind me", "Language", "Your shops", "Privacy & your data", "Talk to your coach"}
+        {
+            "Language",
+            "Remind me",
+            "Your shops",
+            "What the coach knows",
+            "Privacy & your data",
+            "What can I ask?",
+        }
     ),
 }
 # Named controls inside a tile's sheet or page, one level down.
@@ -60,11 +67,11 @@ INNER_LABELS: dict[tuple[str, str], frozenset[str]] = {
     ("Shop", "Services"): frozenset({"Add product"}),
     ("Shop", "Shop details"): frozenset({"Closed today"}),
     ("Shop", "Messages"): frozenset({"Your language (app and coach)"}),
+    # The More row opens on the Shop screen itself: the stamp card and the billing app.
+    ("Shop", "More"): frozenset({"Stamp card", "Link your billing app"}),
     ("Grow", "Orders"): frozenset({"Find a supplier"}),
     ("Grow", "Payments & rides"): frozenset({"Send a rider"}),
-    ("You", "Privacy & your data"): frozenset(
-        {"What Chalkboard knows about your shop", "Verify it’s you"}
-    ),
+    ("You", "Privacy & your data"): frozenset({"Verify it’s you"}),
 }
 
 
@@ -125,7 +132,7 @@ FEATURES: tuple[Feature, ...] = (
         "Stamps and perks",
         "Choose rewards for customer visits; customer games live in their passport.",
         '"Show perks" or "Free chai after 8 visits".',
-        ("Grow", "Stamps & perks"),
+        ("Shop", "More", "Stamp card"),
         ("games", "perks", "scratch", "sets", "streak", "co-op", "reward"),
         "Show my perks",
         "मेरे इनाम दिखाओ",
@@ -194,7 +201,7 @@ FEATURES: tuple[Feature, ...] = (
         "Your goals, the numbers that matter, what to watch and your regulars, which shape "
         "Today and Grow. Edit or remove anything.",
         '"What do you know about my shop?".',
-        ("You", "Privacy & your data", "What Chalkboard knows about your shop"),
+        ("You", "What the coach knows"),
         ("playbook", "know", "goals", "regulars", "learned"),
         "What do you know about my shop?",
         "तुम मेरी दुकान के बारे में क्या जानते हो?",
@@ -207,7 +214,7 @@ FEATURES: tuple[Feature, ...] = (
         "Link your billing app",
         "Import your menu or sales from a billing app file; you check the mapped columns first.",
         '"Connect my Petpooja".',
-        ("Shop", "Link your billing app"),
+        ("Shop", "More", "Link your billing app"),
         ("connect", "erp", "petpooja", "shopify", "system"),
         "Connect my Petpooja",
         "मेरा Petpooja जोड़ो",
@@ -257,7 +264,7 @@ FEATURES: tuple[Feature, ...] = (
         "Sold out or back in stock",
         "Mark an item sold out so customers don't make a wasted trip, and back when it returns.",
         '"Samosa is sold out" or "Samosa is back".',
-        ("Shop", "Sold out today"),
+        ("Shop", "Sold out"),
         ("sold", "out", "stock", "finished", "available", "back"),
         "Samosa is sold out",
         "समोसा ख़त्म",
@@ -297,7 +304,7 @@ FEATURES: tuple[Feature, ...] = (
         "Share your page and QR",
         "Turn on your customer page, then share the link or print the QR for the counter.",
         '"Share my page" or "Show my QR code".',
-        ("Shop", "Customer page"),
+        ("Shop", "Your shop page"),
         ("share", "qr", "link", "page", "customers", "customer page", "poster"),
         "Share my page",
         "मेरा पेज भेजो",
@@ -431,7 +438,7 @@ FEATURES: tuple[Feature, ...] = (
         "Upload your billing app or Excel sales file (Petpooja, Tally, Square…);"
         " the coach maps the columns once.",
         '"Link my billing app" or "Import my sales".',
-        ("Shop", "Link your billing app"),
+        ("Shop", "More", "Link your billing app"),
         ("pos", "import", "excel", "csv", "tally", "export", "billing"),
         "Import my sales",
         "मेरी बिक्री इम्पोर्ट करो",
@@ -457,7 +464,7 @@ FEATURES: tuple[Feature, ...] = (
         "Stamp card and perks",
         "Choose a reward and how many visits earn it; customers collect stamps by scanning.",
         '"Set a stamp card: free chai after 8 visits".',
-        ("Grow", "Stamps & perks"),
+        ("Shop", "More", "Stamp card"),
         ("stamp", "stamps", "loyalty", "reward", "perk", "perks", "card", "regulars"),
         "Free chai after 8 visits",
         "8 बार आने पर एक चाय मुफ़्त",
@@ -562,7 +569,7 @@ FEATURES: tuple[Feature, ...] = (
         "What the coach can do",
         "Ask anything about your shop in your own words, or open the guide with examples.",
         '"What can you do?".',
-        ("You", "Talk to your coach"),
+        ("You", "What can I ask?"),
         ("help", "examples", "guide", "tour"),
         "What can you do?",
         "तुम क्या कर सकते हो?",

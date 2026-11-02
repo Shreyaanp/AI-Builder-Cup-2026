@@ -168,6 +168,7 @@ test.describe('OB-195: first visit on a dark phone', () => {
     await enter(page)
     await expectLight(page)
     await page.getByRole('button', { name: 'You', exact: true }).click()
+    await page.getByRole('button', { name: /^Look/ }).click()
     const look = page.getByRole('group', { name: 'Look', exact: true })
     await expect(look.getByRole('button', { name: 'Light', exact: true })).toHaveAttribute(
       'aria-pressed',
