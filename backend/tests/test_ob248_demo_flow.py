@@ -1,15 +1,19 @@
 """OB-248: vendor-to-vendor in the demo, end to end, and no owner feature blocked."""
 
 import json
+import re
+from pathlib import Path
 from unittest.mock import Mock
 
 import pytest
 from fastapi import HTTPException
 
-from app import demo_supplier
+from app import demo_item_names, demo_supplier
 from tests.test_photos import app, jpeg  # noqa: F401
 from tests.test_public_demo import owner
 from tests.test_public_demo_no_paid_ai import live_parent_demo, no_paid_calls  # noqa: F401
+
+ROOT = Path(__file__).resolve().parents[2]
 
 
 @pytest.fixture
@@ -529,3 +533,103 @@ def test_OB_248_hindi_stock_answer_says_the_unit_in_hindi(live_parent_demo) -> N
         f"/api/v1/demo/sessions/{session}/coach", json={"message": "Tea dust का स्टॉक कितना है?"}
     )
     assert "6 किलो" in response.text
+
+
+def _hindi_reply(client, session: str, message: str) -> str:
+    response = client.post(
+        f"/api/v1/demo/sessions/{session}/coach", json={"message": message, "language": "hi"}
+    )
+    assert response.status_code == 200, response.text
+    return next(event for event in _coach_events(response) if event["kind"] == "reply")["text"]
+
+
+@pytest.mark.parametrize(
+    ("message", "answer"),
+    [
+        # The review's table: the item asked about, its own numbers, its Hindi name.
+        ("चाय पत्ती का स्टॉक कितना है?", r"डेमो में चाय पत्ती का स्टॉक 6 किलो है।"),
+        ("चाय पत्ती का दाम क्या है?", r"डेमो में चाय पत्ती की कीमत ₹320 है।"),
+        (
+            "सप्लायर से ऑर्डर कैसे करूँ?",
+            r"डेमो सप्लायर .+ है। चाय पत्ती का स्टॉक 6 किलो है।",
+        ),
+        (
+            "कल क्या तैयार करूँ?",
+            r"कल की तैयारी: \S+ \S+ \d+ कप, .+ \(पिछली बिक्री का औसत\)।",
+        ),
+        # Other names, and an item with no count says so instead of "0 कप".
+        ("मसाला चाय का दाम क्या है?", r"डेमो में मसाला चाय की कीमत ₹20 है।"),
+        (
+            "मसाला चाय का स्टॉक कितना है?",
+            r"डेमो में मसाला चाय की बिक्री चालू है, इसका स्टॉक गिना नहीं जाता।",
+        ),
+        ("बन मस्का का स्टॉक कितना है?", r"डेमो में बन मस्का का स्टॉक 4 पीस है।"),
+        ("दूध का स्टॉक कितना है?", r"डेमो दुकान में दूध का स्टॉक दर्ज नहीं है।"),
+        ("चीनी का दाम क्या है?", r"चीनी डेमो दुकान के मेन्यू में नहीं है।"),
+        # Asked without a name: the item the shop counts, not the first one on the menu.
+        ("स्टॉक कितना है?", r"डेमो में चाय पत्ती का स्टॉक 6 किलो है।"),
+    ],
+)
+def test_OB_248_hindi_question_finds_the_item_by_its_hindi_name(
+    live_parent_demo,  # noqa: F811
+    message: str,
+    answer: str,
+) -> None:
+    client, _app, session, _bid = live_parent_demo
+    reply = _hindi_reply(client, session, message)
+    assert re.fullmatch(answer, reply), reply
+
+
+def test_OB_248_hindi_best_sellers_use_hindi_names(live_parent_demo) -> None:  # noqa: F811
+    client, _app, session, _bid = live_parent_demo
+    reply = _hindi_reply(client, session, "सबसे ज़्यादा क्या बिकता है?")
+    assert "Masala chai" not in reply and re.search(r"[ऀ-ॿ]+ \(\d+ बिके\)", reply), reply
+
+
+def test_OB_248_backend_hindi_names_match_the_apps_table() -> None:
+    """The coach and the screens must call an item the same thing."""
+    source = (ROOT / "src/i18n/productNames.ts").read_text(encoding="utf-8")
+    table = source.split("const HINDI", 1)[1].split("\n}\n", 1)[0]
+    shown = {
+        (quoted or bare): hindi
+        for quoted, bare, hindi in re.findall(r"^\s+(?:'([^']+)'|(\w+)): \['([^']+)'", table, re.M)
+    }
+    assert shown and demo_item_names.HINDI_ITEMS == shown
+
+
+@pytest.mark.parametrize(
+    ("message", "line", "words"),
+    [
+        ("मेरा दूध कम हो रहा है। सप्लायर खोजें।", "Milk", "दूध के लिए पास के डेमो सप्लायर: 1. "),
+        (
+            "मेरी चाय पत्ती कम हो रही है। सप्लायर खोजें।",
+            "Tea dust",
+            "चाय पत्ती के लिए पास के डेमो सप्लायर: 1. ",
+        ),
+        ("मेरी चीनी कम हो रही है। सप्लायर खोजें।", "Sugar", "चीनी के लिए पास के डेमो सप्लायर: 1. "),
+        (
+            "मेरी मसाला चाय कम हो रही है। सप्लायर खोजें।",
+            "Tea dust",
+            "मसाला चाय आप ख़ुद बनाते हैं, इसलिए ये चाय पत्ती के लिए हैं।",
+        ),
+    ],
+)
+def test_OB_248_hindi_find_suppliers_does_the_real_work(
+    live_parent_demo,  # noqa: F811
+    message: str,
+    line: str,
+    words: str,
+) -> None:
+    """The tile's own Hindi phrase, like English: the suppliers, then the drafted order card."""
+    client, _app, session, _bid = live_parent_demo
+    response = client.post(
+        f"/api/v1/demo/sessions/{session}/coach", json={"message": message, "language": "hi"}
+    )
+    events = {event["kind"]: event for event in _coach_events(response)}
+    suppliers = events["suppliers"]["data"]["suppliers"]
+    assert suppliers and all(row["demo"] for row in suppliers)
+    order = events["order"]["data"]
+    assert order["status"] == "draft" and order["lines"][0]["name"] == line
+    reply = events["reply"]["text"]
+    assert words in reply and suppliers[0]["name"] in reply
+    assert "असली दुकान" not in reply and not re.search(r"(?:Milk|Sugar|Tea dust|kg|litre)", reply)

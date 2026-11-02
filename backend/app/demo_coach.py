@@ -9,6 +9,7 @@ from typing import Any, cast
 from .app_guide import Feature, by_ask, next_line, next_line_hi
 from .contracts import StreamEvent
 from .demo_food_words import FOOD_UNITS, NUMBER_WORDS, is_food, singular
+from .demo_item_names import hindi_item, item_named_in
 
 FALLBACK = (
     "I can help with these in the demo: change your hours, add an item, mark something sold "
@@ -29,7 +30,11 @@ FIND_SUPPLIERS = re.compile(
     r"\b(?:find|need|search|looking\s+for)\b[^.?!]*\bsuppliers?\b|सप्लायर[^।?!]*(?:ढूँढ|ढूंढ|खोज)",
     re.I,
 )
-LOW_ON = re.compile(r"\b(?:running\s+low|low\s+on|run\s+out\s+of|restock)\b|कम\s+हो|खत्म\s+हो", re.I)
+LOW_ON = re.compile(
+    r"\b(?:running\s+low|low\s+on|run\s+out\s+of|restock)\b|कम\s+हो|ख़?त्म\s+हो", re.I
+)
+# "मेरा दूध कम हो रहा है" or "मेरी चीनी कम हो रही है": the words between are the item.
+LOW_HI = re.compile(r"मेर[ाी]\s+(?P<item>[^।?]{1,40}?)\s+कम\s+हो\s+रह[ाी]")
 DRAFT_QUANTITY = 10
 HINDI_UNITS = {"kg": "किलो", "litre": "लीटर", "pack": "पैक", "cup": "कप", "piece": "पीस"}
 DEMO_NOTE_HI = "यह डेमो दुकान है, इसलिए कुछ भी असली ग्राहकों तक नहीं जाता।"
@@ -460,10 +465,19 @@ async def _find_suppliers(ctx: Any, question: str) -> list[StreamEvent] | None:
         for order in supply_chain.orders(ctx.store, ctx.uid, ctx.business_id)
         for line in order.get("lines") or []
     ]
-    named = [item for item in [*inventory, *supplies] if item["name"].casefold() in words]
+    said = item_named_in(question)
+    named = [
+        item
+        for item in [*inventory, *supplies]
+        if item["name"].casefold() in words or item["name"] == said
+    ]
     product = max(named, key=lambda item: len(item["name"]), default=None)
+    if said and not product:
+        # A supply this shop has not ordered yet still has its name in the table.
+        product = {"name": said, "source": "bought"}
     bought = next((item for item in inventory if item.get("source") == "bought"), None)
-    if not FIND_SUPPLIERS.search(asked) and not (product and LOW_ON.search(asked)):
+    low_hi = LOW_HI.search(asked)
+    if not FIND_SUPPLIERS.search(asked) and not ((product or low_hi) and LOW_ON.search(asked)):
         return None
     made = product["name"] if product and product.get("source") == "made" else ""
     if product and not made:
@@ -471,6 +485,8 @@ async def _find_suppliers(ctx: Any, question: str) -> list[StreamEvent] | None:
     elif made and bought:
         # The shop makes it itself, so what it can run out of is what it buys.
         item = bought["name"]
+    elif low_hi:
+        item = low_hi["item"]
     else:
         call = sourcing_call(asked, [], ctx)
         function = call.function_call if call else None
@@ -490,12 +506,17 @@ async def _find_suppliers(ctx: Any, question: str) -> list[StreamEvent] | None:
     currency = found["currency"]
     if HINDI.search(question):
         names = "; ".join(
-            f"{rank}. {row['name']}, {row['distance_km']:g} किमी"
+            f"{rank}. {row['name']}, {row['distance_km']:g} किमी, "
+            f"{money_text(to_minor(row['item']['price'], currency), currency)} प्रति "
+            f"{HINDI_UNITS.get(row['item']['unit'], row['item']['unit'])}"
             for rank, row in enumerate(suppliers[:3], 1)
         )
+        item_hi = hindi_item(item)
+        lead = f"{hindi_item(made)} आप ख़ुद बनाते हैं, इसलिए ये {item_hi} के लिए हैं। " if made else ""
         text = (
-            f"पास के डेमो सप्लायर: {names}। {first['name']} के लिए ऑर्डर नीचे तैयार है। आपके भेजे "
-            f"बिना कुछ नहीं जाता, और यह सिर्फ़ डेमो है। {next_line_hi('suppliers')}"
+            f"{lead}{item_hi} के लिए पास के डेमो सप्लायर: {names}। {first['name']} से "
+            f"{DRAFT_QUANTITY:g} {HINDI_UNITS.get(unit, unit)} {item_hi} का ऑर्डर नीचे तैयार है। "
+            f"आपके भेजे बिना कुछ नहीं जाता, और यह सिर्फ़ डेमो है। {next_line_hi('suppliers')}"
         )
     else:
         names = "; ".join(
@@ -572,6 +593,14 @@ async def public_demo_turn(ctx: Any, question: str) -> list[StreamEvent] | None:
     return events
 
 
+def _stock_hi(item: dict[str, Any]) -> str:
+    name = hindi_item(item["name"])
+    if item.get("stock") is None:
+        return f"{name} की बिक्री चालू है, इसका स्टॉक गिना नहीं जाता।"
+    unit = str(item.get("unit") or "")
+    return f"{name} का स्टॉक {item['stock']:g} {HINDI_UNITS.get(unit, unit)} है।"
+
+
 def public_demo_reply(ctx: Any, question: str) -> str | None:
     """Answer public demo questions from seeded records, without tools or providers."""
     if not ctx.business_id or not ctx.uid.startswith("public-demo-"):
@@ -602,11 +631,12 @@ def public_demo_reply(ctx: Any, question: str) -> str | None:
     if re.search(r"[\u0900-\u097f]", question):
         # This offline demo has no translation model. Keep its answers in the language of a
         # Devanagari question, with the same seeded facts used by the English replies.
-        low = re.search(r"मेरा\s+(?P<item>[^।?]{1,40}?)\s+कम\s+हो\s+रहा", words)
+        low = LOW_HI.search(words)
         if low:
+            # Find suppliers did the work when it could; this is what no demo supplier sells.
             return (
-                f"असली दुकान में कोच पास के सप्लायर ढूँढकर {low['item']} का ऑर्डर तैयार करता है, "
-                "जिसे आप भेजते हैं। " + next_line_hi("suppliers")
+                f"डेमो के सप्लायरों के पास {low['item']} नहीं मिला। दूध या चीनी जैसी कोई चीज़ लिखकर "
+                "देखें। " + next_line_hi("suppliers")
             )
         if HINDI_BEST_SELLERS.search(question):
             from .coordinator import get_insights
@@ -614,7 +644,9 @@ def public_demo_reply(ctx: Any, question: str) -> str | None:
             top = get_insights().get("top_sellers") or []
             if not top:
                 return "डेमो दुकान में पिछले 7 दिनों की कोई बिक्री अभी सेव नहीं है।"
-            names = ", ".join(f"{row['item']} ({row['quantity']:g} बिके)" for row in top[:3])
+            names = ", ".join(
+                f"{hindi_item(row['item'])} ({row['quantity']:g} बिके)" for row in top[:3]
+            )
             return f"पिछले 7 दिनों में डेमो के सबसे ज़्यादा बिकने वाले आइटम: {names}। " + next_line_hi(
                 "insights"
             )
@@ -623,24 +655,47 @@ def public_demo_reply(ctx: Any, question: str) -> str | None:
                 "डेमो में Google पर आने का अभ्यास करें: यह सिर्फ़ दिखावा है, Google को कुछ नहीं भेजा "
                 f"जाता। {next_line_hi('google')}"
             )
-        unit = str(product.get("unit") or "चीज़ें")
-        unit_hi = HINDI_UNITS.get(unit, unit)
+        said = item_named_in(question)
+        saved = named or next((item for item in inventory if item["name"] == said), None)
+        # No name in the question: what the shop buys and counts, not the first on the menu.
+        counted = next(
+            (i for i in inventory if i.get("source") == "bought" and i.get("stock") is not None),
+            product,
+        )
         if any(term in words for term in ("आज", "बिक्री", "कमाई")):
             rows = [row for row in history if row["date"] == today.isoformat()]
             sold = sum(row["quantity"] for row in rows)
             revenue = sum(row.get("revenue", row.get("amount", 0)) for row in rows)
             return f"आज डेमो में {sold:g} चीज़ें बिकीं और बिक्री ₹{revenue:g} रही।"
-        if any(term in words for term in ("स्टॉक", "बचा", "उपलब्ध", "खत्म", "कम")):
-            return f"डेमो में {name} का स्टॉक {stock:g} {unit_hi} है।"
+        if any(term in words for term in ("स्टॉक", "बचा", "उपलब्ध", "खत्म", "ख़त्म", "कम")):
+            if said and not saved:
+                return f"डेमो दुकान में {hindi_item(said)} का स्टॉक दर्ज नहीं है।"
+            return "डेमो में " + _stock_hi(saved or counted)
         if any(term in words for term in ("कीमत", "दाम", "भाव")):
-            return f"डेमो में {name} की कीमत ₹{price:g} है।"
+            if said and not saved:
+                return f"{hindi_item(said)} डेमो दुकान के मेन्यू में नहीं है।"
+            priced = saved or product
+            rupees = to_major(cast(int, priced.get("price", 0)), shop_currency(business))
+            return f"डेमो में {hindi_item(priced['name'])} की कीमत ₹{rupees:g} है।"
         if any(term in words for term in ("ऑर्डर", "सप्लायर", "मंगाऊँ", "खरीद")):
             orders = supply_chain.orders(store, uid, bid)
             po = next((order for order in orders if order.get("supplier")), None)
             supplier = po["supplier"]["name"] if po else "डेमो सप्लायर"
-            return f"डेमो सप्लायर {supplier} है। {name} का स्टॉक {stock:g} {unit_hi} है।"
+            return f"डेमो सप्लायर {supplier} है। {_stock_hi(saved or counted)}"
         if any(term in words for term in ("कल", "तैयार", "बनाऊँ")):
-            return f"कल {name} की तैयारी के लिए डेमो बिक्री का औसत देखें।"
+            tomorrow = today.fromordinal(today.toordinal() + 1)
+            usual = [row for row in weekday_average(history, today) if row.date == tomorrow]
+            picked = [row for row in usual if not saved or row.item == saved["name"]]
+            top = sorted(picked, key=lambda row: -row.quantity)[:3]
+            if not top:
+                return "कल की तैयारी के लिए डेमो में अभी पिछली बिक्री नहीं है।"
+            units = {item["name"]: str(item.get("unit") or "") for item in inventory}
+            plan = ", ".join(
+                f"{hindi_item(row.item)} {row.quantity:g} "
+                f"{HINDI_UNITS.get(units.get(row.item, ''), units.get(row.item, ''))}".rstrip()
+                for row in top
+            )
+            return f"कल की तैयारी: {plan} (पिछली बिक्री का औसत)।"
         if any(term in words for term in ("समय", "खुला", "खुलती", "बंद")):
             return f"डेमो दुकान का समय {fields.get('hours', 'दिया नहीं गया')} है।"
         if any(term in words for term in ("ग्राहक", "सवाल", "जवाब", "संदेश")):

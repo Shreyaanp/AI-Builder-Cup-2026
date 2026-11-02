@@ -400,7 +400,7 @@ DEMO_COACH_PHRASINGS: list[tuple[str, dict]] = [
     ("What sells the most?", {"reply": "best sellers: Masala chai"}),
     (
         "सबसे ज़्यादा क्या बिकता है?",
-        {"reply": "पिछले 7 दिनों में डेमो के सबसे ज़्यादा बिकने वाले आइटम: Masala chai"},
+        {"reply": "पिछले 7 दिनों में डेमो के सबसे ज़्यादा बिकने वाले आइटम: मसाला चाय"},
     ),
     ("how many people bought samosa", {"absent": "page was opened"}),
     ("Should I visit the wholesaler tomorrow?", {"absent": "page was opened"}),

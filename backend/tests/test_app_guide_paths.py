@@ -177,7 +177,15 @@ def test_demo_answers_every_chat_phrase_on_topic_with_its_screen_path(app, featu
             r"Demo suppliers near you for Milk",
             "Grow → Orders → Find a supplier",
         ),
-        ("मेरा दूध 20 लीटर कम हो रहा है। सप्लायर खोजें।", r"सप्लायर.*दूध 20 लीटर", None),
+        # And in Hindi: the same work, in the same words the screens use (OB-248).
+        (
+            "मेरा दूध 20 लीटर कम हो रहा है। सप्लायर खोजें।",
+            r"दूध के लिए पास के डेमो सप्लायर: 1\. Sri Lakshmi Provisions \(Demo\), [\d.]+ किमी, ₹54 प्रति "
+            r"लीटर; 2\. FreshMart \(Demo\), [\d.]+ किमी, ₹29 प्रति पैक। Sri Lakshmi Provisions "
+            r"\(Demo\) से 10 लीटर दूध का ऑर्डर नीचे तैयार है। आपके भेजे बिना कुछ नहीं जाता, और यह "
+            r"सिर्फ़ डेमो है। अब Grow → Orders → Find a supplier खोलें।",
+            None,
+        ),
         # The PR's own "Owner looks at" phrases.
         (
             "how was this week",
