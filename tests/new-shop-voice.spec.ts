@@ -361,9 +361,14 @@ test('voice rate limit: the alert says how long to wait; voice unavailable: carr
   })
   await enter(page)
   await openFlow(page)
+  // A slow phone: the refused session goes connecting → idle in one render, and the coach must
+  // still greet by text (it never did when only the voice state was watched).
+  const cdp = await page.context().newCDPSession(page)
+  await cdp.send('Emulation.setCPUThrottlingRate', { rate: 6 })
   await page.getByRole('button', { name: 'Let’s begin' }).click()
   const alert = page.getByTestId('voice-alert')
   await expect(alert).toContainText('Voice is busy')
+  await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 })
   await expect(alert).toContainText(/Try again in [12] s/)
   const retry = alert.getByRole('button', { name: 'Try again' })
   await expect(retry).toBeDisabled()

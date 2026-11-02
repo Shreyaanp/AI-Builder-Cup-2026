@@ -906,9 +906,12 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
       void sendText(f.start)
     }
   })
+  // The problem too: a session refused at once (busy, unavailable) can go connecting → idle in one
+  // render on a slow phone, and the state alone would never change, so the coach never greeted.
+  const voiceProblem = voice.problem
   useEffect(() => {
     if (voiceState === 'idle') voiceEnded()
-  }, [voiceState])
+  }, [voiceState, voiceProblem])
 
   // Review is a page of its own: nobody listens there. Coming back resumes the voice.
   const enterPhase = useEffectEvent((next: typeof phase) => {

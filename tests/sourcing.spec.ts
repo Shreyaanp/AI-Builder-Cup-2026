@@ -42,6 +42,12 @@ test('running low → demo suppliers → one-tap order → supplier reply → Or
   await expect(page.getByText(/replied: “Confirmed:/)).toBeVisible({ timeout: 30_000 })
   await expect(page.getByText('Automatic demo reply').first()).toBeVisible()
 
+  // A slow network: the orders arrive a moment after the sheet opens. Until then it holds the
+  // order's place; it never flashes the Orders list and its search field to type into by mistake.
+  await page.route('**/api/v1/businesses/*/orders', async (route) => {
+    await new Promise((done) => setTimeout(done, 1500))
+    await route.fallback()
+  })
   await page.getByRole('button', { name: 'Open conversation' }).click()
   const thread = page.getByRole('dialog')
   await thread.getByRole('textbox').fill('Can you deliver by 8am?')

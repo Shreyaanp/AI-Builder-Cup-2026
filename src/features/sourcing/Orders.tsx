@@ -9,6 +9,7 @@ import {
   ListItem,
   ListItemButton,
   ListItemText,
+  Skeleton,
   Stack,
   TextField,
   Typography,
@@ -101,6 +102,9 @@ export function OrdersSheet({
     setPicked(orderId)
   }
   const selected = orders?.find((order) => order.id === picked) ?? null
+  // Opened on one order before the list arrives: hold its place instead of flashing the list
+  // and its search field, which a quick tap or typed word would land in by mistake.
+  const loadingPicked = picked !== null && orders === null
   const receiveOrder = useReceiveOrder()
   function close() {
     setPicked(null)
@@ -130,8 +134,13 @@ export function OrdersSheet({
       }
     >
       {/* Always a screen way in, beside "tell the coach" (simplify batch 2). */}
-      {!selected && <FindSupplier onStart={close} />}
-      {selected ? (
+      {!selected && !loadingPicked && <FindSupplier onStart={close} />}
+      {loadingPicked ? (
+        <Stack spacing={2} aria-busy="true">
+          <Skeleton variant="rounded" height={120} />
+          <Skeleton variant="rounded" height={56} />
+        </Stack>
+      ) : selected ? (
         <Thread
           key={selected.id}
           order={selected}
