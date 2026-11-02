@@ -1,17 +1,14 @@
 import { useEffect, useState } from 'react'
-import { Typography } from '@mui/material'
 import { Layers } from 'lucide-react'
-import { formatLocale } from '../../i18n/locales'
-import { useLocale } from '../../state/hooks'
-import { Tile } from '../v1/ShopTiles'
+import { ShopRow } from '../v1/ShopRow'
 import { useWorkspace } from '../v1/workspaceContext'
 import { ConnectSheet } from './ConnectSheet'
 import { useConnectCopy } from './strings'
 import type { SavedMappingSummary } from './types'
 
-export function ConnectTile() {
+/** Shop → More: "Link your billing app", with the last linked app's name once there is one. */
+export function ConnectRow() {
   const t = useConnectCopy()
-  const locale = useLocale()
   const ws = useWorkspace()
   const shop = ws.active
   const [open, setOpen] = useState(false)
@@ -30,32 +27,14 @@ export function ConnectTile() {
     }
   }, [shop, ws])
 
-  const latest = savedMappings[0]
-  const tileValue = latest ? `${latest.source_label}` : t.connectType
-  const supporting = latest
-    ? latest.last_synced
-      ? t.lastSynced(new Date(latest.last_synced * 1000).toLocaleDateString(formatLocale(locale)))
-      : t.notSyncedYet
-    : t.connectSubtitle
-
   return (
     <>
-      <Tile
+      <ShopRow
         icon={<Layers size={20} />}
         label={t.connectTitle}
-        value={tileValue}
+        value={savedMappings[0]?.source_label}
         onClick={() => setOpen(true)}
-      >
-        <Typography
-          component="span"
-          variant="bodySmall"
-          color="text.secondary"
-          sx={{ display: 'block', mt: 0.5 }}
-        >
-          {supporting}
-        </Typography>
-      </Tile>
-
+      />
       <ConnectSheet open={open} onClose={() => setOpen(false)} />
     </>
   )

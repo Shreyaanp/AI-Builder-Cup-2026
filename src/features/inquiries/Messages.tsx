@@ -3,11 +3,26 @@ import { conversationEnglish } from './conversationCopy'
 import type { ConversationCopy, Translation } from './conversationCopy'
 import { followInquiries } from '../../api/inquiryStream'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Alert, Box, Button, CircularProgress, Divider, Stack, Typography } from '@mui/material'
+import {
+  Alert,
+  Box,
+  Button,
+  ButtonBase,
+  Divider,
+  IconButton,
+  Menu,
+  MenuItem,
+  Stack,
+  Typography,
+  useTheme,
+} from '@mui/material'
+import { visuallyHidden } from '@mui/utils'
+import { ChevronLeft, EllipsisVertical } from 'lucide-react'
 import type { components } from '../../api/generated'
 import type { Locale } from '../../i18n/locales'
 import { useLocale } from '../../state/hooks'
 import { useWorkspace } from '../v1/workspaceContext'
+import { useCopy } from '../v1/strings'
 import type { TipList } from '../customer/types'
 import { OwnerTips } from './OwnerTips'
 import { useGuestCopy } from '../customer/guestCopy'
@@ -577,6 +592,9 @@ export function Messages({ businessId }: { businessId: string }) {
   const [busy, setBusy] = useState(false)
   const [selected, setSelected] = useState<string | null>(null)
   const [confirmBlock, setConfirmBlock] = useState(false)
+  const [menu, setMenu] = useState<HTMLElement | null>(null)
+  const v1 = useCopy()
+  const roles = useTheme().material
   const [tips, setTips] = useState<TipList | null>(null)
   const lifetime = useRef<AbortController | null>(null)
   const path = `/businesses/${encodeURIComponent(businessId)}/inquiries`
@@ -637,29 +655,50 @@ export function Messages({ businessId }: { businessId: string }) {
     })
     setItems((current) => current.map((item) => (item.id === result.id ? result : item)))
   }
+  const unreadCount = items.filter((item) => item.unread && !item.done).length
+  const run = async (action: () => Promise<void>) => {
+    setBusy(true)
+    setError(false)
+    try {
+      await action()
+    } catch {
+      setError(true)
+    } finally {
+      setBusy(false)
+    }
+  }
   return (
     <Box component="section" aria-labelledby="messages-title">
-      <Stack direction="row" sx={{ gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
-        <Typography id="messages-title" component="h2" variant="titleLarge" sx={{ flex: 1 }}>
-          {t.title} ({items.filter((item) => item.unread && !item.done).length})
-        </Typography>
-        <Button
-          disabled={loading || busy}
-          onClick={() => {
-            if (lifetime.current) void load(lifetime.current.signal)
-          }}
-          startIcon={loading ? <CircularProgress size={16} /> : undefined}
-        >
-          {t.reload}
-        </Button>
-      </Stack>
+      {/* One header: "Messages (n)" on the list; inside a conversation, ‹ and the customer's name. */}
+      <Typography
+        id="messages-title"
+        component="h2"
+        variant="titleLarge"
+        sx={thread ? visuallyHidden : undefined}
+      >
+        {t.title} ({unreadCount})
+      </Typography>
       {polling && (
         <Typography role="status" variant="bodySmall">
           {t.polling}
         </Typography>
       )}
       {error && (
-        <Alert severity="error" sx={{ mt: 2 }}>
+        <Alert
+          severity="error"
+          sx={{ mt: 2 }}
+          action={
+            <Button
+              color="inherit"
+              disabled={loading || busy}
+              onClick={() => {
+                if (lifetime.current) void load(lifetime.current.signal)
+              }}
+            >
+              {t.reload}
+            </Button>
+          }
+        >
           {t.failed}
         </Alert>
       )}
@@ -669,23 +708,96 @@ export function Messages({ businessId }: { businessId: string }) {
         </Typography>
       )}
       {thread ? (
-        <Stack spacing={2} sx={{ mt: 2 }}>
-          <Button
-            onClick={() => {
-              setSelected(null)
-              setConfirmBlock(false)
-            }}
-            sx={{ alignSelf: 'flex-start' }}
-          >
-            {t.back}
-          </Button>
-          <Typography component="h3" variant="titleMedium">
-            {thread.name || t.unnamed}
-          </Typography>
+        <Stack spacing={2}>
+          <Stack direction="row" sx={{ alignItems: 'center', gap: 1 }}>
+            <IconButton
+              aria-label={t.back}
+              onClick={() => {
+                setSelected(null)
+                setConfirmBlock(false)
+              }}
+              sx={{ width: 48, height: 48, ml: -2 }}
+            >
+              <ChevronLeft size={24} />
+            </IconButton>
+            <Typography
+              component="h3"
+              variant="titleLarge"
+              sx={{ flex: 1, minWidth: 0, overflowWrap: 'anywhere' }}
+            >
+              {thread.name || t.unnamed}
+            </Typography>
+            <IconButton
+              aria-label={v1.moreOptions}
+              aria-haspopup="menu"
+              aria-expanded={menu ? 'true' : undefined}
+              onClick={(event) => setMenu(event.currentTarget)}
+              sx={{ width: 48, height: 48 }}
+            >
+              <EllipsisVertical size={22} />
+            </IconButton>
+            <Menu anchorEl={menu} open={Boolean(menu)} onClose={() => setMenu(null)}>
+              {!thread.done && (
+                <MenuItem
+                  disabled={busy}
+                  onClick={() => {
+                    setMenu(null)
+                    void run(() => update(thread.id, 'done'))
+                  }}
+                  sx={{ minHeight: 48 }}
+                >
+                  {t.closeChat}
+                </MenuItem>
+              )}
+              {thread.blocked ? (
+                <MenuItem
+                  disabled={busy}
+                  onClick={() => {
+                    setMenu(null)
+                    void run(() => update(thread.id, 'unblock'))
+                  }}
+                  sx={{ minHeight: 48 }}
+                >
+                  {guest.unblock}
+                </MenuItem>
+              ) : (
+                <MenuItem
+                  disabled={busy}
+                  onClick={() => {
+                    setMenu(null)
+                    setConfirmBlock(true)
+                  }}
+                  sx={{ minHeight: 48, color: 'error.main' }}
+                >
+                  {t.block}
+                </MenuItem>
+              )}
+            </Menu>
+          </Stack>
           {!thread.contact.endsWith('@guest.invalid') && (
             <Typography variant="bodyMedium" sx={{ overflowWrap: 'anywhere' }}>
               {thread.contact}
             </Typography>
+          )}
+          {confirmBlock && (
+            <Box role="group" aria-label={t.confirmBlock}>
+              <Typography variant="bodyMedium">{t.confirmBlock}</Typography>
+              <Button
+                disabled={busy}
+                color="error"
+                onClick={() =>
+                  void run(async () => {
+                    await update(thread.id, 'block')
+                    setConfirmBlock(false)
+                  })
+                }
+              >
+                {t.block}
+              </Button>
+              <Button disabled={busy} onClick={() => setConfirmBlock(false)}>
+                {t.cancel}
+              </Button>
+            </Box>
           )}
           <ConversationView
             key={thread.id}
@@ -703,75 +815,6 @@ export function Messages({ businessId }: { businessId: string }) {
               })
             }
           />
-          <Stack direction="row" sx={{ gap: 1, flexWrap: 'wrap' }}>
-            {!thread.done && (
-              <Button
-                disabled={busy}
-                onClick={async () => {
-                  setBusy(true)
-                  setError(false)
-                  try {
-                    await update(thread.id, 'done')
-                  } catch {
-                    setError(true)
-                  } finally {
-                    setBusy(false)
-                  }
-                }}
-              >
-                {t.closeChat}
-              </Button>
-            )}
-            {thread.blocked && (
-              <Button
-                disabled={busy}
-                onClick={async () => {
-                  setBusy(true)
-                  setError(false)
-                  try {
-                    await update(thread.id, 'unblock')
-                  } catch {
-                    setError(true)
-                  } finally {
-                    setBusy(false)
-                  }
-                }}
-              >
-                {guest.unblock}
-              </Button>
-            )}
-            {!thread.blocked && (
-              <Button disabled={busy} color="error" onClick={() => setConfirmBlock(true)}>
-                {t.block}
-              </Button>
-            )}
-          </Stack>
-          {confirmBlock && (
-            <Box role="group" aria-label={t.confirmBlock}>
-              <Typography variant="bodyMedium">{t.confirmBlock}</Typography>
-              <Button
-                disabled={busy}
-                color="error"
-                onClick={async () => {
-                  setBusy(true)
-                  setError(false)
-                  try {
-                    await update(thread.id, 'block')
-                    setConfirmBlock(false)
-                  } catch {
-                    setError(true)
-                  } finally {
-                    setBusy(false)
-                  }
-                }}
-              >
-                {t.block}
-              </Button>
-              <Button disabled={busy} onClick={() => setConfirmBlock(false)}>
-                {t.cancel}
-              </Button>
-            </Box>
-          )}
         </Stack>
       ) : (
         <>
@@ -780,55 +823,88 @@ export function Messages({ businessId }: { businessId: string }) {
               {t.empty}
             </Typography>
           )}
+          {/* A chat list: the whole row opens the conversation. */}
           <Stack
             component="ul"
             divider={<Divider component="li" aria-hidden="true" />}
-            sx={{ p: 0, listStyle: 'none' }}
+            sx={{ p: 0, mt: 2, mb: 0, listStyle: 'none' }}
           >
-            {items.map((item) => (
-              <Box
-                component="li"
-                key={item.id}
-                sx={{
-                  py: 2,
-                  overflowWrap: 'anywhere',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'flex-start',
-                }}
-              >
-                <Typography component="h3" variant="titleMedium">
-                  {item.name || t.unnamed}
-                </Typography>
-                {!item.contact.endsWith('@guest.invalid') && (
-                  <Typography variant="bodyMedium">{item.contact}</Typography>
-                )}
-                <Typography variant="bodyLarge" sx={{ whiteSpace: 'pre-wrap' }}>
-                  {/* The latest words from a person, not the AI's instant answer. */}
-                  {item.messages?.filter((m) => m.kind !== 'ai').at(-1)?.text ?? item.message}
-                </Typography>
-                <Typography variant="labelMedium">
-                  {item.blocked ? t.blocked : item.done ? t.closed : item.unread ? t.unread : ''}
-                </Typography>
-                <Button
-                  disabled={busy}
-                  onClick={async () => {
-                    setBusy(true)
-                    setError(false)
-                    try {
-                      await update(item.id, 'read')
-                      setSelected(item.id)
-                    } catch {
-                      setError(true)
-                    } finally {
-                      setBusy(false)
+            {items.map((item) => {
+              const name = item.name || t.unnamed
+              const status = item.blocked
+                ? t.blocked
+                : item.done
+                  ? t.closed
+                  : item.unread
+                    ? t.unread
+                    : ''
+              return (
+                <Box component="li" key={item.id}>
+                  <ButtonBase
+                    disabled={busy}
+                    aria-label={`${t.openChat}: ${name}`}
+                    aria-describedby={`inquiry-${item.id}`}
+                    onClick={() =>
+                      void run(async () => {
+                        await update(item.id, 'read')
+                        setSelected(item.id)
+                      })
                     }
-                  }}
-                >
-                  {t.openChat}
-                </Button>
-              </Box>
-            ))}
+                    sx={{
+                      width: '100%',
+                      minHeight: 56,
+                      py: 2,
+                      gap: 3,
+                      justifyContent: 'flex-start',
+                      textAlign: 'start',
+                      overflowWrap: 'anywhere',
+                      '&:focus-visible': {
+                        outline: `3px solid ${roles.primary}`,
+                        outlineOffset: -3,
+                      },
+                    }}
+                  >
+                    <Box component="span" id={`inquiry-${item.id}`} sx={{ flex: 1, minWidth: 0 }}>
+                      <Typography component="span" variant="titleMedium" sx={{ display: 'block' }}>
+                        {name}
+                      </Typography>
+                      <Typography
+                        component="span"
+                        variant="bodyMedium"
+                        color="text.secondary"
+                        sx={{
+                          display: '-webkit-box',
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: 'vertical',
+                          overflow: 'hidden',
+                        }}
+                      >
+                        {/* The latest words from a person, not the AI's instant answer. */}
+                        {item.messages?.filter((m) => m.kind !== 'ai').at(-1)?.text ?? item.message}
+                      </Typography>
+                      {status && (
+                        <Typography component="span" variant="labelLarge" sx={{ display: 'block' }}>
+                          {status}
+                        </Typography>
+                      )}
+                    </Box>
+                    {item.unread && !item.done && (
+                      <Box
+                        component="span"
+                        aria-hidden="true"
+                        sx={{
+                          width: 10,
+                          height: 10,
+                          flexShrink: 0,
+                          borderRadius: '50%',
+                          bgcolor: roles.primary,
+                        }}
+                      />
+                    )}
+                  </ButtonBase>
+                </Box>
+              )
+            })}
           </Stack>
           <OwnerTips list={tips} />
         </>
