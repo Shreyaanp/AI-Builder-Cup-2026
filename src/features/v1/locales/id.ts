@@ -412,8 +412,6 @@ export const id: Copy = {
   dataSection: 'Data Anda',
   dataBody: 'Hapus toko, produk, percakapan, memori, foto, dan data wajah dari Chalkboard.',
   deleteAll: 'Hapus semua data saya',
-  deleteDemo:
-    'Hapus data tidak tersedia di demo. Di akun asli, Anda bisa menghapus semuanya di sini.',
   deleteTitle: 'Hapus semuanya?',
   deleteBody:
     'Semua toko, produk, percakapan, foto, dan data wajah dihapus permanen. Tidak dapat dibatalkan.',

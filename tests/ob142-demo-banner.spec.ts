@@ -28,7 +28,7 @@ for (const appearance of ['light', 'dark']) {
             : route.abort(),
         )
         await page.goto(path, { waitUntil: 'domcontentloaded' })
-        const notice = page.getByText('Demo shop – nothing here is real', { exact: true })
+        const notice = page.getByText('Demo shop · sample data', { exact: true })
         await expect(notice).toBeVisible()
         await page.evaluate(() => document.fonts.ready)
         const header = notice.locator('xpath=ancestor::header')

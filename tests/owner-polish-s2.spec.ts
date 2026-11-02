@@ -29,7 +29,7 @@ test('O-6: the Shop details card opens the details sheet', async ({ page }, info
 test('O-7: switching to Hindi shows no reminder error', async ({ page }, info) => {
   await openDemo(page, info)
   await page.locator('[data-tour="nav-you"]').click()
-  await expect(page.locator('#reminder-status')).toContainText('Demo')
+  await expect(page.locator('#reminder-status')).toContainText('In the demo')
   await page.getByRole('combobox', { name: /Language/ }).click()
   await page.getByRole('option', { name: 'हिन्दी' }).click()
   await expect(page.locator('html')).toHaveAttribute('lang', 'hi')
@@ -38,11 +38,11 @@ test('O-7: switching to Hindi shows no reminder error', async ({ page }, info) =
   await expect(page.getByText('बदलाव नहीं हुआ')).toHaveCount(0)
 })
 
-test('O-8: the demo explains that deleting data is not available', async ({ page }, info) => {
+test('O-8: deleting data in the demo says plainly it is pretend', async ({ page }, info) => {
   await openDemo(page, info)
   await page.locator('[data-tour="nav-you"]').click()
   await page.getByRole('button', { name: /Privacy & your data/ }).tap()
-  await expect(page.getByText("Deleting data isn't available in the demo.")).toBeVisible()
+  await expect(page.getByText('In the demo this is pretend: nothing is sent')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Delete all my data' })).toHaveCount(0)
 })
 

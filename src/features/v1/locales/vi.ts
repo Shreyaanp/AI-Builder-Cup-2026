@@ -409,7 +409,6 @@ export const vi: Copy = {
   dataSection: 'Dữ liệu của bạn',
   dataBody: 'Xóa cửa hàng, sản phẩm, trò chuyện, bộ nhớ, ảnh và dữ liệu khuôn mặt khỏi Chalkboard.',
   deleteAll: 'Xóa toàn bộ dữ liệu',
-  deleteDemo: 'Bản demo không xóa được dữ liệu. Với tài khoản thật, bạn xóa toàn bộ tại đây.',
   deleteTitle: 'Xóa tất cả?',
   deleteBody:
     'Xóa vĩnh viễn mọi cửa hàng, sản phẩm, trò chuyện, ảnh và dữ liệu khuôn mặt. Không thể hoàn tác.',

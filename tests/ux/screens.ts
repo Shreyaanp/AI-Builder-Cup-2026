@@ -18,7 +18,7 @@ async function settle(page: Page) {
 
 async function demoTab(page: Page, tab: 'coach' | 'shop' | 'grow' | 'you') {
   await page.goto(tab === 'coach' ? '/demo' : `/demo?tab=${tab}`, { waitUntil: 'domcontentloaded' })
-  await expect(page.getByText('Demo shop – nothing here is real', { exact: true })).toBeVisible({
+  await expect(page.getByText('Demo shop · sample data', { exact: true })).toBeVisible({
     timeout: 30_000,
   })
   const skip = page.getByRole('dialog').getByRole('button', { name: 'Skip', exact: true })

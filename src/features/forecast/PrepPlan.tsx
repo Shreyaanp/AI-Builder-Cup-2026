@@ -3,12 +3,13 @@ import { Button, Stack, Typography } from '@mui/material'
 import { CalendarClock, PackageSearch } from 'lucide-react'
 import type { components } from '../../api/generated'
 import { useLocale } from '../../state/hooks'
+import { productFeminine, productName } from '../../i18n/productNames'
 import { Tile, Supporting } from '../v1/ShopTiles'
 import { useCopy } from '../v1/strings'
 import { useWorkspace } from '../v1/workspaceContext'
 import { useSourcingCopy } from '../sourcing/copy'
 import { Sheet } from '../v1/Sheet'
-import { dayLabel, leadNeed, useOnOrderText, useSupply } from '../supply/supplyData'
+import { dayLabel, leadNeed, useOnOrderText, useOrderUnit, useSupply } from '../supply/supplyData'
 import { useOrderChangeCopy } from '../supply/orderChangeCopy'
 
 type Forecast = components['schemas']['Forecast']
@@ -22,6 +23,7 @@ export function PrepPlanTile() {
   const s = useSourcingCopy()
   const c = useOrderChangeCopy()
   const locale = useLocale()
+  const unit = useOrderUnit()
   // The supply needs are the one source for "runs out" and "on order", same as Today.
   const { data: supply } = useSupply(true)
   const onOrderText = useOnOrderText()
@@ -98,7 +100,7 @@ export function PrepPlanTile() {
                 variant="bodyMedium"
                 sx={{ overflowWrap: 'anywhere', fontVariantNumeric: 'tabular-nums' }}
               >
-                {row.item} · {number.format(row.quantity)} {row.unit}
+                {productName(row.item, locale)} · {number.format(row.quantity)} {unit(row.unit)}
               </Typography>
             ))}
           </Stack>
@@ -140,13 +142,13 @@ export function PrepPlanTile() {
                 sx={{ gap: 2, justifyContent: 'space-between', alignItems: 'baseline' }}
               >
                 <Typography variant="bodyLarge" sx={{ minWidth: 0, overflowWrap: 'anywhere' }}>
-                  {row.item}
+                  {productName(row.item, locale)}
                 </Typography>
                 <Typography
                   variant="bodyLarge"
                   sx={{ whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}
                 >
-                  {number.format(row.quantity)} {row.unit}
+                  {number.format(row.quantity)} {unit(row.unit)}
                 </Typography>
               </Stack>
             ))}
@@ -165,10 +167,14 @@ export function PrepPlanTile() {
           icon={<PackageSearch size={20} />}
           label={
             need
-              ? s.runsOut(need.item, dayLabel(need.runs_out, locale))
+              ? s.runsOut(
+                  productName(need.item, locale),
+                  dayLabel(need.runs_out, locale),
+                  productFeminine(need.item, locale),
+                )
               : s.runningLow(
                   low
-                    .map((item) => item.name)
+                    .map((item) => productName(item.name, locale))
                     .slice(0, 3)
                     .join(', '),
                 )

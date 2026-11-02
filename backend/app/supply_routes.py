@@ -6,7 +6,7 @@ import anyio
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, ConfigDict, Field
 
-from . import coordinator, supply_chain, supply_coming, supply_io, supply_outbound
+from . import coordinator, demo_supplier, supply_chain, supply_coming, supply_io, supply_outbound
 from .forecast import ForecastService
 from .limits import enforce_limits
 from .merchant_routes import consented_owner, owner, store
@@ -66,6 +66,10 @@ class InboundBody(BaseModel):
     model_config = ConfigDict(extra="forbid")
     version: int = Field(ge=1)
     text: str = Field(min_length=10, max_length=20_000)
+
+
+class TalkBody(Version):
+    text: str = Field(pattern=r"\S", max_length=300)
 
 
 class FlagBody(BaseModel):
@@ -266,6 +270,23 @@ async def cancel_order(
     uid = await consented_owner(request)
     return await anyio.to_thread.run_sync(
         supply_chain.cancel, store(request), uid, business_id, order_id, body.version
+    )
+
+
+@router.post("/businesses/{business_id}/supply/orders/{order_id}/again")
+async def order_again(business_id: str, order_id: str, request: Request) -> dict[str, Any]:
+    uid = await consented_owner(request)
+    return await anyio.to_thread.run_sync(
+        supply_chain.order_again, store(request), uid, business_id, order_id
+    )
+
+
+@router.post("/businesses/{business_id}/supply/orders/{order_id}/talk")
+async def talk(business_id: str, order_id: str, body: TalkBody, request: Request) -> dict[str, Any]:
+    """Public demo only: a message to the scripted supplier. Nothing is sent to anyone."""
+    uid = await consented_owner(request)
+    return await anyio.to_thread.run_sync(
+        demo_supplier.write, store(request), uid, business_id, order_id, body.version, body.text
     )
 
 

@@ -23,6 +23,14 @@ export function orderTotal(order: Pick<PurchaseOrder, 'total' | 'lines'>): numbe
   return sum
 }
 
+/** What is coming on this line: the ordered amount, or what the supplier's accepted reply says. */
+export function agreedQuantity(
+  order: Partial<Pick<PurchaseOrder, 'status'>>,
+  line: Pick<PurchaseOrder['lines'][number], 'quantity' | 'confirmed'>,
+): number {
+  return order.status === 'changed' ? line.quantity : (line.confirmed ?? line.quantity)
+}
+
 /** The credit-terms phrase, or '' when the supplier's rules leave the days out. */
 export function termsLabel(
   terms: (days: number) => string,
@@ -35,6 +43,22 @@ export function termsLabel(
 export function orderLabel(
   order: Pick<PurchaseOrder, 'lines' | 'supplier' | 'reason'>,
   title: (item: string, supplier: string) => string,
+  name: (item: string) => string = (item) => item,
 ): string {
-  return title(order.reason?.item || order.lines?.[0]?.item || '', order.supplier.name)
+  const item = order.reason?.item || order.lines?.[0]?.item || ''
+  return title(item && name(item), order.supplier.name)
+}
+
+/** "18 kg +3": what an order is for at a glance, so two orders of one item never read alike. */
+export function orderSize(
+  order: Pick<PurchaseOrder, 'lines'> & Partial<Pick<PurchaseOrder, 'status'>>,
+  locale: string,
+  unit: (raw: string) => string,
+): string {
+  const [first, ...rest] = order.lines ?? []
+  if (!first) return ''
+  const quantity = new Intl.NumberFormat(locale, { maximumFractionDigits: 2 })
+  const size =
+    `${quantity.format(agreedQuantity(order, first) ?? 0)} ${unit(first.unit ?? '')}`.trim()
+  return rest.length ? `${size} +${rest.length}` : size
 }

@@ -10,7 +10,7 @@ import { useSupplyCopy } from './copy'
 import { useOrderChangeCopy } from './orderChangeCopy'
 import { dayLabel, useDraftReorder, useOnOrderText, useTodaySupplyLead } from './supplyData'
 import type { PurchaseOrder } from './types'
-import { productName } from '../../i18n/productNames'
+import { productFeminine, productName } from '../../i18n/productNames'
 
 /**
  * Today's one stock line (HABIT change 2): a row of "Needs you now" with the run-out day the
@@ -69,8 +69,13 @@ export function TodaySupply({ first, onAct }: { first: boolean; onAct?: () => vo
             aria-live="polite"
             sx={{ overflowWrap: 'anywhere', fontWeight: 500 }}
           >
-            {productName(item, locale)}{' '}
-            {need ? `${s.runsOut} ${dayLabel(need.runs_out, locale)}` : s.restocked}
+            {need
+              ? s.runsOutLine(
+                  productName(item, locale),
+                  dayLabel(need.runs_out, locale),
+                  productFeminine(item, locale),
+                )
+              : `${productName(item, locale)} ${s.restocked}`}
           </Typography>
           {onOrder ? (
             <Typography variant="bodyMedium" sx={{ color: roles.onSurfaceVariant }}>

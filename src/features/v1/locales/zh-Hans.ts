@@ -393,7 +393,6 @@ export const zhHans: Copy = {
   dataSection: '您的数据',
   dataBody: '从 Chalkboard 删除店铺、商品、对话、记忆、照片和人脸数据。',
   deleteAll: '删除所有数据',
-  deleteDemo: '演示中无法删除数据。真实账户可在此删除全部数据。',
   deleteTitle: '删除全部？',
   deleteBody: '将永久删除所有店铺、商品、对话、照片和人脸数据，无法撤销。',
   deleteConfirm: '永久删除',
