@@ -615,7 +615,7 @@ export function VoiceAlert({
         : problem.kind === 'connection'
           ? [v.connectionTitle, v.connectionBody, v.reconnect]
           : problem.kind === 'rate-limited'
-            ? [v.rateTitle, v.rateBody(Math.max(wait, 0)), v.tryAgain]
+            ? [v.rateTitle, wait > 0 ? v.rateBody(wait) : v.rateReady, v.tryAgain]
             : problem.kind === 'session-cap'
               ? [o.capTitle, o.capBody, o.talkAgain]
               : problem.kind === 'slow'
