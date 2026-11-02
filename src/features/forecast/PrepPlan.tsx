@@ -113,7 +113,7 @@ export function PrepPlanTile({ show }: { show?: 'plan' | 'runsOut' } = {}) {
             else startCoachDraft(t.prepQuestion)
           }}
         >
-          {rows.length > 0 && (
+          {rows.length > 0 && !asRow && (
             <Stack component="span" spacing={1}>
               {rows.map((row) => (
                 <Typography

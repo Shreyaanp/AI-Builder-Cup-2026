@@ -118,7 +118,9 @@ export function Tile({
         onClick={onClick}
         tour={tour}
         alert={alert}
-      />
+      >
+        {children}
+      </ListTile>
     )
   return (
     <ButtonBase

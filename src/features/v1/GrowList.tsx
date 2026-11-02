@@ -1,4 +1,4 @@
-import { useCallback, useId, useMemo, useState } from 'react'
+import { useCallback, useContext, useId, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Box, ButtonBase, Collapse, Typography, useTheme } from '@mui/material'
 import { visuallyHidden } from '@mui/utils'
@@ -22,16 +22,20 @@ export function ListTile({
   onClick,
   tour,
   alert = false,
+  children,
 }: {
   layout: 'row' | 'tool'
   icon: ReactNode
   label: string
   value: ReactNode
+  /** The tile's supporting lines: shown on a row inside an opened group, not on the list. */
+  children?: ReactNode
   onClick: () => void
   tour?: string
   alert?: boolean
 }) {
   const roles = useTheme().material
+  const inGroup = useContext(GroupContext) !== null
   useInGroup(label, !alert)
   if (layout === 'tool')
     return (
@@ -115,6 +119,7 @@ export function ListTile({
         >
           {value}
         </Typography>
+        {inGroup && children}
       </Box>
       <ChevronRight size={18} aria-hidden="true" color={roles.onSurfaceVariant} />
     </ButtonBase>

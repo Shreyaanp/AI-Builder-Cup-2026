@@ -170,7 +170,7 @@ for (const size of WIDTHS) {
     await expect(today).toContainText(/24 l on order/)
     await page.getByRole('button', { name: 'Grow', exact: true }).click()
     // Grow agrees with Today: milk is covered, so no supplier search is offered for it.
-    const runsOut = page.getByRole('button', { name: /^Milk runs out/ })
+    const runsOut = await growTool(page, /^Milk runs out/)
     await expect(runsOut).toContainText(/24 l on order, arriving/)
     await expect(runsOut).not.toContainText('Find suppliers')
 
@@ -188,9 +188,7 @@ for (const size of WIDTHS) {
     })
     await page.getByRole('button', { name: 'Coach', exact: true }).click()
     await page.getByRole('button', { name: 'Grow', exact: true }).click()
-    await expect(page.getByRole('button', { name: /^Milk runs out/ })).toContainText(
-      'Find suppliers',
-    )
+    await expect(await growTool(page, /^Milk runs out/)).toContainText('Find suppliers')
     await page.unroute(/\/businesses\/[^/]+\/supply$/)
     await openGrowTool(page, /^Purchase orders/)
     const sheet = page.getByRole('dialog', { name: 'Purchase orders', exact: true })
@@ -269,7 +267,7 @@ for (const size of WIDTHS) {
     // Grow reads the same needs: the same item and day, with Find suppliers for it.
     const day = (await today.innerText()).match(new RegExp(`${other} runs out (.+)`))?.[1]
     await page.getByRole('button', { name: 'Grow', exact: true }).click()
-    const tile = page.getByRole('button', { name: new RegExp(`^${other} runs out`) })
+    const tile = await growTool(page, new RegExp(`^${other} runs out`))
     await expect(tile).toContainText('Find suppliers')
     await expect(tile).toContainText(day?.trim() ?? '')
     await expect(page.getByRole('button', { name: new RegExp(`^${first} runs out`) })).toHaveCount(
@@ -299,7 +297,7 @@ for (const size of WIDTHS) {
     await page.getByRole('button', { name: 'Try supply demo', exact: true }).click()
     await expect(page.getByRole('region', { name: 'Supply chain' })).toContainText(/Milk runs out/)
     await page.getByRole('button', { name: 'Grow', exact: true }).click()
-    const tile = page.getByRole('button', { name: /^Milk runs out/ })
+    const tile = await growTool(page, /^Milk runs out/)
     // 12 l on its way is short of the week's 25 l: still to order, with what is coming shown.
     await expect(tile).toContainText('Find suppliers')
     await expect(tile).toContainText(/12 l on order, arriving/)
@@ -342,7 +340,7 @@ for (const size of WIDTHS) {
     await page.getByRole('button', { name: 'Try supply demo', exact: true }).click()
     await expect(page.getByRole('region', { name: 'Supply chain' })).toContainText(/Milk runs out/)
     await page.getByRole('button', { name: 'Grow', exact: true }).click()
-    const tile = page.getByRole('button', { name: /^Milk runs out/ })
+    const tile = await growTool(page, /^Milk runs out/)
     await expect(tile).toContainText(/12 l on order, arriving/)
 
     // Receive the whole order from the Supply chain sheet, close it: no stale "on order".
@@ -375,7 +373,7 @@ for (const size of WIDTHS) {
     await page.getByRole('button', { name: 'Try supply demo', exact: true }).click()
     await expect(page.getByRole('region', { name: 'Supply chain' })).toContainText(/Milk runs out/)
     await page.getByRole('button', { name: 'Grow', exact: true }).click()
-    const tile = page.getByRole('button', { name: /^Milk runs out/ })
+    const tile = await growTool(page, /^Milk runs out/)
     await expect(tile).toContainText(/12 l on order, arriving/)
 
     // The demo partner is a buyer: its order for 20 l Milk is one to ship, not stock coming in.
@@ -428,7 +426,7 @@ for (const size of WIDTHS) {
 
     await page.getByRole('button', { name: 'Coach', exact: true }).click()
     await page.getByRole('button', { name: 'Grow', exact: true }).click()
-    const tile = page.getByRole('button', { name: /^Milk runs out/ })
+    const tile = await growTool(page, /^Milk runs out/)
     await expect(tile).toContainText(/12 l on order, arriving/)
     await expect(tile).toContainText('Find suppliers')
     await noSideScroll(page)
