@@ -3,6 +3,7 @@ import type { Locale } from '../../i18n/locales'
 
 const en = {
   otherPos: 'Other billing app',
+  bigShop: 'Big-shop system',
   close: 'Close',
   connected: 'Connected',
   analyzeFileFailed: 'Could not analyze file. Please verify the format.',
@@ -19,6 +20,7 @@ const translations: Record<Locale, Copy> = {
   en,
   hi: {
     otherPos: 'अन्य बिक्री प्रणाली',
+    bigShop: 'बड़ी दुकान की प्रणाली',
     close: 'बंद करें',
     connected: 'जुड़ा है',
     analyzeFileFailed: 'फ़ाइल पढ़ी नहीं जा सकी। उसका फ़ॉर्मैट जाँचें।',
@@ -32,6 +34,7 @@ const translations: Record<Locale, Copy> = {
   },
   bn: {
     otherPos: 'অন্য বিক্রয় ব্যবস্থা',
+    bigShop: 'বড় দোকানের ব্যবস্থা',
     close: 'বন্ধ করুন',
     connected: 'যুক্ত',
     analyzeFileFailed: 'ফাইল পড়া যায়নি। ফাইলের ধরন যাচাই করুন।',
@@ -45,6 +48,7 @@ const translations: Record<Locale, Copy> = {
   },
   te: {
     otherPos: 'ఇతర విక్రయ వ్యవస్థ',
+    bigShop: 'పెద్ద దుకాణ వ్యవస్థ',
     close: 'మూసివేయండి',
     connected: 'కనెక్ట్ అయింది',
     analyzeFileFailed: 'ఫైల్‌ను చదవలేకపోయాం. దాని ఫార్మాట్‌ను చూడండి.',
@@ -58,6 +62,7 @@ const translations: Record<Locale, Copy> = {
   },
   mr: {
     otherPos: 'इतर विक्री प्रणाली',
+    bigShop: 'मोठ्या दुकानाची प्रणाली',
     close: 'बंद करा',
     connected: 'जोडले आहे',
     analyzeFileFailed: 'फाइल वाचता आली नाही. तिचा प्रकार तपासा.',
@@ -71,6 +76,7 @@ const translations: Record<Locale, Copy> = {
   },
   kn: {
     otherPos: 'ಇತರ ಮಾರಾಟ ವ್ಯವಸ್ಥೆ',
+    bigShop: 'ದೊಡ್ಡ ಅಂಗಡಿ ವ್ಯವಸ್ಥೆ',
     close: 'ಮುಚ್ಚಿ',
     connected: 'ಸಂಪರ್ಕಿಸಲಾಗಿದೆ',
     analyzeFileFailed: 'ಫೈಲ್ ಓದಲಾಗಲಿಲ್ಲ. ಅದರ ಸ್ವರೂಪ ಪರಿಶೀಲಿಸಿ.',
@@ -84,6 +90,7 @@ const translations: Record<Locale, Copy> = {
   },
   'zh-Hans': {
     otherPos: '其他收银系统',
+    bigShop: '大店系统',
     close: '关闭',
     connected: '已连接',
     analyzeFileFailed: '无法读取文件，请检查文件格式。',
@@ -96,7 +103,8 @@ const translations: Record<Locale, Copy> = {
     reviewFirst: '保存前，所有内容都由您确认。',
   },
   ms: {
-    otherPos: 'POS lain',
+    otherPos: 'Aplikasi pengebilan lain',
+    bigShop: 'Sistem kedai besar',
     close: 'Tutup',
     connected: 'Disambungkan',
     analyzeFileFailed: 'Fail tidak dapat dibaca. Sila semak formatnya.',
@@ -110,6 +118,7 @@ const translations: Record<Locale, Copy> = {
   },
   ta: {
     otherPos: 'வேறு விற்பனை அமைப்பு',
+    bigShop: 'பெரிய கடை அமைப்பு',
     close: 'மூடு',
     connected: 'இணைக்கப்பட்டது',
     analyzeFileFailed: 'கோப்பைப் படிக்க முடியவில்லை. அதன் வடிவத்தைச் சரிபார்க்கவும்.',
@@ -122,7 +131,8 @@ const translations: Record<Locale, Copy> = {
     reviewFirst: 'சேமிக்கும் முன் அனைத்தையும் நீங்கள் சரிபார்ப்பீர்கள்.',
   },
   ja: {
-    otherPos: 'その他のPOS',
+    otherPos: 'その他のレジアプリ',
+    bigShop: '大型店向けシステム',
     close: '閉じる',
     connected: '接続済み',
     analyzeFileFailed: 'ファイルを読み取れません。形式を確認してください。',
@@ -135,7 +145,8 @@ const translations: Record<Locale, Copy> = {
     reviewFirst: '保存する前に、すべての内容を確認できます。',
   },
   ko: {
-    otherPos: '기타 POS',
+    otherPos: '기타 판매 관리 앱',
+    bigShop: '대형 매장 시스템',
     close: '닫기',
     connected: '연결됨',
     analyzeFileFailed: '파일을 읽을 수 없습니다. 형식을 확인해 주세요.',
@@ -148,7 +159,8 @@ const translations: Record<Locale, Copy> = {
     reviewFirst: '저장하기 전에 모든 내용을 직접 확인합니다.',
   },
   id: {
-    otherPos: 'POS lainnya',
+    otherPos: 'Aplikasi kasir lain',
+    bigShop: 'Sistem toko besar',
     close: 'Tutup',
     connected: 'Terhubung',
     analyzeFileFailed: 'File tidak dapat dibaca. Periksa formatnya.',
@@ -162,6 +174,7 @@ const translations: Record<Locale, Copy> = {
   },
   th: {
     otherPos: 'ระบบขายอื่น ๆ',
+    bigShop: 'ระบบร้านใหญ่',
     close: 'ปิด',
     connected: 'เชื่อมต่อแล้ว',
     analyzeFileFailed: 'อ่านไฟล์ไม่ได้ โปรดตรวจสอบรูปแบบไฟล์',
@@ -175,6 +188,7 @@ const translations: Record<Locale, Copy> = {
   },
   vi: {
     otherPos: 'Hệ thống bán hàng khác',
+    bigShop: 'Hệ thống cửa hàng lớn',
     close: 'Đóng',
     connected: 'Đã kết nối',
     analyzeFileFailed: 'Không thể đọc tệp. Hãy kiểm tra định dạng.',
@@ -187,7 +201,8 @@ const translations: Record<Locale, Copy> = {
     reviewFirst: 'Bạn xem lại mọi thứ trước khi lưu.',
   },
   fil: {
-    otherPos: 'Iba pang POS',
+    otherPos: 'Iba pang billing app',
+    bigShop: 'Sistema ng malaking tindahan',
     close: 'Isara',
     connected: 'Nakakonekta',
     analyzeFileFailed: 'Hindi mabasa ang file. Suriin ang format nito.',

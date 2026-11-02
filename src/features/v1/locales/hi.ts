@@ -72,7 +72,7 @@ export const hi: Copy = {
   rateLimited: 'बहुत ज़्यादा अनुरोध हैं। एक मिनट बाद फिर कोशिश करें।',
   appName: 'Chalkboard',
   independent: 'स्वतंत्र नमूना · Google का उत्पाद नहीं',
-  connectionOffline: 'ऑफ़लाइन',
+  connectionOffline: 'कनेक्शन नहीं है',
   connectionReconnecting: 'फिर जुड़ रहा है…',
   voiceFailed: 'आवाज़ का कनेक्शन बंद हो गया। फिर कोशिश करें या लिखें।',
   voiceOffline: 'आवाज़ के लिए इंटरनेट चाहिए। इसके बजाय लिखें।',

@@ -186,7 +186,9 @@ SCREEN_REPLIES = {
     "close_day": "Let's close the day. Take a photo of today's sales book and I'll read it.",
     "google": "Here is your Get on Google checklist. You finish each step on Google's own pages.",
     "privacy": "Here is your data page. Nothing is deleted unless you confirm there.",
-    "import": "Pick your POS or Excel sales export and I'll map the columns for you to confirm.",
+    "import": (
+        "Pick your billing app or Excel sales file and I'll map the columns for you to confirm."
+    ),
     "plan": "Here is tomorrow's plan.",
     "messages": "Here are your customer messages.",
     "stamps": "Here is your stamp card. Tell me the reward, like free chai after 8 visits.",

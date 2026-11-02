@@ -420,15 +420,16 @@ FEATURES: tuple[Feature, ...] = (
     Feature(
         "import_sales",
         "owner",
-        "Connect your POS or sales file",
-        "Upload a POS or Excel export (Petpooja, Tally, Square…); the coach maps the columns once.",
-        '"Connect my POS" or "Import my sales".',
+        "Link your billing app",
+        "Upload your billing app or Excel sales file (Petpooja, Tally, Square…);"
+        " the coach maps the columns once.",
+        '"Link my billing app" or "Import my sales".',
         ("Shop", "More", "Link your billing app"),
         ("pos", "import", "excel", "csv", "tally", "export", "billing"),
         "Import my sales",
         "मेरी बिक्री इम्पोर्ट करो",
         "connect",
-        what_hi="POS या Excel फ़ाइल से अपनी बिक्री इम्पोर्ट करें; कोच कॉलम एक बार मिलाता है।",
+        what_hi="बिलिंग ऐप या Excel फ़ाइल से अपनी बिक्री इम्पोर्ट करें; कोच कॉलम एक बार मिलाता है।",
     ),
     Feature(
         "google",
