@@ -95,8 +95,6 @@ for (const size of PHONES) {
 
     test('OB-124 customer demo Browse: one title row and compact shop cards', async ({ page }) => {
       await quiet(page, size)
-      // OB-132: a long shard opens many demos from one IP; this check opts out of its limit.
-      await page.context().setExtraHTTPHeaders({ 'x-test-rate-limit-bypass': '1' })
       await page.goto('/explore/demo')
       const title = page.getByRole('heading', { level: 1 })
       await expect(title).toBeVisible({ timeout: 30_000 })
