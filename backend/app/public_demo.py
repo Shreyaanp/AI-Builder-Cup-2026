@@ -26,6 +26,7 @@ from uuid import uuid4
 import anyio
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
+from fastapi.responses import JSONResponse
 from itsdangerous import URLSafeTimedSerializer
 from pydantic import BaseModel, ConfigDict, Field
 from sse_starlette import EventSourceResponse
@@ -475,13 +476,28 @@ class Forward(Response):
         self.key = key
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        lost = False
+
         async def persist(message: Any) -> None:
+            nonlocal lost
+            if lost:
+                return  # The rest of the answer whose save failed.
             if message["type"] == "http.response.start":
                 message["headers"].append((b"cache-control", b"no-store"))
                 if self.request.method != "GET" and message["status"] < 400:
-                    await anyio.to_thread.run_sync(
-                        save, repository(self.request), self.key, self.entry
-                    )
+                    try:
+                        await anyio.to_thread.run_sync(
+                            save, repository(self.request), self.key, self.entry
+                        )
+                    except HTTPException as error:
+                        # The route has answered, so raising here would be a 500. Say why instead.
+                        lost = True
+                        await JSONResponse(
+                            {"detail": error.detail},
+                            error.status_code,
+                            headers={"cache-control": "no-store"},
+                        )(scope, receive, send)
+                        return
             await send(message)
 
         from .demo_context import services

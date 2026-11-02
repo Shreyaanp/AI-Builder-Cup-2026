@@ -421,6 +421,32 @@ def test_OB_248_a_full_sandbox_still_answers_a_supply_read(
     assert answer.json()["status"] == "confirmed"
 
 
+def test_OB_248_a_write_that_loses_the_save_race_says_so_instead_of_a_500(
+    live_parent_demo,  # noqa: F811
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Hosted: a tap beside a delivering read loses the save, and tapping again works."""
+    from app import public_demo
+
+    client, _parent, session, bid = live_parent_demo
+    order = draft_and_send(client, session, bid)
+
+    def stale(*_args, **_kwargs):
+        raise HTTPException(409, "DEMO_SESSION_CONFLICT")
+
+    monkeypatch.setattr(public_demo, "save", stale)
+    answer = owner(
+        client,
+        session,
+        f"businesses/{bid}/supply/orders/{order['id']}/talk",
+        "POST",
+        json={"version": order["version"], "text": "Hello"},
+    )
+    assert answer.status_code == 409, answer.text
+    assert answer.json()["detail"] == "DEMO_SESSION_CONFLICT"
+    assert answer.headers["cache-control"] == "no-store"
+
+
 def test_OB_248_google_question_points_to_the_practice_tile(live_parent_demo) -> None:  # noqa: F811
     client, _app, session, _bid = live_parent_demo
     response = client.post(

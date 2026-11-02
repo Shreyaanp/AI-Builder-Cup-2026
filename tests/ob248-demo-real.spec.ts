@@ -389,7 +389,8 @@ test('OB-248 Get on Google: a visitor walks the whole practice, and it says noth
   await expect(sim.getByText(note)).toBeVisible()
   await sim.getByRole('button', { name: 'Put my shop on Google' }).click()
   await sim.getByRole('button', { name: 'Customers visit' }).click()
-  const jargon = /fixture|oauth|authorization|validated|revision|fictional(?! address)|checked locally|SIM-/i
+  const jargon =
+    /fixture|oauth|authorization|validated|revision|fictional(?! address)|checked locally|SIM-/i
   await expect(sim).not.toContainText(jargon)
   // The sample shop has no phone: the practice alone fills in a pretend one.
   await expect(sim.getByRole('textbox', { name: 'Contact' })).toHaveValue(/^[\d ]+$/)
