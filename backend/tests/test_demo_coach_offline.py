@@ -398,6 +398,10 @@ DEMO_COACH_PHRASINGS: list[tuple[str, dict]] = [
     ("How many people visited my shop this week?", {"reply": "page was opened"}),
     ("what are my best sellers?", {"reply": "best sellers: Masala chai"}),
     ("What sells the most?", {"reply": "best sellers: Masala chai"}),
+    (
+        "सबसे ज़्यादा क्या बिकता है?",
+        {"reply": "पिछले 7 दिनों में डेमो के सबसे ज़्यादा बिकने वाले आइटम: Masala chai"},
+    ),
     ("how many people bought samosa", {"absent": "page was opened"}),
     ("Should I visit the wholesaler tomorrow?", {"absent": "page was opened"}),
     ("most popular supplier", {"absent": "best sellers:"}),
@@ -554,3 +558,32 @@ def test_O_4_demo_pin_address_is_answered_offline(app, monkeypatch):  # noqa: N8
         pin = owner(client, session, "places/pin?q=Indiranagar")
         assert pin.status_code == 200, pin.text
         paid.assert_not_called()
+
+
+def _sale(day: str, item: str, quantity: float) -> dict:
+    return {"date": day, "item": item, "quantity": quantity, "revenue": int(quantity * 2000)}
+
+
+def test_best_sellers_use_the_last_7_days_so_monday_is_never_empty():
+    """Frozen to a Monday with no sales today (Sunday too): best sellers are still listed."""
+    from datetime import date
+
+    from app.recap import recap_facts
+
+    signals = {"fields": {}, "questions": [], "sold_out": {}}
+    sales = [
+        _sale("2026-11-01", "Masala chai", 30),  # Sunday
+        _sale("2026-10-30", "Samosa", 12),
+        _sale("2026-10-27", "Masala chai", 5),  # Tuesday of last week, 6 days before Monday
+        _sale("2026-10-26", "Old item", 99),  # 7 days before Monday: outside the window
+    ]
+    for today in (date(2026, 11, 2), date(2026, 11, 1)):  # Monday, Sunday
+        week = f"{today.isocalendar()[0]}-W{today.isocalendar()[1]:02d}"
+        facts = recap_facts(week, sales, signals, through=today)
+        names = [row["item"] for row in facts["top_sellers"]]
+        assert names, today
+        assert names[0] == ("Masala chai" if today.weekday() == 0 else "Old item")
+    monday = recap_facts("2026-W45", sales, signals, through=date(2026, 11, 2))
+    assert "Old item" not in {r["item"] for r in monday["top_sellers"] + monday["slow_movers"]}
+    # The calendar week still works for the weekly recap.
+    assert recap_facts("2026-W45", sales, signals)["top_sellers"] == []

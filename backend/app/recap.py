@@ -57,8 +57,14 @@ def week_start(week: str) -> date:
         raise HTTPException(422, "Use a valid ISO week, YYYY-Www.") from None
 
 
-def recap_facts(week: str, sales: list[dict[str, Any]], signals: dict[str, Any]) -> dict[str, Any]:
-    start = week_start(week)
+def recap_facts(
+    week: str,
+    sales: list[dict[str, Any]],
+    signals: dict[str, Any],
+    through: date | None = None,
+) -> dict[str, Any]:
+    """Facts for an ISO week, or for the 7 days ending `through` (so Monday is never empty)."""
+    start = through - timedelta(days=6) if through else week_start(week)
     end, previous = start + timedelta(days=7), start - timedelta(days=7)
     current = [r for r in sales if start.isoformat() <= r["date"] < end.isoformat()]
     prior = [r for r in sales if previous.isoformat() <= r["date"] < start.isoformat()]
