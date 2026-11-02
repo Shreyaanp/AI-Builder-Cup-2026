@@ -370,37 +370,86 @@ test('Hindi: the morning promise row is all Hindi', async ({ page }) => {
   expect(await fitsWidth(page)).toBe(true)
 })
 
-test('the promise and the supply row name the same item: it is said once, by the promise', async ({
-  page,
-}) => {
-  test.setTimeout(180_000)
-  await page.setViewportSize({ width: 390, height: 844 })
-  const tomorrow = shopDay(-1)
-  await localOnly(page)
-  await enter(page)
-  const name = 'Once Lane Chai'
-  const id = await teaStall(page, name, [
-    { name: 'Masala chai', price: 2000, unit: 'cup', category: 'Drinks', stock: 40 },
-    { name: 'Milk', price: 6000, unit: 'litre', stock: 12 },
-  ])
-  await fourWeeks(page, id)
-  await open(page, name)
-  // Without a promise, Milk is the supply row with its run-out day.
-  await expect(page.locator('[data-need="supply"]')).toContainText('Milk runs out')
-  const made = await page.request.post(`/api/v1/businesses/${id}/promise`, {
-    data: { text: 'order milk', kind: 'order', item: 'Milk' },
+/** A sent order for Milk: the supply row's "… on order, arriving …" line. */
+async function milkOnOrder(page: Page, id: string) {
+  const drafted = await page.request.post(`/api/v1/businesses/${id}/supply/reorder`, {
+    data: { item: 'Milk', source: 'bought' },
   })
-  expect(made.ok()).toBe(true)
-  await morningOf(page, id, tomorrow)
-  await open(page, name)
-  const today = page.getByTestId('today')
-  await expect(today.locator('[data-need="promise"]')).toContainText(
-    'Last night you said: order Milk',
+  expect(drafted.ok()).toBe(true)
+  const body = (await drafted.json()) as { status: string; order: { id: string; version: number } }
+  expect(body.status, JSON.stringify(body)).toBe('drafted')
+  const { order } = body
+  const sent = await page.request.post(
+    `/api/v1/businesses/${id}/supply/orders/${order.id}/approve`,
+    { data: { version: order.version } },
   )
-  await expect(today.locator('[data-need="supply"]')).toHaveCount(0)
-  await expect(today.locator('[data-need]').filter({ hasText: /milk/i })).toHaveCount(1)
-  await expect(today.locator('.MuiButton-contained')).toHaveCount(1)
-})
+  expect(sent.ok()).toBe(true)
+}
+
+for (const lang of ['en', 'hi'] as const) {
+  test(`${lang}: the promise names the supply item: said once, with its run-out day and Reorder`, async ({
+    page,
+  }) => {
+    test.setTimeout(180_000)
+    await page.setViewportSize({ width: 390, height: 844 })
+    const tomorrow = shopDay(-1)
+    await localOnly(page)
+    await enter(page)
+    const name = `Once Lane Chai ${lang}`
+    const id = await teaStall(page, name, [
+      { name: 'Masala chai', price: 2000, unit: 'cup', category: 'Drinks', stock: 40 },
+      // Packs, as the demo supplier sells it: Reorder drafts at once.
+      { name: 'Milk', price: 6000, unit: 'pack', stock: 12 },
+    ])
+    await fourWeeks(page, id)
+    await open(page, name)
+    // Without a promise, Milk is the supply row with its run-out day.
+    const supplyRow = page.locator('[data-need="supply"]')
+    await expect(supplyRow).toContainText('Milk runs out')
+    const runsOut = ((await supplyRow.innerText()).match(/Milk runs out (.+)/) ?? [])[1]!.trim()
+    // Some Milk is on its way, and the row says so.
+    await milkOnOrder(page, id)
+    await open(page, name)
+    await expect(supplyRow).toContainText(/on order, arriving/)
+    const onOrder = (await supplyRow.innerText()).split('\n').find((l) => /on order/.test(l))!
+    const made = await page.request.post(`/api/v1/businesses/${id}/promise`, {
+      data: { text: 'order milk', kind: 'order', item: 'Milk' },
+    })
+    expect(made.ok()).toBe(true)
+    if (lang === 'hi') await prefer(page, 'light', 'hi')
+    await morningOf(page, id, tomorrow)
+    await open(page, name, lang === 'hi' ? 'स्थानीय प्रीव्यू जारी रखें' : undefined)
+    const today = page.getByTestId('today')
+    const row = today.locator('[data-need="promise"]')
+    const reorder = row.getByRole('button', { name: lang === 'hi' ? /मँगाएँ|ऑर्डर/ : 'Reorder' })
+    if (lang === 'en') {
+      await expect(row).toContainText('Last night you said: order Milk')
+      // While the promise is open, Coach still says when Milk runs out and what is coming.
+      await expect(row).toContainText(`Milk runs out ${runsOut}`)
+      await expect(row).toContainText(onOrder)
+    } else {
+      await expect(row).toContainText('कल रात आपने कहा था: Milk मँगाना')
+      await expect(row).toContainText(/Milk .+ को खत्म हो(गा|गी)/)
+      await expect(row).toContainText(/ऑर्डर/)
+      await expect(row).not.toContainText(/Last night|runs out|on order|Not today/)
+    }
+    // Said once: the promise is the supply row, with the supply row's own Reorder, filled.
+    await expect(today.locator('[data-need="supply"]')).toHaveCount(0)
+    await expect(today.locator('[data-need]').filter({ hasText: /milk/i })).toHaveCount(1)
+    await expect(today.locator('.MuiButton-contained')).toHaveCount(1)
+    await expect(row.locator('.MuiButton-contained')).toHaveCount(1)
+    await expect(row.locator('[data-tour="reorder"]')).toHaveClass(/MuiButton-contained/)
+    expect(await fitsWidth(page)).toBe(true)
+    await page.screenshot({ path: test.info().outputPath(`promise-supply-${lang}-390.png`) })
+    if (lang === 'hi') return
+    // Reorder answers the promise and opens the same order sheet as the supply row: Milk is on
+    // order already, so it asks first. The row stays, as the supply row, run-out day and all.
+    await reorder.click()
+    await expect(row).toHaveCount(0)
+    await expect(supplyRow).toContainText(`Milk runs out ${runsOut}`)
+    await expect.poll(() => promiseFor(page, id, tomorrow)).toBeNull()
+  })
+}
 
 test('Hindi: the close screen’s own Hindi hint, typed into the chat, writes the promise down', async ({
   page,
@@ -421,7 +470,7 @@ test('Hindi: the close screen’s own Hindi hint, typed into the chat, writes th
   await page.getByLabel('संदेश', { exact: true }).fill('कल सुबह दूध मँगाना याद दिलाना')
   await page.getByRole('button', { name: 'भेजें', exact: true }).click()
   await expect(page.getByRole('log')).toContainText(
-    'कल सुबह के लिए लिख लिया: “दूध मँगाना”। यह Coach में सबसे ऊपर दिखेगा।',
+    'कल सुबह के लिए लिख लिया: “दूध मँगाना”। यह कोच में सबसे ऊपर दिखेगा। यह बढ़ाएँ → दिन बंद करें में भी है।',
     { timeout: 20_000 },
   )
   expect(await promiseFor(page, id, tomorrow)).toMatchObject({ text: 'दूध मँगाना', kind: 'note' })

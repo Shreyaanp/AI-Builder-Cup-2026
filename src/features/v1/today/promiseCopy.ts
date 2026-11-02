@@ -56,7 +56,7 @@ const copy: Record<Locale, PromiseCopy> = {
     save: 'कल याद दिलाएँ',
     suggestOrder: (item) => `याद दिलाएँ: ${item} मँगाना`,
     suggestMake: (item) => `याद दिलाएँ: और ${item} बनाना`,
-    saved: (text) => `लिख लिया: ${text}। कल सुबह यह Coach में सबसे ऊपर होगा।`,
+    saved: (text) => `लिख लिया: ${text}। कल सुबह यह कोच में सबसे ऊपर होगा।`,
     failed: 'सेव नहीं हुआ। फिर से कोशिश करें।',
   },
   bn: {

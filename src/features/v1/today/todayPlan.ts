@@ -19,7 +19,13 @@ const REMINDERS: StepId[] = ['photo', 'face']
 export type Need =
   | { id: string; kind: 'reply'; count: number }
   /** What the owner wrote down last night for this morning (HABIT change 4). */
-  | { id: string; kind: 'promise'; promise: TodayPromise }
+  | {
+      id: string
+      kind: 'promise'
+      promise: TodayPromise
+      /** It names the supply row's item: the row carries the run-out day and its Reorder too. */
+      supply?: boolean
+    }
   /** The supply that runs out first, with its run-out day: the one stock row with a date. */
   | { id: string; kind: 'supply'; item: string }
   | { id: string; kind: 'closeDay' }
@@ -222,15 +228,23 @@ export function todayPlan(input: TodayInput): TodayPlan {
 
   const all: Need[] = []
   const promise = facts?.promise && !input.promiseAnswered ? facts.promise : null
-  if (promise) all.push({ id: 'promise', kind: 'promise', promise })
-  if (unread) all.push({ id: 'reply', kind: 'reply', count: unread })
-  if (closeWindow && !isClosed) all.push({ id: 'close-day', kind: 'closeDay' })
   const supply = input.supply?.item ?? null
   const same = (a?: string | null, b?: string | null) =>
     Boolean(a && b && a.toLocaleLowerCase() === b.toLocaleLowerCase())
-  // Last night's promise already names the supply ("Order milk"): it leads, said once.
+  // Last night's promise already names the supply ("Order milk"): it leads, said once, and
+  // carries the supply row's run-out day, on-order line and Reorder. It keeps the supply row's
+  // id, so the purchase order opened from it stays open once the promise is answered.
+  const merged = Boolean(promise && same(supply, promise.item))
+  if (promise)
+    all.push(
+      merged
+        ? { id: 'supply', kind: 'promise', promise, supply: true }
+        : { id: 'promise', kind: 'promise', promise },
+    )
+  if (unread) all.push({ id: 'reply', kind: 'reply', count: unread })
+  if (closeWindow && !isClosed) all.push({ id: 'close-day', kind: 'closeDay' })
   const supplyRow: Need | null =
-    supply && !same(supply, promise?.item) ? { id: 'supply', kind: 'supply', item: supply } : null
+    supply && !merged ? { id: 'supply', kind: 'supply', item: supply } : null
   // A supply that runs out within 2 days leads before the daily menu question, as in the brief.
   if (supplyRow && input.supply?.soon) all.push(supplyRow)
   if (products.length && facts && shop.last_confirmed !== facts.date && !input.menuAnswered)

@@ -1,6 +1,6 @@
-import { Suspense, useState } from 'react'
+import { Suspense, useState, type ReactNode } from 'react'
 import { Box, Button, CircularProgress, Stack, Typography, useTheme } from '@mui/material'
-import { Truck } from 'lucide-react'
+import { NotebookPen, Truck } from 'lucide-react'
 import { useLocale } from '../../state/hooks'
 import { useWorkspace } from '../v1/workspaceContext'
 import { Sheet } from '../v1/Sheet'
@@ -12,11 +12,30 @@ import { dayLabel, useDraftReorder, useOnOrderText, useTodaySupplyLead } from '.
 import type { PurchaseOrder } from './types'
 import { productFeminine, productName } from '../../i18n/productNames'
 
+/** Last night's promise names this item: the row says it, and Reorder answers it. */
+export type SupplyPromise = {
+  said: string
+  /** Called as Reorder is tapped, before the purchase order is drafted. */
+  onReorder: () => void
+  /** "Not today", after Reorder. */
+  extra: ReactNode
+  busy: boolean
+}
+
 /**
  * Today's one stock line (HABIT change 2): a row of "Needs you now" with the run-out day the
  * brief and Grow show for the same item (OB-238). Its Reorder is filled only when it leads.
+ * When last night's promise names the item, this is the promise row: one row, one order path.
  */
-export function TodaySupply({ first, onAct }: { first: boolean; onAct?: () => void }) {
+export function TodaySupply({
+  first,
+  onAct,
+  promise,
+}: {
+  first: boolean
+  onAct?: () => void
+  promise?: SupplyPromise
+}) {
   const { active, notify } = useWorkspace()
   const { refresh, need, more, received, item } = useTodaySupplyLead()
   const draft = useDraftReorder()
@@ -39,10 +58,11 @@ export function TodaySupply({ first, onAct }: { first: boolean; onAct?: () => vo
   return (
     <Box
       component="li"
-      data-need="supply"
+      data-need={promise ? 'promise' : 'supply'}
       data-tour="today-supply"
       onClickCapture={(event) => {
-        if ((event.target as HTMLElement).closest('button')) onAct?.()
+        const button = (event.target as HTMLElement).closest('button')
+        if (button && !button.hasAttribute('data-uncounted')) onAct?.()
       }}
     >
       {/* A named region inside the row: screen readers (and tests) find "Supply chain". */}
@@ -61,13 +81,18 @@ export function TodaySupply({ first, onAct }: { first: boolean; onAct?: () => vo
         }}
       >
         <Box aria-hidden="true" sx={{ display: 'flex', color: roles.primary, flexShrink: 0 }}>
-          <Truck size={20} />
+          {promise ? <NotebookPen size={20} /> : <Truck size={20} />}
         </Box>
         <Box sx={{ flex: '1 1 160px', minWidth: 0 }}>
+          {promise && (
+            <Typography variant="bodyLarge" sx={{ overflowWrap: 'anywhere', fontWeight: 500 }}>
+              {promise.said}
+            </Typography>
+          )}
           <Typography
             variant="bodyLarge"
             aria-live="polite"
-            sx={{ overflowWrap: 'anywhere', fontWeight: 500 }}
+            sx={{ overflowWrap: 'anywhere', fontWeight: promise ? undefined : 500 }}
           >
             {need
               ? s.runsOutLine(
@@ -120,10 +145,11 @@ export function TodaySupply({ first, onAct }: { first: boolean; onAct?: () => vo
             <Button
               variant={first ? 'contained' : 'text'}
               data-tour="reorder"
-              disabled={busy}
+              disabled={busy || promise?.busy}
               sx={{ minHeight: 48 }}
               startIcon={busy ? <CircularProgress size={16} color="inherit" /> : undefined}
               onClick={async () => {
+                promise?.onReorder()
                 if (!need) {
                   setOrder(received ?? null)
                   return
@@ -138,6 +164,7 @@ export function TodaySupply({ first, onAct }: { first: boolean; onAct?: () => vo
             >
               {need ? s.reorder : s.view}
             </Button>
+            {promise?.extra}
           </Stack>
         )}
       </Box>

@@ -16,7 +16,7 @@ from typing import Any, Literal
 
 import anyio
 
-from .app_guide import BY_ID, guide_reply, where_line
+from .app_guide import guide_reply, where_line
 from .close_reward import close_reward, reward_text
 from .contracts import StreamEvent
 from .coordinator import MerchantContext, propose_products
@@ -97,6 +97,8 @@ SOLD_OUT_LIST = re.compile(r"^what(?:'s|\s+is)\s+sold\s+out\b", re.I)
 # "tomorrow remind me to call Ganesh", "kal subah doodh yaad dilana". Only with "tomorrow" or
 # "kal": "remind me every morning" stays the Remind me screen.
 TOMORROW = r"(?:tomorrow|tmrw|kal)(?:\s+(?:morning|subah))?"
+# "Remind (me)" in Hindi, when it comes before the thing: याद दिलाना / दिलाओ / दिला देना …
+REMIND_HI = r"(?:दिला|करा)(?:ना|ओ|\s*देना|\s*दो|\s*दीजिए|इए|इये|एँ|एं)"
 PROMISE = (
     re.compile(
         rf"^(?:{TOMORROW}\s+)?(?:please\s+)?remind\s+me\s+(?:{TOMORROW}\s+)?(?:to|about)\s+"
@@ -115,9 +117,21 @@ PROMISE = (
         r"^(?:मुझे\s+)?कल(?:\s+सुबह)?\s+(?:मुझे\s+)?(?P<what>.+?)\s+(?:की\s+)?याद\s+"
         r"(?:दिला|करा)(?:ना|ओ|\s*देना|\s*दो|\s*दीजिए|इए|इये|एँ|एं|ना\s+है)$"
     ),
+    # "Remind me" first: "कल मुझे याद दिलाना कि दूध मंगाना है", "याद दिलाना कल दूध मंगाना".
+    re.compile(
+        rf"^(?:मुझे\s+)?कल(?:\s+सुबह)?\s+(?:मुझे\s+)?याद\s+{REMIND_HI}\s+(?:कि\s+)?"
+        r"(?P<that>.+?)(?:\s+है)?$"
+    ),
+    re.compile(
+        rf"^(?:मुझे\s+)?याद\s+{REMIND_HI}\s+(?:कि\s+)?कल(?:\s+सुबह)?\s+"
+        r"(?P<later>.+?)(?:\s+है)?$"
+    ),
 )
-# "kal subah yaad dilana" names no thing to write down: just tomorrow's words.
-WHEN_ONLY = re.compile(rf"{TOMORROW}|morning|subah|सुबह|कल(?:\s+सुबह)?", re.I)
+# Where the promise is in the Hindi UI (tabsCopy navGrow, closeday translations title).
+PROMISE_WHERE_HI = "बढ़ाएँ → दिन बंद करें"
+# "kal subah yaad dilana" names no thing to write down: just tomorrow's words (or "me", as in
+# "कल मुझे याद दिलाना").
+WHEN_ONLY = re.compile(rf"{TOMORROW}|morning|subah|सुबह|कल(?:\s+सुबह)?|मुझे", re.I)
 ORDER_WORDS = re.compile(r"^(?:re-?order|order|buy|get)\s+(?:more\s+|some\s+)?(?P<item>.+)$", re.I)
 MAKE_WORDS = re.compile(r"^(?:make|prep|prepare)\s+(?:more\s+|some\s+)?(?P<item>.+)$", re.I)
 
@@ -352,8 +366,9 @@ def _promise(ctx: MerchantContext, what: str, hindi: bool = False) -> InstantRes
     if hindi:
         return InstantResult(
             "promise",
-            f"कल सुबह के लिए लिख लिया: “{promise.text}”। यह Coach में सबसे ऊपर दिखेगा। "
-            f"यह {BY_ID['promise'].where} में भी है।",
+            f"कल सुबह के लिए लिख लिया: “{promise.text}”। यह कोच में सबसे ऊपर दिखेगा। "
+            # The Hindi UI's own labels: the कोच tab, and Grow's "Close the day" tile.
+            f"यह {PROMISE_WHERE_HI} में भी है।",
         )
     return InstantResult(
         "promise",

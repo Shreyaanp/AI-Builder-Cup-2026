@@ -226,6 +226,11 @@ def test_erasing_the_owner_erases_the_promise(app, monkeypatch) -> None:  # noqa
         ("कल गैस सिलेंडर याद दिला देना", "गैस सिलेंडर"),
         ("मुझे कल सुबह चीनी मँगाने की याद दिलाओ", "चीनी मँगाने"),
         ("कल मुझे गणेश को फ़ोन करना याद दिलाइए", "गणेश को फ़ोन करना"),
+        # "Remind me" first, then what.
+        ("कल मुझे याद दिलाना कि दूध मंगाना है", "दूध मंगाना"),
+        ("याद दिलाना कल दूध मंगाना", "दूध मंगाना"),
+        ("कल सुबह याद दिला देना कि गैस सिलेंडर मँगाना है", "गैस सिलेंडर मँगाना"),
+        ("मुझे याद दिलाओ कि कल चीनी मँगानी है", "चीनी मँगानी"),
     ],
 )
 def test_chat_phrases_that_set_a_promise(message: str, what: str) -> None:
@@ -256,6 +261,9 @@ def test_the_guides_own_ask_phrases_set_a_promise(message: str) -> None:
         "kal subah yaad dilana",
         "कल सुबह याद दिलाना",
         "दूध मँगाना है",
+        # No "tomorrow": the Remind me screen, not tomorrow's promise.
+        "याद दिलाना कि दूध मंगाना है",
+        "कल मुझे याद दिलाना",
     ],
 )
 def test_chat_phrases_that_do_not(message: str) -> None:
@@ -312,7 +320,9 @@ async def test_the_chat_writes_nothing_and_counts_nothing_without_current_consen
     repo.record_consent(uid, LEGAL_VERSION)
     reply = await route("कल सुबह दूध मँगाना याद दिलाना।", ctx)
     assert reply is not None and reply.intent == "promise"
-    assert "लिख लिया" in reply.reply and "Grow → Close the day" in reply.reply
+    assert reply.reply == (
+        "कल सुबह के लिए लिख लिया: “दूध मँगाना”। यह कोच में सबसे ऊपर दिखेगा। यह बढ़ाएँ → दिन बंद करें में भी है।"
+    )
     found = promise_for(repo, bid, close.date() + timedelta(days=1))
     assert found is not None and found.text == "दूध मँगाना"
     assert counts(app, bid, close)["promise_set"] == 1

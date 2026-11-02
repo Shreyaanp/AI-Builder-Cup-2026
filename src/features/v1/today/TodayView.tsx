@@ -45,6 +45,8 @@ import { useTodayCopy, type Festival } from './todayCopy'
 import { promiseCopyFor } from './promiseCopy'
 import type { CoachLine, Need, StepId, TodayPlan } from './todayPlan'
 import { useTodayPlan } from './useTodayPlan'
+import { PromiseSupplyRow } from './PromiseSupplyRow'
+import { promiseSaid, usePromiseSettle } from './promiseSettle'
 import { countAction, countShown } from './habitCount'
 import { useLocalDay } from './useLocalDay'
 import { FirstCustomers } from '../FirstCustomers'
@@ -307,9 +309,13 @@ function DayOne({ step, food, actions }: { step: StepId; food: boolean; actions:
   )
 }
 
-/** Rows that just left stay a moment with a check, then go (static under reduced motion). */
-function useLeaving(needs: Need[]): { need: Need; leaving: boolean }[] {
+/**
+ * Rows that just left stay a moment with a check, then go (static under reduced motion). A row
+ * that only moved (into or out of "N more things") is not done: it goes at once, with no check.
+ */
+function useLeaving(needs: Need[], moved: Need[]): { need: Need; leaving: boolean }[] {
   const ids = needs.map((need) => need.id).join('|')
+  const elsewhere = new Set(moved.map((need) => need.id))
   const [state, setState] = useState<{ ids: string; rows: { need: Need; leaving: boolean }[] }>(
     () => ({ ids, rows: needs.map((need) => ({ need, leaving: false })) }),
   )
@@ -318,7 +324,7 @@ function useLeaving(needs: Need[]): { need: Need; leaving: boolean }[] {
     const current = new Map(needs.map((need) => [need.id, need]))
     const next = needs.map((need) => ({ need, leaving: false }))
     state.rows.forEach((row, index) => {
-      if (!current.has(row.need.id))
+      if (!current.has(row.need.id) && !elsewhere.has(row.need.id))
         next.splice(Math.min(index, next.length), 0, { need: row.need, leaving: true })
     })
     rows = next
@@ -358,14 +364,25 @@ export function NeedsCard({
   const tt = useTodayCopy()
   const ws = useWorkspace()
   const roles = useTheme().material
-  const rows = useLeaving(plan.needs)
-  const moreRows = useLeaving(plan.more)
+  const rows = useLeaving(plan.needs, plan.more)
+  const moreRows = useLeaving(plan.more, plan.needs)
+  // The lead is the first live row: a row on its way out never holds the one filled button.
+  const lead = rows.find((each) => !each.leaving)
   const [open, setOpen] = useState(false)
   const moreId = useId()
   const row = ({ need, leaving }: { need: Need; leaving: boolean }, first: boolean) =>
     need.kind === 'supply' ? (
       leaving ? null : (
         <TodaySupply key={need.id} first={first} onAct={() => countAction(ws, 'supply')} />
+      )
+    ) : need.kind === 'promise' && need.supply ? (
+      leaving ? null : (
+        <PromiseSupplyRow
+          key={need.id}
+          promise={need.promise}
+          first={first}
+          answerPromise={answerPromise}
+        />
       )
     ) : (
       <NeedRow
@@ -433,7 +450,7 @@ export function NeedsCard({
         </Typography>
       )}
       <Stack component="ul" sx={list}>
-        {rows.map((each, index) => row(each, index === 0 && !plan.dayOne && !compact))}
+        {rows.map((each) => row(each, each === lead && !plan.dayOne && !compact))}
       </Stack>
       {/* The rest stay one tap away in the same card, with text buttons only: one filled
           button on the card, and nothing drops off Coach (SIMPLIFY Batch 5). */}
@@ -499,6 +516,10 @@ function NeedRow({
   const roles = useTheme().material
   const [busy, setBusy] = useState(false)
   const step = useStepAction(need.kind === 'step' ? need.step : 'items')
+  const promiseSettle = usePromiseSettle(
+    need.kind === 'promise' ? need.promise : null,
+    answerPromise,
+  )
   const primary = first ? 'contained' : 'text'
   async function run(work: () => Promise<unknown>) {
     setBusy(true)
@@ -516,25 +537,9 @@ function NeedRow({
   if (need.kind === 'promise') {
     // Last night's promise (HABIT change 4): do it, or "Not today" clears it with no comment.
     const { promise } = need
-    const item = promise.item ? productName(promise.item, locale) : null
     icon = <NotebookPen size={20} />
-    text = pc.said(
-      item && promise.kind === 'order'
-        ? pc.orderThing(item)
-        : item && promise.kind === 'make'
-          ? pc.makeThing(item)
-          : promise.text,
-    )
-    const settle = (state: 'done' | 'skipped') =>
-      void run(async () => {
-        if (!ws.active) return
-        await ws.api(
-          `/businesses/${encodeURIComponent(ws.active.id)}/promise/${promise.day}/${state}`,
-          // 204, no body.
-          { method: 'POST', raw: true },
-        )
-        answerPromise(promise.day)
-      })
+    text = promiseSaid(promise, locale)
+    const { settle } = promiseSettle
     const doIt =
       promise.item && promise.kind === 'order'
         ? { label: pc.orderNow, ask: tt.orderDraft(promise.item) }
@@ -545,7 +550,7 @@ function NeedRow({
       <>
         <Button
           variant={primary}
-          disabled={busy}
+          disabled={promiseSettle.busy}
           sx={{ minHeight: 48 }}
           onClick={() => {
             settle('done')
@@ -556,7 +561,7 @@ function NeedRow({
         </Button>
         {/* Clearing it is not a useful action: never action_done, never the first action. */}
         <Button
-          disabled={busy}
+          disabled={promiseSettle.busy}
           data-uncounted
           sx={{ minHeight: 48 }}
           onClick={() => settle('skipped')}
