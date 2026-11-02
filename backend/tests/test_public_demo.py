@@ -306,6 +306,47 @@ def test_failed_seed_releases_capacity(app, monkeypatch):  # noqa: F811
         assert open_demo(client).status_code == 429
 
 
+def test_OB_255_a_full_instance_still_opens_the_demo_for_a_new_visitor(app, monkeypatch):  # noqa: N802, F811
+    monkeypatch.setattr(public_demo, "MAX_SESSIONS", 3)
+    with TestClient(app) as client:
+        app.state.v1_settings.public_demo_enabled = True
+        opened = []
+        for _ in range(public_demo.MAX_SESSIONS + 2):
+            response = open_demo(client)
+            assert response.status_code == 200
+            opened.append(response.json()["session_id"])
+        # The newest visitor got a demo and memory still holds at most MAX_SESSIONS sandboxes.
+        assert opened[-1] in app.state.public_demos
+        assert len(app.state.public_demos) == public_demo.MAX_SESSIONS
+        # The least recently used were released from memory, not lost: they restore and still write.
+        assert opened[0] not in app.state.public_demos
+        assert owner(client, opened[0], "businesses").status_code == 200
+        saved = owner(client, opened[0], "reminders", "PUT", json={"enabled": True})
+        assert saved.status_code == 200
+        assert owner(client, opened[0], "reminders").json()["subscriptions"] == ["demo"]
+
+
+def test_OB_255_a_demo_in_use_is_never_released(app, monkeypatch):  # noqa: N802, F811
+    monkeypatch.setattr(public_demo, "MAX_SESSIONS", 2)
+    with TestClient(app) as client:
+        app.state.v1_settings.public_demo_enabled = True
+        first, second = [open_demo(client).json()["session_id"] for _ in range(2)]
+        # The oldest sandbox is answering a request, so the next least recently used one goes.
+        app.state.public_demos[first].busy = 1
+        assert open_demo(client).status_code == 200
+        assert first in app.state.public_demos and second not in app.state.public_demos
+        # Every sandbox in use at once: the visitor waits instead of memory growing.
+        for entry in app.state.public_demos.values():
+            entry.busy = 1
+        busy = open_demo(client)
+        assert busy.status_code == 429 and busy.json()["detail"] == "DEMO_BUSY"
+        assert len(app.state.public_demos) == public_demo.MAX_SESSIONS
+        for entry in app.state.public_demos.values():
+            entry.busy = 0
+        assert owner(client, first, "businesses").status_code == 200
+        assert app.state.public_demos[first].busy == 0
+
+
 def test_session_and_safe_writes_survive_instance_cache_loss(app):  # noqa: F811
     from tests.test_photos import jpeg
 
