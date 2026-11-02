@@ -210,6 +210,8 @@ test('a promise set at close leads next morning; "Not today" clears it and it ne
   await expect(block.getByRole('heading', { name: 'Tomorrow' })).toBeVisible({ timeout: 20_000 })
   // Both paths are named: the screen's own control and the chat phrase.
   await expect(block.getByTestId('ask-hint')).toContainText('Remind me to order milk tomorrow')
+  await block.scrollIntoViewIfNeeded()
+  await page.screenshot({ path: test.info().outputPath('close-tomorrow-390.png') })
   // The stock that runs out first is one tap (Milk, 2 left).
   await block.getByRole('button', { name: 'Remind me to order Milk' }).click()
   await expect(dialog.getByTestId('close-tomorrow-saved')).toHaveText(
@@ -299,6 +301,7 @@ test('chat and screen both set a promise; doing it marks it done (offline coach)
   const block = dialog.getByTestId('close-tomorrow')
   await expect(block).toBeVisible({ timeout: 20_000 })
   await block.getByLabel('One thing for tomorrow').fill('Call Ganesh about cups')
+  await page.screenshot({ path: test.info().outputPath('close-tomorrow-360-dark.png') })
   await block.getByRole('button', { name: 'Remind me tomorrow' }).click()
   await expect(dialog.getByTestId('close-tomorrow-saved')).toContainText(
     'Written down: Call Ganesh about cups.',
