@@ -71,7 +71,7 @@ test('demo: photo, price correction, customer page and availability', async ({
 
   // OB-168 / OB-188: this photo has no address; place its pin by hand before sharing.
   await suggestShopPin(page)
-  await page.getByRole('button', { name: /^Customer page/ }).click()
+  await page.getByRole('button', { name: /^Your shop page/ }).click()
   await page.getByTestId('map-card').getByRole('button', { name: 'Bigger map' }).click()
   await page.getByRole('button', { name: 'Close the big map' }).click()
   await page
@@ -81,11 +81,11 @@ test('demo: photo, price correction, customer page and availability', async ({
   await expect(review).toBeVisible()
   await review.getByRole('button', { name: 'Confirm and save' }).click()
   await expect(review).not.toBeVisible()
-  await page.getByRole('button', { name: /^Customer page/ }).click()
+  await page.getByRole('button', { name: /^Your shop page/ }).click()
   const sharing = page.getByRole('switch', { name: 'Share customer page' })
   await sharing.click()
   await expect(sharing).toBeChecked()
-  const section = sheet('Customer page')
+  const section = sheet('Your shop page')
   const origin = baseURL!.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
   const shownLink = section.getByText(new RegExp(`^${origin}/(explore/)?s/`))
   await expect(shownLink).toBeVisible()
@@ -101,7 +101,7 @@ test('demo: photo, price correction, customer page and availability', async ({
     await expect(customer.getByText('Sold out', { exact: true })).toHaveCount(0)
 
     await closeSheet()
-    await page.getByRole('button', { name: /^Sold out today/ }).click()
+    await page.getByRole('button', { name: /^Sold out/ }).click()
     const available = page.getByRole('switch', { name: 'Available: Chai' })
     await available.click()
     await expect(available).not.toBeChecked()
@@ -116,7 +116,7 @@ test('demo: photo, price correction, customer page and availability', async ({
     await customer.reload()
     await expect(product).toContainText('Sold out')
 
-    await page.getByRole('button', { name: /^Customer page/ }).click()
+    await page.getByRole('button', { name: /^Your shop page/ }).click()
     await sharing.click()
     await expect(sharing).not.toBeChecked()
     await expect(section.getByRole('link', { name: 'Open page' })).toHaveCount(0)

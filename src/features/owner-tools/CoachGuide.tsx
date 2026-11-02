@@ -4,6 +4,7 @@ import type { ToolCopy } from './copy'
 import { useToolCopy } from './copy'
 import { openOwnerFeature } from './entry'
 import { useWorkspace } from '../v1/workspaceContext'
+import { SeeAgain } from '../first-run/FirstRun'
 
 /** Shared by the help screen and empty coach. Saved item names stay in the owner's words. */
 function guideExamples(t: ToolCopy, shop: Business | null, products: Product[]) {
@@ -106,6 +107,10 @@ export function CoachGuide() {
           ws.startCoachDraft(sentence, { send: true })
         }}
       />
+      {/* You → Help is the tour and this page; the short intro replays from here. */}
+      <Box sx={{ alignSelf: 'flex-start' }}>
+        <SeeAgain app="owner" />
+      </Box>
     </Stack>
   )
 }

@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { confirm, enter, localOnly, reviewName, seedShop } from './stories/support.js'
+import { shopMore } from './support/shopMore.js'
 
 const posExport = fileURLToPath(
   new URL('../backend/tests/fixtures/connect/pos_menu.csv', import.meta.url),
@@ -16,6 +17,7 @@ test('owner connects a POS export, reviews mappings, and sees imported menu item
   await seedShop(page)
 
   await page.getByRole('button', { name: 'Shop', exact: true }).click()
+  await shopMore(page)
   await page.getByRole('button', { name: /Link your billing app/i }).click()
 
   const connect = page.getByRole('dialog', { name: 'Link your billing app' })
@@ -76,6 +78,7 @@ test('POS connection labels stay in the selected Hindi locale', async ({ page })
   await page.getByRole('combobox', { name: 'Language' }).click()
   await page.getByRole('option', { name: 'हिन्दी' }).click()
   await page.getByRole('button', { name: 'दुकान', exact: true }).click()
+  await shopMore(page)
   await page.getByRole('button', { name: /बिक्री का हिसाब जोड़ें/ }).click()
 
   const connect = page.getByRole('dialog', { name: 'बिक्री का हिसाब जोड़ें' })
@@ -111,6 +114,7 @@ test('owner confirms a POS sales export and sees it in Grow', async ({ page }) =
     .replace('2026-10-16', recapDate)
 
   await page.getByRole('button', { name: 'Shop', exact: true }).click()
+  await shopMore(page)
   await page.getByRole('button', { name: /Link your billing app/i }).click()
   const connect = page.getByRole('dialog', { name: 'Link your billing app' })
   await connect.getByRole('button', { name: 'Tally', exact: true }).click()

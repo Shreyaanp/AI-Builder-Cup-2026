@@ -115,6 +115,8 @@ for (const app of ['owner', 'customer'] as const) {
     if (app === 'owner') {
       await page.getByRole('button', { name: /preview/i }).click()
       await page.getByRole('button', { name: 'You', exact: true }).click()
+      // You → Help → What can I ask? holds the intro replay (simplify batch 3).
+      await page.getByRole('button', { name: 'What can I ask?', exact: true }).click()
     } else {
       await page.getByRole('button', { name: 'Profile and preferences' }).click()
     }

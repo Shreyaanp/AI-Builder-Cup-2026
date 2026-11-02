@@ -25,6 +25,7 @@ import { useSourceCopy } from './today/sourceCopy'
 import { useWorkspace } from './workspaceContext'
 import { windowClass } from '../../design/theme'
 import { useShopCopy } from '../shop/strings'
+import { AskHint } from './AskHint'
 import { UNITS, unitKey } from '../shop/units'
 
 const EMPTY: Business['fields'] = { name: '', category: '', location: '', hours: '', phone: '' }
@@ -121,6 +122,8 @@ function ProductForm({ product }: { product: Product | null }) {
     category: product?.category ?? '',
   }))
   const [item, setItem] = useState(initial)
+  // A new item asks for its name and price; the rest waits behind "More details".
+  const [more, setMore] = useState(Boolean(product))
   const [source, setSource] = useState(product?.source)
   const [savingSource, setSavingSource] = useState(false)
   // The tap saves at once, so Cancel does not undo it: the note says so (OB-243).
@@ -260,56 +263,72 @@ function ProductForm({ product }: { product: Product | null }) {
               </MenuItem>
             ))}
           </TextField>
-          <TextField
-            label={shopCopy.category}
-            name="category"
-            value={item.category}
-            onChange={(event) => setItem({ ...item, category: event.target.value })}
-            slotProps={{ htmlInput: { maxLength: 80 } }}
-          />
-          <TextField
-            label={t.stockOptional}
-            value={item.stock}
-            onChange={(event) => setItem({ ...item, stock: event.target.value.replace(/\D/g, '') })}
-            slotProps={{ htmlInput: { inputMode: 'numeric' } }}
-          />
-          <Stack spacing={1}>
-            <Typography id="product-source-label" variant="bodyMedium" color="text.secondary">
-              {sourceCopy.question}
-            </Typography>
-            <ToggleButtonGroup
-              exclusive
-              fullWidth
-              value={source ?? null}
-              disabled={savingSource}
-              aria-labelledby="product-source-label"
-              // Tapping the chosen answer again keeps it: an answer is changed, never cleared.
-              onChange={(_, next: 'made' | 'bought' | null) => {
-                if (next) void chooseSource(next)
-              }}
-              sx={{
-                '& .MuiToggleButton-root': { color: roles.onSurface, minHeight: 48 },
-                '& .MuiToggleButton-root.Mui-selected': {
-                  bgcolor: roles.secondaryContainer,
-                  color: roles.onSecondaryContainer,
-                },
-                '& .MuiToggleButton-root.Mui-selected:hover': {
-                  bgcolor: roles.secondaryContainer,
-                },
-              }}
+          {!more && (
+            <Button
+              aria-expanded={false}
+              onClick={() => setMore(true)}
+              sx={{ alignSelf: 'flex-start', minHeight: 48 }}
             >
-              <ToggleButton value="made">{sourceCopy.make}</ToggleButton>
-              <ToggleButton value="bought">{sourceCopy.buy}</ToggleButton>
-            </ToggleButtonGroup>
-            <Typography
-              role="status"
-              data-testid="product-source-saved"
-              variant="bodyMedium"
-              color="text.secondary"
-            >
-              {sourceSaved ? sourceCopy.saved : ''}
-            </Typography>
-          </Stack>
+              {shopCopy.moreDetails}
+            </Button>
+          )}
+          {more && (
+            <>
+              <TextField
+                label={shopCopy.category}
+                name="category"
+                value={item.category}
+                onChange={(event) => setItem({ ...item, category: event.target.value })}
+                slotProps={{ htmlInput: { maxLength: 80 } }}
+              />
+              <TextField
+                label={t.stockOptional}
+                value={item.stock}
+                onChange={(event) =>
+                  setItem({ ...item, stock: event.target.value.replace(/\D/g, '') })
+                }
+                slotProps={{ htmlInput: { inputMode: 'numeric' } }}
+              />
+              <Stack spacing={1}>
+                <Typography id="product-source-label" variant="bodyMedium" color="text.secondary">
+                  {sourceCopy.question}
+                </Typography>
+                <ToggleButtonGroup
+                  exclusive
+                  fullWidth
+                  value={source ?? null}
+                  disabled={savingSource}
+                  aria-labelledby="product-source-label"
+                  // Tapping the chosen answer again keeps it: an answer is changed, never cleared.
+                  onChange={(_, next: 'made' | 'bought' | null) => {
+                    if (next) void chooseSource(next)
+                  }}
+                  sx={{
+                    '& .MuiToggleButton-root': { color: roles.onSurface, minHeight: 48 },
+                    '& .MuiToggleButton-root.Mui-selected': {
+                      bgcolor: roles.secondaryContainer,
+                      color: roles.onSecondaryContainer,
+                    },
+                    '& .MuiToggleButton-root.Mui-selected:hover': {
+                      bgcolor: roles.secondaryContainer,
+                    },
+                  }}
+                >
+                  <ToggleButton value="made">{sourceCopy.make}</ToggleButton>
+                  <ToggleButton value="bought">{sourceCopy.buy}</ToggleButton>
+                </ToggleButtonGroup>
+                <Typography
+                  role="status"
+                  data-testid="product-source-saved"
+                  variant="bodyMedium"
+                  color="text.secondary"
+                >
+                  {sourceSaved ? sourceCopy.saved : ''}
+                </Typography>
+              </Stack>
+            </>
+          )}
+          {!product && <AskHint id="add_menu" />}
           {error && <Alert severity="error">{error}</Alert>}
           <button type="submit" hidden />
         </Stack>

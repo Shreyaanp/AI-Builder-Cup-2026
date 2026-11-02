@@ -38,14 +38,18 @@ for (const scheme of ['light', 'dark'] as const) {
     await expect(page.getByRole('dialog')).toHaveCount(0)
     // The app keeps its own Look setting (You → Look), separate from the system scheme.
     await page.getByRole('button', { name: 'You', exact: true }).click()
+    await page.getByRole('button', { name: /^Look/ }).click()
     await page
       .getByRole('button', { name: scheme === 'dark' ? 'Dark' : 'Light', exact: true })
       .click()
 
-    // Shop leads with the customer page and one primary "Share page"; the tools moved to Grow.
+    // Shop leads with the customer page; its one primary "Share page" sits in the thumb zone
+    // below the rows (simplify batch 3). The tools moved to Grow.
     await page.getByRole('button', { name: 'Shop', exact: true }).click()
-    const yourPage = page.getByRole('region', { name: 'This is your page' })
-    await expect(yourPage.getByRole('button', { name: 'Share page' })).toBeInViewport()
+    await expect(page.getByRole('region', { name: 'Your shop page' })).toBeVisible()
+    await expect(
+      page.locator('section[aria-label="Shop"]').getByRole('button', { name: 'Share page' }),
+    ).toBeInViewport()
     await expect(page.getByRole('button', { name: /^Menu/ })).toBeVisible()
     await expect(page.locator('[data-tour="closeday"]')).toHaveCount(0)
     await expect(page.locator('[data-tour="prep"]')).toHaveCount(0)

@@ -27,13 +27,11 @@ const phrase = (feature: Feature, lang: Lang) => (lang === 'en' ? feature.ask : 
 const pathLine = (feature: Feature, lang: Lang) =>
   lang === 'en' ? `Next, open ${where(feature)}.` : `अब ${where(feature)} खोलें।`
 
-// Rows that are reachable in 2 taps but still sit below the first view at 390 x 844. Moving them
-// up is Batch 3 (Shop and You layout) and Batch 4 (Grow list and "More tools"), not this batch.
-// The check is strict: once a row reaches the first view its test fails until it leaves this list.
+// Rows that are reachable in 2 taps but still sit below the first view at 390 x 844. Batch 3 put
+// every Shop row in the first view; moving the Grow ones up is Batch 4 (Grow list and "More
+// tools"). The check is strict: once a row reaches the first view its test fails until it leaves
+// this list.
 const BELOW_FIRST_VIEW = new Set([
-  'Shop details',
-  'Messages',
-  'Link your billing app',
   'Orders',
   'Close the day',
   'Purchase orders',
@@ -41,7 +39,8 @@ const BELOW_FIRST_VIEW = new Set([
   'Stamps & perks',
   'Your week',
   'Privacy & your data',
-  'Talk to your coach',
+  'What the coach knows',
+  'What can I ask?',
 ])
 
 // The demo hides Get on Google (DemoApp passes hiddenFeatures) while its coach still names it:
@@ -134,7 +133,9 @@ async function closeAll(page: Page) {
 
 /** Opens the row (tap 2) and finds the control inside it, scrolling the open screen only. */
 async function inner(page: Page, row: string, control: string) {
-  await entry(page, row).click()
+  const opener = entry(page, row)
+  // Shop → More opens on the same screen; a second tap would close it again.
+  if ((await opener.getAttribute('aria-expanded')) !== 'true') await opener.click()
   const dialog = page.getByRole('dialog')
   const scope = (await dialog.count()) ? dialog.last() : page
   const found = entry(scope, control)
@@ -216,32 +217,38 @@ async function ask(page: Page, text: string, expected = '') {
   return found
 }
 
-// The demo allows 30 coach messages per visitor in ten minutes; each tab's phrases (English and
-// Hindi, at most 28) are one visitor.
+// The demo allows 30 coach messages per visitor in ten minutes; each tab's phrases go in groups
+// of 14 features (English and Hindi, at most 28 messages), one visitor per group. Shop has more
+// than 14 since the stamp card moved there (simplify batch 3).
+const PER_VISITOR = 14
 for (const name of ['Coach', 'Shop', 'Grow', 'You']) {
-  test(`${name}: each chat phrase answers on topic with its screen path, and that path exists`, async ({
-    page,
-  }, info) => {
-    test.skip(info.project.name !== 'phone', 'Phone (390) layout')
-    test.setTimeout(360_000)
-    await openDemo(page, `chat-${name}-${info.testId}`)
-    for (const feature of features.filter((f) => f.path[0] === name)) {
-      for (const lang of LANGS) {
-        const reply = await ask(page, phrase(feature, lang), pathLine(feature, lang))
-        expect(reply, `${phrase(feature, lang)}: about ${feature.id}`).toMatch(
-          new RegExp(TOPICS[feature.id]![lang], 'i'),
-        )
+  const rows = features.filter((f) => f.path[0] === name)
+  for (let start = 0; start < rows.length; start += PER_VISITOR) {
+    const part = start ? ` (part ${start / PER_VISITOR + 1})` : ''
+    test(`${name}${part}: each chat phrase answers on topic with its screen path, and that path exists`, async ({
+      page,
+    }, info) => {
+      test.skip(info.project.name !== 'phone', 'Phone (390) layout')
+      test.setTimeout(360_000)
+      await openDemo(page, `chat-${name}-${start}-${info.testId}`)
+      for (const feature of rows.slice(start, start + PER_VISITOR)) {
+        for (const lang of LANGS) {
+          const reply = await ask(page, phrase(feature, lang), pathLine(feature, lang))
+          expect(reply, `${phrase(feature, lang)}: about ${feature.id}`).toMatch(
+            new RegExp(TOPICS[feature.id]![lang], 'i'),
+          )
+          if (await page.getByRole('dialog').count()) await closeAll(page)
+        }
+        // Screens the coach opens itself are checked below; close them to follow the path by hand.
         if (await page.getByRole('dialog').count()) await closeAll(page)
+        if (feature.path.length === 1 || NOT_IN_DEMO.has(feature.path[1])) continue
+        await tab(page, feature.path[0])
+        const target = entry(page, feature.path[1])
+        await target.scrollIntoViewIfNeeded()
+        await expect(target, `${feature.ask} → ${where(feature)}`).toBeVisible()
       }
-      // Screens the coach opens itself are checked below; close them to follow the path by hand.
-      if (await page.getByRole('dialog').count()) await closeAll(page)
-      if (feature.path.length === 1 || NOT_IN_DEMO.has(feature.path[1])) continue
-      await tab(page, feature.path[0])
-      const target = entry(page, feature.path[1])
-      await target.scrollIntoViewIfNeeded()
-      await expect(target, `${feature.ask} → ${where(feature)}`).toBeVisible()
-    }
-  })
+    })
+  }
 }
 
 // Each phrase on its own, in a fresh demo session (a new visitor each), so no earlier answer or

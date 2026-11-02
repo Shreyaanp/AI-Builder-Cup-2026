@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test'
 import { AxeBuilder } from '@axe-core/playwright'
 import { confirm, enter, localOnly, phone, reviewName, seedShop } from './support.js'
+import { shopMore } from '../support/shopMore.js'
 
 test.use(phone)
 test.skip(({ isMobile }) => !isMobile, 'Story evidence uses the phone project')
@@ -16,6 +17,7 @@ test('S14 · Link your billing app (POS/ERP import, AI mapping, sync & review)',
   // Step 1: Open Shop and open Connect sheet
   await test.step('1 · Open Shop and open Link your billing app', async () => {
     await page.getByRole('button', { name: 'Shop', exact: true }).click()
+    await shopMore(page)
     const connectTile = page.getByRole('button', { name: /Link your billing app/i })
     await expect(connectTile).toBeVisible()
     await connectTile.click()
@@ -107,6 +109,7 @@ Bun Maska,35.00,Snacks,25,piece`
 
   // Step 5: Verify Saved mapping and Last Synced status
   await test.step('5 · Re-open connect sheet and verify saved mapping & last synced', async () => {
+    await shopMore(page)
     const connectTile = page.getByRole('button', { name: /Link your billing app/i })
     await expect(connectTile).toBeVisible()
     await connectTile.click()
@@ -144,6 +147,7 @@ Bun Maska,35.00,Snacks,25,piece`
   await test.step('7 · Desktop responsive check', async () => {
     await page.setViewportSize({ width: 1440, height: 1000 })
     await page.getByRole('button', { name: 'Shop', exact: true }).click()
+    await shopMore(page)
     const connectTile = page.getByRole('button', { name: /Link your billing app/i })
     await expect(connectTile).toBeVisible()
     await connectTile.click()
@@ -169,9 +173,11 @@ Bun Maska,35.00,Snacks,25,piece`
   await test.step('8 · Dark mode check', async () => {
     // Appearance lives on You.
     await page.getByRole('button', { name: 'You', exact: true }).click()
+    await page.getByRole('button', { name: /^Look/ }).click()
     await page.getByRole('button', { name: 'Dark', exact: true }).click()
 
     await page.getByRole('button', { name: 'Shop', exact: true }).click()
+    await shopMore(page)
     const connectTile = page.getByRole('button', { name: /Link your billing app/i })
     await expect(connectTile).toBeVisible()
     await connectTile.click()

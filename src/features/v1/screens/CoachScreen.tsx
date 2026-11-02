@@ -188,9 +188,10 @@ const SHEETS: Partial<Record<CoachAction['target'], ShopSheetKind>> = {
   details: 'details',
   // The shop icon card sits at the top of the details sheet.
   icon: 'details',
-  stamps: 'details',
+  // The stamp card and its thank-you perks: Shop → More → Stamp card (simplify batch 3).
+  stamps: 'stamps',
   plan: 'plan',
-  games: 'customer',
+  games: 'perks',
 }
 const DESTINATIONS: Partial<Record<CoachAction['target'], Destination>> = {
   today: 'coach',
@@ -445,7 +446,7 @@ function CoachScreen({
           if (!NEEDS_TAP.has(action.target) && !action.offer) {
             setShowToday(action.target === 'today')
             const sheet = SHEETS[action.target]
-            if (action.target === 'games') go('grow')
+            if (action.target === 'games') go('shop')
             if (action.target === 'connect') setConnectOpen(true)
             if (sheet) setShopSheet(sheet)
             else if (DESTINATIONS[action.target]) go(DESTINATIONS[action.target]!)
@@ -788,7 +789,7 @@ function CoachScreen({
 
   function openAction(action: CoachAction) {
     setShowToday(action.target === 'today')
-    if (action.target === 'games') go('grow')
+    if (action.target === 'games') go('shop')
     if (action.target === 'connect') setConnectOpen(true)
     if (action.target === 'photo') pick('library')
     else if (action.target === 'import') pick('document')

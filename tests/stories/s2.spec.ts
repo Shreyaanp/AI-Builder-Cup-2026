@@ -57,7 +57,7 @@ test('S2 · daily upkeep and customer-page connection', async ({ page, context }
     const toast = customer.getByRole('listitem').filter({ hasText: 'Kaya toast' })
     await expect(toast).toContainText('Sold out')
     await page.getByRole('button', { name: 'Shop', exact: true }).click()
-    await page.getByRole('button', { name: /^Sold out today/ }).click()
+    await page.getByRole('button', { name: /^Sold out/ }).click()
     const available = page.getByRole('switch', { name: 'Available: Kaya toast' })
     await expect(available).not.toBeChecked()
     await available.click()
