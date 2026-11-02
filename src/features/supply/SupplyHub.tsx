@@ -272,10 +272,12 @@ function Screen({
                       chip={row.short.length ? 'problem' : 'needs_you'}
                       amount={
                         row.lines[0]
-                          ? `${f.qty(row.lines[0].quantity)} ${row.lines[0].unit}`
+                          ? `${f.qty(row.lines[0].quantity)} ${f.unit(row.lines[0].unit)}`
                           : undefined
                       }
-                      detail={[c.kind[row.kind], row.lines[0]?.item].filter(Boolean).join(' · ')}
+                      detail={[c.kind[row.kind], f.item(row.lines[0]?.item)]
+                        .filter(Boolean)
+                        .join(' · ')}
                       onOpen={() => open(row.order_id)}
                     />
                   ),

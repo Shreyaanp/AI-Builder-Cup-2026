@@ -1,4 +1,7 @@
 import { useLocale } from '../../state/hooks'
+import { productName } from '../../i18n/productNames'
+import { useShopCopy } from '../shop/strings'
+import { unitLabel } from '../shop/units'
 import { formatShopPrice, shopCurrency } from '../v1/format'
 import { useWorkspace } from '../v1/workspaceContext'
 import { dayLabel } from './supplyData'
@@ -11,8 +14,12 @@ export function useIoFormat(currency = '') {
   // A task carries no currency of its own: a price change is in the shop's, never a crash.
   const shop = shopCurrency(useWorkspace().active)
   const number = new Intl.NumberFormat(locale, { maximumFractionDigits: 2 })
+  const shopCopy = useShopCopy()
   return {
     qty: (value: number | string | null | undefined) => number.format(Number(value ?? 0)),
+    /** An item and a unit in the owner's language ("चाय पत्ती", "किलो"), as Purchase orders say them. */
+    item: (name: string | null | undefined) => (name ? productName(name, locale) : ''),
+    unit: (unit: string | null | undefined) => (unit ? unitLabel(unit, shopCopy) : ''),
     day: (iso: string | null | undefined) => dayLabel(iso ?? '', locale),
     time: (at: number) =>
       new Intl.DateTimeFormat(locale, {
