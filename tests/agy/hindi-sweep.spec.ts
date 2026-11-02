@@ -117,6 +117,8 @@ test('Hindi phone sweep: supply, reminders, onboarding, tour and demo', async ({
   await page.getByRole('button', { name: 'आगे', exact: true }).click()
   await hindiOnly(page, 'पहली शुरुआत का कार्ड 3')
   await page.getByRole('button', { name: 'शुरू करें', exact: true }).click()
+  // Back from "What can I ask?" to You.
+  await page.getByRole('button', { name: 'वापस', exact: true }).click()
 
   await expect(page.getByLabel('याद दिलाएँ')).toBeVisible()
   await hindiOnly(page, 'याद दिलाने की सेटिंग')
