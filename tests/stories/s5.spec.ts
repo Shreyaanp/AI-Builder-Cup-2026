@@ -35,7 +35,7 @@ test('S5 · shop details to Google preview and truthful handoff', async ({ page 
     await flow.getByRole('button', { name: 'Next', exact: true }).click()
   })
   await test.step('4 · waiting state and official links', async () => {
-    await expect(flow.getByText('Waiting for Google API access')).toBeVisible()
+    await expect(flow.getByText('Waiting for Google’s permission')).toBeVisible()
     await expect(flow.getByRole('link', { name: 'Add on Google' })).toHaveAttribute(
       'href',
       'https://business.google.com/add',

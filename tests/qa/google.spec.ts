@@ -15,7 +15,7 @@ test('Google details → gallery → INR preview → honest waiting state, reloa
   await expect(flow).toContainText(/₹18(?![.\d])/)
   await expect(flow.getByRole('link', { name: 'Call', exact: true })).toHaveCount(0)
   await flow.getByRole('button', { name: 'Next', exact: true }).click()
-  await expect(flow.getByText('Waiting for Google API access')).toBeVisible()
+  await expect(flow.getByText('Waiting for Google’s permission')).toBeVisible()
   await expect(flow.getByRole('link', { name: 'Add on Google' })).toHaveAttribute(
     'href',
     'https://business.google.com/add',

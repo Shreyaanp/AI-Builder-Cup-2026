@@ -51,7 +51,7 @@ test.describe('Supply chain flows on phone (390px)', () => {
 
     // 4. Inbound simulation: simulate supplier replies across the timeline
     for (const step of ['Confirmed', 'On its way', 'Invoice']) {
-      await orderCard.getByRole('button', { name: 'Simulate supplier reply', exact: true }).click()
+      await orderCard.getByRole('button', { name: 'See the supplier’s reply', exact: true }).click()
       const row = orderCard.getByRole('listitem').filter({ hasText: step }).first()
       await expect(row).not.toContainText('Waiting')
     }
