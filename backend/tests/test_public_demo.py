@@ -347,6 +347,84 @@ def test_OB_255_a_demo_in_use_is_never_released(app, monkeypatch):  # noqa: N802
         assert app.state.public_demos[first].busy == 0
 
 
+def test_OB_256_exit_waits_for_a_request_in_flight(app):  # noqa: N802, F811
+    with TestClient(app) as client:
+        app.state.v1_settings.public_demo_enabled = True
+        session = open_demo(client).json()["session_id"]
+        entry = app.state.public_demos[session]
+        # A request (or a streamed coach answer) is using the sandbox when the visitor leaves.
+        entry.busy = 1
+        assert client.delete(f"/api/v1/demo/sessions/{session}").json() == {"exited": True}
+        assert session not in app.state.public_demos
+        assert entry.directory is not None and entry.closing
+        # The in-flight request finishes against its files; the last one out removes them.
+        assert entry.store is not None
+        entry.store.list_businesses(entry.uid)
+        entry.release()
+        assert entry.directory is None
+        # Later requests take the normal "demo ended" path.
+        assert read(client, session, "/shops").status_code == 410
+        assert owner(client, session, "businesses").status_code == 410
+
+
+def test_OB_256_expiry_waits_for_a_coach_stream(app):  # noqa: N802, F811
+    with TestClient(app) as client:
+        app.state.v1_settings.public_demo_enabled = True
+        session = open_demo(client).json()["session_id"]
+        entry = app.state.public_demos[session]
+        entry.busy = 2
+        entry.expires = time.time() - 1
+        assert read(client, session, "/shops").status_code == 410
+        assert session not in app.state.public_demos
+        assert entry.directory is not None
+        entry.release()
+        assert entry.directory is not None  # one request is still using it
+        entry.release()
+        assert entry.directory is None
+
+
+def test_OB_256_an_idle_demo_closes_at_once(app):  # noqa: N802, F811
+    with TestClient(app) as client:
+        app.state.v1_settings.public_demo_enabled = True
+        session = open_demo(client).json()["session_id"]
+        entry = app.state.public_demos[session]
+        assert entry.busy == 0
+        client.delete(f"/api/v1/demo/sessions/{session}")
+        assert entry.directory is None
+
+
+def test_OB_256_leaving_during_requests_never_breaks_one(app):  # noqa: N802, F811
+    import threading
+
+    with TestClient(app, raise_server_exceptions=False) as client:
+        app.state.v1_settings.public_demo_enabled = True
+        statuses: list[int] = []
+        bodies: list[str] = []
+
+        def use(session: str) -> None:
+            for _ in range(8):
+                response = owner(client, session, "businesses")
+                statuses.append(response.status_code)
+                bodies.append(response.text)
+
+        def leave(session: str) -> None:
+            statuses.append(client.delete(f"/api/v1/demo/sessions/{session}").status_code)
+
+        threads = []
+        for _ in range(3):
+            session = open_demo(client).json()["session_id"]
+            threads += [threading.Thread(target=use, args=(session,)) for _ in range(3)]
+            threads.append(threading.Thread(target=leave, args=(session,)))
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+        # Requests before the exit succeed; those after it get "demo ended", never a 500.
+        assert all(code < 500 for code in statuses), statuses
+        assert not any("unable to open database file" in body for body in bodies)
+        assert {200, 410} >= set(statuses) - {200}
+
+
 def test_session_and_safe_writes_survive_instance_cache_loss(app):  # noqa: F811
     from tests.test_photos import jpeg
 
