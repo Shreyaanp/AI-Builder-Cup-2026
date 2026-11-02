@@ -489,7 +489,11 @@ async def export(
             )
     for day, day_rows in rows.items():
         await bigquery.load_day(day, day_rows)
-        await bigquery.load_day(day, habits[day], HABIT_TABLE, HABIT_SCHEMA)
+    for day, day_habits in habits.items():  # after shop_daily: a failure here must not stop it
+        try:
+            await bigquery.load_day(day, day_habits, HABIT_TABLE, HABIT_SCHEMA)
+        except Exception as error:
+            log.warning("analytics_owner_daily_not_loaded", error=type(error).__name__)
     await bigquery.ensure_views()
     summary = {
         "shops": len(shops),

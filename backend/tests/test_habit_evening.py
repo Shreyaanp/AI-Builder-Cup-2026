@@ -282,3 +282,22 @@ def test_public_demo_sandbox_reads_the_reward_but_never_counts() -> None:
 
     assert allowed("GET", "businesses/demo-1/day/2026-11-02/reward")
     assert not allowed("POST", "businesses/demo-1/habit")
+
+
+def test_counting_reads_the_shop_document_not_the_inventory(app, monkeypatch) -> None:  # noqa: F811
+    with TestClient(app) as client:
+        _, bid = owned_shop(client, app)
+
+        def streamed(*_: Any) -> None:
+            raise AssertionError("the whole inventory was read to count a visit")
+
+        monkeypatch.setattr(app.state.merchant, "inventory", streamed)
+        sent = client.post(
+            f"/api/v1/businesses/{bid}/habit", json={"events": [{"event": "opened"}]}
+        )
+        assert sent.status_code == 204
+        assert app.state.merchant.feature_docs.scoped(owner_habit.KIND, bid)
+        other = client.post(
+            "/api/v1/businesses/not-mine/habit", json={"events": [{"event": "opened"}]}
+        )
+        assert other.status_code == 404

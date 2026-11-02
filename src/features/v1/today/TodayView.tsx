@@ -44,6 +44,7 @@ import { useTodayCopy, type Festival } from './todayCopy'
 import type { CoachLine, Need, StepId, TodayPlan } from './todayPlan'
 import { useTodayPlan } from './useTodayPlan'
 import { countAction, countShown } from './habitCount'
+import { useLocalDay } from './useLocalDay'
 import { FirstCustomers } from '../FirstCustomers'
 import { TodaySupply } from '../../supply/TodaySupply'
 import { TodaySupplyNeeds } from '../../supply/SupplyEntry'
@@ -78,11 +79,12 @@ export function TodayView({
   const { plan, answerMenu, firstCustomers } = useTodayPlan(actions.unread)
   const shop = ws.active
   const shown = plan?.needs.map((need) => need.kind).join(',') ?? null
+  const day = useLocalDay()
   useEffect(() => {
     if (shown !== null) countShown(ws, shown ? shown.split(',') : [])
-    // Counted when what Today shows changes, not on every workspace update.
+    // Counted when what Today shows changes (or the day turns over), not on every workspace update.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [shown, ws.active?.id])
+  }, [shown, ws.active?.id, day])
   if (!shop) return null
   if (!plan) {
     return (

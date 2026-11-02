@@ -15,7 +15,7 @@ from typing import Any, Literal
 
 import anyio
 import structlog
-from fastapi import APIRouter, HTTPException, Request, Response
+from fastapi import APIRouter, Request, Response
 from pydantic import BaseModel, Field
 
 from .limits import enforce_limits
@@ -123,10 +123,7 @@ async def count_habit(business_id: str, body: HabitEvents, request: Request) -> 
     uid = await consented_owner(request)
     await enforce_limits(request, [("owner:habit", uid)])
     service = store(request)
-    context = await anyio.to_thread.run_sync(service.context, uid, business_id)
-    business = context.get("business")
-    if not business:
-        raise HTTPException(404, "Business not found.")
+    business = await anyio.to_thread.run_sync(service.owned_business, uid, business_id)
     fields = business.get("fields") or {}
     if fields.get("demo"):
         return Response(status_code=204)

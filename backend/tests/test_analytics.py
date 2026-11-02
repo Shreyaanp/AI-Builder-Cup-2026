@@ -203,12 +203,12 @@ async def test_export_loads_one_partition_per_day_without_names(app) -> None:  #
     tables = [c["configuration"]["load"]["destinationTable"]["tableId"] for c, _ in loads]
     assert tables == [
         "shop_daily$20261014",
-        "owner_daily$20261014",
         "shop_daily$20261015",
+        "owner_daily$20261014",
         "owner_daily$20261015",
     ]
     # A day the owner did not open has no row; the day they did is counts under the shop_key.
-    assert loads[1][1] == []
+    assert loads[2][1] == []
     [visit] = loads[3][1]
     assert visit["shop_key"] == shop_key("demo", bid) and visit["date"] == "2026-10-15"
     assert (visit["opened"], visit["closed"], visit["seconds_to_first_action"]) == (1, 1, 12)
@@ -216,7 +216,7 @@ async def test_export_loads_one_partition_per_day_without_names(app) -> None:  #
     assert visit["actions_done"] == [{"kind": "closeDay", "count": 1}]
     assert (visit["promise_set"], visit["pushes_shown"]) == (0, [])
     assert all(c["configuration"]["load"]["writeDisposition"] == "WRITE_TRUNCATE" for c, _ in loads)
-    row = loads[2][1][0]
+    row = loads[1][1][0]
     assert row["shop_key"] == shop_key("demo", bid) and row["page_views"] == 5
     assert (row["sales_minor"], row["items_sold"], row["forecast_units"]) == (1500, 10, 10)
     exported = json.dumps(loads)
@@ -294,3 +294,37 @@ async def test_erasure_deletes_the_shops_rows_only_when_exported() -> None:
     )
     await live.forget(["shop-1"])
     assert len(sent) == 2  # nothing was exported, nothing to delete
+
+
+async def test_owner_daily_load_failure_does_not_stop_shop_daily(app) -> None:  # noqa: F811
+    with TestClient(app) as client:
+        uid, bid = owned_shop(client, app)
+    end = date(2026, 10, 15)
+    save_sales(app, uid, bid, history(end))
+    record(app.state.merchant, bid, end.isoformat(), [HabitEvent(event="opened")])
+    loaded: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if "/upload/" in request.url.path:
+            parts = request.content.decode().split("--chalkboard-analytics")
+            config = json.loads(parts[1].split("\r\n\r\n", 1)[1])
+            table = config["configuration"]["load"]["destinationTable"]["tableId"]
+            if table.startswith("owner_daily"):
+                return httpx.Response(500, json={"error": {"message": "down"}})
+            loaded.append(table)
+            return httpx.Response(
+                200, json={"jobReference": {"jobId": "j1"}, "status": {"state": "DONE"}}
+            )
+        if "/api/v1/public/shops/" in json.loads(request.content)["query"]:
+            return httpx.Response(500, json={"error": {"message": "no log table"}})
+        return httpx.Response(200, json={"jobComplete": True})
+
+    settings = bigquery_settings()
+    summary = await export(
+        app.state.merchant,
+        BigQuery(settings, transport=httpx.MockTransport(handler)),
+        settings,
+        [end - timedelta(days=1), end],
+    )
+    assert loaded == ["shop_daily$20261014", "shop_daily$20261015"]
+    assert summary["rows"] == 2

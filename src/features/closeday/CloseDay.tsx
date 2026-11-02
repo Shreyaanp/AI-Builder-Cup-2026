@@ -31,6 +31,7 @@ import { useWorkspace } from '../v1/workspaceContext'
 import { useIdentity } from '../../auth/useIdentity'
 import { dismissFreshness } from '../sales/freshnessDismissal'
 import { closeDayCopy } from './strings'
+import { comparisonKind } from './compare'
 import { AskHint } from '../v1/AskHint'
 import { countClosed } from '../v1/today/habitCount'
 import type { components } from '../../api/generated'
@@ -696,8 +697,9 @@ function CloseRewardLines({ reward }: { reward: CloseReward | null }) {
             timeZone: 'UTC',
           }).format(then)
     const amount = wholeMoney(Math.abs(same.difference), currency, locale)
+    const kind = comparisonKind(toMajor(same.difference, currency))
     lines.push(
-      (same.difference > 0 ? t.moreThan : same.difference < 0 ? t.lessThan : t.sameAs)
+      (kind === 'more' ? t.moreThan : kind === 'less' ? t.lessThan : t.sameAs)
         .replace('{amount}', amount)
         .replace('{when}', when),
     )

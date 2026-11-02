@@ -1,4 +1,14 @@
-import type { Workspace } from '../workspaceContext'
+/** What counting needs of the workspace; the app's Workspace satisfies it. */
+export interface Workspace {
+  active: { id: string; fields: object } | null
+  demo: boolean
+  readOnlyMessage?: string
+  me: { consent_current?: boolean }
+  api: (
+    path: string,
+    init: { method: string; body: string; keepalive: boolean },
+  ) => Promise<unknown>
+}
 
 /**
  * The owner's daily visit counts (HABIT section 9): Today opened, which prompts it showed, which
