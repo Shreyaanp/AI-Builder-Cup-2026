@@ -414,7 +414,8 @@ FEATURES: tuple[Feature, ...] = (
         "import_sales",
         "owner",
         "Link your billing app",
-        "Upload your billing app or Excel sales file (Petpooja, Tally, Square…); the coach maps the columns once.",
+        "Upload your billing app or Excel sales file (Petpooja, Tally, Square…);"
+        " the coach maps the columns once.",
         '"Link my billing app" or "Import my sales".',
         ("Shop", "Link your billing app"),
         ("pos", "import", "excel", "csv", "tally", "export", "billing"),

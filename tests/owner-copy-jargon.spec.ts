@@ -46,7 +46,8 @@ test('no owner-copy string in any language says POS, SAP, TimesFM, IDoc, ADK, pa
   for (const file of FILES) {
     for (const text of literals(file)) {
       checked += 1
-      if (JARGON.test(text.replace(/\.(?:csv|xlsx|json|xml)\b/g, ''))) found.push(`${file}: ${text}`)
+      if (JARGON.test(text.replace(/\.(?:csv|xlsx|json|xml)\b/g, '')))
+        found.push(`${file}: ${text}`)
     }
   }
   expect(checked).toBeGreaterThan(2000)
