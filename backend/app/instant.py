@@ -17,10 +17,12 @@ from typing import Any
 import anyio
 
 from .app_guide import guide_reply, where_line
+from .close_reward import close_reward, reward_text
 from .contracts import StreamEvent
 from .coordinator import MerchantContext, propose_products
 from .discover import open_now
-from .region import shop_zone
+from .region import shop_currency, shop_zone
+from .rescue import local_now
 from .voice_tools import SCREENS, get_customer_messages, open_screen, set_open_today
 
 Embedder = Callable[[str], list[float]]
@@ -44,7 +46,11 @@ SCREEN_RULES: tuple[tuple[str, str], ...] = (
         r"|\b(?:show|print|get)\b(?!.*\b(?:payment|pay|upi)\b).*\bqr\b",
         "share",
     ),
-    (r"\bclose\s+(?:the|my)\s+day\b|\bday\s*end\b|\bend\s+of\s+(?:the\s+)?day\b", "close_day"),
+    (
+        r"\bclose\s+(?:the|my)\s+day\b|\bday\s*end\b|\bend\s+of\s+(?:the\s+)?day\b"
+        r"|\baaj\s+ka\s+hisaa?b\b",
+        "close_day",
+    ),
     (r"\b(?:get|put|list)\b.*\bon\s+google\b|\bgoogle\s+(?:step|listing|profile)\b", "google"),
     (r"\b(?:delete|erase|remove|download|export)\s+(?:all\s+)?my\s+(?:data|account)\b", "privacy"),
     (r"\bconnect\b.*\b(?:pos|billing|tally|petpooja)\b|\bimport\b.*\bsales\b", "import"),
@@ -78,6 +84,12 @@ MY_HOURS = re.compile(r"^what\s+are\s+(?:my|our|the\s+shop'?s?)\s+(?:opening\s+)
 MESSAGES = re.compile(
     r"^(?:any\s+|do\s+i\s+have\s+(?:any\s+)?|are\s+there\s+(?:any\s+)?)"
     r"(?:new\s+)?(?:customer\s+)?(?:messages|questions)\b",
+    re.I,
+)
+# "How did today go?": the close screen's facts in the chat (HABIT change 3, two paths).
+HOW_TODAY = re.compile(
+    r"^(?:how\s+(?:did|was)\s+(?:today|my\s+day)(?:\s+go)?|how(?:'s|\s+is)\s+today\s+going"
+    r"|aaj\s+(?:ka\s+din\s+)?kaisa\s+(?:raha|tha|gaya))\b",
     re.I,
 )
 SOLD_OUT_LIST = re.compile(r"^what(?:'s|\s+is)\s+sold\s+out\b", re.I)
@@ -251,6 +263,10 @@ def _read_intent(ctx: MerchantContext, intent: str) -> InstantResult | None:
             if gone
             else "Nothing is marked sold out right now.",
         )
+    if intent == "how_today":
+        sales = ctx.store.sales_history(ctx.uid, ctx.business_id or "")
+        reward = close_reward(sales, local_now(fields).date(), shop_currency(fields))
+        return InstantResult(intent, reward_text(reward))
     if intent.startswith("screen:"):
         target = intent.split(":", 1)[1]
         reply = SCREEN_REPLIES.get(target, "Here it is.")
@@ -336,6 +352,8 @@ async def route(
         return _read_intent(ctx, "messages")
     if SOLD_OUT_LIST.search(lowered):
         return _read_intent(ctx, "sold_out_list")
+    if HOW_TODAY.search(lowered):
+        return _read_intent(ctx, "how_today")
     guide = guide_reply(message)
     if guide:
         return InstantResult("app_guide", guide)

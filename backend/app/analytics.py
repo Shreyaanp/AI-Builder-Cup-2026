@@ -5,6 +5,8 @@ sales, items sold, customer questions, customer page views, stamps and a forecas
 backtest for each shop and day. No names, owner IDs, customer messages or contacts leave the app:
 the shop is a pseudonymous ``shop_key`` and every value is a daily count or sum. Each day is a
 partition loaded with WRITE_TRUNCATE (load jobs are free; re-running a day replaces it).
+Next to it, ``owner_daily`` holds the owner's own visits (``owner_habit``): opens, prompts shown,
+actions, closes and seconds to the first action, as counts under the same ``shop_key``.
 Views over it (``impact_daily``, ``forecast_accuracy``, ``latency_daily``) feed the Looker Studio
 impact dashboard; ``latency_daily`` aggregates the existing Cloud Run request-log sink and drops
 IP addresses, user agents and query strings.
@@ -34,6 +36,7 @@ from .forecast import training, weekday_average
 from .limits import enforce_limits
 from .merchant import MerchantRepository
 from .merchant_routes import owner, store
+from .owner_habit import days_for, export_row
 from .region import shop_currency, shop_zone
 from .rescue import local_now
 from .settings import Settings
@@ -74,6 +77,29 @@ SCHEMA = [
     {"name": "forecast_units", "type": "FLOAT64"},
     {"name": "actual_units", "type": "FLOAT64"},
     {"name": "forecast_method", "type": "STRING"},
+    {"name": "exported_at", "type": "TIMESTAMP"},
+]
+HABIT_TABLE = "owner_daily"
+_KIND_COUNTS: dict[str, Any] = {
+    "type": "RECORD",
+    "mode": "REPEATED",
+    "fields": [
+        {"name": "kind", "type": "STRING", "mode": "REQUIRED"},
+        {"name": "count", "type": "INT64", "mode": "REQUIRED"},
+    ],
+}
+HABIT_SCHEMA: list[dict[str, Any]] = [
+    {"name": "date", "type": "DATE", "mode": "REQUIRED"},
+    {"name": "shop_key", "type": "STRING", "mode": "REQUIRED"},
+    {"name": "opened", "type": "INT64"},
+    {"name": "closed", "type": "INT64"},
+    {"name": "promise_set", "type": "INT64"},
+    {"name": "promise_done", "type": "INT64"},
+    {"name": "seconds_to_first_action", "type": "INT64"},
+    {"name": "prompts_shown", **_KIND_COUNTS},
+    {"name": "actions_done", **_KIND_COUNTS},
+    {"name": "pushes_shown", **_KIND_COUNTS},
+    {"name": "pushes_opened", **_KIND_COUNTS},
     {"name": "exported_at", "type": "TIMESTAMP"},
 ]
 # Customer shop page opens, by shop and hour, from the Cloud Run request-log sink.
@@ -317,17 +343,23 @@ class BigQuery:
             for row in result.get("rows", [])
         ]
 
-    async def load_day(self, day: date, rows: list[dict[str, Any]]) -> None:
-        """Replace one day's partition of ``shop_daily`` (created on first load)."""
+    async def load_day(
+        self,
+        day: date,
+        rows: list[dict[str, Any]],
+        table: str = TABLE,
+        schema: list[dict[str, Any]] | None = None,
+    ) -> None:
+        """Replace one day's partition of ``shop_daily`` (or ``table``; created on first load)."""
         config = {
             "configuration": {
                 "load": {
                     "destinationTable": {
                         "projectId": self.project,
                         "datasetId": self.dataset,
-                        "tableId": f"{TABLE}${day:%Y%m%d}",
+                        "tableId": f"{table}${day:%Y%m%d}",
                     },
-                    "schema": {"fields": SCHEMA},
+                    "schema": {"fields": schema or SCHEMA},
                     "timePartitioning": {"type": "DAY", "field": "date"},
                     "clustering": {"fields": ["shop_key"]},
                     "sourceFormat": "NEWLINE_DELIMITED_JSON",
@@ -408,6 +440,7 @@ async def export(
         views = {}
     shops = await anyio.to_thread.run_sync(repository.analytics_shops, MAX_SHOPS)
     rows: dict[date, list[dict[str, Any]]] = {day: [] for day in days}
+    habits: dict[date, list[dict[str, Any]]] = {day: [] for day in days}
     exported_at = datetime.now(UTC).isoformat()
     for uid, bid in shops:
         try:
@@ -416,6 +449,7 @@ async def export(
             sales = await anyio.to_thread.run_sync(repository.sales_history, uid, bid)
             signals = await anyio.to_thread.run_sync(repository.recap_signals, uid, bid)
             counters = await anyio.to_thread.run_sync(counters_for, repository, bid, days)
+            visits = await anyio.to_thread.run_sync(days_for, repository, bid, days)
         except Exception as error:  # a shop deleted mid-export is skipped, not fatal
             log.warning("analytics_shop_skipped", error=type(error).__name__)
             continue
@@ -425,12 +459,18 @@ async def export(
         for iso, count in opened.items():
             counters.setdefault(iso, {})
             counters[iso] = {**counters[iso], "views": count}
+        key = shop_key(settings.google_cloud_project, bid)
+        if not fields.get("demo"):
+            for iso, counts in visits.items():
+                habits[date.fromisoformat(iso)].append(
+                    {"date": iso, "shop_key": key, **export_row(counts), "exported_at": exported_at}
+                )
         currency = shop_currency(fields)
         for shop_day in build_days(fields, sales, signals["questions"], counters, days):
             rows[shop_day.date].append(
                 {
                     "date": shop_day.date.isoformat(),
-                    "shop_key": shop_key(settings.google_cloud_project, bid),
+                    "shop_key": key,
                     "category": str(fields.get("category") or "")[:40].casefold(),
                     "country": COUNTRY_BY_CURRENCY.get(currency, ""),
                     "currency": currency,
@@ -449,8 +489,14 @@ async def export(
             )
     for day, day_rows in rows.items():
         await bigquery.load_day(day, day_rows)
+        await bigquery.load_day(day, habits[day], HABIT_TABLE, HABIT_SCHEMA)
     await bigquery.ensure_views()
-    summary = {"shops": len(shops), "days": len(days), "rows": sum(map(len, rows.values()))}
+    summary = {
+        "shops": len(shops),
+        "days": len(days),
+        "rows": sum(map(len, rows.values())),
+        "owner_rows": sum(map(len, habits.values())),
+    }
     log.info("analytics_exported", **summary)
     return summary
 
@@ -513,6 +559,15 @@ class AnalyticsReader:
             f"DELETE FROM `{{dataset}}.{TABLE}` WHERE shop_key IN UNNEST(SPLIT(@keys))",
             {"keys": ("STRING", ",".join(keys))},
         )
+        try:
+            await self.bigquery.query(
+                f"DELETE FROM `{{dataset}}.{HABIT_TABLE}` WHERE shop_key IN UNNEST(SPLIT(@keys))",
+                {"keys": ("STRING", ",".join(keys))},
+            )
+        except httpx.HTTPStatusError as error:
+            # Before the first export the table does not exist yet: nothing to delete.
+            if error.response.status_code != 404:
+                raise
 
     async def read(self, repository: MerchantRepository, uid: str, bid: str) -> Analytics:
         context = await anyio.to_thread.run_sync(repository.context, uid, bid)
