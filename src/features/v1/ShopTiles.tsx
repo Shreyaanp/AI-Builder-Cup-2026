@@ -44,7 +44,7 @@ import { ClosedTodaySwitch, YourLanguage } from './TwoPaths'
 import { ShopQr } from './ShopQr'
 import { OwnerPerks } from '../passport/games/OwnerPerks'
 import { useUnread } from './useUnread'
-import { openNow, readiness } from './shopProgress'
+import { busyWindow, openNow, readiness } from './shopProgress'
 import { useCopy } from './strings'
 import { isServiceShop, useTabsCopy } from './tabsCopy'
 import { RowGroup, ShopRow } from './ShopRow'
@@ -68,6 +68,9 @@ import { productName } from '../../i18n/productNames'
 import { MapCard } from './MapCard'
 import type { Proposal } from './api'
 
+/** How many menu items the busy-hours question goes through (menu order). */
+const SWEEP_ITEMS = 3
+
 export type ShopSheetKind =
   | 'details'
   | 'menu'
@@ -78,6 +81,8 @@ export type ShopSheetKind =
   | 'readiness'
   | 'photos'
   | 'stamps'
+  /** The stamp card with its thank-you perks already open (the coach's "show my perks"). */
+  | 'perks'
 
 /** A glanceable tile: icon + label, one big value, a little supporting detail. */
 export function Tile({
@@ -347,6 +352,10 @@ export function ShopTiles({
     shop.fields.weekly_hours,
     shopZone(shop.fields),
   )
+  // In the busy hours the row asks about the top items, one at a time (the old sweep card).
+  const sweep = busyWindow(shop.fields.busy_hours)
+    ? ws.products.slice(0, SWEEP_ITEMS).find((product) => product.available !== false)
+    : undefined
   const soldOutNames = ws.products
     .filter((product) => product.available === false)
     .map((product) => productName(product.name, locale))
@@ -368,7 +377,13 @@ export function ShopTiles({
         <ShopRow
           icon={<ZapOff size={20} />}
           label={t.soldOut}
-          value={soldOutNames.length ? soldOutNames.join(' · ') : t.soldOutCount(0)}
+          value={
+            sweep
+              ? t.sweepQuestion(productName(sweep.name, locale))
+              : soldOutNames.length
+                ? soldOutNames.join(' · ')
+                : t.soldOutCount(0)
+          }
           onClick={() => onSheet('soldOut')}
         />
         <ShopRow
@@ -645,6 +660,7 @@ export function ShopSheets({
         </Sheet>
       )
     case 'stamps':
+    case 'perks':
       return (
         <Sheet
           {...common}
@@ -663,7 +679,7 @@ export function ShopSheets({
             </Button>
           }
         >
-          {kind === 'stamps' && <StampCard />}
+          {(kind === 'stamps' || kind === 'perks') && <StampCard perksOpen={kind === 'perks'} />}
         </Sheet>
       )
     case 'photos':
@@ -877,12 +893,12 @@ function CustomerPage({ onReview }: { onReview: () => void }) {
 }
 
 /** The stamp card (what a full card earns), then the smaller thank-you perks on request. */
-function StampCard() {
+function StampCard({ perksOpen = false }: { perksOpen?: boolean }) {
   const t = useCopy()
   const tabs = useTabsCopy()
   const rewards = useRewardCopy()
   const ws = useWorkspace()
-  const [perks, setPerks] = useState(false)
+  const [perks, setPerks] = useState(perksOpen)
   const shop = ws.active
   if (!shop) return null
   const stamps = shop.fields.stamps_needed ?? 8
