@@ -818,3 +818,13 @@ const copies: Record<string, SourcingCopy> = {
 export function useSourcingCopy(): SourcingCopy {
   return copies[useLocale()] ?? en
 }
+
+/** Orders that would not load: shown in place of the loading skeleton. Other locales read English. */
+const loadFailed: Record<string, { text: string; retry: string }> = {
+  en: { text: 'Couldn’t load your orders. Try again', retry: 'Try again' },
+  hi: { text: 'आपके ऑर्डर लोड नहीं हो सके। फिर कोशिश करें', retry: 'फिर कोशिश करें' },
+}
+
+export function useOrdersLoadFailedCopy() {
+  return loadFailed[useLocale()] ?? loadFailed.en!
+}

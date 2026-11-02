@@ -10,13 +10,16 @@ const POLL_MS = 2000
 export function useOrders(live: boolean) {
   const { api, activeId } = useWorkspace()
   const [orders, setOrders] = useState<Order[] | null>(null)
-  const refresh = useCallback(async () => {
-    if (!activeId) return
+  /** Resolves true once a fetch that started now has returned, false if it failed. */
+  const refresh = useCallback(async (): Promise<boolean> => {
+    if (!activeId) return false
     try {
       const items = await api<Order[]>(`/businesses/${encodeURIComponent(activeId)}/orders`)
       setOrders(items)
+      return true
     } catch {
       // Keep the last list; the tile shows it until the next refresh.
+      return false
     }
   }, [api, activeId])
   useEffect(() => {

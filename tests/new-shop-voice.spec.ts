@@ -378,6 +378,9 @@ test('voice rate limit: the alert says how long to wait; voice unavailable: carr
     timeout: 30_000,
   })
   await expect(retry).toBeEnabled({ timeout: 5_000 })
+  // The countdown never reads "0 s": once it ends the alert says the owner can go again.
+  await expect(alert).toContainText('You can try again now')
+  await expect(alert).not.toContainText(/in 0 s/)
   mode = 'down'
   await retry.click()
   await expect(page.getByTestId('voice-alert')).toContainText('Voice isn’t available right now', {

@@ -68,3 +68,72 @@ test('running low → demo suppliers → one-tap order → supplier reply → Or
   await expect(page.getByRole('dialog')).toHaveCount(0)
   await expect(tile).toContainText('None open')
 })
+
+async function orderFrom(page: Page, running: string, order: string) {
+  await say(page, running)
+  await expect(page.getByRole('list', { name: /suppliers? nearby/ }).last()).toBeVisible()
+  await say(page, order)
+  await page
+    .getByRole('button', { name: /^Send to / })
+    .last()
+    .click()
+  await expect(page.getByText(/replied: “Confirmed:/).last()).toBeVisible({ timeout: 30_000 })
+}
+
+test('a second order in the same session opens its thread without flashing the list', async ({
+  page,
+}) => {
+  test.setTimeout(120_000)
+  await openWithShop(page)
+  await orderFrom(
+    page,
+    'My flour is running low',
+    'The second one looks good, order 20 kg flour from them',
+  )
+  await page.getByRole('button', { name: 'Open conversation' }).first().click()
+  await expect(page.getByRole('dialog').getByRole('textbox')).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+
+  await orderFrom(
+    page,
+    'My sugar is running low',
+    'The first one looks good, order 5 kg sugar from them',
+  )
+  // The sheet is still mounted with the first order's list; the new order is not in it yet.
+  await page.route('**/api/v1/businesses/*/orders', async (route) => {
+    await new Promise((done) => setTimeout(done, 1500))
+    await route.fallback()
+  })
+  await page.getByRole('button', { name: 'Open conversation' }).last().click()
+  const sheet = page.getByRole('dialog')
+  await expect(sheet.getByText('Find a supplier')).toHaveCount(0)
+  await expect(sheet.getByRole('button', { name: /Kallang|Cash & Carry/ })).toHaveCount(0)
+  await expect(sheet.locator('[aria-busy="true"]')).toBeVisible()
+  await expect(sheet.getByRole('textbox')).toBeVisible({ timeout: 10_000 })
+  await sheet.getByRole('textbox').fill('Can you deliver by 8am?')
+  await sheet.getByRole('button', { name: 'Send' }).click()
+  await expect(sheet.getByText(/Yes, we can deliver by 8/)).toBeVisible({ timeout: 30_000 })
+})
+
+test('orders that fail to load say so and can be retried', async ({ page }) => {
+  test.setTimeout(90_000)
+  await openWithShop(page)
+  await orderFrom(
+    page,
+    'My flour is running low',
+    'The second one looks good, order 20 kg flour from them',
+  )
+  let fail = true
+  await page.route('**/api/v1/businesses/*/orders', async (route) => {
+    if (fail) return route.abort('failed')
+    await route.fallback()
+  })
+  await page.getByRole('button', { name: 'Open conversation' }).last().click()
+  const sheet = page.getByRole('dialog')
+  await expect(sheet.getByText('Couldn’t load your orders. Try again')).toBeVisible()
+  await expect(sheet.locator('[aria-busy="true"]')).toHaveCount(0)
+  fail = false
+  await sheet.getByRole('button', { name: 'Try again' }).click()
+  await expect(sheet.getByRole('textbox')).toBeVisible({ timeout: 10_000 })
+})

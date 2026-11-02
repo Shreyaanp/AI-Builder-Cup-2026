@@ -33,6 +33,8 @@ type VoiceModeCopy = {
   connectionBody: string
   rateTitle: string
   rateBody: (seconds: number) => string
+  /** Shown once the countdown ends, instead of "0 s". */
+  rateReady: string
   unavailableTitle: string
   unavailableBody: string
 }
@@ -67,6 +69,7 @@ const copy: Record<Locale, VoiceModeCopy> = {
     connectionBody:
       'The connection dropped. Voice comes back by itself when your internet does, or tap Retry. We carry on from the same question, and you can keep typing.',
     rateTitle: 'Voice is busy',
+    rateReady: 'You can try again now.',
     rateBody: (s) => `Too many voice sessions just now. Try again in ${s} s, or type meanwhile.`,
     unavailableTitle: 'Voice isn’t available right now',
     unavailableBody: 'Let’s carry on by typing. I’ll still read my replies aloud.',
@@ -100,6 +103,7 @@ const copy: Record<Locale, VoiceModeCopy> = {
     connectionBody:
       'कनेक्शन टूट गया। इंटरनेट लौटते ही आवाज़ अपने आप लौट आएगी, या फिर से कोशिश करें दबाएँ। हम उसी सवाल से आगे बढ़ेंगे, और आप लिखते रह सकते हैं।',
     rateTitle: 'आवाज़ अभी व्यस्त है',
+    rateReady: 'अब फिर कोशिश कर सकते हैं।',
     rateBody: (s) => `अभी बहुत सारे वॉइस सत्र हैं। ${s} सेकंड बाद फिर कोशिश करें, या तब तक लिखें।`,
     unavailableTitle: 'आवाज़ अभी उपलब्ध नहीं है',
     unavailableBody: 'चलिए लिखकर आगे बढ़ते हैं। मैं अपने जवाब फिर भी पढ़कर सुनाऊँगी।',
@@ -133,6 +137,7 @@ const copy: Record<Locale, VoiceModeCopy> = {
     connectionBody:
       'সংযোগ বিচ্ছিন্ন হয়েছে। ইন্টারনেট ফিরলে ভয়েস নিজেই ফিরবে, অথবা আবার চেষ্টা করুন চাপুন। আমরা একই প্রশ্ন থেকে চালিয়ে যাব, আর আপনি লিখতে থাকতে পারেন।',
     rateTitle: 'কণ্ঠ এখন ব্যস্ত',
+    rateReady: 'এখন আবার চেষ্টা করতে পারেন।',
     rateBody: (s) =>
       `এই মুহূর্তে অনেক ভয়েস সেশন। ${s} সেকেন্ড পরে আবার চেষ্টা করুন, বা ততক্ষণ লিখুন।`,
     unavailableTitle: 'কণ্ঠ এখন পাওয়া যাচ্ছে না',
@@ -167,6 +172,7 @@ const copy: Record<Locale, VoiceModeCopy> = {
     connectionBody:
       'కనెక్షన్ పోయింది. ఇంటర్నెట్ రాగానే వాయిస్ దానంతట అదే వస్తుంది, లేదా మళ్ళీ ప్రయత్నించండి నొక్కండి. అదే ప్రశ్న నుంచి కొనసాగిస్తాం, మీరు టైప్ చేస్తూ ఉండవచ్చు.',
     rateTitle: 'వాయిస్ బిజీగా ఉంది',
+    rateReady: 'ఇప్పుడు మళ్లీ ప్రయత్నించవచ్చు.',
     rateBody: (s) =>
       `ప్రస్తుతం చాలా వాయిస్ సెషన్లు ఉన్నాయి. ${s} సెకన్ల తర్వాత మళ్ళీ ప్రయత్నించండి, లేదా టైప్ చేయండి.`,
     unavailableTitle: 'ప్రస్తుతం వాయిస్ అందుబాటులో లేదు',
@@ -201,6 +207,7 @@ const copy: Record<Locale, VoiceModeCopy> = {
     connectionBody:
       'जोडणी तुटली. इंटरनेट परत आले की आवाज आपोआप परत येईल, किंवा पुन्हा प्रयत्न करा दाबा. आपण त्याच प्रश्नापासून पुढे जाऊ, आणि तुम्ही लिहीत राहू शकता.',
     rateTitle: 'आवाज सध्या व्यस्त आहे',
+    rateReady: 'आता पुन्हा प्रयत्न करू शकता.',
     rateBody: (s) =>
       `सध्या खूप व्हॉइस सत्रे आहेत. ${s} सेकंदांनी पुन्हा प्रयत्न करा, किंवा तोपर्यंत लिहा.`,
     unavailableTitle: 'आवाज सध्या उपलब्ध नाही',
@@ -235,6 +242,7 @@ const copy: Record<Locale, VoiceModeCopy> = {
     connectionBody:
       'ಸಂಪರ್ಕ ಕಡಿತಗೊಂಡಿದೆ. ಇಂಟರ್ನೆಟ್ ಬಂದ ಕೂಡಲೇ ಧ್ವನಿ ತಾನಾಗಿ ಮರಳುತ್ತದೆ, ಅಥವಾ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ ಒತ್ತಿ. ಅದೇ ಪ್ರಶ್ನೆಯಿಂದ ಮುಂದುವರಿಯುತ್ತೇವೆ, ನೀವು ಟೈಪ್ ಮಾಡುತ್ತಿರಬಹುದು.',
     rateTitle: 'ಧ್ವನಿ ಈಗ ಬ್ಯುಸಿಯಾಗಿದೆ',
+    rateReady: 'ಈಗ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಬಹುದು.',
     rateBody: (s) =>
       `ಈಗ ತುಂಬಾ ಧ್ವನಿ ಸೆಷನ್‌ಗಳಿವೆ. ${s} ಸೆಕೆಂಡುಗಳ ನಂತರ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ, ಅಥವಾ ಬರೆಯಿರಿ.`,
     unavailableTitle: 'ಧ್ವನಿ ಈಗ ಲಭ್ಯವಿಲ್ಲ',
@@ -268,6 +276,7 @@ const copy: Record<Locale, VoiceModeCopy> = {
     connectionBody:
       '连接已断开。网络恢复后语音会自动回来，也可以点“重试”。我们会从同一个问题继续，你也可以继续打字。',
     rateTitle: '语音繁忙',
+    rateReady: '现在可以重试了。',
     rateBody: (s) => `当前语音会话过多。请在 ${s} 秒后重试，或先打字。`,
     unavailableTitle: '语音暂时不可用',
     unavailableBody: '我们先打字继续。我仍会把回复读给你听。',
@@ -301,6 +310,7 @@ const copy: Record<Locale, VoiceModeCopy> = {
     connectionBody:
       'Sambungan terputus. Suara akan kembali sendiri apabila internet pulih, atau ketik Cuba lagi. Kita sambung dari soalan yang sama, dan anda boleh terus menaip.',
     rateTitle: 'Suara sedang sibuk',
+    rateReady: 'Anda boleh cuba lagi sekarang.',
     rateBody: (s) =>
       `Terlalu banyak sesi suara sekarang. Cuba lagi dalam ${s} saat, atau taip sementara itu.`,
     unavailableTitle: 'Suara tidak tersedia sekarang',
@@ -335,6 +345,7 @@ const copy: Record<Locale, VoiceModeCopy> = {
     connectionBody:
       'இணைப்பு துண்டிக்கப்பட்டது. இணையம் வந்ததும் குரல் தானாகத் திரும்பும், அல்லது மீண்டும் முயல் என்பதைத் தட்டவும். அதே கேள்வியிலிருந்து தொடர்வோம், நீங்கள் தட்டச்சு செய்துகொண்டே இருக்கலாம்.',
     rateTitle: 'குரல் பிஸியாக உள்ளது',
+    rateReady: 'இப்போது மீண்டும் முயற்சி செய்யலாம்.',
     rateBody: (s) =>
       `இப்போது அதிக குரல் அமர்வுகள் உள்ளன. ${s} விநாடிகளில் மீண்டும் முயலவும், அல்லது தட்டச்சு செய்யவும்.`,
     unavailableTitle: 'குரல் இப்போது கிடைக்கவில்லை',
@@ -369,6 +380,7 @@ const copy: Record<Locale, VoiceModeCopy> = {
     connectionBody:
       '接続が切れました。インターネットが戻ると音声も自動で戻ります。「再試行」を押しても大丈夫です。同じ質問から続けます。入力はそのまま続けられます。',
     rateTitle: '音声が混み合っています',
+    rateReady: 'もう一度お試しいただけます。',
     rateBody: (s) =>
       `音声セッションが多すぎます。${s} 秒後にもう一度試すか、その間は入力してください。`,
     unavailableTitle: '現在、音声は利用できません',
@@ -403,6 +415,7 @@ const copy: Record<Locale, VoiceModeCopy> = {
     connectionBody:
       '연결이 끊어졌어요. 인터넷이 돌아오면 음성도 자동으로 돌아와요. 다시 시도를 눌러도 돼요. 같은 질문부터 이어가고, 입력은 계속할 수 있어요.',
     rateTitle: '음성이 혼잡해요',
+    rateReady: '이제 다시 시도할 수 있어요.',
     rateBody: (s) => `지금 음성 세션이 너무 많아요. ${s}초 후 다시 시도하거나 그동안 입력하세요.`,
     unavailableTitle: '지금은 음성을 사용할 수 없어요',
     unavailableBody: '입력으로 계속해요. 답변은 계속 읽어 드릴게요.',
@@ -436,6 +449,7 @@ const copy: Record<Locale, VoiceModeCopy> = {
     connectionBody:
       'Koneksi terputus. Suara akan kembali sendiri saat internet pulih, atau ketuk Coba lagi. Kita lanjut dari pertanyaan yang sama, dan Anda bisa terus mengetik.',
     rateTitle: 'Suara sedang sibuk',
+    rateReady: 'Anda bisa mencoba lagi sekarang.',
     rateBody: (s) =>
       `Terlalu banyak sesi suara saat ini. Coba lagi dalam ${s} detik, atau ketik sementara itu.`,
     unavailableTitle: 'Suara sedang tidak tersedia',
@@ -469,6 +483,7 @@ const copy: Record<Locale, VoiceModeCopy> = {
     connectionBody:
       'การเชื่อมต่อขาดหาย เสียงจะกลับมาเองเมื่ออินเทอร์เน็ตกลับมา หรือแตะลองอีกครั้ง เราจะต่อจากคำถามเดิม และคุณพิมพ์ต่อได้เลย',
     rateTitle: 'ระบบเสียงไม่ว่าง',
+    rateReady: 'ลองอีกครั้งได้แล้ว',
     rateBody: (s) => `ขณะนี้มีการใช้เสียงมากเกินไป ลองอีกครั้งใน ${s} วินาที หรือพิมพ์ไปก่อน`,
     unavailableTitle: 'ยังใช้เสียงไม่ได้ในขณะนี้',
     unavailableBody: 'พิมพ์คุยกันต่อเลย ฉันจะยังอ่านคำตอบให้ฟัง',
@@ -502,6 +517,7 @@ const copy: Record<Locale, VoiceModeCopy> = {
     connectionBody:
       'Mất kết nối. Giọng nói sẽ tự quay lại khi có Internet, hoặc chạm Thử lại. Chúng ta sẽ tiếp tục từ đúng câu hỏi đó, và bạn vẫn có thể gõ.',
     rateTitle: 'Giọng nói đang bận',
+    rateReady: 'Bây giờ bạn có thể thử lại.',
     rateBody: (s) =>
       `Hiện có quá nhiều phiên giọng nói. Hãy thử lại sau ${s} giây, hoặc nhập trong lúc chờ.`,
     unavailableTitle: 'Hiện chưa dùng được giọng nói',
@@ -536,6 +552,7 @@ const copy: Record<Locale, VoiceModeCopy> = {
     connectionBody:
       'Naputol ang koneksyon. Babalik ang boses kapag bumalik ang internet, o i-tap ang Subukang muli. Itutuloy natin mula sa parehong tanong, at puwede kang mag-type habang naghihintay.',
     rateTitle: 'Abala ang boses',
+    rateReady: 'Maaari mo nang subukan muli.',
     rateBody: (s) =>
       `Masyadong maraming voice session ngayon. Subukan muli pagkalipas ng ${s} segundo, o mag-type muna.`,
     unavailableTitle: 'Hindi available ang boses ngayon',
