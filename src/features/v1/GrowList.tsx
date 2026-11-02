@@ -21,6 +21,7 @@ export function ListTile({
   value,
   onClick,
   tour,
+  alert = false,
 }: {
   layout: 'row' | 'tool'
   icon: ReactNode
@@ -28,9 +29,10 @@ export function ListTile({
   value: ReactNode
   onClick: () => void
   tour?: string
+  alert?: boolean
 }) {
   const roles = useTheme().material
-  useInGroup(label)
+  useInGroup(label, !alert)
   if (layout === 'tool')
     return (
       <ButtonBase
@@ -154,15 +156,17 @@ export function GrowGroup({
 }) {
   const roles = useTheme().material
   const [open, setOpen] = useState(false)
-  const [names, setNames] = useState<Record<number, string>>({})
+  // What each item shows, by its place in `items` (an item can draw more than one tool).
+  const [names, setNames] = useState<Record<number, string[]>>({})
   const seen = useCallback((index: number, name: string) => {
-    setNames((all) => (all[index] === name ? all : { ...all, [index]: name }))
+    setNames((all) => ({ ...all, [index]: [...(all[index] ?? []), name] }))
     return () =>
       setNames((all) => {
-        if (!(index in all)) return all
-        const rest = { ...all }
-        delete rest[index]
-        return rest
+        const left = [...(all[index] ?? [])]
+        const at = left.indexOf(name)
+        if (at < 0) return all
+        left.splice(at, 1)
+        return { ...all, [index]: left }
       })
   }, [])
   const slots = useMemo(
@@ -172,7 +176,7 @@ export function GrowGroup({
   const shown = Object.keys(names)
     .map(Number)
     .sort((a, b) => a - b)
-    .map((index) => names[index]!)
+    .flatMap((index) => names[index]!)
   const region = useId()
   const Chevron = open ? ChevronDown : ChevronRight
   return (

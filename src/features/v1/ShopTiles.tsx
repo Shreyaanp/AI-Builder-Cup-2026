@@ -87,6 +87,7 @@ export function Tile({
   onClick,
   compact = false,
   tour,
+  alert = false,
 }: {
   icon: ReactNode
   label: string
@@ -100,6 +101,8 @@ export function Tile({
   compact?: boolean
   /** Guided-tour anchor (data-tour). */
   tour?: string
+  /** Something to act on now, not a tool: in a Grow group it is not one of the row's names. */
+  alert?: boolean
 }) {
   const roles = useTheme().material
   const columns = span ?? (wide ? 2 : 1)
@@ -114,6 +117,7 @@ export function Tile({
         value={value}
         onClick={onClick}
         tour={tour}
+        alert={alert}
       />
     )
   return (

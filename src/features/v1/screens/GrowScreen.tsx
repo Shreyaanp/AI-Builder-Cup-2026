@@ -116,7 +116,7 @@ function GrowTiles() {
       label={grow.make}
       items={[
         <Suspense key="prep" fallback={null}>
-          <PrepPlanTile />
+          <PrepPlanTile show="plan" />
         </Suspense>,
         <Tile
           key="plan"
@@ -139,6 +139,10 @@ function GrowTiles() {
         icon={<Truck size={20} />}
         label={grow.stock}
         items={[
+          // "Tea dust runs out Thu · Find suppliers" leads: it is what needs buying now.
+          <Suspense key="runs-out" fallback={null}>
+            <PrepPlanTile show="runsOut" />
+          </Suspense>,
           <OrdersTile key="orders" />,
           <Suspense key="supply" fallback={null}>
             <SupplyTile />
@@ -180,7 +184,7 @@ function GrowTiles() {
         <GrowGroup
           icon={<Sunrise size={20} />}
           label={owner.brief}
-          hint={[owner.prep, owner.weather, owner.lowStock].join(' · ')}
+          hint={[owner.prep, owner.lowStock].join(' · ')}
           items={[
             <MorningBrief
               key={shop.id}
