@@ -112,8 +112,12 @@ test.describe('India', () => {
     expect(shop.currency).toBe('INR')
     expect(shop.timezone).toMatch(/^Asia\/(Kolkata|Calcutta)$/)
     await page.getByRole('button', { name: 'Shop', exact: true }).click()
+    // Prices live in the Menu sheet (Shop shows one row per part of the shop).
+    await page.getByRole('button', { name: /^Menu/ }).click()
     await expect(page.getByText('₹18', { exact: true }).first()).toBeVisible()
     await expect(page.getByText(/S\$|SGD/)).toHaveCount(0)
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('dialog')).toHaveCount(0)
 
     await openPayments(page)
     await expect(page.getByRole('textbox', { name: 'UPI ID', exact: true })).toBeVisible()
@@ -204,8 +208,11 @@ test.describe('Singapore', () => {
     expect(shop.currency).toBe('SGD')
     expect(shop.timezone ?? 'Asia/Singapore').toBe('Asia/Singapore')
     await page.getByRole('button', { name: 'Shop', exact: true }).click()
+    await page.getByRole('button', { name: /^Menu/ }).click()
     await expect(page.getByText('S$1.80').first()).toBeVisible()
     await expect(page.getByText('₹')).toHaveCount(0)
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('dialog')).toHaveCount(0)
 
     await openPayments(page)
     await expect(page.getByRole('textbox', { name: 'UPI ID', exact: true })).toHaveCount(0)
