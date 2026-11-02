@@ -676,7 +676,7 @@ def public_demo_reply(ctx: Any, question: str) -> str | None:
                 return f"{hindi_item(said)} डेमो दुकान के मेन्यू में नहीं है।"
             priced = saved or product
             rupees = to_major(cast(int, priced.get("price", 0)), shop_currency(business))
-            return f"डेमो में {hindi_item(priced['name'])} की कीमत ₹{rupees:g} है।"
+            return f"डेमो में {hindi_item(str(priced['name']))} की कीमत ₹{rupees:g} है।"
         if any(term in words for term in ("ऑर्डर", "सप्लायर", "मंगाऊँ", "खरीद")):
             orders = supply_chain.orders(store, uid, bid)
             po = next((order for order in orders if order.get("supplier")), None)
