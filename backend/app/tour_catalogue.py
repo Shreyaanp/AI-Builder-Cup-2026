@@ -242,7 +242,7 @@ def catalogue() -> list[DemoShop]:
                 ("Sona masoori rice", 65, "kg", "bought"),
                 ("Toor dal", 155, "kg", "bought"),
                 ("Atta", 58, "kg", "bought"),
-                ("Tea leaves", 280, "kg", "bought"),
+                ("Tea leaves", 140, "pack", "bought"),
                 ("Milk", 28, "pack", "bought"),
                 ("Jaggery", 85, "pack", "bought"),
             ],

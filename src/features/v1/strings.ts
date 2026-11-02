@@ -429,8 +429,6 @@ export const en = {
   dataBody:
     'Erase your shops, products, conversations, memory, photos and face data from Chalkboard.',
   deleteAll: 'Delete all my data',
-  deleteDemo:
-    "Deleting data isn't available in the demo. In a real account you can erase everything here.",
   deleteTitle: 'Delete everything?',
   deleteBody:
     'This permanently removes all your shops, products, conversations, photos and face data. It cannot be undone.',

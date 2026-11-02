@@ -1,5 +1,6 @@
 import { useLocale } from '../../state/hooks'
-import { formatShopPrice } from '../v1/format'
+import { formatShopPrice, shopCurrency } from '../v1/format'
+import { useWorkspace } from '../v1/workspaceContext'
 import { dayLabel } from './supplyData'
 import type { IoCopy } from './ioCopy'
 import type { Board, Change, IoOrder, Task, View } from './ioTypes'
@@ -7,6 +8,8 @@ import type { Board, Change, IoOrder, Task, View } from './ioTypes'
 /** Numbers, days and money in the owner's locale (quantities line up with tabular figures). */
 export function useIoFormat(currency = '') {
   const locale = useLocale()
+  // A task carries no currency of its own: a price change is in the shop's, never a crash.
+  const shop = shopCurrency(useWorkspace().active)
   const number = new Intl.NumberFormat(locale, { maximumFractionDigits: 2 })
   return {
     qty: (value: number | string | null | undefined) => number.format(Number(value ?? 0)),
@@ -18,7 +21,9 @@ export function useIoFormat(currency = '') {
         minute: '2-digit',
       }).format(new Date(at * 1000)),
     money: (minor: number | string | null | undefined) =>
-      minor == null || minor === '' ? '–' : formatShopPrice(Number(minor), currency, locale),
+      minor == null || minor === ''
+        ? '–'
+        : formatShopPrice(Number(minor), currency || shop, locale),
   }
 }
 export type IoFormat = ReturnType<typeof useIoFormat>

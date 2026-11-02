@@ -19,6 +19,7 @@ import { AppShell } from '../v1/AppShell'
 import { BackHistory } from '../v1/backStack'
 import { ApiError, type Api } from '../v1/api'
 import { setCoachEndpoint } from '../../api/stream'
+import { nameSampleShops } from '../../i18n/productNames'
 import { DemoWelcome } from './DemoWelcome'
 import { DemoBrowse } from '../customer/DemoBrowse'
 import { currentPath, subscribePath, customerNavigate } from '../frontdoors/navigation'
@@ -32,6 +33,8 @@ import {
   type Session,
 } from './demoSession'
 
+nameSampleShops()
+
 type DemoShop = { id: string; name: string }
 const PublicShop = lazy(() => import('../public/PublicShop'))
 const demoIdentity = {
@@ -39,7 +42,8 @@ const demoIdentity = {
   status: 'ready' as const,
   scope: 'demo',
   error: '',
-  features: hiddenFeatures,
+  // Get on Google opens the practice simulator here: nothing reaches Google.
+  features: { ...hiddenFeatures, google_guide: true },
   getToken: async () => null,
   signIn: async () => undefined,
   signOut: async () => undefined,
@@ -147,8 +151,8 @@ export default function DemoApp() {
       },
     [session, t.expired, t.readOnly],
   )
-  // The owner app on the visitor's own sandbox: reads and safe writes run there and reset
-  // with it; anything that would leave the demo (a message, push, payment) is not sent.
+  // The owner app on the visitor's own sandbox: every feature runs there and resets with it.
+  // Only what would touch the real world answers DEMO_NOT_SENT, with a plain "pretend" note.
   const ownerApi = useMemo<Api>(
     () =>
       async <T,>(path: string, init: RequestInit & { raw?: boolean } = {}) => {
@@ -262,7 +266,12 @@ export default function DemoApp() {
           )
         ) : (
           <BackHistory value>
-            <WorkspaceProvider api={ownerApi} me={demoMe} readOnlyMessage={t.demoNotice}>
+            <WorkspaceProvider
+              api={ownerApi}
+              me={demoMe}
+              readOnlyMessage={t.demoNotice}
+              onStartOwnShop={exit}
+            >
               <AppShell />
               <DemoWelcome />
             </WorkspaceProvider>

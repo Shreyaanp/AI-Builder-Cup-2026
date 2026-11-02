@@ -10,7 +10,7 @@ import { useSupplyCopy } from './copy'
 import { useOrderChangeCopy } from './orderChangeCopy'
 import { dayLabel, leadNeed, useDraftReorder, useOnOrderText, useSupply } from './supplyData'
 import type { PurchaseOrder } from './types'
-import { productName } from '../../i18n/productNames'
+import { productFeminine, productName } from '../../i18n/productNames'
 
 export function TodaySupply() {
   const { products, active, notify } = useWorkspace()
@@ -61,8 +61,13 @@ export function TodaySupply() {
           {s.title}
         </Typography>
         <Typography variant="headlineSmall" component="p" aria-live="polite">
-          {productName(item, locale)}{' '}
-          {need ? `${s.runsOut} ${dayLabel(need.runs_out, locale)}` : s.restocked}
+          {need
+            ? s.runsOutLine(
+                productName(item, locale),
+                dayLabel(need.runs_out, locale),
+                productFeminine(item, locale),
+              )
+            : `${productName(item, locale)} ${s.restocked}`}
         </Typography>
         {need && onOrderText(need) ? (
           <Typography variant="bodyLarge">{onOrderText(need)}</Typography>
