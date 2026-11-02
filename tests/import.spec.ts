@@ -1,5 +1,6 @@
 import { createShop } from './stories/support.js'
 import { expect, test, type Page } from '@playwright/test'
+import { openGrowTool } from './support/grow.js'
 
 async function shopWithoutMenu(page: Page) {
   await page.goto('/')
@@ -59,7 +60,7 @@ test('a POS sales export waits for confirmation then appears in the weekly recap
   await summary.getByRole('button', { name: 'Save these sales' }).click()
   await expect(summary).not.toBeVisible()
   await page.getByRole('button', { name: 'Grow', exact: true }).click()
-  await page.getByRole('button', { name: /^Weekly recap/ }).click()
+  await openGrowTool(page, /^Weekly recap/)
   const recap = page.getByRole('dialog', { name: 'Weekly recap' })
   await expect(recap.getByText('Written by AI', { exact: true })).toHaveCount(0)
   await expect(recap).toContainText('Quick summary')
@@ -69,7 +70,7 @@ test('a POS sales export waits for confirmation then appears in the weekly recap
   await page.reload()
   await page.getByRole('button', { name: 'Continue local preview' }).click()
   await page.getByRole('button', { name: 'Grow', exact: true }).click()
-  await page.getByRole('button', { name: /^Weekly recap/ }).click()
+  await openGrowTool(page, /^Weekly recap/)
   await expect(page.getByRole('dialog', { name: 'Weekly recap' })).toContainText('$99.00')
 })
 

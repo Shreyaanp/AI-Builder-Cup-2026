@@ -28,20 +28,9 @@ const pathLine = (feature: Feature, lang: Lang) =>
   lang === 'en' ? `Next, open ${where(feature)}.` : `अब ${where(feature)} खोलें।`
 
 // Rows that are reachable in 2 taps but still sit below the first view at 390 x 844. Batch 3 put
-// every Shop row in the first view; moving the Grow ones up is Batch 4 (Grow list and "More
-// tools"). The check is strict: once a row reaches the first view its test fails until it leaves
-// this list.
-const BELOW_FIRST_VIEW = new Set([
-  'Orders',
-  'Close the day',
-  'Purchase orders',
-  'Supply chain',
-  'Stamps & perks',
-  'Your week',
-  'Privacy & your data',
-  'What the coach knows',
-  'What can I ask?',
-])
+// every Shop row in the first view, and batch 4a every Grow row and More tools.
+// The check is strict: once a row reaches the first view its test fails until it leaves this list.
+const BELOW_FIRST_VIEW = new Set(['Privacy & your data', 'What the coach knows', 'What can I ask?'])
 
 // The demo hides Get on Google (DemoApp passes hiddenFeatures) while its coach still names it:
 // OB-247 (#632). Its reply is checked; the tile is only looked for outside the demo.
@@ -155,9 +144,12 @@ for (const name of ['Shop', 'Grow', 'You']) {
     const rows = features.filter((feature) => feature.path[0] === name)
     expect(rows.length).toBeGreaterThan(0)
     for (const feature of rows) {
+      // Arrive from another tab, as an owner does: Grow opens with its rows closed (batch 4a).
+      if (name === 'Grow') await tab(page, 'Shop')
       await tab(page, name)
+      // Grow's rows settle once the brief has loaded (its row shows then).
       if (name === 'Grow')
-        await expect(page.getByRole('heading', { name: 'Morning brief' })).toBeVisible()
+        await expect(page.getByRole('button', { name: /^Morning brief/ })).toBeVisible()
       const row = feature.path[1]
       if (NOT_IN_DEMO.has(row)) continue
       const target = entry(page, row)

@@ -174,7 +174,7 @@ def test_ob127_demo_supplier_coach_points_to_grow_supplies(world) -> None:
 
     assert reply is not None
     assert "suppliers near you for masala chai" in reply
-    assert "Next, open Grow → Orders → Find a supplier." in reply
+    assert "Next, open Grow → Buy stock → Orders." in reply
     assert "Grow → Supplies" not in reply
     assert "Shop → Supplies" not in reply
 

@@ -1,6 +1,7 @@
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
 import { enter, image, localOnly, seedShop } from './stories/support.js'
+import { openGrowRows, openGrowTool } from './support/grow.js'
 
 test.use({ viewport: { width: 360, height: 800 }, reducedMotion: 'reduce' })
 
@@ -100,6 +101,8 @@ for (const appearance of ['light', 'dark'] as const) {
       await page.getByRole('button', { name: tab, exact: true }).click()
       await audit(page, tab.toLowerCase())
       if (tab === 'Grow') {
+        // The brief's slides open in place from its Morning brief row (batch 4a).
+        await openGrowRows(page)
         for (const [index, slide] of (
           await page.locator('[aria-roledescription="slide"]').all()
         ).entries()) {
@@ -193,7 +196,7 @@ for (const appearance of ['light', 'dark'] as const) {
     await page.route('**/api/v1/businesses/*/supply', (route) =>
       route.fulfill({ json: { suppliers: [], orders: [order] } }),
     )
-    await page.getByRole('button', { name: /^Purchase orders/ }).click()
+    await openGrowTool(page, /^Purchase orders/)
     await expect(page.getByRole('dialog', { name: 'Purchase orders' })).toBeVisible()
     await audit(page, 'purchase-orders')
     await page.getByRole('button', { name: /Filter coffee.* from Fresh Farms/ }).click()

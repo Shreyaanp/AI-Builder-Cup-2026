@@ -1,6 +1,7 @@
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test } from '@playwright/test'
 import { enter, localOnly, seedShop } from './stories/support.js'
+import { openGrowTool } from './support/grow.js'
 
 test('Today → forecast reorder → SAP → replies → reviewed stock → Today', async ({ page }) => {
   test.setTimeout(180_000)
@@ -10,7 +11,7 @@ test('Today → forecast reorder → SAP → replies → reviewed stock → Toda
   await seedShop(page)
   await page.keyboard.press('Escape')
   await page.getByRole('button', { name: 'Grow', exact: true }).click()
-  await page.getByRole('button', { name: /^Purchase orders/ }).click()
+  await openGrowTool(page, /^Purchase orders/)
   await page.getByRole('button', { name: 'Try supply demo', exact: true }).click()
   const today = page.getByRole('region', { name: 'Supply chain' })
   await expect(today).toContainText(/Milk runs out/)
@@ -66,7 +67,7 @@ test('Today → forecast reorder → SAP → replies → reviewed stock → Toda
   await page.getByRole('button', { name: 'Continue local preview' }).click()
   // The workspace starts on its first shop after reload; the demo entry resumes its own shop.
   await page.getByRole('button', { name: 'Grow', exact: true }).click()
-  await page.getByRole('button', { name: /^Purchase orders/ }).click()
+  await openGrowTool(page, /^Purchase orders/)
   await page.getByRole('button', { name: 'Try supply demo', exact: true }).click()
   await expect(page.getByRole('region', { name: 'Supply chain' })).toContainText('Milk restocked')
   await overflow()

@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
+import { showInGrow } from './support/grow.js'
 
 // Issues #280-#289: /demo is the full owner app on the visitor's own sandbox, at 390 px.
 test.setTimeout(120_000)
@@ -94,9 +95,9 @@ test('public demo walks the whole owner lifecycle at 390 px', async ({ page }, i
   // #286, #281, #283, #284: Grow → Purchase orders with the WhatsApp PO, timeline and SAP view.
   await page.locator('[data-tour="nav-grow"]').click()
   await noSideScroll(page)
-  await expect(page.locator('[data-tour="supply"]')).toBeVisible()
+  await expect(await showInGrow(page, page.locator('[data-tour="supply"]'))).toBeVisible()
   await page.screenshot({ path: 'output/playwright/demo-full-03-grow.png', fullPage: true })
-  await page.locator('[data-tour="supply"]').click()
+  await (await showInGrow(page, page.locator('[data-tour="supply"]'))).click()
   const sheet = page.getByRole('dialog')
   await expect(sheet.getByText(/Sri Lakshmi/).first()).toBeVisible({ timeout: 15_000 })
   await expect(page.getByText('In the demo this is pretend: nothing is sent')).toHaveCount(0)

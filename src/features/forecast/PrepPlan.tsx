@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useContext, useEffect, useState } from 'react'
 import { Button, Stack, Typography } from '@mui/material'
 import { CalendarClock, PackageSearch } from 'lucide-react'
 import type { components } from '../../api/generated'
@@ -7,6 +7,8 @@ import { productFeminine, productName } from '../../i18n/productNames'
 import { Tile, Supporting } from '../v1/ShopTiles'
 import { useCopy } from '../v1/strings'
 import { useWorkspace } from '../v1/workspaceContext'
+import type { Api } from '../v1/api'
+import { TileLayoutContext } from '../v1/growLayout'
 import { useSourcingCopy } from '../sourcing/copy'
 import { Sheet } from '../v1/Sheet'
 import { dayLabel, leadNeed, useOnOrderText, useOrderUnit, useSupply } from '../supply/supplyData'
@@ -15,7 +17,22 @@ import { useOrderChangeCopy } from '../supply/orderChangeCopy'
 type Forecast = components['schemas']['Forecast']
 const LOW_STOCK = 5
 
-export function PrepPlanTile() {
+// Grow shows the prep plan and the runs-out card in two rows (simplify batch 4a): both mount at
+// once, so they share one forecast request instead of asking twice.
+const inFlight = new Map<string, Promise<Forecast>>()
+function fetchForecast(api: Api, id: string, key: string) {
+  let request = inFlight.get(key)
+  if (!request) {
+    request = api<Forecast>(`/businesses/${encodeURIComponent(id)}/forecast`)
+    inFlight.set(key, request)
+    const done = () => inFlight.delete(key)
+    request.then(done, done)
+  }
+  return request
+}
+
+/** The prep plan tile and, when something runs out, the find-suppliers card; `show` picks one. */
+export function PrepPlanTile({ show }: { show?: 'plan' | 'runsOut' } = {}) {
   const { api, active, products, startCoachDraft, readOnlyMessage } = useWorkspace()
   // Only the public demo (a read-only workspace) gets the detail sheet.
   const demo = Boolean(readOnlyMessage)
@@ -25,7 +42,8 @@ export function PrepPlanTile() {
   const locale = useLocale()
   const unit = useOrderUnit()
   // The supply needs are the one source for "runs out" and "on order", same as Today.
-  const { data: supply } = useSupply(true)
+  // Only the runs-out card reads them; the prep plan row alone asks for nothing extra.
+  const { data: supply } = useSupply(show !== 'plan')
   const onOrderText = useOnOrderText()
   const [loaded, setLoaded] = useState<{
     id: string
@@ -40,9 +58,7 @@ export function PrepPlanTile() {
   useEffect(() => {
     if (!id || revision === undefined) return
     const controller = new AbortController()
-    void api<Forecast>(`/businesses/${encodeURIComponent(id)}/forecast`, {
-      signal: controller.signal,
-    })
+    void fetchForecast(api, id, `${id}:${revision}:${attempt}`)
       .then((value) => {
         if (!controller.signal.aborted) setLoaded({ id, revision, value })
       })
@@ -57,6 +73,10 @@ export function PrepPlanTile() {
   const tomorrowRows = value?.predictions?.filter((row) => row.date === tomorrow) ?? []
   const rows = tomorrowRows.slice(0, 3)
   const number = new Intl.NumberFormat(locale, { maximumFractionDigits: 1 })
+  const line = (row: (typeof rows)[number]) =>
+    `${productName(row.item, locale)} · ${number.format(row.quantity)} ${unit(row.unit)}`
+  // A Grow row has one status line: tomorrow's numbers themselves, not the word "Tomorrow".
+  const asRow = useContext(TileLayoutContext) !== 'card'
   // Runs out and on order come from the supply needs only, the list Today reads, so the two
   // screens cannot disagree (#603): the first need not yet covered leads, with how many more.
   // Only items with no forecast at all fall back to "running low" at a stock of 5 or less.
@@ -71,45 +91,49 @@ export function PrepPlanTile() {
       : []
   return (
     <>
-      <Tile
-        wide
-        tour="prep"
-        icon={<CalendarClock size={20} />}
-        label={t.prepPlan}
-        value={
-          state?.error
-            ? t.actionFailed
-            : !value
-              ? t.prepLoading
-              : value.status === 'insufficient'
-                ? t.prepEmpty
-                : t.prepTomorrow
-        }
-        onClick={() => {
-          if (state?.error) retry((n) => n + 1)
-          else if (demo) setOpen(true)
-          else startCoachDraft(t.prepQuestion)
-        }}
-      >
-        {rows.length > 0 && (
-          <Stack component="span" spacing={1}>
-            {rows.map((row) => (
-              <Typography
-                key={row.item}
-                component="span"
-                variant="bodyMedium"
-                sx={{ overflowWrap: 'anywhere', fontVariantNumeric: 'tabular-nums' }}
-              >
-                {productName(row.item, locale)} · {number.format(row.quantity)} {unit(row.unit)}
-              </Typography>
-            ))}
-          </Stack>
-        )}
-        {value && (
-          <Supporting>{value.method === 'timesfm' ? t.prepTimesfm : t.prepWeekday}</Supporting>
-        )}
-        {state?.error && <Supporting>{t.retry}</Supporting>}
-      </Tile>
+      {show !== 'runsOut' && (
+        <Tile
+          wide
+          tour="prep"
+          icon={<CalendarClock size={20} />}
+          label={t.prepPlan}
+          value={
+            state?.error
+              ? t.actionFailed
+              : !value
+                ? t.prepLoading
+                : value.status === 'insufficient'
+                  ? t.prepEmpty
+                  : asRow && rows.length
+                    ? rows.map(line).join(' · ')
+                    : t.prepTomorrow
+          }
+          onClick={() => {
+            if (state?.error) retry((n) => n + 1)
+            else if (demo) setOpen(true)
+            else startCoachDraft(t.prepQuestion)
+          }}
+        >
+          {rows.length > 0 && !asRow && (
+            <Stack component="span" spacing={1}>
+              {rows.map((row) => (
+                <Typography
+                  key={row.item}
+                  component="span"
+                  variant="bodyMedium"
+                  sx={{ overflowWrap: 'anywhere', fontVariantNumeric: 'tabular-nums' }}
+                >
+                  {line(row)}
+                </Typography>
+              ))}
+            </Stack>
+          )}
+          {value && (
+            <Supporting>{value.method === 'timesfm' ? t.prepTimesfm : t.prepWeekday}</Supporting>
+          )}
+          {state?.error && <Supporting>{t.retry}</Supporting>}
+        </Tile>
+      )}
       <Sheet
         open={demo && open}
         onClose={() => setOpen(false)}
@@ -162,8 +186,9 @@ export function PrepPlanTile() {
           </Typography>
         )}
       </Sheet>
-      {(need || low.length > 0) && (
+      {show !== 'plan' && (need || low.length > 0) && (
         <Tile
+          alert
           icon={<PackageSearch size={20} />}
           label={
             need

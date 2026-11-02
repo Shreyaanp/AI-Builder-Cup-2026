@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { showInGrow } from './support/grow.js'
 
 for (const width of [360, 412]) {
   test(`${width}px: slim demo banner; Prep plan opens the real forecast`, async ({
@@ -22,7 +23,9 @@ for (const width of [360, 412]) {
     expect(box!.y).toBeLessThan(40)
     await page.getByRole('dialog').getByRole('button', { name: 'Skip', exact: true }).click()
     await page.locator('[data-tour="nav-grow"]').click()
-    await page.getByText('Prep plan').first().click({ timeout: 60_000 })
+    // Prep plan sits in its How much to make row (batch 4a).
+    const prep = page.getByRole('button', { name: /^Prep plan/ })
+    await (await showInGrow(page, prep, 60_000)).click()
     // OB-13 (#344): in the demo, Prep plan opens its own sheet; Coach there asks the real forecast.
     const sheet = page.getByRole('dialog', { name: 'Prep plan' })
     await expect(sheet).toContainText('Tomorrow')

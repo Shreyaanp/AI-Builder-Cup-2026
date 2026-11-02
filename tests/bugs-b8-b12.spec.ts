@@ -2,6 +2,7 @@ import { createShop, detailsStep, editShopDetails } from './stories/support.js'
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
 import type { components } from '../src/api/generated.js'
+import { growTool, openGrowTool } from './support/grow.js'
 
 type DayHours = components['schemas']['DayHours']
 const weekdays = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const
@@ -160,7 +161,7 @@ test('B10: empty recap is compact, has no empty headings and uses a date range',
     }),
   )
   await page.getByRole('button', { name: 'Grow', exact: true }).click()
-  const tile = page.getByRole('button', { name: /^Weekly recap/ })
+  const tile = await growTool(page, /^Weekly recap/)
   await expect(tile).not.toContainText('2026-W42')
   await expect(tile).toContainText('12–18 Oct')
   await tile.click()
@@ -225,7 +226,7 @@ for (const mode of ['offline', 'gemini']) {
       }),
     )
     await page.getByRole('button', { name: 'Grow', exact: true }).click()
-    await page.getByRole('button', { name: /^Weekly recap/ }).click()
+    await openGrowTool(page, /^Weekly recap/)
     const sheet = page.getByRole('dialog', { name: 'Weekly recap' })
     await expect(
       sheet.getByText(mode === 'offline' ? 'Quick summary' : 'Written by AI', { exact: true }),
@@ -411,7 +412,7 @@ for (const locale of [
             }).formatRange(new Date(`${first}T00:00:00Z`), new Date(`${last}T00:00:00Z`)),
           { first, last },
         )
-        await expect(page.getByRole('button', { name: /^Weekly recap/ })).toContainText(expected)
+        await expect(await growTool(page, /^Weekly recap/)).toContainText(expected)
         await page.getByRole('button', { name: 'Coach', exact: true }).click()
       }
     })

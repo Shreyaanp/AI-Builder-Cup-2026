@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { enter, localOnly, seedShop } from '../stories/support.js'
+import { openGrowTool } from '../support/grow.js'
 
 test.use({
   viewport: { width: 390, height: 844 },
@@ -22,7 +23,7 @@ test.describe('Supply chain flows on phone (390px)', () => {
 
     // Navigate to Grow → Purchase orders → Try supply demo
     await page.getByRole('button', { name: 'Grow', exact: true }).click()
-    await page.getByRole('button', { name: /^Purchase orders/ }).click()
+    await openGrowTool(page, /^Purchase orders/)
     await page.getByRole('button', { name: 'Try supply demo', exact: true }).click()
 
     // 1. Today view displays supply chain warning card
@@ -86,12 +87,12 @@ test.describe('Supply chain flows on phone (390px)', () => {
 
     // Enable demo supply
     await page.getByRole('button', { name: 'Grow', exact: true }).click()
-    await page.getByRole('button', { name: /^Purchase orders/ }).click()
+    await openGrowTool(page, /^Purchase orders/)
     await page.getByRole('button', { name: 'Try supply demo', exact: true }).click()
 
     // Open Supply chain hub
     await page.getByRole('button', { name: 'Grow', exact: true }).click()
-    await page.getByRole('button', { name: /^Supply chain/ }).click()
+    await openGrowTool(page, /^Supply chain/)
     const hub = page.getByRole('dialog', { name: 'Supply chain' })
     await expect(hub).toBeVisible()
 
