@@ -1,6 +1,6 @@
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
-import { openGrowTool } from './support/grow.js'
+import { openMake } from './support/grow.js'
 
 async function openShop(page: Page) {
   await page.route('**/*', (route) => {
@@ -36,8 +36,8 @@ async function openShop(page: Page) {
   await page.reload()
   await page.getByRole('button', { name: 'Continue local preview' }).click()
   await page.getByRole('button', { name: 'Grow', exact: true }).click()
-  // Planning lives in the Plan tomorrow tile's sheet.
-  await openGrowTool(page, /^Plan tomorrow/)
+  // Planning is How much to make → Change the numbers (simplify batch 4b).
+  await openMake(page, true)
   return receipt.business_id as string
 }
 
@@ -49,7 +49,7 @@ test('I01-I12 demo planning is labelled, bounded, private, accessible and isolat
   const publicPath = `/api/v1/public/shops/${bid}`
   const before = await (await page.request.get(inventoryPath)).json()
   const publicBefore = await (await page.request.get(publicPath)).json()
-  const card = page.getByRole('region', { name: 'Plan tomorrow' })
+  const card = page.getByRole('region', { name: 'Change the numbers' })
   await card.getByLabel('Ready stock').fill('20')
   await card.getByLabel('Additional capacity').fill('60')
   await card.getByRole('button', { name: 'Calculate suggestion' }).click()
@@ -71,7 +71,7 @@ test('I01-I12 demo planning is labelled, bounded, private, accessible and isolat
   await expect(card).toContainText('not a prediction interval')
   await expect(card).toContainText('daily-v1')
   expect(
-    (await new AxeBuilder({ page }).include('section[aria-label="Plan tomorrow"]').analyze())
+    (await new AxeBuilder({ page }).include('section[aria-label="Change the numbers"]').analyze())
       .violations,
   ).toEqual([])
   await card.getByLabel('Your preparation quantity').fill('30')
@@ -104,7 +104,7 @@ test('owner entries require confirmation; outage clears forecast and preserves i
   await openShop(page)
   // A different browser calendar date must not reject the server's today entry.
   await page.clock.setFixedTime(new Date('2000-01-01T12:00:00Z'))
-  const card = page.getByRole('region', { name: 'Plan tomorrow' })
+  const card = page.getByRole('region', { name: 'Change the numbers' })
   await expect(card.getByRole('alert')).toContainText('Could not load or save planning')
   await page.unroute(historyRoute)
   await card.getByRole('button', { name: 'Reload planning history' }).click()

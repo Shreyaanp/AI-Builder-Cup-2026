@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import { FIRST_QUESTION } from './newShopTopics.js'
 import { enter, localOnly } from './stories/support.js'
-import { growTool, openGrowRows } from './support/grow.js'
+import { growTool, openBuyStock, openGrowRows, openMake, openMySales } from './support/grow.js'
 import { noJargon, textSizes } from './support/simplicity.js'
 import { shopMore } from './support/shopMore.js'
 
@@ -78,17 +78,33 @@ test('the demo sheets show no developer words', async ({ page }) => {
   await openDemo(page)
   await tab(page, 'grow')
   for (const button of [
-    /^Purchase orders/,
-    /^Prep plan/,
-    /^Plan tomorrow/,
+    /^Buy stock/,
+    /^How much to make/,
     /Rescue deals/,
-    /^Your week/,
-    /^Weekly recap/,
+    /^My sales/,
     /^Close the day/,
   ]) {
     await growTool(page, button)
     await sheet(page, button)
   }
+  // Inside the merged sheets (simplify batch 4b): every Buy stock tab, the numbers to change,
+  // the week's summary.
+  const stock = await openBuyStock(page)
+  for (const name of ['On the way', 'My suppliers', 'Find a supplier'] as const) {
+    await stock.getByRole('button', { name: new RegExp(`^${name}`) }).click()
+    await page.waitForTimeout(300)
+    await noJargon(page, JARGON)
+  }
+  await page.keyboard.press('Escape')
+  await openMake(page, true)
+  await page.waitForTimeout(500)
+  await noJargon(page, JARGON)
+  await page.keyboard.press('Escape')
+  await openMySales(page, true)
+  await page.waitForTimeout(500)
+  await noJargon(page, JARGON)
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('dialog')).toHaveCount(0)
   // The weather slide of the morning brief carries the data source.
   await expect(page.getByText('Open-Meteo')).toHaveCount(0)
   await tab(page, 'shop')

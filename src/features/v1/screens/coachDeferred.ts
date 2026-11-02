@@ -16,8 +16,8 @@ export const ShopSheets = deferred(() => import('../ShopTiles').then((m) => m.Sh
 export const PaymentCard = deferred(() =>
   import('../../owner-tools/PaymentsScreen').then((m) => m.PaymentCard),
 )
-export const SupplierCarousel = deferred(() =>
-  import('../../sourcing/SourcingCards').then((m) => m.SupplierCarousel),
+export const VendorListCard = deferred(() =>
+  import('../../sourcing/SourcingCards').then((m) => m.VendorListCard),
 )
 export const OrderCard = deferred(() =>
   import('../../sourcing/SourcingCards').then((m) => m.OrderCard),
@@ -36,7 +36,7 @@ export const coachDeferred = [
   SalesImportSheet.preload,
   ConnectSheet.preload,
   OrdersSheet.preload,
-  SupplierCarousel.preload,
+  VendorListCard.preload,
   SupplyChatCard.preload,
   PaymentCard.preload,
 ]

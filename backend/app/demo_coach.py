@@ -35,6 +35,16 @@ LOW_ON = re.compile(
     r"\b(?:running\s+low|low\s+on|run\s+out\s+of|restock)\b|कम\s+हो|ख़?त्म\s+हो", re.I
 )
 DRAFT_QUANTITY = 10
+# An amount the owner said ("I need 20 L milk", Buy stock → Find a supplier): the draft uses it.
+AMOUNT = re.compile(
+    r"(\d+(?:\.\d+)?)\s*(kgs?|kilos?|g|gms?|grams?|litres?|liters?|l|ltr|ml|packs?|packets?|"
+    r"dozens?|लीटर|किलो|ग्राम)?(?=\s|$)",
+    re.I,
+)
+HINDI_AMOUNT_UNITS = {"लीटर": "l", "किलो": "kg", "ग्राम": "g"}
+# The vendor list's Order ("Order from number 2: 20 l milk", sourcing/copy.ts chooseDraft).
+ORDER_FROM = re.compile(r"^\s*order from number (\d+)\s*:\s*(.+?)\s*$", re.I)
+ORDER_FROM_HI = re.compile(r"^\s*नंबर (\d+) से ऑर्डर\s*:\s*(.+?)\s*$")
 DEMO_NOTE_HI = "यह डेमो दुकान है, इसलिए कुछ भी असली ग्राहकों तक नहीं जाता।"
 HINDI = re.compile(r"[ऀ-ॿ]")
 # The offline coach is conservative: a review card only for a short request that is all one of
@@ -496,7 +506,8 @@ async def _find_suppliers(ctx: Any, question: str) -> list[StreamEvent] | None:
     suppliers = found["suppliers"]
     first = suppliers[0]
     unit = first["item"]["unit"]
-    line = OrderItem(name=first["item"]["name"], quantity=DRAFT_QUANTITY, unit=unit)
+    quantity = _said_quantity(asked, unit)
+    line = OrderItem(name=first["item"]["name"], quantity=quantity, unit=unit)
     # A Hindi question gets a card whose supplier answers in Hindi.
     from .agent import ui_language
 
@@ -519,7 +530,7 @@ async def _find_suppliers(ctx: Any, question: str) -> list[StreamEvent] | None:
         lead = f"{hindi_item(made)} आप ख़ुद बनाते हैं, इसलिए ये {item_hi} के लिए हैं। " if made else ""
         text = (
             f"{lead}{item_hi} के लिए पास के डेमो सप्लायर: {names}। {first['name']} से "
-            f"{DRAFT_QUANTITY:g} {HINDI_UNITS.get(unit, unit)} {item_hi} का ऑर्डर नीचे तैयार है। "
+            f"{quantity:g} {HINDI_UNITS.get(unit, unit)} {item_hi} का ऑर्डर नीचे तैयार है। "
             f"आपके भेजे बिना कुछ नहीं जाता, और यह सिर्फ़ डेमो है। {next_line_hi('suppliers')}"
         )
     else:
@@ -532,11 +543,79 @@ async def _find_suppliers(ctx: Any, question: str) -> list[StreamEvent] | None:
         lead = f"You make {made} yourself, so these are for {item}. " if made else ""
         text = (
             f"{lead}Demo suppliers near you for {item}: {names}. I drafted "
-            f"{DRAFT_QUANTITY:g} {unit} from {first['name']} below. It goes only when you tap "
+            f"{quantity:g} {unit} from {first['name']} below. It goes only when you tap "
             f"Send, and only in the demo. {next_line('suppliers')}"
         )
     return [
         StreamEvent(kind="suppliers", data=ctx.cards[found["card_id"]][1]),
+        StreamEvent(kind="order", data=ctx.cards[drafted["card_id"]][1]),
+        StreamEvent(kind="reply", text=text),
+    ]
+
+
+def _said_quantity(text: str, unit: str, bare: bool = False) -> float:
+    """The amount the owner said, in the supplier's unit; the demo's usual 10 otherwise. A bare
+    number counts only with `bare` (the vendor list's own "20 milk")."""
+    from .sourcing import convert
+
+    for number, said in AMOUNT.findall(text):
+        if not said and not bare:
+            continue
+        quantity = convert(float(number), HINDI_AMOUNT_UNITS.get(said, said), unit)
+        if quantity and 0 < quantity <= 10_000:
+            return round(quantity, 2)
+    return DRAFT_QUANTITY
+
+
+async def _order_from(ctx: Any, question: str) -> list[StreamEvent] | None:
+    """The vendor list's Order: the order card to that supplier, for the amount the owner asked
+    the list for. The same demo suppliers, so nothing reaches a real business."""
+    from .coordinator import find_suppliers, prepare_order
+    from .sourcing import OrderItem
+
+    hindi = ORDER_FROM_HI.match(question)
+    asked = hindi or ORDER_FROM.match(question)
+    if not asked:
+        return None
+    rank, wanted = int(asked.group(1)), asked.group(2)
+    item = AMOUNT.sub(" ", wanted).strip()
+    if hindi:
+        shown = item_named_in(item)
+        item = shown or item
+    if not item:
+        return None
+    found = await find_suppliers(item)
+    suppliers = found.get("suppliers") or []
+    if found.get("status") != "found" or not 0 < rank <= len(suppliers):
+        return None
+    chosen = suppliers[rank - 1]
+    unit = chosen["item"]["unit"]
+    quantity = _said_quantity(wanted, unit, bare=True)
+    from .agent import ui_language
+
+    token = ui_language.set("hi" if hindi else ui_language.get())
+    try:
+        drafted = prepare_order(
+            chosen["id"],
+            [OrderItem(name=chosen["item"]["name"], quantity=quantity, unit=unit)],
+        )
+    finally:
+        ui_language.reset(token)
+    if drafted.get("status") != "needs_owner_tap":
+        return None
+    if hindi:
+        text = (
+            f"{chosen['name']} से {quantity:g} {HINDI_UNITS.get(unit, unit)} "
+            f"{hindi_item(chosen['item']['name'])} का ऑर्डर नीचे तैयार है। आपके भेजे बिना कुछ नहीं "
+            f"जाता, और यह सिर्फ़ डेमो है। {next_line_hi('suppliers')}"
+        )
+    else:
+        text = (
+            f"I drafted {quantity:g} {unit} {chosen['item']['name']} from {chosen['name']} "
+            f"below. It goes only when you tap Send, and only in the demo. "
+            f"{next_line('suppliers')}"
+        )
+    return [
         StreamEvent(kind="order", data=ctx.cards[drafted["card_id"]][1]),
         StreamEvent(kind="reply", text=text),
     ]
@@ -550,7 +629,7 @@ async def public_demo_turn(ctx: Any, question: str) -> list[StreamEvent] | None:
     text = _plain(question)
     reply: str | None = None
     if not NEGATION.search(text):
-        events = await _find_suppliers(ctx, question)
+        events = await _order_from(ctx, question) or await _find_suppliers(ctx, question)
         if events:
             return events
     feature = by_ask(question)

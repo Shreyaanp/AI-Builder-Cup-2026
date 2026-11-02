@@ -92,27 +92,32 @@ test('public demo walks the whole owner lifecycle at 390 px', async ({ page }, i
   await expect(page.getByRole('button', { name: 'Send', exact: true })).toBeDisabled()
   await page.screenshot({ path: 'output/playwright/demo-full-02-coach.png' })
 
-  // #286, #281, #283, #284: Grow → Purchase orders with the WhatsApp PO, timeline and SAP view.
+  // #286, #281, #283, #284: Grow → Buy stock (the purchase orders, simplify batch 4b) with the
+  // WhatsApp PO, timeline and SAP view.
   await page.locator('[data-tour="nav-grow"]').click()
   await noSideScroll(page)
   await expect(await showInGrow(page, page.locator('[data-tour="supply"]'))).toBeVisible()
   await page.screenshot({ path: 'output/playwright/demo-full-03-grow.png', fullPage: true })
   await (await showInGrow(page, page.locator('[data-tour="supply"]'))).click()
   const sheet = page.getByRole('dialog')
-  await expect(sheet.getByText(/Sri Lakshmi/).first()).toBeVisible({ timeout: 15_000 })
   await expect(page.getByText('In the demo this is pretend: nothing is sent')).toHaveCount(0)
   // #282: draft a reorder inside the sandbox.
   await sheet.getByRole('button', { name: 'Draft a reorder' }).click()
   await expect(sheet.locator('article')).toBeVisible({ timeout: 15_000 })
   await page.screenshot({ path: 'output/playwright/demo-full-04-reorder.png' })
-  await sheet.getByRole('button', { name: 'Purchase orders' }).first().click()
-  await sheet
+  const back = sheet.getByRole('button', { name: 'Buy stock', exact: true })
+  await back.click()
+  // The demo's sent order to Sri Lakshmi is on its way.
+  await sheet.getByRole('button', { name: /^On the way/ }).click()
+  const orders = sheet.getByRole('list', { name: 'Purchase orders' })
+  await expect(orders.getByText(/Sri Lakshmi/).first()).toBeVisible({ timeout: 15_000 })
+  await orders
     .getByText(/Sri Lakshmi/)
     .first()
     .click()
   await expect(sheet.locator('article')).toBeVisible()
   await page.screenshot({ path: 'output/playwright/demo-full-05-timeline.png', fullPage: true })
-  await sheet.getByRole('button', { name: 'Purchase orders' }).first().click()
+  await back.click()
   // OB-110: small-shop demos show their own purchase orders, not an SAP sandbox sample.
   await expect(sheet.getByText(/SAP/)).toHaveCount(0)
   await page.getByRole('button', { name: 'Close', exact: true }).click()

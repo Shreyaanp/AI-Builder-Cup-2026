@@ -1,7 +1,7 @@
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
 import { enter, image, localOnly, seedShop } from './stories/support.js'
-import { openGrowRows, openGrowTool } from './support/grow.js'
+import { openBuyStock, openGrowRows } from './support/grow.js'
 
 test.use({ viewport: { width: 360, height: 800 }, reducedMotion: 'reduce' })
 
@@ -196,8 +196,8 @@ for (const appearance of ['light', 'dark'] as const) {
     await page.route('**/api/v1/businesses/*/supply', (route) =>
       route.fulfill({ json: { suppliers: [], orders: [order] } }),
     )
-    await openGrowTool(page, /^Purchase orders/)
-    await expect(page.getByRole('dialog', { name: 'Purchase orders' })).toBeVisible()
+    // A confirmed order is on its way: Buy stock → On the way (simplify batch 4b).
+    await openBuyStock(page, 'On the way')
     await audit(page, 'purchase-orders')
     await page.getByRole('button', { name: /Filter coffee.* from Fresh Farms/ }).click()
     await expect(

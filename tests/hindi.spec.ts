@@ -129,7 +129,7 @@ const tab = (page: Page, name: string) =>
 
 async function growCard(page: Page, name: RegExp) {
   await tab(page, 'बढ़ाएँ').click()
-  // A tool in a row (कितना बनाना है, माल मँगाएँ, मेरी बिक्री) is one tap in (batch 4a).
+  // कितना बनाना है, माल मँगाएँ and मेरी बिक्री each open one sheet (batch 4b).
   await openGrowTool(page, name)
   await expect(page.getByRole('dialog')).toBeVisible()
 }
@@ -185,8 +185,14 @@ test('the owner app reads in Hindi: Today, coach, Shop, Grow tools, You, privacy
 
   await test.step('Grow: Hindi dates', async () => {
     await tab(page, 'बढ़ाएँ').click()
-    await expect(await growTool(page, /^हफ़्ते का सार/)).toContainText('अक्टू')
+    await expect(await growTool(page, /^मेरी बिक्री/)).toBeVisible()
     await readsInHindi(page, '05-grow')
+    // The week's summary sits in मेरी बिक्री under its name and dates (batch 4b).
+    await growCard(page, /^मेरी बिक्री/)
+    await expect(
+      page.getByRole('dialog').getByRole('button', { name: /^हफ़्ते का सार/ }),
+    ).toContainText('अक्टू')
+    await closeSheet(page)
   })
 
   await test.step('Close the day: photo read and review', async () => {
@@ -203,7 +209,8 @@ test('the owner app reads in Hindi: Today, coach, Shop, Grow tools, You, privacy
   })
 
   await test.step('Plan tomorrow: units in Hindi', async () => {
-    await growCard(page, /^कल की योजना/)
+    await growCard(page, /^कितना बनाना है/)
+    await page.getByRole('dialog').getByRole('button', { name: 'संख्या बदलें' }).click()
     await expect(page.getByLabel('तैयार स्टॉक (कप)')).toBeVisible()
     await readsInHindi(page, '07-plan-tomorrow')
     await closeSheet(page)

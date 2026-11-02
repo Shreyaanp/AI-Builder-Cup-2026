@@ -63,10 +63,11 @@ test('Your week: yesterday and this week against last week, from saved sales', a
   await page.getByRole('button', { name: 'Continue local preview' }).click()
   // Insights live on Grow.
   await page.getByRole('button', { name: 'Grow', exact: true }).click()
-  const tile = await growTool(page, /^Your week/)
-  await expect(tile).toContainText(/\+\d+% vs last week/)
+  // My sales (simplify batch 4b): this week and the change on the row, the week in the sheet.
+  const tile = await growTool(page, /^My sales/)
+  await expect(tile).toContainText(/This week .* · \+\d+%/)
   await tile.click()
-  const sheet = page.getByRole('dialog', { name: 'Your week' })
+  const sheet = page.getByRole('dialog', { name: 'My sales' })
   await expect(sheet.getByText('Yesterday')).toBeVisible()
   await expect(sheet.getByRole('definition').first()).toHaveText(/73.80/)
   await expect(sheet.getByText('This week', { exact: true }).first()).toBeVisible()

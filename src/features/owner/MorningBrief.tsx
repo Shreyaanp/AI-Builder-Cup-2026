@@ -60,10 +60,13 @@ function hideToday(shop: string, date: string) {
 export function MorningBrief({
   onSheet,
   onRadar,
+  onPlan,
   embedded = false,
 }: {
   onSheet: (kind: ShopSheetKind) => void
   onRadar: () => void
+  /** How much to make, with the numbers open (Grow). */
+  onPlan: () => void
   /** Inside Grow's Morning brief row: the row names it and opens it, so no title or hide. */
   embedded?: boolean
 }) {
@@ -285,7 +288,7 @@ export function MorningBrief({
               case 'radar':
                 return onRadar()
               case 'reduce_prep':
-                return onSheet('plan')
+                return onPlan()
               case 'confirm_menu':
                 return onSheet('menu')
               case 'record_sales':

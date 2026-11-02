@@ -1,7 +1,7 @@
 import { createShop } from './stories/support.js'
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
-import { growTool } from './support/grow.js'
+import { growTool, openMake } from './support/grow.js'
 
 test.use({ reducedMotion: 'reduce' })
 
@@ -18,7 +18,7 @@ async function shop(page: Page) {
     .then((rows) => rows[0].id as string)
 }
 
-test('Prep plan uses approved sales, labels its method and passes axe on phone', async ({
+test('How much to make uses approved sales, labels its method and passes axe on phone', async ({
   page,
 }) => {
   const bid = await shop(page)
@@ -38,7 +38,7 @@ test('Prep plan uses approved sales, labels its method and passes axe on phone',
     })
     .then((r) => r.json())
   await page.getByRole('button', { name: 'Grow', exact: true }).click()
-  const tile = await growTool(page, /^Prep plan/)
+  const tile = await growTool(page, /^How much to make/)
   await expect(tile).toContainText('Import and save at least 4 weeks')
   await page.request.post(`/api/v1/businesses/${bid}/import/${proposed.import_id}/approve`, {
     data: { digest: proposed.digest },
@@ -46,13 +46,16 @@ test('Prep plan uses approved sales, labels its method and passes axe on phone',
   await page.reload()
   await page.getByRole('button', { name: 'Continue local preview' }).click()
   await page.getByRole('button', { name: 'Grow', exact: true }).click()
-  // After the reload Grow opens with its rows closed again: open How much to make.
-  await growTool(page, /^Prep plan/)
+  await growTool(page, /^How much to make/)
   await expect(tile).toContainText('Kopi · 30')
-  await expect(tile).toContainText('Based on your last weeks')
+  // The sheet (simplify batch 4b): the list, its method, and the chat path.
+  const sheet = await openMake(page)
+  await expect(sheet).toContainText('Kopi')
+  await expect(sheet).toContainText('Based on your last weeks')
+  await page.waitForTimeout(500) // the sheet has finished sliding in
   const audit = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()
   expect(audit.violations).toEqual([])
-  await tile.click()
+  await sheet.getByRole('button', { name: 'Ask the coach' }).click()
   await expect(page.getByRole('textbox', { name: 'Message', exact: true })).toHaveValue(
     'How much should I prep tomorrow?',
   )

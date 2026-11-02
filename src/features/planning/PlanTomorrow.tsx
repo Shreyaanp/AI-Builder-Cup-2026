@@ -57,7 +57,8 @@ interface History {
   pending?: { digest: string; snapshot: { observations?: Observation[]; plan?: Plan } }
 }
 
-export function PlanTomorrow() {
+/** The owner's own numbers for one item; `title` names it where it sits (How much to make). */
+export function PlanTomorrow({ title }: { title?: string } = {}) {
   const ws = useWorkspace()
   const t = useCopy()
   const units = useUnitCopy()
@@ -84,6 +85,7 @@ export function PlanTomorrow() {
         productId={product.id}
         name={product.name}
         unit={unitLabel(product.unit, units)}
+        title={title ?? t.title}
       />
     </Stack>
   )
@@ -94,11 +96,13 @@ function PlanningCard({
   productId,
   name,
   unit,
+  title,
 }: {
   businessId: string
   productId: string
   name: string
   unit: string
+  title: string
 }) {
   const { api } = useWorkspace()
   const t = useCopy()
@@ -158,7 +162,7 @@ function PlanningCard({
   return (
     <Box
       component="section"
-      aria-label={t.title}
+      aria-label={title}
       aria-busy={busy}
       sx={{
         bgcolor: roles.surfaceContainerLow,
@@ -169,8 +173,8 @@ function PlanningCard({
       }}
     >
       <Stack spacing={2}>
-        <Typography id="plan-title" component="h2" variant="titleLarge">
-          {t.title}
+        <Typography id="plan-title" component="h3" variant="titleMedium">
+          {title}
         </Typography>
         <Typography variant="bodyMedium">
           {name} / {unit}
