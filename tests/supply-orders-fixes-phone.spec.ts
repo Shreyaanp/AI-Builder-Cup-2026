@@ -304,6 +304,8 @@ for (const size of WIDTHS) {
     await expect(page.getByRole('button', { name: /runs out|running low/ })).toHaveCount(0)
     await openBuyStock(page)
     await expect(page.getByRole('button', { name: /runs out|running low/ })).toHaveCount(0)
+    // Reads still on their way when the test ends must not fail it.
+    await page.unrouteAll({ behavior: 'ignoreErrors' })
   })
 
   test(`#603 at ${size.width}: the Grow tile follows its own Purchase orders sheet`, async ({

@@ -114,9 +114,13 @@ export function PurchaseOrders({
     )
   if (part === 'suppliers')
     return data && data.suppliers.length === 0 ? (
-      <Typography variant="bodyLarge" color="text.secondary">
-        {io.noPartnersHint}
-      </Typography>
+      // Why it is empty and what fills it (OB-227).
+      <Stack spacing={1}>
+        <Typography variant="bodyLarge">{io.noPartners}</Typography>
+        <Typography variant="bodyMedium" color="text.secondary">
+          {io.noPartnersHint}
+        </Typography>
+      </Stack>
     ) : (
       <List disablePadding sx={{ display: 'grid', gap: 1 }} aria-label={s.suppliersRules}>
         {(data?.suppliers ?? []).map((row) => (
