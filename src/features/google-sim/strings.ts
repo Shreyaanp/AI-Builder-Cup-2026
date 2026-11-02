@@ -21,7 +21,7 @@ const en = {
   reviewer: 'Reviewer controls',
   scenario: 'Reviewer: scenario',
   reset: 'Reset practice for this shop',
-  scenarioHelp: 'Fixtures only. Reset keeps real shop facts, inventory and your customer page.',
+  scenarioHelp: 'Samples only. Reset keeps real shop facts, inventory and your customer page.',
   type: 'How do you serve customers?',
   types: {
     store: 'Customers visit',
@@ -29,8 +29,7 @@ const en = {
     online: 'Online only',
   },
   facts: 'Reuse saved facts',
-  reused:
-    'Saved shop facts are reused below. Add only missing destination details. These edits affect the practice only.',
+  reused: 'Add anything that’s missing.',
   fields: {
     name: 'Shop name',
     location: 'Address',
@@ -38,7 +37,7 @@ const en = {
     phone: 'Contact',
     website: 'Website (optional)',
     service_area: 'Public service area',
-    category_id: 'Google category fixture',
+    category_id: 'Shop type',
     region: 'Category region',
   },
   categories: {
@@ -51,13 +50,12 @@ const en = {
   chooseCategory: 'Choose a supported category',
   privateAddress: 'Private address hidden — only the service area appears in the public preview.',
   permission: 'Choose the Google account that manages this business',
-  fictionalAccount:
-    'Fictional account picker — no password or Google OAuth. App sign-in does not establish business rights.',
-  account: 'Demo owner account (fictional)',
-  wrongAccount: 'Wrong demo account (fictional)',
-  cancel: 'Cancel authorization',
-  search: 'Choose a matching fictional listing',
-  noMatches: 'No fixture matches. Review a new listing before approving creation.',
+  fictionalAccount: 'Pick a pretend Google account.',
+  account: 'Demo owner account (pretend)',
+  wrongAccount: 'Wrong demo account (pretend)',
+  cancel: 'Cancel',
+  search: 'Choose a matching pretend listing',
+  noMatches: 'No listing found. Create a new one.',
   newListing: 'Create a new listing',
   management: {
     you: 'Managed by you',
@@ -75,32 +73,28 @@ const en = {
   grant: 'Reviewer: grant ownership',
   rejectClaim: 'Reviewer: reject ownership',
   review: 'Review the exact listing',
-  local: 'Checked locally — not validated by Google',
-  revision: 'Preview revision',
   operations: {
     create: 'Create',
     update: 'Update managed listing',
     claim: 'Claim',
   },
   destination: 'Destination: Google Business Profile practice',
-  selected: 'Selected fictional listing',
+  selected: 'Selected listing',
   edit: 'Edit practice facts',
-  approve: 'Approve this revision and submit for practice',
+  approve: 'Submit',
   rejectField: 'Reviewer: reject hours on submission',
   pending: 'Submission pending — outcome unknown',
   reconcileHelp:
-    'Retry first reconciles the existing fictional request. It never creates a second listing.',
+    'Retry first checks the request you already made. It never creates a second listing.',
   reconcile: 'Reconcile and retry',
-  receipt: 'Fictional receipt',
-  submissions: 'Submissions',
   verify: 'Choose an offered verification method',
   methods: {
-    sms: 'SMS (fictional)',
-    email: 'Email (fictional)',
-    phone: 'Phone (fictional)',
-    postcard: 'Postcard (fictional)',
-    pin: 'PIN (fictional)',
-    automatic: 'Automatic (fixture only)',
+    sms: 'SMS (pretend)',
+    email: 'Email (pretend)',
+    phone: 'Phone (pretend)',
+    postcard: 'Postcard (pretend)',
+    pin: 'PIN (pretend)',
+    automatic: 'Automatic (practice only)',
   },
   methodHelp: {
     sms: 'Demo SMS code; no message is sent.',
@@ -108,12 +102,12 @@ const en = {
     phone: 'Demo phone code; no call is made.',
     postcard: 'Demo postcard code; no mail is sent.',
     pin: 'Demo PIN; no real verification code is collected.',
-    automatic: 'Automatic verification belongs only to this fixture.',
+    automatic: 'Automatic checking is only part of this practice.',
   },
-  code: 'Fictional code',
-  codeHelp: 'Use the fictional fixture code 123456. Never enter a real code.',
-  verifyCode: 'Check fictional code',
-  resend: 'Start a new fictional code attempt',
+  code: 'Pretend code',
+  codeHelp: 'Use the pretend code 123456. Never enter a real code.',
+  verifyCode: 'Check pretend code',
+  resend: 'Get a new pretend code',
   noMethods:
     'This scenario offers no verification methods. Progress stays pending; use the official owner handoff for real help.',
   video: 'Video verification preparation',
@@ -142,11 +136,9 @@ const en = {
   independent:
     'Your customer page and approved inventory are independent. Inventory prices are not synchronized to Google.',
   ineligible:
-    'Online-only businesses are ineligible in this fixture. Your independent customer page and catalogue remain useful; do not invent an address.',
-  reauthorize:
-    'permission expired. Choose the fictional management account again; saved progress remains.',
-  reverification:
-    'Address or category changed — would need re-verification. Previous verification does not validate this revision.',
+    'Online-only businesses can’t practise this. Your customer page and catalogue still work; don’t invent an address.',
+  reauthorize: 'permission expired. Choose the pretend account again; saved progress remains.',
+  reverification: 'Address or shop type changed, so this would need checking again.',
   disconnect: 'Disconnect management',
   removal: 'management removal',
   removalStatuses: {
@@ -157,13 +149,13 @@ const en = {
   confirmRemoval: 'Reviewer: confirm removal',
   keepsListing: 'The merchant keeps their listing. No real permission or ownership is removed.',
   errors: {
-    category: 'Choose a category supported in this region. Free text is not a Google category ID.',
+    category: 'Choose a shop type from the list.',
     missing: 'Add the missing name, address or service area, hours and contact.',
     account:
       'Wrong fictional account. Your saved draft is preserved; choose the management account again.',
-    wrong_code: 'Wrong fictional code. Try 123456 for this attempt.',
-    expired_code: 'Fictional code expired. Start a new code attempt, then use 123456.',
-    field_hours: 'Hours rejected. Correct hours and review a new revision before submitting again.',
+    wrong_code: 'Wrong pretend code. Try 123456 for this attempt.',
+    expired_code: 'Pretend code expired. Get a new one, then use 123456.',
+    field_hours: 'Hours rejected. Correct the hours and submit again.',
   },
 }
 
@@ -177,7 +169,7 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
     liveOwner: 'लाइव — Google Business Profile खुलेगा',
     handoffHelp:
       'आधिकारिक पेज अलग खुलते हैं। Business Profile API की अनुमति बाकी है। यहाँ सत्यापन या प्रकाशन की पुष्टि नहीं है।',
-    claimSaved: 'काल्पनिक मालिकाना अनुरोध सहेजा। Google को कोई अनुरोध नहीं भेजा।',
+    claimSaved: 'दिखावटी मालिकाना अनुरोध सहेजा। Google को कोई अनुरोध नहीं भेजा।',
     banner: 'अभ्यास — Google की कोई लिस्टिंग नहीं बनेगी या बदलेगी',
     pretend: 'डेमो में यह सिर्फ़ दिखावा है: Google को कुछ नहीं भेजा जाता',
     start: 'मेरी दुकान Google पर लाएँ',
@@ -198,8 +190,7 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
       online: 'सिर्फ़ ऑनलाइन',
     },
     facts: 'सहेजी जानकारी फिर लें',
-    reused:
-      'नीचे सहेजी जानकारी ली है। सिर्फ़ अधूरी जानकारी जोड़ें। ये बदलाव सिर्फ़ अभ्यास में हैं।',
+    reused: 'जो जानकारी छूटी है, वह जोड़ें।',
     fields: {
       name: 'दुकान का नाम',
       location: 'पता',
@@ -207,7 +198,7 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
       phone: 'संपर्क',
       website: 'वेबसाइट (वैकल्पिक)',
       service_area: 'सार्वजनिक सेवा क्षेत्र',
-      category_id: 'Google श्रेणी का नमूना',
+      category_id: 'दुकान का प्रकार',
       region: 'श्रेणी का क्षेत्र',
     },
     categories: {
@@ -220,13 +211,12 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
     chooseCategory: 'उपलब्ध श्रेणी चुनें',
     privateAddress: 'निजी पता छिपा है — सार्वजनिक प्रीव्यू में सिर्फ़ सेवा क्षेत्र दिखेगा।',
     permission: 'इस व्यवसाय को सँभालने वाला Google खाता चुनें',
-    fictionalAccount:
-      'काल्पनिक खाता चयन — पासवर्ड या Google OAuth नहीं। ऐप साइन-इन व्यवसाय का अधिकार नहीं देता।',
-    account: 'डेमो मालिक खाता (काल्पनिक)',
-    wrongAccount: 'गलत डेमो खाता (काल्पनिक)',
-    cancel: 'अनुमति रद्द करें',
-    search: 'मिलती काल्पनिक लिस्टिंग चुनें',
-    noMatches: 'नमूना नहीं मिला। नई लिस्टिंग बनाने से पहले जाँचें।',
+    fictionalAccount: 'दिखावटी Google खाता चुनें।',
+    account: 'डेमो मालिक खाता (दिखावटी)',
+    wrongAccount: 'गलत डेमो खाता (दिखावटी)',
+    cancel: 'रद्द करें',
+    search: 'मिलती दिखावटी लिस्टिंग चुनें',
+    noMatches: 'कोई लिस्टिंग नहीं मिली। नई बनाएँ।',
     newListing: 'नई लिस्टिंग बनाएँ',
     management: {
       you: 'आप सँभालते हैं',
@@ -244,30 +234,26 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
     grant: 'समीक्षक: मालिकाना दें',
     rejectClaim: 'समीक्षक: मालिकाना मना करें',
     review: 'ठीक इसी लिस्टिंग को जाँचें',
-    local: 'स्थानीय जाँच — Google ने नहीं जाँचा',
-    revision: 'प्रीव्यू का संस्करण',
     operations: {
       create: 'बनाएँ',
       update: 'सँभाली लिस्टिंग अपडेट करें',
       claim: 'दावा करें',
     },
     destination: 'मंज़िल: Google Business Profile अभ्यास',
-    selected: 'चुनी हुई काल्पनिक लिस्टिंग',
+    selected: 'चुनी हुई लिस्टिंग',
     edit: 'अभ्यास की जानकारी बदलें',
-    approve: 'यह संस्करण मंज़ूर करके अभ्यास में भेजें',
+    approve: 'जमा करें',
     rejectField: 'समीक्षक: जमा करते समय समय-सारणी मना करें',
     pending: 'जमा बाकी — नतीजा पता नहीं',
-    reconcileHelp: 'फिर कोशिश पहले मौजूदा काल्पनिक अनुरोध जाँचती है। दूसरी लिस्टिंग नहीं बनती।',
+    reconcileHelp: 'फिर कोशिश पहले आपका दिया अनुरोध जाँचती है। दूसरी लिस्टिंग कभी नहीं बनती।',
     reconcile: 'मिलान करके फिर कोशिश करें',
-    receipt: 'काल्पनिक रसीद',
-    submissions: 'जमा किए अनुरोध',
     verify: 'दिया गया सत्यापन तरीका चुनें',
     methods: {
-      sms: 'SMS (काल्पनिक)',
-      email: 'ईमेल (काल्पनिक)',
-      phone: 'फ़ोन (काल्पनिक)',
-      postcard: 'पोस्टकार्ड (काल्पनिक)',
-      pin: 'PIN (काल्पनिक)',
+      sms: 'SMS (दिखावटी)',
+      email: 'ईमेल (दिखावटी)',
+      phone: 'फ़ोन (दिखावटी)',
+      postcard: 'पोस्टकार्ड (दिखावटी)',
+      pin: 'PIN (दिखावटी)',
       automatic: 'अपने-आप (सिर्फ़ नमूना)',
     },
     methodHelp: {
@@ -278,10 +264,10 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
       pin: 'डेमो PIN; असली सत्यापन कोड नहीं लिया जाएगा।',
       automatic: 'अपने-आप सत्यापन सिर्फ़ इस नमूने का है।',
     },
-    code: 'काल्पनिक कोड',
+    code: 'दिखावटी कोड',
     codeHelp: 'नमूना कोड 123456 लें। असली कोड कभी न लिखें।',
-    verifyCode: 'काल्पनिक कोड जाँचें',
-    resend: 'नए काल्पनिक कोड का प्रयास करें',
+    verifyCode: 'दिखावटी कोड जाँचें',
+    resend: 'नए दिखावटी कोड का प्रयास करें',
     noMethods:
       'इस स्थिति में सत्यापन तरीके नहीं हैं। प्रगति बाकी रहेगी; असली मदद के लिए आधिकारिक मालिक पेज लें।',
     video: 'वीडियो सत्यापन की तैयारी',
@@ -310,9 +296,8 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
     independent: 'ग्राहक पेज और मंज़ूर स्टॉक स्वतंत्र हैं। स्टॉक के दाम Google से सिंक नहीं होते।',
     ineligible:
       'सिर्फ़ ऑनलाइन व्यवसाय इस नमूने में पात्र नहीं। स्वतंत्र ग्राहक पेज और कैटलॉग काम आते हैं; नकली पता न बनाएँ।',
-    reauthorize: 'अनुमति खत्म हुई। काल्पनिक प्रबंधन खाता फिर चुनें; सहेजी प्रगति रहेगी।',
-    reverification:
-      'पता या श्रेणी बदली — फिर सत्यापन चाहिए होगा। पिछला सत्यापन इस संस्करण को मान्य नहीं करता।',
+    reauthorize: 'अनुमति खत्म हुई। दिखावटी प्रबंधन खाता फिर चुनें; सहेजी प्रगति रहेगी।',
+    reverification: 'पता या दुकान का प्रकार बदला, इसलिए इसे फिर जाँचना होगा।',
     disconnect: 'प्रबंधन का कनेक्शन हटाएँ',
     removal: 'प्रबंधन हटाना',
     removalStatuses: {
@@ -323,12 +308,12 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
     confirmRemoval: 'समीक्षक: हटाने की पुष्टि करें',
     keepsListing: 'व्यापारी की लिस्टिंग रहेगी। असली अनुमति या मालिकाना नहीं हटेगा।',
     errors: {
-      category: 'इस क्षेत्र में उपलब्ध श्रेणी चुनें। मनमाना पाठ Google श्रेणी ID नहीं है।',
+      category: 'सूची से दुकान का प्रकार चुनें।',
       missing: 'अधूरा नाम, पता या सेवा क्षेत्र, समय और संपर्क जोड़ें।',
-      account: 'गलत काल्पनिक खाता। मसौदा सुरक्षित है; प्रबंधन खाता फिर चुनें।',
-      wrong_code: 'गलत काल्पनिक कोड। इस बार 123456 आज़माएँ।',
-      expired_code: 'काल्पनिक कोड खत्म हुआ। नया प्रयास शुरू करके 123456 लें।',
-      field_hours: 'समय मना हुआ। सही समय भरकर नया संस्करण जाँचें, फिर जमा करें।',
+      account: 'गलत दिखावटी खाता। मसौदा सुरक्षित है; प्रबंधन खाता फिर चुनें।',
+      wrong_code: 'गलत दिखावटी कोड। इस बार 123456 आज़माएँ।',
+      expired_code: 'दिखावटी कोड खत्म हुआ। नया प्रयास शुरू करके 123456 लें।',
+      field_hours: 'समय मना हुआ। सही समय भरकर फिर जमा करें।',
     },
   },
   bn: {
@@ -359,7 +344,7 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
       online: 'শুধু অনলাইন',
     },
     facts: 'সেভ করা তথ্য আবার নিন',
-    reused: 'নিচে সেভ করা তথ্য নেওয়া হয়েছে। শুধু বাদ পড়া তথ্য দিন। বদল শুধু অনুশীলনে।',
+    reused: 'যা বাকি আছে তা যোগ করুন।',
     fields: {
       name: 'দোকানের নাম',
       location: 'ঠিকানা',
@@ -367,7 +352,7 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
       phone: 'যোগাযোগ',
       website: 'ওয়েবসাইট (ঐচ্ছিক)',
       service_area: 'প্রকাশ্য পরিষেবা এলাকা',
-      category_id: 'Google বিভাগের নমুনা',
+      category_id: 'দোকানের ধরন',
       region: 'বিভাগের অঞ্চল',
     },
     categories: {
@@ -380,13 +365,12 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
     chooseCategory: 'সমর্থিত বিভাগ বাছুন',
     privateAddress: 'ব্যক্তিগত ঠিকানা লুকোনো — প্রকাশ্য প্রিভিউতে শুধু পরিষেবা এলাকা।',
     permission: 'এই ব্যবসা পরিচালনার Google অ্যাকাউন্ট বাছুন',
-    fictionalAccount:
-      'কাল্পনিক অ্যাকাউন্ট বাছাই — পাসওয়ার্ড বা Google OAuth নেই। অ্যাপে সাইন-ইন ব্যবসার অধিকার দেয় না।',
+    fictionalAccount: 'একটি কাল্পনিক Google অ্যাকাউন্ট বেছে নিন।',
     account: 'ডেমো মালিকের অ্যাকাউন্ট (কাল্পনিক)',
     wrongAccount: 'ভুল ডেমো অ্যাকাউন্ট (কাল্পনিক)',
-    cancel: 'অনুমতি বাতিল করুন',
+    cancel: 'বাতিল করুন',
     search: 'মিলে যাওয়া কাল্পনিক তালিকা বাছুন',
-    noMatches: 'নমুনা মেলেনি। নতুন তালিকা তৈরির আগে যাচাই করুন।',
+    noMatches: 'কোনো লিস্টিং পাওয়া যায়নি। নতুন একটি তৈরি করুন।',
     newListing: 'নতুন তালিকা তৈরি করুন',
     management: {
       you: 'আপনি পরিচালনা করেন',
@@ -404,8 +388,6 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
     grant: 'পর্যালোচক: মালিকানা দিন',
     rejectClaim: 'পর্যালোচক: মালিকানা নাকচ করুন',
     review: 'ঠিক এই তালিকা যাচাই করুন',
-    local: 'স্থানীয় যাচাই — Google যাচাই করেনি',
-    revision: 'প্রিভিউ সংস্করণ',
     operations: {
       create: 'তৈরি করুন',
       update: 'পরিচালিত তালিকা আপডেট করুন',
@@ -414,13 +396,11 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
     destination: 'গন্তব্য: Google Business Profile অনুশীলন',
     selected: 'বাছা কাল্পনিক তালিকা',
     edit: 'অনুশীলনের তথ্য বদলান',
-    approve: 'এই সংস্করণ মেনে অনুশীলনে জমা দিন',
+    approve: 'জমা দিন',
     rejectField: 'পর্যালোচক: জমার সময় সময়সূচি নাকচ করুন',
     pending: 'জমা বাকি — ফল জানা নেই',
     reconcileHelp: 'আবার চেষ্টা আগে চলতি কাল্পনিক অনুরোধ মেলায়। দ্বিতীয় তালিকা বানায় না।',
     reconcile: 'মিলিয়ে আবার চেষ্টা করুন',
-    receipt: 'কাল্পনিক রসিদ',
-    submissions: 'জমা দেওয়া অনুরোধ',
     verify: 'দেওয়া যাচাই পদ্ধতি বাছুন',
     methods: {
       sms: 'SMS (কাল্পনিক)',
@@ -520,7 +500,7 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
       online: 'ఆన్‌లైన్ మాత్రమే',
     },
     facts: 'సేవ్ చేసిన వివరాలు వాడండి',
-    reused: 'కింద సేవ్ చేసిన వివరాలు వాడాం. లేని వివరాలే జోడించండి. మార్పులు సాధనకే.',
+    reused: 'మిగిలినవి జోడించండి.',
     fields: {
       name: 'దుకాణం పేరు',
       location: 'చిరునామా',
@@ -528,7 +508,7 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
       phone: 'సంప్రదింపు',
       website: 'వెబ్‌సైట్ (ఐచ్ఛికం)',
       service_area: 'పబ్లిక్ సేవా ప్రాంతం',
-      category_id: 'Google వర్గం నమూనా',
+      category_id: 'దుకాణం రకం',
       region: 'వర్గం ప్రాంతం',
     },
     categories: {
@@ -541,13 +521,12 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
     chooseCategory: 'మద్దతున్న వర్గం ఎంచుకోండి',
     privateAddress: 'వ్యక్తిగత చిరునామా దాచాం — పబ్లిక్ ప్రివ్యూలో సేవా ప్రాంతమే కనిపిస్తుంది.',
     permission: 'ఈ వ్యాపారం నిర్వహించే Google ఖాతా ఎంచుకోండి',
-    fictionalAccount:
-      'కల్పిత ఖాతా ఎంపిక — పాస్‌వర్డ్ లేదా Google OAuth లేదు. యాప్ సైన్-ఇన్ వ్యాపార హక్కులు ఇవ్వదు.',
+    fictionalAccount: 'ఒక నమూనా Google ఖాతాను ఎంచుకోండి.',
     account: 'డెమో యజమాని ఖాతా (కల్పితం)',
     wrongAccount: 'తప్పు డెమో ఖాతా (కల్పితం)',
-    cancel: 'అనుమతి రద్దు చేయండి',
+    cancel: 'రద్దు చేయండి',
     search: 'సరిపోలే కల్పిత లిస్టింగ్ ఎంచుకోండి',
-    noMatches: 'నమూనా సరిపోలలేదు. కొత్త లిస్టింగ్ సృష్టికి ఆమోదించే ముందు చూడండి.',
+    noMatches: 'లిస్టింగ్ కనబడలేదు. కొత్తది సృష్టించండి.',
     newListing: 'కొత్త లిస్టింగ్ సృష్టించండి',
     management: {
       you: 'మీరు నిర్వహిస్తున్నారు',
@@ -565,8 +544,6 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
     grant: 'సమీక్షకుడు: యాజమాన్యం ఇవ్వండి',
     rejectClaim: 'సమీక్షకుడు: యాజమాన్యం తిరస్కరించండి',
     review: 'ఇదే లిస్టింగ్ చూడండి',
-    local: 'స్థానిక తనిఖీ — Google ధృవీకరించలేదు',
-    revision: 'ప్రివ్యూ సంస్కరణ',
     operations: {
       create: 'సృష్టించండి',
       update: 'నిర్వహిస్తున్న లిస్టింగ్ నవీకరించండి',
@@ -575,14 +552,12 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
     destination: 'గమ్యం: Google Business Profile సాధన',
     selected: 'ఎంచుకున్న కల్పిత లిస్టింగ్',
     edit: 'సాధన వివరాలు మార్చండి',
-    approve: 'ఈ సంస్కరణ ఆమోదించి సాధనకు సమర్పించండి',
+    approve: 'సమర్పించండి',
     rejectField: 'సమీక్షకుడు: సమర్పణలో వేళలు తిరస్కరించండి',
     pending: 'సమర్పణ పెండింగ్ — ఫలితం తెలియదు',
     reconcileHelp:
       'మళ్లీ ప్రయత్నం ముందు ఉన్న కల్పిత అభ్యర్థన సరిచూస్తుంది. రెండో లిస్టింగ్ సృష్టించదు.',
     reconcile: 'సరిచూసి మళ్లీ ప్రయత్నించండి',
-    receipt: 'కల్పిత రసీదు',
-    submissions: 'సమర్పణలు',
     verify: 'అందించిన ధృవీకరణ పద్ధతి ఎంచుకోండి',
     methods: {
       sms: 'SMS (కల్పితం)',
@@ -682,7 +657,7 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
       online: 'फक्त ऑनलाइन',
     },
     facts: 'जतन केलेली माहिती पुन्हा वापरा',
-    reused: 'खाली जतन केलेली माहिती वापरली आहे. फक्त नसलेली माहिती जोडा. बदल फक्त सरावात आहेत.',
+    reused: 'जे राहिले आहे ते जोडा.',
     fields: {
       name: 'दुकानाचे नाव',
       location: 'पत्ता',
@@ -690,7 +665,7 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
       phone: 'संपर्क',
       website: 'वेबसाइट (ऐच्छिक)',
       service_area: 'सार्वजनिक सेवा क्षेत्र',
-      category_id: 'Google वर्गाचा नमुना',
+      category_id: 'दुकानाचा प्रकार',
       region: 'वर्गाचा प्रदेश',
     },
     categories: {
@@ -703,13 +678,12 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
     chooseCategory: 'उपलब्ध वर्ग निवडा',
     privateAddress: 'खाजगी पत्ता लपवला — सार्वजनिक पूर्वावलोकनात फक्त सेवा क्षेत्र.',
     permission: 'हा व्यवसाय सांभाळणारे Google खाते निवडा',
-    fictionalAccount:
-      'काल्पनिक खाते निवड — पासवर्ड किंवा Google OAuth नाही. अ‍ॅप साइन-इनने व्यवसायाचे हक्क मिळत नाहीत.',
+    fictionalAccount: 'एक काल्पनिक Google खाते निवडा.',
     account: 'डेमो मालक खाते (काल्पनिक)',
     wrongAccount: 'चुकीचे डेमो खाते (काल्पनिक)',
-    cancel: 'परवानगी रद्द करा',
+    cancel: 'रद्द करा',
     search: 'जुळणारी काल्पनिक नोंद निवडा',
-    noMatches: 'नमुना जुळला नाही. नवी नोंद बनवण्याआधी तपासा.',
+    noMatches: 'लिस्टिंग सापडली नाही. नवीन तयार करा.',
     newListing: 'नवी नोंद तयार करा',
     management: {
       you: 'तुम्ही सांभाळता',
@@ -727,8 +701,6 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
     grant: 'परीक्षक: मालकी द्या',
     rejectClaim: 'परीक्षक: मालकी नाकारा',
     review: 'नेमकी ही नोंद तपासा',
-    local: 'स्थानिक तपासणी — Google ने पडताळलेले नाही',
-    revision: 'पूर्वावलोकनाची आवृत्ती',
     operations: {
       create: 'तयार करा',
       update: 'सांभाळत असलेली नोंद अपडेट करा',
@@ -737,13 +709,11 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
     destination: 'गंतव्य: Google Business Profile सराव',
     selected: 'निवडलेली काल्पनिक नोंद',
     edit: 'सरावाची माहिती बदला',
-    approve: 'ही आवृत्ती मंजूर करून सरावासाठी पाठवा',
+    approve: 'सबमिट करा',
     rejectField: 'परीक्षक: पाठवताना वेळा नाकारा',
     pending: 'सादरीकरण बाकी — निकाल माहीत नाही',
     reconcileHelp: 'पुन्हा प्रयत्न आधी विद्यमान काल्पनिक विनंती तपासतो. दुसरी नोंद बनवत नाही.',
     reconcile: 'मेळ घालून पुन्हा प्रयत्न करा',
-    receipt: 'काल्पनिक पावती',
-    submissions: 'सादरीकरणे',
     verify: 'दिलेली पडताळणी पद्धत निवडा',
     methods: {
       sms: 'SMS (काल्पनिक)',
@@ -842,7 +812,7 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
       online: 'ಆನ್‌ಲೈನ್ ಮಾತ್ರ',
     },
     facts: 'ಉಳಿಸಿದ ವಿವರ ಮತ್ತೆ ಬಳಸಿ',
-    reused: 'ಕೆಳಗೆ ಉಳಿಸಿದ ವಿವರ ಬಳಸಲಾಗಿದೆ. ಇಲ್ಲದ ವಿವರ ಮಾತ್ರ ಸೇರಿಸಿ. ಬದಲಾವಣೆ ಅಭ್ಯಾಸಕ್ಕೆ ಮಾತ್ರ.',
+    reused: 'ಉಳಿದಿರುವುದನ್ನು ಸೇರಿಸಿ.',
     fields: {
       name: 'ಅಂಗಡಿಯ ಹೆಸರು',
       location: 'ವಿಳಾಸ',
@@ -850,7 +820,7 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
       phone: 'ಸಂಪರ್ಕ',
       website: 'ವೆಬ್‌ಸೈಟ್ (ಐಚ್ಛಿಕ)',
       service_area: 'ಸಾರ್ವಜನಿಕ ಸೇವಾ ಪ್ರದೇಶ',
-      category_id: 'Google ವರ್ಗದ ಮಾದರಿ',
+      category_id: 'ಅಂಗಡಿಯ ಪ್ರಕಾರ',
       region: 'ವರ್ಗದ ಪ್ರದೇಶ',
     },
     categories: {
@@ -863,13 +833,12 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
     chooseCategory: 'ಬೆಂಬಲಿತ ವರ್ಗ ಆಯ್ಕೆಮಾಡಿ',
     privateAddress: 'ಖಾಸಗಿ ವಿಳಾಸ ಮರೆಮಾಡಿದೆ — ಸಾರ್ವಜನಿಕ ಮುನ್ನೋಟದಲ್ಲಿ ಸೇವಾ ಪ್ರದೇಶ ಮಾತ್ರ.',
     permission: 'ಈ ವ್ಯಾಪಾರ ನಿರ್ವಹಿಸುವ Google ಖಾತೆ ಆಯ್ಕೆಮಾಡಿ',
-    fictionalAccount:
-      'ಕಲ್ಪಿತ ಖಾತೆ ಆಯ್ಕೆ — ಪಾಸ್‌ವರ್ಡ್ ಅಥವಾ Google OAuth ಇಲ್ಲ. ಆ್ಯಪ್ ಸೈನ್-ಇನ್ ವ್ಯಾಪಾರ ಹಕ್ಕು ನೀಡುವುದಿಲ್ಲ.',
+    fictionalAccount: 'ಒಂದು ಮಾದರಿ Google ಖಾತೆಯನ್ನು ಆರಿಸಿ.',
     account: 'ಡೆಮೊ ಮಾಲೀಕ ಖಾತೆ (ಕಲ್ಪಿತ)',
     wrongAccount: 'ತಪ್ಪು ಡೆಮೊ ಖಾತೆ (ಕಲ್ಪಿತ)',
-    cancel: 'ಅನುಮತಿ ರದ್ದುಮಾಡಿ',
+    cancel: 'ರದ್ದುಮಾಡಿ',
     search: 'ಹೊಂದುವ ಕಲ್ಪಿತ ಪಟ್ಟಿ ಆಯ್ಕೆಮಾಡಿ',
-    noMatches: 'ಮಾದರಿ ಹೊಂದಲಿಲ್ಲ. ಹೊಸ ಪಟ್ಟಿ ರಚಿಸಲು ಒಪ್ಪುವ ಮೊದಲು ಪರಿಶೀಲಿಸಿ.',
+    noMatches: 'ಪಟ್ಟಿ ಸಿಗಲಿಲ್ಲ. ಹೊಸದನ್ನು ರಚಿಸಿ.',
     newListing: 'ಹೊಸ ಪಟ್ಟಿ ರಚಿಸಿ',
     management: {
       you: 'ನೀವು ನಿರ್ವಹಿಸುತ್ತೀರಿ',
@@ -887,8 +856,6 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
     grant: 'ಪರಿಶೀಲಕರು: ಮಾಲೀಕತ್ವ ನೀಡಿ',
     rejectClaim: 'ಪರಿಶೀಲಕರು: ಮಾಲೀಕತ್ವ ನಿರಾಕರಿಸಿ',
     review: 'ಇದೇ ಪಟ್ಟಿ ಪರಿಶೀಲಿಸಿ',
-    local: 'ಸ್ಥಳೀಯ ಪರಿಶೀಲನೆ — Google ಪರಿಶೀಲಿಸಿಲ್ಲ',
-    revision: 'ಮುನ್ನೋಟ ಆವೃತ್ತಿ',
     operations: {
       create: 'ರಚಿಸಿ',
       update: 'ನಿರ್ವಹಿಸುವ ಪಟ್ಟಿ ನವೀಕರಿಸಿ',
@@ -897,14 +864,12 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
     destination: 'ಗಮ್ಯ: Google Business Profile ಅಭ್ಯಾಸ',
     selected: 'ಆಯ್ದ ಕಲ್ಪಿತ ಪಟ್ಟಿ',
     edit: 'ಅಭ್ಯಾಸದ ವಿವರ ತಿದ್ದಿ',
-    approve: 'ಈ ಆವೃತ್ತಿ ಒಪ್ಪಿ ಅಭ್ಯಾಸಕ್ಕೆ ಸಲ್ಲಿಸಿ',
+    approve: 'ಸಲ್ಲಿಸಿ',
     rejectField: 'ಪರಿಶೀಲಕರು: ಸಲ್ಲಿಕೆಯಲ್ಲಿ ಸಮಯ ನಿರಾಕರಿಸಿ',
     pending: 'ಸಲ್ಲಿಕೆ ಬಾಕಿ — ಫಲಿತಾಂಶ ತಿಳಿದಿಲ್ಲ',
     reconcileHelp:
       'ಮತ್ತೆ ಪ್ರಯತ್ನಿಸುವಾಗ ಮೊದಲು ಇರುವ ಕಲ್ಪಿತ ವಿನಂತಿ ಹೊಂದಿಸಲಾಗುತ್ತದೆ. ಎರಡನೇ ಪಟ್ಟಿ ರಚಿಸುವುದಿಲ್ಲ.',
     reconcile: 'ಹೊಂದಿಸಿ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ',
-    receipt: 'ಕಲ್ಪಿತ ರಸೀದಿ',
-    submissions: 'ಸಲ್ಲಿಕೆಗಳು',
     verify: 'ನೀಡಿದ ಪರಿಶೀಲನಾ ವಿಧಾನ ಆಯ್ಕೆಮಾಡಿ',
     methods: {
       sms: 'SMS (ಕಲ್ಪಿತ)',
@@ -999,7 +964,7 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
       online: '仅在线',
     },
     facts: '沿用已保存资料',
-    reused: '以下沿用已保存店铺资料，只需补齐目标平台所缺资料。这些编辑仅影响练习。',
+    reused: '补上缺少的信息。',
     fields: {
       name: '店铺名称',
       location: '地址',
@@ -1007,7 +972,7 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
       phone: '联系方式',
       website: '网站（选填）',
       service_area: '公开服务地区',
-      category_id: 'Google 类别测试项',
+      category_id: '店铺类型',
       region: '类别地区',
     },
     categories: {
@@ -1023,12 +988,12 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
     chooseCategory: '选择支持的类别',
     privateAddress: '私人地址已隐藏，练习公开预览只显示服务地区。',
     permission: '选择管理此商家的 Google 账户',
-    fictionalAccount: '虚构账户选择器，无密码或 Google OAuth。应用登录不代表商家权限。',
+    fictionalAccount: '选择一个虚构的 Google 账号。',
     account: '演示店主账户（虚构）',
     wrongAccount: '错误演示账户（虚构）',
-    cancel: '取消授权',
+    cancel: '取消',
     search: '选择匹配的虚构商家资料',
-    noMatches: '没有匹配测试项。批准创建前请核对新资料。',
+    noMatches: '未找到商家信息。请新建一个。',
     newListing: '创建新练习资料',
     management: {
       you: '由您管理',
@@ -1046,8 +1011,6 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
     grant: '评审：授予所有权',
     rejectClaim: '评审：拒绝所有权',
     review: '核对本次练习资料',
-    local: '已本地检查 — 未经 Google 验证',
-    revision: '预览版本',
     operations: {
       create: '创建',
       update: '更新管理资料',
@@ -1056,13 +1019,11 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
     destination: '目标：Google Business Profile 练习器',
     selected: '所选虚构资料',
     edit: '编辑练习资料',
-    approve: '批准此版本并练习提交',
+    approve: '提交',
     rejectField: '评审：提交时拒绝营业时间',
     pending: '提交待处理 — 结果未知',
     reconcileHelp: '重试先核对现有虚构请求，不会创建第二份资料。',
     reconcile: '核对并重试',
-    receipt: '虚构回执',
-    submissions: '练习提交',
     verify: '选择提供的验证方式',
     methods: {
       sms: '短信（虚构）',
@@ -1152,8 +1113,7 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
       online: 'Dalam talian sahaja',
     },
     facts: 'Guna fakta disimpan',
-    reused:
-      'Fakta kedai digunakan semula. Tambah butiran destinasi yang kurang sahaja. Edit hanya untuk latihan.',
+    reused: 'Tambah apa yang belum ada.',
     fields: {
       name: 'Nama kedai',
       location: 'Alamat',
@@ -1161,7 +1121,7 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
       phone: 'Hubungan',
       website: 'Laman web (pilihan)',
       service_area: 'Kawasan servis awam',
-      category_id: 'Kategori Google ujian',
+      category_id: 'Jenis kedai',
       region: 'Wilayah kategori',
     },
     categories: {
@@ -1178,13 +1138,12 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
     privateAddress:
       'Alamat peribadi disembunyikan — pratonton awam latihan hanya menunjukkan kawasan servis.',
     permission: 'Pilih akaun Google yang mengurus perniagaan ini',
-    fictionalAccount:
-      'Pemilih akaun rekaan — tiada kata laluan atau Google OAuth. Log masuk aplikasi tidak memberi hak perniagaan.',
+    fictionalAccount: 'Pilih akaun Google olok-olok.',
     account: 'Akaun pemilik demo (rekaan)',
     wrongAccount: 'Akaun demo salah (rekaan)',
-    cancel: 'Batal kebenaran',
+    cancel: 'Batal',
     search: 'Pilih penyenaraian rekaan sepadan',
-    noMatches: 'Tiada padanan ujian. Semak penyenaraian baharu sebelum lulus penciptaan.',
+    noMatches: 'Tiada penyenaraian ditemui. Cipta yang baharu.',
     newListing: 'Cipta penyenaraian latihan baharu',
     management: {
       you: 'Diurus anda',
@@ -1202,8 +1161,6 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
     grant: 'Penilai: beri pemilikan',
     rejectClaim: 'Penilai: tolak pemilikan',
     review: 'Semak penyenaraian latihan tepat',
-    local: 'Disemak setempat — bukan disahkan Google',
-    revision: 'Semakan pratonton',
     operations: {
       create: 'Cipta',
       update: 'Kemas kini penyenaraian diurus',
@@ -1212,14 +1169,12 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
     destination: 'Destinasi: practice Google Business Profile',
     selected: 'Penyenaraian rekaan dipilih',
     edit: 'Edit fakta latihan',
-    approve: 'Lulus versi ini dan latihan penghantaran',
+    approve: 'Hantar',
     rejectField: 'Penilai: tolak waktu semasa penghantaran',
     pending: 'Penghantaran menunggu — keputusan belum diketahui',
     reconcileHelp:
       'Cuba semula menyemak permintaan rekaan sedia ada dahulu. Tiada penyenaraian kedua dibuat.',
     reconcile: 'Semak dan cuba semula',
-    receipt: 'Resit rekaan',
-    submissions: 'Penghantaran latihan',
     verify: 'Pilih kaedah pengesahan ditawarkan',
     methods: {
       sms: 'SMS (rekaan)',
@@ -1313,8 +1268,7 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
       online: 'இணையத்தில் மட்டும்',
     },
     facts: 'சேமித்த விவரங்களைப் பயன்படுத்துங்கள்',
-    reused:
-      'சேமித்த விவரங்கள் கீழே பயன்படும். இலக்கிற்குத் தேவையான விடுபட்டவற்றை மட்டும் சேருங்கள். பயிற்சி மட்டுமே மாறும்.',
+    reused: 'விடுபட்டதைச் சேர்க்கவும்.',
     fields: {
       name: 'கடைப் பெயர்',
       location: 'முகவரி',
@@ -1322,7 +1276,7 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
       phone: 'தொடர்பு',
       website: 'இணையத்தளம் (விருப்பம்)',
       service_area: 'பொதுச் சேவைப் பகுதி',
-      category_id: 'Google வகை சோதனைத் தரவு',
+      category_id: 'கடை வகை',
       region: 'வகைக்கான வட்டாரம்',
     },
     categories: {
@@ -1339,14 +1293,12 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
     privateAddress:
       'தனிப்பட்ட முகவரி மறைக்கப்பட்டது — பயிற்சி பொதுக் காட்சியில் சேவைப் பகுதி மட்டும் தெரியும்.',
     permission: 'இந்தத் தொழிலை நிர்வகிக்கும் Google கணக்கைத் தேர்ந்தெடுங்கள்',
-    fictionalAccount:
-      'கற்பனைக் கணக்குத் தேர்வு — கடவுச்சொல் அல்லது Google OAuth இல்லை. செயலி உள்நுழைவு தொழில் உரிமையை நிறுவாது.',
+    fictionalAccount: 'ஒரு மாதிரி Google கணக்கைத் தேர்ந்தெடுக்கவும்.',
     account: 'பயிற்சி உரிமையாளர் கணக்கு (கற்பனை)',
     wrongAccount: 'தவறான பயிற்சிக் கணக்கு (கற்பனை)',
-    cancel: 'அனுமதியை ரத்துசெய்யுங்கள்',
+    cancel: 'ரத்துசெய்',
     search: 'பொருந்தும் கற்பனைப் பதிவைத் தேர்ந்தெடுங்கள்',
-    noMatches:
-      'பொருந்தும் சோதனைத் தரவு இல்லை. உருவாக்க அனுமதிக்கும் முன் புதிய பதிவைச் சரிபாருங்கள்.',
+    noMatches: 'பட்டியல் எதுவும் கிடைக்கவில்லை. புதியதை உருவாக்கவும்.',
     newListing: 'புதிய பயிற்சிப் பதிவு உருவாக்குங்கள்',
     management: {
       you: 'நீங்கள் நிர்வகிப்பது',
@@ -1364,8 +1316,6 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
     grant: 'மதிப்பாய்வாளர்: உரிமை வழங்குங்கள்',
     rejectClaim: 'மதிப்பாய்வாளர்: உரிமை மறுக்கவும்',
     review: 'இந்த பயிற்சிப் பதிவைச் சரிபாருங்கள்',
-    local: 'உள்ளகச் சரிபார்ப்பு — Google சரிபார்க்கவில்லை',
-    revision: 'முன்னோட்டப் பதிப்பு',
     operations: {
       create: 'உருவாக்கம்',
       update: 'நிர்வகிக்கும் பதிவு புதுப்பிப்பு',
@@ -1374,14 +1324,12 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
     destination: 'இலக்கு: Google Business Profile பயிற்சி',
     selected: 'தேர்ந்தெடுத்த கற்பனைப் பதிவு',
     edit: 'பயிற்சி விவரங்களைத் திருத்துங்கள்',
-    approve: 'இப்பதிப்பை ஏற்று பயிற்சியாகச் சமர்ப்பியுங்கள்',
+    approve: 'சமர்ப்பி',
     rejectField: 'மதிப்பாய்வாளர்: சமர்ப்பிப்பில் நேரத்தை மறுக்கவும்',
     pending: 'சமர்ப்பிப்பு நிலுவையில் — முடிவு தெரியவில்லை',
     reconcileHelp:
       'மீண்டும் முயல்வது முதலில் உள்ள கற்பனைக் கோரிக்கையை ஒத்திசைக்கும். இரண்டாம் பதிவு உருவாகாது.',
     reconcile: 'ஒத்திசைத்து மீண்டும் முயலுங்கள்',
-    receipt: 'கற்பனை ரசீது',
-    submissions: 'பயிற்சிச் சமர்ப்பிப்புகள்',
     verify: 'வழங்கப்பட்ட சரிபார்ப்பு முறையைத் தேர்ந்தெடுங்கள்',
     methods: {
       sms: 'SMS (கற்பனை)',
@@ -1481,8 +1429,7 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
       online: 'オンラインのみ',
     },
     facts: '保存済みの情報を使う',
-    reused:
-      '保存済みの情報を使います。掲載先に必要な不足項目だけ追加してください。編集は練習にのみ反映されます。',
+    reused: '足りない情報を追加してください。',
     fields: {
       name: 'お店の名前',
       location: '住所',
@@ -1490,7 +1437,7 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
       phone: '連絡先',
       website: 'ウェブサイト（任意）',
       service_area: '公開するサービス地域',
-      category_id: 'Google カテゴリのテスト値',
+      category_id: '店舗の種類',
       region: 'カテゴリの地域',
     },
     categories: {
@@ -1506,13 +1453,12 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
     chooseCategory: '対応カテゴリを選ぶ',
     privateAddress: '個人の住所は非表示です。公開プレビューにはサービス地域のみ表示します。',
     permission: 'このビジネスを管理する Google アカウントを選ぶ',
-    fictionalAccount:
-      '架空のアカウント選択です。パスワードや Google OAuth は使いません。アプリへのログインは管理権限の証明にはなりません。',
+    fictionalAccount: '架空の Google アカウントを選んでください。',
     account: 'デモのオーナーアカウント（架空）',
     wrongAccount: '別のデモアカウント（架空）',
-    cancel: '承認をキャンセル',
+    cancel: 'キャンセル',
     search: '一致する架空の掲載情報を選ぶ',
-    noMatches: '一致するテストデータがありません。作成を承認する前に新規情報を確認してください。',
+    noMatches: 'ビジネス情報が見つかりません。新しく作成してください。',
     newListing: '新しい模擬掲載情報を作る',
     management: {
       you: 'あなたが管理',
@@ -1530,8 +1476,6 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
     grant: 'レビュアー：所有権を付与',
     rejectClaim: 'レビュアー：所有権を却下',
     review: '今回の模擬掲載情報を確認',
-    local: 'ローカルで確認済み・Google の確認ではありません',
-    revision: 'プレビューの版',
     operations: {
       create: '作成',
       update: '管理中の情報を更新',
@@ -1540,13 +1484,11 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
     destination: '掲載先：Google Business Profile シミュレーター',
     selected: '選択した架空の掲載情報',
     edit: '模擬情報を編集',
-    approve: 'この版を承認して送信を試す',
+    approve: '送信',
     rejectField: 'レビュアー：送信時に営業時間を却下',
     pending: '送信保留中・結果は未確定',
     reconcileHelp: '再試行では既存の架空リクエストを先に照合します。重複する情報は作成しません。',
     reconcile: '照合して再試行',
-    receipt: '架空の受付票',
-    submissions: '模擬送信',
     verify: '提示された確認方法を選ぶ',
     methods: {
       sms: 'SMS（架空）',
@@ -1643,8 +1585,7 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
       online: '온라인 전용',
     },
     facts: '저장한 정보 사용',
-    reused:
-      '저장한 정보를 가져왔어요. 등록 대상에 필요한 누락 정보만 추가해 주세요. 연습만 바뀌어요.',
+    reused: '빠진 정보를 추가하세요.',
     fields: {
       name: '가게 이름',
       location: '주소',
@@ -1652,7 +1593,7 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
       phone: '연락처',
       website: '웹사이트 (선택)',
       service_area: '공개 서비스 지역',
-      category_id: 'Google 업종 테스트 값',
+      category_id: '가게 종류',
       region: '업종 지역',
     },
     categories: {
@@ -1668,13 +1609,12 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
     chooseCategory: '지원 업종 선택',
     privateAddress: '개인 주소는 숨겨져요. 모의 공개 미리보기에는 서비스 지역만 보여요.',
     permission: '이 업체를 관리하는 Google 계정을 선택해 주세요',
-    fictionalAccount:
-      '가상 계정 선택이에요. 비밀번호나 Google OAuth를 쓰지 않아요. 앱 로그인이 업체 권한을 증명하지 않아요.',
+    fictionalAccount: '가상의 Google 계정을 선택하세요.',
     account: '데모 점주 계정 (가상)',
     wrongAccount: '잘못된 데모 계정 (가상)',
-    cancel: '권한 승인 취소',
+    cancel: '취소',
     search: '일치하는 가상 등록 정보 선택',
-    noMatches: '일치하는 테스트 데이터가 없어요. 생성 승인 전에 새 정보를 검토해 주세요.',
+    noMatches: '등록 정보를 찾을 수 없습니다. 새로 만드세요.',
     newListing: '새 모의 등록 정보 만들기',
     management: {
       you: '직접 관리',
@@ -1692,8 +1632,6 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
     grant: '검토자: 소유권 부여',
     rejectClaim: '검토자: 소유권 거절',
     review: '이 모의 등록 정보 검토',
-    local: '로컬 확인 완료 · Google 검증 아님',
-    revision: '미리보기 버전',
     operations: {
       create: '생성',
       update: '관리 정보 수정',
@@ -1702,14 +1640,12 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
     destination: '대상: Google Business Profile 시뮬레이터',
     selected: '선택한 가상 등록 정보',
     edit: '연습 정보 수정',
-    approve: '이 버전 승인하고 모의 제출',
+    approve: '제출',
     rejectField: '검토자: 제출 시 영업시간 거절',
     pending: '제출 대기 중 · 결과 미확인',
     reconcileHelp:
       '다시 시도하면 기존 가상 요청을 먼저 확인해요. 두 번째 등록 정보를 만들지 않아요.',
     reconcile: '확인 후 다시 시도',
-    receipt: '가상 접수증',
-    submissions: '모의 제출',
     verify: '제공된 인증 방법 선택',
     methods: {
       sms: 'SMS (가상)',
@@ -1803,8 +1739,7 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
       online: 'Hanya online',
     },
     facts: 'Gunakan info tersimpan',
-    reused:
-      'Info tersimpan digunakan kembali. Tambahkan hanya detail tujuan yang belum ada. Edit hanya memengaruhi latihan.',
+    reused: 'Tambahkan yang belum ada.',
     fields: {
       name: 'Nama toko',
       location: 'Alamat',
@@ -1812,7 +1747,7 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
       phone: 'Kontak',
       website: 'Situs web (opsional)',
       service_area: 'Area layanan publik',
-      category_id: 'Kategori Google uji',
+      category_id: 'Jenis toko',
       region: 'Wilayah kategori',
     },
     categories: {
@@ -1829,13 +1764,12 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
     privateAddress:
       'Alamat pribadi disembunyikan — pratinjau publik latihan hanya menampilkan area layanan.',
     permission: 'Pilih akun Google yang mengelola bisnis ini',
-    fictionalAccount:
-      'Pemilih akun fiktif — tanpa kata sandi atau Google OAuth. Login aplikasi tidak membuktikan hak bisnis.',
+    fictionalAccount: 'Pilih akun Google pura-pura.',
     account: 'Akun pemilik demo (fiktif)',
     wrongAccount: 'Akun demo salah (fiktif)',
-    cancel: 'Batalkan otorisasi',
+    cancel: 'Batal',
     search: 'Pilih listing fiktif yang cocok',
-    noMatches: 'Tidak ada data uji yang cocok. Tinjau listing baru sebelum menyetujui pembuatan.',
+    noMatches: 'Listing tidak ditemukan. Buat yang baru.',
     newListing: 'Buat listing latihan baru',
     management: {
       you: 'Dikelola Anda',
@@ -1853,8 +1787,6 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
     grant: 'Peninjau: beri kepemilikan',
     rejectClaim: 'Peninjau: tolak kepemilikan',
     review: 'Tinjau listing latihan ini',
-    local: 'Diperiksa lokal — belum divalidasi Google',
-    revision: 'Revisi pratinjau',
     operations: {
       create: 'Buat',
       update: 'Perbarui listing kelolaan',
@@ -1863,14 +1795,12 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
     destination: 'Tujuan: practice Google Business Profile',
     selected: 'Listing fiktif dipilih',
     edit: 'Edit info latihan',
-    approve: 'Setujui revisi ini dan latihankan pengiriman',
+    approve: 'Kirim',
     rejectField: 'Peninjau: tolak jam saat pengiriman',
     pending: 'Pengiriman menunggu — hasil belum diketahui',
     reconcileHelp:
       'Coba ulang mencocokkan permintaan fiktif yang ada dahulu. Tidak membuat listing kedua.',
     reconcile: 'Cocokkan dan coba lagi',
-    receipt: 'Tanda terima fiktif',
-    submissions: 'Pengiriman latihan',
     verify: 'Pilih metode verifikasi yang ditawarkan',
     methods: {
       sms: 'SMS (fiktif)',
@@ -1963,8 +1893,7 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
       online: 'ออนไลน์เท่านั้น',
     },
     facts: 'ใช้ข้อมูลที่บันทึก',
-    reused:
-      'ใช้ข้อมูลร้านที่บันทึกไว้ด้านล่าง เพิ่มเฉพาะข้อมูลปลายทางที่ขาด การแก้ไขมีผลในการฝึกเท่านั้น',
+    reused: 'เพิ่มข้อมูลที่ยังขาด',
     fields: {
       name: 'ชื่อร้าน',
       location: 'ที่อยู่',
@@ -1972,7 +1901,7 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
       phone: 'ติดต่อ',
       website: 'เว็บไซต์ (ไม่บังคับ)',
       service_area: 'พื้นที่บริการสาธารณะ',
-      category_id: 'หมวด Google ทดสอบ',
+      category_id: 'ประเภทร้าน',
       region: 'ภูมิภาคหมวดหมู่',
     },
     categories: {
@@ -1988,13 +1917,12 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
     chooseCategory: 'เลือกหมวดที่รองรับ',
     privateAddress: 'ซ่อนที่อยู่ส่วนตัวแล้ว ตัวอย่างสาธารณะฝึกแสดงเฉพาะพื้นที่บริการ',
     permission: 'เลือกบัญชี Google ที่จัดการธุรกิจนี้',
-    fictionalAccount:
-      'ตัวเลือกบัญชีสมมติ ไม่ใช้รหัสผ่านหรือ Google OAuth การเข้าแอปไม่ยืนยันสิทธิ์ธุรกิจ',
+    fictionalAccount: 'เลือกบัญชี Google สมมติ',
     account: 'บัญชีเจ้าของสาธิต (สมมติ)',
     wrongAccount: 'บัญชีสาธิตผิด (สมมติ)',
-    cancel: 'ยกเลิกการอนุญาต',
+    cancel: 'ยกเลิก',
     search: 'เลือกข้อมูลร้านสมมติที่ตรงกัน',
-    noMatches: 'ไม่พบข้อมูลทดสอบที่ตรง ตรวจข้อมูลใหม่ก่อนอนุมัติสร้าง',
+    noMatches: 'ไม่พบรายการ สร้างรายการใหม่',
     newListing: 'สร้างข้อมูลร้านฝึกใหม่',
     management: {
       you: 'คุณจัดการ',
@@ -2012,8 +1940,6 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
     grant: 'ผู้ประเมิน: ให้สิทธิ์เจ้าของ',
     rejectClaim: 'ผู้ประเมิน: ปฏิเสธสิทธิ์',
     review: 'ตรวจข้อมูลฝึกฉบับนี้',
-    local: 'ตรวจในเครื่องแล้ว ยังไม่ผ่านการตรวจจาก Google',
-    revision: 'ฉบับตัวอย่าง',
     operations: {
       create: 'สร้าง',
       update: 'อัปเดตข้อมูลที่จัดการ',
@@ -2022,13 +1948,11 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
     destination: 'ปลายทาง: ตัวฝึก Google Business Profile',
     selected: 'ข้อมูลสมมติที่เลือก',
     edit: 'แก้ข้อมูลฝึก',
-    approve: 'อนุมัติฉบับนี้และฝึกการส่ง',
+    approve: 'ส่ง',
     rejectField: 'ผู้ประเมิน: ปฏิเสธเวลาเมื่อส่ง',
     pending: 'รอผลการส่ง ยังไม่ทราบผล',
     reconcileHelp: 'ลองใหม่จะตรวจคำขอสมมติเดิมก่อน ไม่สร้างข้อมูลร้านชุดที่สอง',
     reconcile: 'ตรวจและลองใหม่',
-    receipt: 'ใบรับสมมติ',
-    submissions: 'การส่งฝึก',
     verify: 'เลือกวิธียืนยันที่มีให้',
     methods: {
       sms: 'SMS (สมมติ)',
@@ -2120,8 +2044,7 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
       online: 'Chỉ trực tuyến',
     },
     facts: 'Dùng thông tin đã lưu',
-    reused:
-      'Dùng lại thông tin đã lưu bên dưới. Chỉ thêm chi tiết còn thiếu cho nơi đăng. Chỉnh sửa chỉ tác động thực hành.',
+    reused: 'Thêm những gì còn thiếu.',
     fields: {
       name: 'Tên cửa hàng',
       location: 'Địa chỉ',
@@ -2129,7 +2052,7 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
       phone: 'Liên hệ',
       website: 'Trang web (không bắt buộc)',
       service_area: 'Khu vực phục vụ công khai',
-      category_id: 'Danh mục Google mẫu',
+      category_id: 'Loại cửa hàng',
       region: 'Khu vực danh mục',
     },
     categories: {
@@ -2146,13 +2069,12 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
     privateAddress:
       'Địa chỉ riêng được ẩn — bản xem trước công khai thực hành chỉ hiện khu vực phục vụ.',
     permission: 'Chọn tài khoản Google quản lý doanh nghiệp',
-    fictionalAccount:
-      'Chọn tài khoản hư cấu — không mật khẩu hay Google OAuth. Đăng nhập ứng dụng không chứng minh quyền quản lý.',
+    fictionalAccount: 'Chọn một tài khoản Google giả định.',
     account: 'Tài khoản chủ demo (hư cấu)',
     wrongAccount: 'Tài khoản demo sai (hư cấu)',
-    cancel: 'Hủy cấp quyền',
+    cancel: 'Hủy',
     search: 'Chọn thông tin hư cấu phù hợp',
-    noMatches: 'Không có mẫu phù hợp. Kiểm tra thông tin mới trước khi duyệt tạo.',
+    noMatches: 'Không tìm thấy trang. Hãy tạo mới.',
     newListing: 'Tạo thông tin thực hành mới',
     management: {
       you: 'Bạn quản lý',
@@ -2170,8 +2092,6 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
     grant: 'Người đánh giá: cấp quyền',
     rejectClaim: 'Người đánh giá: từ chối quyền',
     review: 'Kiểm tra thông tin thực hành này',
-    local: 'Đã kiểm tra trên máy — chưa được Google xác thực',
-    revision: 'Phiên bản xem trước',
     operations: {
       create: 'Tạo',
       update: 'Cập nhật thông tin quản lý',
@@ -2180,14 +2100,12 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
     destination: 'Nơi đăng: thực hành Google Business Profile',
     selected: 'Thông tin hư cấu đã chọn',
     edit: 'Sửa thông tin thực hành',
-    approve: 'Duyệt phiên bản này và thực hành gửi',
+    approve: 'Gửi',
     rejectField: 'Người đánh giá: từ chối giờ khi gửi',
     pending: 'Đang chờ gửi — chưa rõ kết quả',
     reconcileHelp:
       'Thử lại sẽ đối chiếu yêu cầu hư cấu hiện có trước. Không tạo thông tin thứ hai.',
     reconcile: 'Đối chiếu và thử lại',
-    receipt: 'Biên nhận hư cấu',
-    submissions: 'Lần gửi thực hành',
     verify: 'Chọn cách xác minh được cung cấp',
     methods: {
       sms: 'SMS (hư cấu)',
@@ -2281,8 +2199,7 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
       online: 'Online lang',
     },
     facts: 'Gamitin ang naka-save na detalye',
-    reused:
-      'Gagamitin ang naka-save na detalye. Idagdag lang ang kulang para sa destinasyon. Pagsasanay lang ang maaapektuhan.',
+    reused: 'Idagdag ang kulang.',
     fields: {
       name: 'Pangalan ng tindahan',
       location: 'Address',
@@ -2290,7 +2207,7 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
       phone: 'Contact',
       website: 'Website (opsyonal)',
       service_area: 'Pampublikong lugar ng serbisyo',
-      category_id: 'Test na kategorya ng Google',
+      category_id: 'Uri ng tindahan',
       region: 'Rehiyon ng kategorya',
     },
     categories: {
@@ -2307,13 +2224,12 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
     privateAddress:
       'Nakatago ang pribadong address — lugar ng serbisyo lang ang nasa public preview.',
     permission: 'Piliin ang Google account na namamahala rito',
-    fictionalAccount:
-      'Kathang-isip na account picker — walang password o Google OAuth. Hindi patunay ng karapatan sa negosyo ang pag-sign in.',
+    fictionalAccount: 'Pumili ng kunwaring Google account.',
     account: 'Demo account ng may-ari (kathang-isip)',
     wrongAccount: 'Maling demo account (kathang-isip)',
-    cancel: 'Kanselahin ang pahintulot',
+    cancel: 'Kanselahin',
     search: 'Pumili ng tugmang kathang-isip na listing',
-    noMatches: 'Walang tugmang test data. Suriin ang bagong listing bago aprubahan.',
+    noMatches: 'Walang nahanap na listing. Gumawa ng bago.',
     newListing: 'Gumawa ng bagong listing',
     management: {
       you: 'Ikaw ang namamahala',
@@ -2331,8 +2247,6 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
     grant: 'Tagasuri: ibigay ang pagmamay-ari',
     rejectClaim: 'Tagasuri: tanggihan ang pagmamay-ari',
     review: 'Suriin ang eksaktong listing',
-    local: 'Nasuri sa lokal — hindi validated ng Google',
-    revision: 'Rebisyon ng preview',
     operations: {
       create: 'Gumawa',
       update: 'I-update ang listing',
@@ -2341,14 +2255,12 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
     destination: 'Destinasyon: Google Business Profile practice',
     selected: 'Napiling kathang-isip na listing',
     edit: 'I-edit ang detalye ng practice',
-    approve: 'Aprubahan ang rebisyong ito at magsumite para sa pagsasanay',
+    approve: 'Isumite',
     rejectField: 'Tagasuri: tanggihan ang oras sa pagsumite',
     pending: 'Naghihintay ang pagsumite — hindi pa alam ang resulta',
     reconcileHelp:
       'Susuriin muna ang kasalukuyang kathang-isip na request kapag sumubok muli. Walang pangalawang listing.',
     reconcile: 'Suriin at subukan muli',
-    receipt: 'Kathang-isip na resibo',
-    submissions: 'Mga submission',
     verify: 'Pumili ng inaalok na beripikasyon',
     methods: {
       sms: 'SMS (kathang-isip)',
@@ -2403,7 +2315,7 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
     reauthorize:
       'Paso na ang permission. Piliin muli ang kathang-isip na management account; mananatili ang progreso.',
     reverification:
-      'Nagbago ang address o kategorya — kailangan ng bagong beripikasyon. Hindi validated ng nauna ang rebisyong ito.',
+      'Nagbago ang address o kategorya — kailangan ng bagong beripikasyon. Hindi sapat ang naunang beripikasyon sa bersyong ito.',
     disconnect: 'Idiskonekta ang management',
     removal: 'Pagtanggal ng management',
     removalStatuses: {

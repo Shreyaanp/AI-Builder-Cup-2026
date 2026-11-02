@@ -291,6 +291,9 @@ def seed_supply(store: MerchantRepository, uid: str, demo: DemoShop, day: date) 
             "supplies": [product.name, *(name for name, *_ in extras)],
             "reward_text": "",
             "description": "Fictional local wholesaler; no order leaves this demo.",
+            # Down the road, not at the shop's own pin ("0 km" reads as wrong data).
+            "lat": (demo.fields.lat or 0) + 0.003,
+            "lng": (demo.fields.lng or 0) + 0.002,
         }
     )
     supplier_product = product.model_copy(

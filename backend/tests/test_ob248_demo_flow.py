@@ -9,6 +9,7 @@ import pytest
 from fastapi import HTTPException
 
 from app import demo_item_names, demo_supplier
+from app.google_sim_routes import PRACTICE_PHONE
 from tests.test_photos import app, jpeg  # noqa: F401
 from tests.test_public_demo import owner
 from tests.test_public_demo_no_paid_ai import live_parent_demo, no_paid_calls  # noqa: F401
@@ -658,3 +659,37 @@ def test_OB_248_hindi_find_suppliers_does_the_real_work(
     reply = events["reply"]["text"]
     assert words in reply and suppliers[0]["name"] in reply
     assert "असली दुकान" not in reply and not re.search(r"(?:Milk|Sugar|Tea dust|kg|litre)", reply)
+
+
+def test_OB_248_google_practice_has_no_reviewer_jargon_in_any_language() -> None:
+    """A main Grow tile for every visitor: plain words, in every language (PHONE-UX-RULES 7)."""
+    source = (ROOT / "src/features/google-sim/strings.ts").read_text(encoding="utf-8")
+    assert not re.search(r"fixture|oauth|authorization|validated|revision", source, re.I)
+    # The local check, revision number and receipt id are gone from the screen, not reworded.
+    screen = (ROOT / "src/features/google-sim/GoogleSimulator.tsx").read_text(encoding="utf-8")
+    for gone in ("t.local", "t.revision", "t.receipt", "t.submissions"):
+        assert gone not in screen and f"  {gone[2:]}:" not in source
+    # Hindi's own word for "revision", and every language's table row is there.
+    assert "संस्करण" not in source
+    for plain in ("Shop type", "दुकान का प्रकार", "店铺类型", "Jenis kedai", "கடை வகை"):
+        assert plain in source
+
+
+def test_OB_248_practice_phone_stays_in_the_practice(live_parent_demo) -> None:  # noqa: F811
+    """The visitor need not invent a number; the sample shop's public phone stays empty."""
+    client, _app, session, bid = live_parent_demo
+    state = owner(client, session, f"businesses/{bid}/google-sim")
+    assert state.status_code == 200, state.text
+    assert state.json()["facts"]["phone"] == PRACTICE_PHONE
+    shop = owner(client, session, f"businesses/{bid}").json()
+    assert not shop.get("phone") and not (shop.get("fields") or {}).get("phone")
+
+
+def test_OB_248_the_demo_supplier_has_a_pin_of_its_own(live_parent_demo) -> None:  # noqa: F811
+    client, _app, session, _bid = live_parent_demo
+    response = client.post(
+        f"/api/v1/demo/sessions/{session}/coach", json={"message": "My milk is running low"}
+    )
+    events = {event["kind"]: event for event in _coach_events(response)}
+    assert events["suppliers"]["data"]["suppliers"][0]["distance_km"] > 0
+    assert " 0 km" not in events["reply"]["text"]

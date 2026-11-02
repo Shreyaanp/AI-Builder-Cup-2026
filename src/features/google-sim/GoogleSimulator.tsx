@@ -289,12 +289,9 @@ function Wizard({
               {s.account === 'demo-owner' && (
                 <Typography variant="bodyMedium">{t.account}</Typography>
               )}
-              {s.selected && (
+              {s.selected && s.selected !== 'new' && (
                 <Typography variant="bodyMedium">
-                  {t.selected}:{' '}
-                  {s.selected === 'new'
-                    ? t.newListing
-                    : s.matches?.find((match) => match.id === s.selected)?.address}
+                  {t.selected}: {s.matches?.find((match) => match.id === s.selected)?.address}
                 </Typography>
               )}
               {s.ownership !== 'none' && s.phase !== 'claim' && (
@@ -386,11 +383,7 @@ function Wizard({
                   <Typography variant="bodyMedium">
                     {t.operations[s.operation ?? 'create']}
                   </Typography>
-                  <Typography variant="labelMedium">
-                    {t.revision}: {s.preview_revision}
-                  </Typography>
                   <Preview state={s} />
-                  <Alert severity="info">{t.local}</Alert>
                   {button(t.edit, { kind: 'edit' })}
                   {button(t.approve, { kind: 'submit', revision: s.preview_revision }, true)}
                 </>
@@ -449,11 +442,6 @@ function Wizard({
                 </>
               )}
               {s.phase === 'ineligible' && <Alert severity="info">{t.ineligible}</Alert>}
-              {s.receipt && (
-                <Typography variant="bodyMedium">
-                  {t.receipt}: {s.receipt} · {t.submissions}: {s.submissions}
-                </Typography>
-              )}
               {(['verify', 'video', 'result', 'pending'] as const).some(
                 (phase) => phase === s.phase,
               ) && (
