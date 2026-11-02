@@ -314,8 +314,14 @@ for (const [index, lang] of LANGS.entries()) {
 
       await test.step('Shop: S$ prices', async () => {
         await tab(page, lang.nav.shop).click()
-        await expect(page.getByText(PRICE).first()).toBeVisible()
+        const menu = page.locator('[data-tour="menu"]').filter({ visible: true })
+        await expect(menu).toBeVisible()
         await readsIn(page, lang, '03-shop')
+        // Prices live in the Menu sheet (Shop shows one row per part of the shop).
+        await menu.click()
+        await expect(page.getByRole('dialog').getByText(PRICE).first()).toBeVisible()
+        await page.keyboard.press('Escape')
+        await expect(page.getByRole('dialog')).toHaveCount(0)
       })
 
       await test.step('Grow', async () => {
