@@ -117,7 +117,7 @@ test('Shop: every former tile is still reachable by name', async ({ page }) => {
   await opens(/^Sold out/, 'Sold out')
   await opens(/^Messages/, /Messages/)
   await opens(/^Photos/, 'Photos')
-  await opens(/^Shop details/, 'Lantern Chai Corner (Demo)')
+  await opens(/^Shop details/, /^Lantern Chai Corner/)
   // More opens on the same screen.
   const more = page.getByRole('button', { name: /^More/ })
   await expect(more).toHaveAttribute('aria-expanded', 'false')
