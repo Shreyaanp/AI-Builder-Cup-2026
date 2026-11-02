@@ -129,11 +129,25 @@ test('one stock surface: the supply row with its run-out day always keeps a plac
     'supply',
   ])
   expect(order('supply', 'reply', 'menu')).toEqual(['supply', 'reply', 'menu'])
+  // In the evening a waiting customer and the dated stock line keep their places beside
+  // "Close the day"; this morning's promise waits under "N more things".
   expect(order('promise', 'reply', 'closeDay', 'menu', 'supply')).toEqual([
     'closeDay',
-    'promise',
+    'reply',
     'supply',
   ])
+})
+
+test('a waiting customer is never behind "N more things", whatever the playbook ranks', () => {
+  // The demo's evening: a stock-first playbook ranks the low row above the reply.
+  expect(order('closeDay', 'supply', 'low', 'reply', 'menu')).toEqual([
+    'closeDay',
+    'supply',
+    'reply',
+  ])
+  expect(order('menu', 'low', 'low', 'step', 'reply')).toEqual(['menu', 'low', 'reply'])
+  // Two kept rows and the lead fill the three; the rest wait.
+  expect(order('low', 'low', 'menu', 'supply', 'reply')).toEqual(['low', 'supply', 'reply'])
 })
 
 test('"N more things": every row past the three is kept for the same card, none dropped', () => {

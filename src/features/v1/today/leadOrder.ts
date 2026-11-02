@@ -15,23 +15,42 @@ export function closeDayFirst<T extends { kind: string }>(needs: T[]): T[] {
 /**
  * The morning (HABIT change 2 and 4): last night's promise leads, after closing the day in the
  * close window. Stock is one surface: the supply row with its run-out day keeps a place in the
- * three, so the playbook can never push the shop's one dated stock line off Today.
+ * three, so the playbook can never push the shop's one dated stock line off Today; a waiting
+ * customer keeps one too, so in the evening Reply stays beside "Close the day".
  */
 export function leadOrder<T extends { kind: string }>(needs: T[]): T[] {
   return leadSplit(needs).lead
 }
 
 /**
- * The three shown first, and the rest for "N more things" in the same card (SIMPLIFY Batch 5):
- * nothing the playbook ranks lower ever drops off Coach.
+ * Rows that keep a place in the three whatever the playbook ranks: a waiting customer (a reply is
+ * time-sensitive, so it is never behind "N more things") and the one dated stock line.
  */
-export function leadSplit<T extends { kind: string }>(needs: T[]): { lead: T[]; more: T[] } {
+function kept(need: { kind: string; supply?: boolean }): boolean {
+  return (
+    need.kind === 'reply' || need.kind === 'supply' || (need.kind === 'promise' && !!need.supply)
+  )
+}
+
+/**
+ * The three shown first, and the rest for "N more things" in the same card (SIMPLIFY Batch 5):
+ * nothing the playbook ranks lower ever drops off Coach. The first row is never displaced; a kept
+ * row takes the place of the lowest row that is not kept.
+ */
+export function leadSplit<T extends { kind: string; supply?: boolean }>(
+  needs: T[],
+): { lead: T[]; more: T[] } {
   const ordered = closeDayFirst([
     ...needs.filter((need) => need.kind === 'promise'),
     ...needs.filter((need) => need.kind !== 'promise'),
   ])
-  const top = ordered.slice(0, MAX_NEEDS)
-  const supply = ordered.find((need) => need.kind === 'supply')
-  const lead = !supply || top.includes(supply) ? top : [...top.slice(0, MAX_NEEDS - 1), supply]
+  const lead = ordered.slice(0, MAX_NEEDS)
+  for (const need of ordered.slice(MAX_NEEDS).filter(kept)) {
+    const out = lead.findLastIndex((each, index) => index > 0 && !kept(each))
+    if (out < 0) break
+    lead.splice(out, 1)
+    lead.push(need)
+  }
+  lead.sort((a, b) => ordered.indexOf(a) - ordered.indexOf(b))
   return { lead, more: ordered.filter((need) => !lead.includes(need)) }
 }

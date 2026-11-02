@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { shopMore } from './support/shopMore.js'
+import { pinShopTime, SHOP_TIMES } from './support/shopClock.js'
 
 test.setTimeout(90_000)
 
@@ -81,11 +82,18 @@ test('Coach: Reorder opens the purchase order draft', async ({ page }) => {
   ).toBeVisible()
 })
 
-test('Coach: Reply opens the message thread', async ({ page }) => {
-  await openDemo(page)
-  await opensSheet(page, /^Reply$/, /Messages/)
-  await showsThread(page)
-})
+// A waiting customer is time-sensitive: Reply is on the card itself at every hour, never behind
+// "N more things", also in the evening when "Close the day" leads.
+for (const time of SHOP_TIMES)
+  test(`Coach: Reply opens the message thread (${time} shop time)`, async ({ page }) => {
+    await pinShopTime(page, time)
+    await openDemo(page)
+    const card = page.getByTestId('today')
+    await expect(card.getByRole('button', { name: /^Reply$/ })).toBeVisible()
+    await expect(page.getByTestId('today-more')).toHaveCount(0)
+    await opensSheet(page, /^Reply$/, /Messages/)
+    await showsThread(page)
+  })
 
 test('Grow: Open messages opens the message thread', async ({ page }) => {
   await openDemo(page)
