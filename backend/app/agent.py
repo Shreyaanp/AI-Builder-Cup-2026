@@ -1001,7 +1001,9 @@ class OfflineCoachModel(BaseLlm):
                         reply_text
                         for r in responses
                         if (
-                            reply_text := supply_reply(r.name or "", dict(r.response or {}))
+                            reply_text := supply_reply(
+                                r.name or "", dict(r.response or {}), ui_language.get()
+                            )
                             or sourcing_reply(r.name or "", dict(r.response or {}))
                         )
                     ),

@@ -266,7 +266,10 @@ test('every chat phrase, in a fresh demo session, answers on topic with its path
         data: { message: phrase(feature, lang) },
       })
       expect(sent.ok(), phrase(feature, lang)).toBe(true)
-      const reply = (await sent.text())
+      const text = await sent.text()
+      // Done with this visitor: end the demo as Exit demo does, so the sandbox is released.
+      await page.request.delete(`/api/v1/demo/sessions/${session_id}`, { headers })
+      const reply = text
         .split('\n')
         .filter((line) => line.startsWith('data: '))
         .map((line) => JSON.parse(line.slice(6)) as { kind?: string; text?: string })
