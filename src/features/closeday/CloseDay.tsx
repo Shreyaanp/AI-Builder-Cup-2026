@@ -33,6 +33,7 @@ import { dismissFreshness } from '../sales/freshnessDismissal'
 import { closeDayCopy } from './strings'
 import { comparisonKind } from './compare'
 import { AskHint } from '../v1/AskHint'
+import { TomorrowPromise } from './TomorrowPromise'
 import { countClosed } from '../v1/today/habitCount'
 import type { components } from '../../api/generated'
 
@@ -602,6 +603,7 @@ export function CloseDay({
                 .filter(Boolean)
                 .join(' ')}
             </Typography>
+            <TomorrowPromise />
           </Stack>
         )}
       </Box>

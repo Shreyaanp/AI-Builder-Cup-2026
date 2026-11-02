@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { shopMore } from './support/shopMore.js'
+import { pinShopTime, SHOP_TIMES } from './support/shopClock.js'
 import { openGrowTool, showInGrow } from './support/grow.js'
 
 test.setTimeout(90_000)
@@ -82,8 +83,23 @@ test('Coach: Reorder opens the purchase order draft', async ({ page }) => {
   ).toBeVisible()
 })
 
-test('Coach: Reply opens the message thread', async ({ page }) => {
-  await openDemo(page)
+// A waiting customer is time-sensitive: Reply is on the card itself at every hour, never behind
+// "N more things", also in the evening when "Close the day" leads. One sandbox for all four hours
+// (the public demo caps live sandboxes): the clock moves and the page reloads.
+test('Coach: Reply opens the message thread, at every hour of the shop day', async ({ page }) => {
+  for (const [index, time] of SHOP_TIMES.entries()) {
+    await pinShopTime(page, time)
+    if (index === 0) await openDemo(page)
+    else await page.reload()
+    const card = page.getByTestId('today')
+    await expect(card.getByRole('button', { name: /^Reply$/ }), time).toBeVisible({
+      timeout: 15_000,
+    })
+    await expect(page.getByTestId('today-more'), time).toHaveCount(0)
+    // The close window really is on: "Close the day" leads, and Reply is still beside it.
+    if (time >= '20:00')
+      await expect(card.getByRole('button', { name: 'Close the day' }), time).toBeVisible()
+  }
   await opensSheet(page, /^Reply$/, /Messages/)
   await showsThread(page)
 })

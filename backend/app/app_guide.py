@@ -353,6 +353,20 @@ FEATURES: tuple[Feature, ...] = (
         what_hi="आज की बिक्री की कॉपी या बिल बुक की फ़ोटो लें; कोच पढ़कर आज की बिक्री सहेजता है।",
     ),
     Feature(
+        "promise",
+        "owner",
+        "One thing for tomorrow",
+        "Write down one thing for tomorrow when you close the day; it is at the top of Coach the "
+        "next morning. Tap Done when it is done, or Not today to clear it.",
+        '"Remind me to order milk tomorrow".',
+        ("Grow", "Close the day"),
+        ("tomorrow", "promise", "write down", "kal", "yaad dilana"),
+        "Remind me to order milk tomorrow",
+        "कल सुबह दूध मँगाना याद दिलाना",
+        "close_day",
+        what_hi="दिन बंद करते समय कल के लिए एक काम लिख लें; अगली सुबह वह कोच में सबसे ऊपर दिखेगा।",
+    ),
+    Feature(
         "rescue",
         "owner",
         "Rescue leftovers",

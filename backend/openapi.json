@@ -6636,6 +6636,182 @@
         }
       }
     },
+    "/api/v1/businesses/{business_id}/promise": {
+      "post": {
+        "tags": [
+          "today"
+        ],
+        "summary": "New Promise",
+        "operationId": "new_promise_api_v1_businesses__business_id__promise_post",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewPromise"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Promise"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "today"
+        ],
+        "summary": "Read Promise",
+        "description": "The open promise for a morning: this one by default, or a given day (tonight's for\ntomorrow, so the close screen and tests can read it back).",
+        "operationId": "read_promise_api_v1_businesses__business_id__promise_get",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          },
+          {
+            "name": "day",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Day"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/Promise"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Read Promise Api V1 Businesses  Business Id  Promise Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/businesses/{business_id}/promise/{day}/{state}": {
+      "post": {
+        "tags": [
+          "today"
+        ],
+        "summary": "Answer Promise",
+        "operationId": "answer_promise_api_v1_businesses__business_id__promise__day___state__post",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          },
+          {
+            "name": "day",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "title": "Day"
+            }
+          },
+          {
+            "name": "state",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "enum": [
+                "done",
+                "skipped"
+              ],
+              "type": "string",
+              "title": "State"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/businesses/{business_id}/analytics": {
       "get": {
         "summary": "Shop Analytics",
@@ -14222,6 +14398,43 @@
         ],
         "title": "Metric"
       },
+      "NewPromise": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Text"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "order",
+              "make",
+              "note"
+            ],
+            "title": "Kind",
+            "default": "note"
+          },
+          "item": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 80
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Item"
+          }
+        },
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "NewPromise"
+      },
       "NewShopDraft": {
         "properties": {
           "business": {
@@ -15769,6 +15982,56 @@
         },
         "type": "object",
         "title": "Profile"
+      },
+      "Promise": {
+        "properties": {
+          "day": {
+            "type": "string",
+            "format": "date",
+            "title": "Day"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "order",
+              "make",
+              "note"
+            ],
+            "title": "Kind",
+            "default": "note"
+          },
+          "item": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Item"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "open",
+              "done",
+              "skipped"
+            ],
+            "title": "State",
+            "default": "open"
+          }
+        },
+        "type": "object",
+        "required": [
+          "day",
+          "text"
+        ],
+        "title": "Promise"
       },
       "ProposalRequest": {
         "properties": {
@@ -18822,6 +19085,16 @@
               }
             ],
             "title": "Has Customer Stamp"
+          },
+          "promise": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Promise"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",

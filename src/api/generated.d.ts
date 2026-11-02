@@ -2228,6 +2228,45 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/businesses/{business_id}/promise": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Promise
+         * @description The open promise for a morning: this one by default, or a given day (tonight's for
+         *     tomorrow, so the close screen and tests can read it back).
+         */
+        get: operations["read_promise_api_v1_businesses__business_id__promise_get"];
+        put?: never;
+        /** New Promise */
+        post: operations["new_promise_api_v1_businesses__business_id__promise_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/businesses/{business_id}/promise/{day}/{state}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Answer Promise */
+        post: operations["answer_promise_api_v1_businesses__business_id__promise__day___state__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/businesses/{business_id}/analytics": {
         parameters: {
             query?: never;
@@ -5095,6 +5134,19 @@ export interface components {
              */
             metric: "items_sold" | "sales" | "busy_hours" | "orders_due" | "fittings" | "bookings" | "questions" | "views" | "stamps" | "returning" | "low_stock" | "leftovers";
         };
+        /** NewPromise */
+        NewPromise: {
+            /** Text */
+            text: string;
+            /**
+             * Kind
+             * @default note
+             * @enum {string}
+             */
+            kind: "order" | "make" | "note";
+            /** Item */
+            item?: string | null;
+        };
         /** NewShopDraft */
         NewShopDraft: {
             business?: components["schemas"]["BusinessFields"] | null;
@@ -5691,6 +5743,30 @@ export interface components {
             preferences?: components["schemas"]["Preferences"];
             /** Searches */
             searches?: components["schemas"]["Search"][];
+        };
+        /** Promise */
+        Promise: {
+            /**
+             * Day
+             * Format: date
+             */
+            day: string;
+            /** Text */
+            text: string;
+            /**
+             * Kind
+             * @default note
+             * @enum {string}
+             */
+            kind: "order" | "make" | "note";
+            /** Item */
+            item?: string | null;
+            /**
+             * State
+             * @default open
+             * @enum {string}
+             */
+            state: "open" | "done" | "skipped";
         };
         /** ProposalRequest */
         ProposalRequest: {
@@ -6976,6 +7052,7 @@ export interface components {
             hints?: components["schemas"]["TodayHints"] | null;
             /** Has Customer Stamp */
             has_customer_stamp?: boolean | null;
+            promise?: components["schemas"]["Promise"] | null;
         };
         /** TodayArea */
         TodayArea: {
@@ -11807,6 +11884,105 @@ export interface operations {
                 "application/json": components["schemas"]["HabitEvents"];
             };
         };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_promise_api_v1_businesses__business_id__promise_get: {
+        parameters: {
+            query?: {
+                day?: string | null;
+            };
+            header?: never;
+            path: {
+                business_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Promise"] | null;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    new_promise_api_v1_businesses__business_id__promise_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NewPromise"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Promise"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    answer_promise_api_v1_businesses__business_id__promise__day___state__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+                day: string;
+                state: "done" | "skipped";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
             204: {

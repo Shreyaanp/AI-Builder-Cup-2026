@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import { AiInfo } from '../AiInfo'
 import type { ReactNode } from 'react'
 import {
@@ -23,6 +23,7 @@ import {
   MessageSquare,
   Mic,
   Moon,
+  NotebookPen,
   PackageMinus,
   PencilLine,
   Sparkles,
@@ -41,12 +42,14 @@ import { useWorkspace } from '../workspaceContext'
 import { useOnboardingCopy } from '../onboardingCopy'
 import { useSourceCopy } from './sourceCopy'
 import { useTodayCopy, type Festival } from './todayCopy'
+import { promiseCopyFor } from './promiseCopy'
 import type { CoachLine, Need, StepId, TodayPlan } from './todayPlan'
 import { useTodayPlan } from './useTodayPlan'
+import { PromiseSupplyRow } from './PromiseSupplyRow'
+import { promiseSaid, usePromiseSettle } from './promiseSettle'
 import { countAction, countShown } from './habitCount'
 import { useLocalDay } from './useLocalDay'
 import { FirstCustomers } from '../FirstCustomers'
-import { TodaySupply } from '../../supply/TodaySupply'
 import { TodaySupplyNeeds } from '../../supply/SupplyEntry'
 
 /** What the Coach screen lets Today do: talk to the coach, open sheets, start the mic. */
@@ -76,7 +79,7 @@ export function TodayView({
   const tt = useTodayCopy()
   const roles = useTheme().material
   const { name } = useIdentity()
-  const { plan, answerMenu, firstCustomers } = useTodayPlan(actions.unread)
+  const { plan, answerMenu, answerPromise, firstCustomers } = useTodayPlan(actions.unread)
   const shop = ws.active
   const shown = plan?.needs.map((need) => need.kind).join(',') ?? null
   const day = useLocalDay()
@@ -132,10 +135,17 @@ export function TodayView({
           />
         </Box>
       )}
-      <TodaySupply key={shop.id} />
-      <TodaySupplyNeeds key={`needs-${shop.id}`} />
       {plan.dayOne && <DayOne step={plan.dayOne.step} food={plan.food} actions={actions} />}
-      <NeedsCard plan={plan} actions={actions} answerMenu={answerMenu} />
+      {/* One card, one filled button: the first row is the lead action, and stock (the supply
+          row with its run-out day, low items and supply exceptions) lives only here. */}
+      <NeedsCard
+        key={shop.id}
+        plan={plan}
+        actions={actions}
+        answerMenu={answerMenu}
+        answerPromise={answerPromise}
+        footer={<TodaySupplyNeeds inCard={plan.needs.length > 0} />}
+      />
       {firstCustomers && ws.shareUrl && (
         <FirstCustomers url={ws.shareUrl} name={shop.fields.name} />
       )}
@@ -298,9 +308,13 @@ function DayOne({ step, food, actions }: { step: StepId; food: boolean; actions:
   )
 }
 
-/** Rows that just left stay a moment with a check, then go (static under reduced motion). */
-function useLeaving(needs: Need[]): { need: Need; leaving: boolean }[] {
+/**
+ * Rows that just left stay a moment with a check, then go (static under reduced motion). A row
+ * that only moved (into or out of "N more things") is not done: it goes at once, with no check.
+ */
+function useLeaving(needs: Need[], moved: Need[]): { need: Need; leaving: boolean }[] {
   const ids = needs.map((need) => need.id).join('|')
+  const elsewhere = new Set(moved.map((need) => need.id))
   const [state, setState] = useState<{ ids: string; rows: { need: Need; leaving: boolean }[] }>(
     () => ({ ids, rows: needs.map((need) => ({ need, leaving: false })) }),
   )
@@ -309,7 +323,7 @@ function useLeaving(needs: Need[]): { need: Need; leaving: boolean }[] {
     const current = new Map(needs.map((need) => [need.id, need]))
     const next = needs.map((need) => ({ need, leaving: false }))
     state.rows.forEach((row, index) => {
-      if (!current.has(row.need.id))
+      if (!current.has(row.need.id) && !elsewhere.has(row.need.id))
         next.splice(Math.min(index, next.length), 0, { need: row.need, leaving: true })
     })
     rows = next
@@ -329,33 +343,76 @@ function useLeaving(needs: Need[]): { need: Need; leaving: boolean }[] {
   return rows.map((row) => ({ ...row, need: latest.get(row.need.id) ?? row.need }))
 }
 
-/** "Needs you now": at most three live items; "All set for today" when nothing is left. */
+/** "Needs you now": three live items, then "N more things"; "All set for today" when none. */
 export function NeedsCard({
   plan,
   actions,
   answerMenu,
+  answerPromise,
   compact = false,
+  footer,
 }: {
   plan: TodayPlan
   actions: TodayActions
   answerMenu: () => void
+  answerPromise: (day: string) => void
   compact?: boolean
+  /** Shown inside the card after the rows (Today's supply exceptions); alone when no rows. */
+  footer?: ReactNode
 }) {
   const tt = useTodayCopy()
   const roles = useTheme().material
-  const rows = useLeaving(plan.needs)
+  const rows = useLeaving(plan.needs, plan.more)
+  const moreRows = useLeaving(plan.more, plan.needs)
+  // The lead is the first live row: a row on its way out never holds the one filled button.
+  const lead = rows.find((each) => !each.leaving)
+  const [open, setOpen] = useState(false)
+  const moreId = useId()
+  const row = ({ need, leaving }: { need: Need; leaving: boolean }, first: boolean) =>
+    need.kind === 'supply' || (need.kind === 'promise' && need.supply) ? (
+      leaving ? null : (
+        <PromiseSupplyRow
+          key={need.id}
+          promise={need.kind === 'promise' ? need.promise : null}
+          first={first}
+          answerPromise={answerPromise}
+        />
+      )
+    ) : (
+      <NeedRow
+        key={need.id}
+        need={need}
+        leaving={leaving}
+        first={first}
+        food={plan.food}
+        actions={actions}
+        answerMenu={answerMenu}
+        answerPromise={answerPromise}
+      />
+    )
+  const list = {
+    listStyle: 'none',
+    m: 0,
+    p: 0,
+    '& > li + li': { borderTop: `1px solid ${roles.outlineVariant}` },
+  }
   if (!rows.length)
-    return compact || plan.dayOne ? null : (
-      <Stack
-        direction="row"
-        data-testid="today-all-set"
-        sx={{ gap: 2, alignItems: 'center', color: roles.onSurfaceVariant, ...enterRise }}
-      >
-        <CircleCheck size={20} color={roles.primary} aria-hidden="true" />
-        <Typography variant="titleMedium" component="p">
-          {tt.allSet}
-        </Typography>
-      </Stack>
+    return compact || plan.dayOne ? (
+      footer
+    ) : (
+      <>
+        <Stack
+          direction="row"
+          data-testid="today-all-set"
+          sx={{ gap: 2, alignItems: 'center', color: roles.onSurfaceVariant, ...enterRise }}
+        >
+          <CircleCheck size={20} color={roles.primary} aria-hidden="true" />
+          <Typography variant="titleMedium" component="p">
+            {tt.allSet}
+          </Typography>
+        </Stack>
+        {footer}
+      </>
     )
   return (
     <Box
@@ -386,19 +443,42 @@ export function NeedsCard({
           {tt.needsTitle}
         </Typography>
       )}
-      <Stack component="ul" sx={{ listStyle: 'none', m: 0, p: 0 }}>
-        {rows.map(({ need, leaving }, index) => (
-          <NeedRow
-            key={need.id}
-            need={need}
-            leaving={leaving}
-            first={index === 0 && !plan.dayOne && !compact}
-            food={plan.food}
-            actions={actions}
-            answerMenu={answerMenu}
-          />
-        ))}
+      <Stack component="ul" sx={list}>
+        {rows.map((each) => row(each, each === lead && !plan.dayOne && !compact))}
       </Stack>
+      {/* The rest stay one tap away in the same card, with text buttons only: one filled
+          button on the card, and nothing drops off Coach (SIMPLIFY Batch 5). */}
+      {moreRows.length > 0 && (
+        <>
+          <Button
+            variant="text"
+            aria-expanded={open}
+            aria-controls={open ? moreId : undefined}
+            onClick={() => setOpen((was) => !was)}
+            endIcon={
+              <ChevronDown
+                size={18}
+                aria-hidden="true"
+                style={{ transform: open ? 'rotate(180deg)' : undefined }}
+              />
+            }
+            sx={{ minHeight: 48, mt: 1, px: 1 }}
+          >
+            {open ? tt.hide : tt.more(plan.more.length)}
+          </Button>
+          {open && (
+            <Stack
+              component="ul"
+              id={moreId}
+              data-testid="today-more"
+              sx={{ ...list, borderTop: `1px solid ${roles.outlineVariant}` }}
+            >
+              {moreRows.map((each) => row(each, false))}
+            </Stack>
+          )}
+        </>
+      )}
+      {footer}
     </Box>
   )
 }
@@ -410,6 +490,7 @@ function NeedRow({
   food,
   actions,
   answerMenu,
+  answerPromise,
 }: {
   need: Need
   leaving: boolean
@@ -417,16 +498,22 @@ function NeedRow({
   food: boolean
   actions: TodayActions
   answerMenu: () => void
+  answerPromise: (day: string) => void
 }) {
   const t = useCopy()
   const tt = useTodayCopy()
   const sc = useSourceCopy()
   const o = useOnboardingCopy()
   const locale = useLocale()
+  const pc = promiseCopyFor(locale)
   const ws = useWorkspace()
   const roles = useTheme().material
   const [busy, setBusy] = useState(false)
   const step = useStepAction(need.kind === 'step' ? need.step : 'items')
+  const promiseSettle = usePromiseSettle(
+    need.kind === 'promise' ? need.promise : null,
+    answerPromise,
+  )
   const primary = first ? 'contained' : 'text'
   async function run(work: () => Promise<unknown>) {
     setBusy(true)
@@ -439,9 +526,45 @@ function NeedRow({
     }
   }
   let icon: ReactNode
-  let text: string
+  let text = ''
   let buttons: ReactNode
-  if (need.kind === 'reply') {
+  if (need.kind === 'promise') {
+    // Last night's promise (HABIT change 4): do it, or "Not today" clears it with no comment.
+    const { promise } = need
+    icon = <NotebookPen size={20} />
+    text = promiseSaid(promise, locale)
+    const { settle } = promiseSettle
+    const doIt =
+      promise.item && promise.kind === 'order'
+        ? { label: pc.orderNow, ask: tt.orderDraft(promise.item) }
+        : promise.item && promise.kind === 'make'
+          ? { label: pc.makeMore, ask: sc.makeDraft(promise.item) }
+          : null
+    buttons = (
+      <>
+        <Button
+          variant={primary}
+          disabled={promiseSettle.busy}
+          sx={{ minHeight: 48 }}
+          onClick={() => {
+            settle('done')
+            if (doIt) actions.ask(doIt.ask)
+          }}
+        >
+          {doIt?.label ?? pc.done}
+        </Button>
+        {/* Clearing it is not a useful action: never action_done, never the first action. */}
+        <Button
+          disabled={promiseSettle.busy}
+          data-uncounted
+          sx={{ minHeight: 48 }}
+          onClick={() => settle('skipped')}
+        >
+          {pc.notToday}
+        </Button>
+      </>
+    )
+  } else if (need.kind === 'reply') {
     icon = <MessageSquare size={20} />
     text = tt.waiting(need.count)
     buttons = (
@@ -591,7 +714,7 @@ function NeedRow({
         )}
       </>
     )
-  } else {
+  } else if (need.kind === 'facts') {
     icon = <CircleHelp size={20} />
     const fact = need.facts[0]!
     text = t.customersAsk(need.facts.map((f) => t.askNames[f]).join(' '))
@@ -610,7 +733,8 @@ function NeedRow({
       component="li"
       data-need={need.kind}
       onClickCapture={(event) => {
-        if ((event.target as HTMLElement).closest('button')) countAction(ws, need.kind)
+        const button = (event.target as HTMLElement).closest('button')
+        if (button && !button.hasAttribute('data-uncounted')) countAction(ws, need.kind)
       }}
       aria-hidden={leaving || undefined}
       inert={leaving || undefined}
@@ -623,7 +747,6 @@ function NeedRow({
         px: 1,
         py: 2,
         minHeight: 56,
-        '& + &': { borderTop: `1px solid ${roles.outlineVariant}` },
         ...(leaving
           ? {
               pointerEvents: 'none',
@@ -746,9 +869,9 @@ function PulseCard({ plan, actions }: { plan: TodayPlan; actions: TodayActions }
 export function NeedsPill({ actions }: { actions: TodayActions }) {
   const tt = useTodayCopy()
   const roles = useTheme().material
-  const { plan, answerMenu } = useTodayPlan(actions.unread)
+  const { plan, answerMenu, answerPromise } = useTodayPlan(actions.unread)
   const [open, setOpen] = useState(false)
-  const count = plan?.needs.length ?? 0
+  const count = plan ? plan.needs.length + plan.more.length : 0
   if (!plan || !count) return null
   return (
     <Box data-testid="today-pill" sx={{ pb: 2 }}>
@@ -786,7 +909,13 @@ export function NeedsPill({ actions }: { actions: TodayActions }) {
       </ButtonBase>
       {open && (
         <Box id="today-pill-panel" sx={{ mt: 2 }}>
-          <NeedsCard plan={plan} actions={actions} answerMenu={answerMenu} compact />
+          <NeedsCard
+            plan={plan}
+            actions={actions}
+            answerMenu={answerMenu}
+            answerPromise={answerPromise}
+            compact
+          />
         </Box>
       )}
     </Box>
