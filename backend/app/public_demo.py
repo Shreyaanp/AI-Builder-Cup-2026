@@ -98,6 +98,8 @@ ALLOWED: tuple[tuple[str, re.Pattern[str]], ...] = tuple(
         ("POST", rf"{_BIZ}/connect/live/{_ID}/{_ID}"),
         ("POST", rf"{_BIZ}/google-sim(?:/reset)?"),
         ("POST", rf"{_BIZ}/freshness/confirm"),
+        # Tomorrow's promise: kept in the visitor's sandbox, never counted (a demo shop).
+        ("POST", rf"{_BIZ}/promise(?:/{_ID}/(?:done|skipped))?"),
         ("POST", rf"{_BIZ}/import/{_ID}/approve"),
         ("POST", rf"{_BIZ}/day/(?:read|prepare)"),
         ("POST", rf"{_BIZ}/supply/reorder"),
@@ -157,11 +159,25 @@ class DemoSession:
     # The last request that used this sandbox, and how many are using it right now.
     used: float = 0.0
     busy: int = 0
+    # OB-256: set when the sandbox was dropped (exit, expiry) while a request was still using it.
+    closing: bool = False
 
     def close(self) -> None:
         if self.directory is not None:
             self.directory.cleanup()
             self.directory = None
+
+    def retire(self) -> None:
+        """Drops the sandbox now, or when the last request using it finishes."""
+        if self.busy > 0:
+            self.closing = True
+        else:
+            self.close()
+
+    def release(self) -> None:
+        self.busy -= 1
+        if self.closing and self.busy <= 0:
+            self.close()
 
 
 def sessions(request: Request) -> dict[str, DemoSession]:
@@ -171,7 +187,7 @@ def sessions(request: Request) -> dict[str, DemoSession]:
     request.app.state.public_demos = saved
     for key in list(saved):
         if saved[key].expires <= time.time():
-            saved.pop(key).close()
+            saved.pop(key).retire()
     return saved
 
 
@@ -269,13 +285,14 @@ async def open_workspace(request: Request, zone: str) -> dict[str, Any]:
         raise HTTPException(429, "DEMO_BUSY", headers={"Retry-After": "60"})
     key = token_urlsafe(24)
     # Busy until its first snapshot is saved: before that there is nothing to restore it from.
-    saved[key] = DemoSession(time.time() + TTL_SECONDS, {}, busy=1)
+    reserved = DemoSession(time.time() + TTL_SECONDS, {}, busy=1)
+    saved[key] = reserved
     try:
         entry, _today = await anyio.to_thread.run_sync(sandbox, zone)
     except BaseException:
         saved.pop(key, None)
         raise
-    entry.expires = saved[key].expires
+    entry.expires = reserved.expires
     entry.used, entry.busy = time.time(), 1
     if key in saved:
         saved[key] = entry
@@ -333,7 +350,7 @@ async def live(request: Request, session_id: str) -> AsyncIterator[DemoSession]:
         try:
             yield cached
         finally:
-            cached.busy -= 1
+            cached.release()
         return
 
     entry = await anyio.to_thread.run_sync(restore, repository(request), session_id)
@@ -362,7 +379,7 @@ async def read_demo(
 async def exit_demo(session_id: str, request: Request) -> dict[str, bool]:
     entry = sessions(request).pop(session_id, None)
     if entry:
-        entry.close()
+        entry.retire()
     await anyio.to_thread.run_sync(repository(request).delete, KIND, session_id)
     return {"exited": True}
 

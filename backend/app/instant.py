@@ -12,7 +12,7 @@ import re
 from collections import OrderedDict
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Literal
 
 import anyio
 
@@ -93,6 +93,47 @@ HOW_TODAY = re.compile(
     re.I,
 )
 SOLD_OUT_LIST = re.compile(r"^what(?:'s|\s+is)\s+sold\s+out\b", re.I)
+# Tomorrow's promise by chat (HABIT change 4): "remind me to order milk tomorrow (morning)",
+# "tomorrow remind me to call Ganesh", "kal subah doodh yaad dilana". Only with "tomorrow" or
+# "kal": "remind me every morning" stays the Remind me screen.
+TOMORROW = r"(?:tomorrow|tmrw|kal)(?:\s+(?:morning|subah))?"
+# "Remind (me)" in Hindi, when it comes before the thing: याद दिलाना / दिलाओ / दिला देना …
+REMIND_HI = r"(?:दिला|करा)(?:ना|ओ|\s*देना|\s*दो|\s*दीजिए|इए|इये|एँ|एं)"
+PROMISE = (
+    re.compile(
+        rf"^(?:{TOMORROW}\s+)?(?:please\s+)?remind\s+me\s+(?:{TOMORROW}\s+)?(?:to|about)\s+"
+        rf"(?P<what>.+?)\s+{TOMORROW}$"
+        rf"|^(?:{TOMORROW}\s+)(?:please\s+)?remind\s+me\s+(?:to|about)\s+(?P<before>.+)$"
+        rf"|^(?:please\s+)?remind\s+me\s+{TOMORROW}\s+(?:to|about)\s+(?P<after>.+)$",
+        re.I,
+    ),
+    re.compile(
+        rf"^{TOMORROW}\s+(?P<what>.+?)\s+(?:yaad|yad)\s+(?:dila|dilaa)(?:na|o|dena|iye|ana)$",
+        re.I,
+    ),
+    # The same in Devanagari: Hindi typing and Hindi voice ("कल सुबह दूध मँगाना याद दिलाना",
+    # the close screen's own Hindi hint).
+    re.compile(
+        r"^(?:मुझे\s+)?कल(?:\s+सुबह)?\s+(?:मुझे\s+)?(?P<what>.+?)\s+(?:की\s+)?याद\s+"
+        r"(?:दिला|करा)(?:ना|ओ|\s*देना|\s*दो|\s*दीजिए|इए|इये|एँ|एं|ना\s+है)$"
+    ),
+    # "Remind me" first: "कल मुझे याद दिलाना कि दूध मंगाना है", "याद दिलाना कल दूध मंगाना".
+    re.compile(
+        rf"^(?:मुझे\s+)?कल(?:\s+सुबह)?\s+(?:मुझे\s+)?याद\s+{REMIND_HI}\s+(?:कि\s+)?"
+        r"(?P<that>.+?)(?:\s+है)?$"
+    ),
+    re.compile(
+        rf"^(?:मुझे\s+)?याद\s+{REMIND_HI}\s+(?:कि\s+)?कल(?:\s+सुबह)?\s+"
+        r"(?P<later>.+?)(?:\s+है)?$"
+    ),
+)
+# Where the promise is in the Hindi UI (tabsCopy navGrow, closeday translations title).
+PROMISE_WHERE_HI = "बढ़ाएँ → दिन बंद करें"
+# "kal subah yaad dilana" names no thing to write down: just tomorrow's words (or "me", as in
+# "कल मुझे याद दिलाना").
+WHEN_ONLY = re.compile(rf"{TOMORROW}|morning|subah|सुबह|कल(?:\s+सुबह)?|मुझे", re.I)
+ORDER_WORDS = re.compile(r"^(?:re-?order|order|buy|get)\s+(?:more\s+|some\s+)?(?P<item>.+)$", re.I)
+MAKE_WORDS = re.compile(r"^(?:make|prep|prepare)\s+(?:more\s+|some\s+)?(?P<item>.+)$", re.I)
 
 # Known phrasings of read-only and navigation intents, for embedding matches.
 EXEMPLARS: dict[str, tuple[str, ...]] = {
@@ -278,6 +319,66 @@ def _read_intent(ctx: MerchantContext, intent: str) -> InstantResult | None:
     return None
 
 
+def promise_words(lowered: str) -> str | None:
+    """What to remind the owner of tomorrow, from a chat message; None when it is not one."""
+    for pattern in PROMISE:
+        found = pattern.match(lowered)
+        if found:
+            what = next(v for v in found.groupdict().values() if v)
+            # "remind me tomorrow" alone has nothing to write down: the coach asks what.
+            if what.strip() and not WHEN_ONLY.fullmatch(what.strip()):
+                return what.strip()
+    return None
+
+
+def _promise(ctx: MerchantContext, what: str, hindi: bool = False) -> InstantResult:
+    """Write tomorrow's promise and say where it will be. The owner's words are kept as said;
+    "order milk" with a Milk item on the menu gets an Order button tomorrow morning."""
+    from .owner_promise import NewPromise, consent_current, set_promise
+
+    fields, inventory = _shop(ctx)
+    # Like the close screen's route (428 there): nothing is written before the current terms.
+    if not fields.get("demo") and not consent_current(ctx.store, ctx.uid):
+        return InstantResult(
+            "promise",
+            "पहले नई शर्तें स्वीकार करें। फिर मैं इसे कल के लिए लिख लूँगा।"
+            if hindi
+            else "Please accept the updated terms first. Then I can write this down for tomorrow.",
+        )
+    kind: Literal["order", "make", "note"] = "note"
+    item: str | None = None
+    for pattern, named in ((ORDER_WORDS, "order"), (MAKE_WORDS, "make")):
+        found = pattern.match(what)
+        if found:
+            wanted = found["item"].casefold()
+            item = next(
+                (str(p["name"]) for p in inventory if str(p.get("name", "")).casefold() == wanted),
+                None,
+            )
+            if item:
+                kind = "order" if named == "order" else "make"
+            break
+    promise = set_promise(
+        ctx.store,
+        ctx.business_id or "",
+        fields,
+        NewPromise(text=what, kind=kind, item=item),
+        uid=ctx.uid,
+    )
+    if hindi:
+        return InstantResult(
+            "promise",
+            f"कल सुबह के लिए लिख लिया: “{promise.text}”। यह कोच में सबसे ऊपर दिखेगा। "
+            # The Hindi UI's own labels: the कोच tab, and Grow's "Close the day" tile.
+            f"यह {PROMISE_WHERE_HI} में भी है।",
+        )
+    return InstantResult(
+        "promise",
+        f'Written down for tomorrow morning: "{promise.text}". It will be at the top of Coach. '
+        + where_line("promise"),
+    )
+
+
 def _upkeep(ctx: MerchantContext, text: str) -> InstantResult | None:
     from .agent import upkeep_call
 
@@ -319,6 +420,11 @@ async def route(
     message = " ".join(text.split())
     if not ctx or not ctx.business_id or ctx.new_shop or not message or len(message) > 200:
         return None
+    # Tomorrow's promise in any script the router knows (the close screen's Hindi hint is
+    # Devanagari). The owner's words keep their own case: they are shown back as written.
+    promised = promise_words(message.rstrip(" .!।"))
+    if promised:
+        return _promise(ctx, promised, hindi=not LATIN.match(message))
     if not LATIN.match(message):
         return None
     lowered = message.casefold().rstrip(" .!")

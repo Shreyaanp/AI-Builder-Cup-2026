@@ -60,10 +60,13 @@ function flush() {
     .catch(() => undefined)
 }
 
-if (typeof document !== 'undefined')
+if (typeof document !== 'undefined') {
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') flush()
   })
+  // A reload or a link away may not hide the page first; the batch still leaves (keepalive).
+  window.addEventListener('pagehide', flush)
+}
 
 function add(ws: Workspace, item: Counted) {
   if (!canCount(ws)) return

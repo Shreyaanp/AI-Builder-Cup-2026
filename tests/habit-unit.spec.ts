@@ -3,6 +3,8 @@ import { expect, test } from '@playwright/test'
 import { LOCALES } from '../src/i18n/locales.js'
 import { comparisonKind } from '../src/features/closeday/compare.js'
 import { countClosed, countShown, type Workspace } from '../src/features/v1/today/habitCount.js'
+import { promiseCopyFor, type PromiseCopy } from '../src/features/v1/today/promiseCopy.js'
+import { leadOrder, leadSplit } from '../src/features/v1/today/leadOrder.js'
 
 const REWARD_KEYS = [
   'doneTotal',
@@ -86,4 +88,74 @@ test('opened is counted once per local day, and again after the day turns over',
     globalThis.Date = RealDate
   }
   expect(sent.filter((e) => e === 'opened')).toHaveLength(2)
+})
+
+// HABIT slice 2 ----------------------------------------------------------------------------
+
+test('every shipped language has every promise line, with no English left in it', () => {
+  const english = promiseCopyFor('en')
+  const keys = Object.keys(english) as (keyof PromiseCopy)[]
+  const sample = (copy: PromiseCopy, key: keyof PromiseCopy) => {
+    const value = copy[key]
+    return typeof value === 'function' ? (value as (x: string) => string)('§') : value
+  }
+  for (const locale of LOCALES) {
+    const copy = promiseCopyFor(locale)
+    expect(Object.keys(copy).sort(), locale).toEqual([...keys].sort())
+    for (const key of keys) {
+      const line = sample(copy, key)
+      expect(line.trim(), `${locale}.${key}`).not.toBe('')
+      if (typeof copy[key] === 'function') expect(line, `${locale}.${key}`).toContain('§')
+      if (locale !== 'en') expect(line, `${locale}.${key}`).not.toBe(sample(english, key))
+    }
+  }
+})
+
+const rows = (...kinds: string[]) => kinds.map((kind, i) => ({ id: `${kind}-${i}`, kind }))
+const order = (...kinds: string[]) => leadOrder(rows(...kinds)).map((need) => need.kind)
+
+test('the morning: last night’s promise leads; closing the day keeps row 1 in the close window', () => {
+  expect(order('reply', 'menu', 'promise')).toEqual(['promise', 'reply', 'menu'])
+  expect(order('reply', 'promise', 'closeDay')).toEqual(['closeDay', 'promise', 'reply'])
+  // Three at most: the first is the one lead action.
+  expect(order('reply', 'menu', 'low', 'low', 'step')).toEqual(['reply', 'menu', 'low'])
+  expect(order()).toEqual([])
+})
+
+test('one stock surface: the supply row with its run-out day always keeps a place in three', () => {
+  expect(order('reply', 'closeDay', 'menu', 'supply', 'low')).toEqual([
+    'closeDay',
+    'reply',
+    'supply',
+  ])
+  expect(order('supply', 'reply', 'menu')).toEqual(['supply', 'reply', 'menu'])
+  // In the evening a waiting customer and the dated stock line keep their places beside
+  // "Close the day"; this morning's promise waits under "N more things".
+  expect(order('promise', 'reply', 'closeDay', 'menu', 'supply')).toEqual([
+    'closeDay',
+    'reply',
+    'supply',
+  ])
+})
+
+test('a waiting customer is never behind "N more things", whatever the playbook ranks', () => {
+  // The demo's evening: a stock-first playbook ranks the low row above the reply.
+  expect(order('closeDay', 'supply', 'low', 'reply', 'menu')).toEqual([
+    'closeDay',
+    'supply',
+    'reply',
+  ])
+  expect(order('menu', 'low', 'low', 'step', 'reply')).toEqual(['menu', 'low', 'reply'])
+  // Two kept rows and the lead fill the three; the rest wait.
+  expect(order('low', 'low', 'menu', 'supply', 'reply')).toEqual(['low', 'supply', 'reply'])
+})
+
+test('"N more things": every row past the three is kept for the same card, none dropped', () => {
+  const needs = rows('reply', 'closeDay', 'menu', 'supply', 'low', 'low', 'soldOut', 'step')
+  const { lead, more } = leadSplit(needs)
+  expect(lead.map((need) => need.kind)).toEqual(['closeDay', 'reply', 'supply'])
+  expect(more.map((need) => need.kind)).toEqual(['menu', 'low', 'low', 'soldOut', 'step'])
+  // Nothing lost, nothing said twice.
+  expect([...lead, ...more].map((need) => need.id).sort()).toEqual(needs.map((n) => n.id).sort())
+  expect(leadSplit(rows('reply', 'menu')).more).toEqual([])
 })

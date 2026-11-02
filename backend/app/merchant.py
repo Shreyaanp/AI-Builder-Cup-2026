@@ -1132,6 +1132,7 @@ class MerchantStore:
                 "brief_wording",
                 "shop_daily",
                 "owner_habit",
+                "owner_promise",
                 *SUPPLY_KINDS,
             ):
                 self.feature_docs.delete_scope(kind, bid)

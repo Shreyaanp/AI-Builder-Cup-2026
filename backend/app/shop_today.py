@@ -22,6 +22,7 @@ from .close_reward import CloseReward, close_reward
 from .limits import enforce_limits
 from .merchant import MerchantRepository
 from .merchant_routes import owner, store
+from .owner_promise import Promise, promise_for
 from .playbook import LineTopic, TodayHints, migrate_stored, today_hints
 from .product_source import Source, source_of
 from .region import shop_currency, shop_zone
@@ -108,6 +109,8 @@ class Today(BaseModel):
     hints: TodayHints | None = None
     # None: feature disabled; never infer zero from missing facts.
     has_customer_stamp: bool | None = None
+    # What the owner wrote down last night for this morning, while still open (HABIT change 4).
+    promise: Promise | None = None
 
 
 def _day(fields: dict[str, Any], at: float | None = None) -> str:
@@ -314,6 +317,7 @@ async def today_page(business_id: str, request: Request) -> Today:
         demo=bool(fields.get("demo")),
         hints=hints,
         has_customer_stamp=customer_stamp,
+        promise=await anyio.to_thread.run_sync(promise_for, service, business_id, today),
     )
 
 

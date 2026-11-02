@@ -39,8 +39,21 @@ Event = Literal[
     "promise_done",
 ]
 # Today's "needs you now" kinds (todayPlan.ts) and the reminder kinds (reminders.py).
+# "supply" is Today's supply row and "promise" last night's promise (HABIT slice 2).
 PROMPT_KINDS = frozenset(
-    {"reply", "closeDay", "menu", "low", "soldOut", "step", "facts", "morning", "evening"}
+    {
+        "reply",
+        "closeDay",
+        "menu",
+        "low",
+        "soldOut",
+        "step",
+        "facts",
+        "supply",
+        "promise",
+        "morning",
+        "evening",
+    }
 )
 # Events counted per kind; the rest are one plain count for the day.
 KINDED: frozenset[str] = frozenset({"prompt_shown", "action_done", "push_shown", "push_opened"})
