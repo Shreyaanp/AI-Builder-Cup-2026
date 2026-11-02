@@ -78,6 +78,7 @@ test('POS connection labels stay in the selected Hindi locale', async ({ page })
   await page.getByRole('combobox', { name: 'Language' }).click()
   await page.getByRole('option', { name: 'हिन्दी' }).click()
   await page.getByRole('button', { name: 'दुकान', exact: true }).click()
+  await shopMore(page)
   await page.getByRole('button', { name: /बिक्री का हिसाब जोड़ें/ }).click()
 
   const connect = page.getByRole('dialog', { name: 'बिक्री का हिसाब जोड़ें' })

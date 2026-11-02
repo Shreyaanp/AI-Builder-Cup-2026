@@ -39,6 +39,7 @@ test.describe('POS import flows on phone (390px)', () => {
     await page.getByRole('combobox', { name: 'Language', exact: true }).click()
     await page.getByRole('option', { name: 'हिन्दी', exact: true }).click()
     await page.getByRole('button', { name: 'दुकान', exact: true }).click()
+    await shopMore(page)
     await page.getByRole('button', { name: /बिक्री का हिसाब जोड़ें/ }).click()
 
     const connectDialog = page.getByRole('dialog', { name: 'बिक्री का हिसाब जोड़ें' })

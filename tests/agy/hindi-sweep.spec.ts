@@ -108,6 +108,8 @@ test('Hindi phone sweep: supply, reminders, onboarding, tour and demo', async ({
   await page.keyboard.press('Escape')
 
   await page.getByRole('button', { name: 'आप', exact: true }).click()
+  // You → Help → "What can I ask?" holds the intro replay (simplify batch 3).
+  await page.getByRole('button', { name: 'मैं क्या पूछूँ?', exact: true }).click()
   await page.getByRole('button', { name: 'फिर देखें', exact: true }).click()
   await hindiOnly(page, 'पहली शुरुआत का कार्ड 1')
   await page.getByRole('button', { name: 'आगे', exact: true }).click()

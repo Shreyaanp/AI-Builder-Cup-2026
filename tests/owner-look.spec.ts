@@ -19,6 +19,8 @@ async function reloadOwner(page: Page) {
   await page.reload()
   await page.getByRole('button', { name: 'Continue local preview' }).click()
   await page.getByRole('button', { name: 'You', exact: true }).click()
+  // Look is one row; its three choices open under it (simplify batch 3).
+  await page.getByRole('button', { name: /^Look/ }).click()
 }
 
 for (const viewport of [
@@ -67,6 +69,8 @@ for (const viewport of [
         await savedAppearance(page, 'system')
         await expect.poll(() => surface(page)).toBe(colorScheme === 'dark' ? dark : light)
         await reloadOwner(page)
+        // The Look row names the saved choice; its choices open under it again.
+        await expect(page.getByRole('button', { name: /^Look/ })).toContainText('System')
         await expect(system).toHaveAttribute('aria-pressed', 'true')
         await savedAppearance(page, 'system')
         await expect.poll(() => surface(page)).toBe(colorScheme === 'dark' ? dark : light)
