@@ -42,7 +42,8 @@ export function PrepPlanTile({ show }: { show?: 'plan' | 'runsOut' } = {}) {
   const locale = useLocale()
   const unit = useOrderUnit()
   // The supply needs are the one source for "runs out" and "on order", same as Today.
-  const { data: supply } = useSupply(true)
+  // Only the runs-out card reads them; the prep plan row alone asks for nothing extra.
+  const { data: supply } = useSupply(show !== 'plan')
   const onOrderText = useOnOrderText()
   const [loaded, setLoaded] = useState<{
     id: string

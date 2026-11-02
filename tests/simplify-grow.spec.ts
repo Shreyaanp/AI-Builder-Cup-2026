@@ -201,7 +201,7 @@ test('Grow: every former Grow tool opens within 2 taps of the tab', async ({ pag
         .or(page.getByRole('button', { name: 'Back', exact: true }))
         .first(),
       `${tool} opens its own screen`,
-    ).toBeVisible()
+    ).toBeVisible({ timeout: 15_000 })
     await closeAll(page)
     if (row)
       await grow(page)

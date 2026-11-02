@@ -46,6 +46,8 @@ test('Prep plan uses approved sales, labels its method and passes axe on phone',
   await page.reload()
   await page.getByRole('button', { name: 'Continue local preview' }).click()
   await page.getByRole('button', { name: 'Grow', exact: true }).click()
+  // After the reload Grow opens with its rows closed again: open How much to make.
+  await growTool(page, /^Prep plan/)
   await expect(tile).toContainText('Kopi · 30')
   await expect(tile).toContainText('Based on your last weeks')
   const audit = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()

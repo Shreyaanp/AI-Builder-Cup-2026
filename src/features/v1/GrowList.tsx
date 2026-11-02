@@ -76,6 +76,7 @@ export function ListTile({
         {/* The live status stays in the name for screen readers; the grid shows names only. */}
         <Box component="span" sx={visuallyHidden}>
           {value}
+          {children}
         </Box>
       </ButtonBase>
     )
@@ -109,13 +110,7 @@ export function ListTile({
           component="span"
           variant="bodySmall"
           color="text.secondary"
-          sx={{
-            display: 'block',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-            fontVariantNumeric: 'tabular-nums',
-          }}
+          sx={{ display: 'block', overflowWrap: 'anywhere', fontVariantNumeric: 'tabular-nums' }}
         >
           {value}
         </Typography>

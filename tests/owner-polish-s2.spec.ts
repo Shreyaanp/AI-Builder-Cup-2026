@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
-import { growTool } from './support/grow.js'
+import { growTool, showInGrow } from './support/grow.js'
 
 // Owner app polish from the live walk-through (O-6..O-15), in the public demo at 390x844.
 // OB-212 (#569): a touch phone in both projects, so the desktop run can tap() as well.
@@ -63,8 +63,12 @@ test('O-10 and O-11: approving a reorder says it is sent; whole rupees have no .
   await page.locator('[data-tour="nav-grow"]').click()
   // OB-212 (#569): the demo week is the last 7 days of date-seeded sales, so the total moves
   // every day (₹44,552 was 25 Oct only). Assert a whole-rupee amount, never one day's figure.
+  // Your week sits in the My sales row (batch 4a).
   await expect(
-    page.getByRole('button', { name: /Your week\D*₹\d{1,3}(,\d{2,3})*(?![\d.,])/ }),
+    await showInGrow(
+      page,
+      page.getByRole('button', { name: /Your week\D*₹\d{1,3}(,\d{2,3})*(?![\d.,])/ }),
+    ),
   ).toBeVisible()
   await expect(page.getByText(/₹[\d,]+\.00/)).toHaveCount(0)
   await (await growTool(page, /^Purchase orders/)).tap()

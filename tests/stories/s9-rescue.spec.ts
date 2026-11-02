@@ -257,7 +257,9 @@ async function ownerSeesHold(page: Page, mode: Mode) {
     await page.reload()
     await page.getByRole('button', { name: 'Continue local preview' }).click()
     await page.getByRole('button', { name: 'Grow', exact: true }).click()
-    await expect(page.getByRole('button', { name: /^Rescue/ })).toContainText('Left: 5 of 6')
+    // Rescue deals is a More tools icon (batch 4a): its live status is in its name, and the
+    // sheet shows the hold.
+    await expect(page.getByRole('button', { name: /^Rescue/ })).toHaveAccessibleName(/Left: 5 of 6/)
     await page.getByRole('button', { name: /^Rescue/ }).click()
     const sheet = page.getByRole('dialog', { name: 'Closing-time rescue' })
     await expect(sheet.getByRole('region', { name: 'Live now' })).toContainText('Held: 1 · Left: 5')
