@@ -1,5 +1,6 @@
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
+import { growTool } from './support/grow.js'
 
 /** ISO date `back` days ago in UTC: a shop made through page.request sends no timezone, so its day is UTC's. */
 function shopDay(back: number) {
@@ -62,7 +63,7 @@ test('Your week: yesterday and this week against last week, from saved sales', a
   await page.getByRole('button', { name: 'Continue local preview' }).click()
   // Insights live on Grow.
   await page.getByRole('button', { name: 'Grow', exact: true }).click()
-  const tile = page.getByRole('button', { name: /^Your week/ })
+  const tile = await growTool(page, /^Your week/)
   await expect(tile).toContainText(/\+\d+% vs last week/)
   await tile.click()
   const sheet = page.getByRole('dialog', { name: 'Your week' })

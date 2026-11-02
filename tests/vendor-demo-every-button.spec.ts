@@ -1,6 +1,7 @@
 import { test, expect, type Page } from '@playwright/test'
 import { shopMore } from './support/shopMore.js'
 import { pinShopTime, SHOP_TIMES } from './support/shopClock.js'
+import { openGrowTool, showInGrow } from './support/grow.js'
 
 test.setTimeout(90_000)
 
@@ -106,6 +107,8 @@ test('Coach: Reply opens the message thread, at every hour of the shop day', asy
 test('Grow: Open messages opens the message thread', async ({ page }) => {
   await openDemo(page)
   await tab(page, 'grow')
+  // The brief's best action, inside its Morning brief row (batch 4a).
+  await showInGrow(page, page.getByRole('button', { name: /^Open messages$/ }))
   await opensSheet(page, /^Open messages$/, /Messages/)
   await showsThread(page)
 })
@@ -119,7 +122,7 @@ test('Grow: Rescue deals opens the rescue screen', async ({ page }) => {
 test('Grow: Prep plan opens its own screen', async ({ page }) => {
   await openDemo(page)
   await tab(page, 'grow')
-  await page.getByRole('button', { name: /^Prep plan/ }).click()
+  await openGrowTool(page, /^Prep plan/)
   await expect(page.getByRole('dialog').getByRole('heading', { name: 'Prep plan' })).toBeVisible()
   await expect(
     page
@@ -230,8 +233,9 @@ test('prep numbers and dates are identical on every reload', async ({ page }) =>
     const today = await page.getByTestId('today').innerText()
     const runsOut = /runs out ([A-Za-z]{3}, [A-Za-z]{3} \d+)/.exec(today)?.[1]
     await tab(page, 'grow')
-    const brief = page.locator('section', { hasText: 'Prep today' }).first()
-    await expect(brief).toBeVisible({ timeout: 15_000 })
+    // The brief opens in place from its Morning brief row (batch 4a).
+    const brief = page.getByRole('region', { name: 'Morning brief' })
+    await showInGrow(page, brief)
     const prep = (await brief.innerText()).replace(/\s+/g, ' ')
     const low = /Tea dust Left: [\d.]+ kg Runs out ([A-Za-z]{3}, [A-Za-z]{3} \d+)/.exec(prep)?.[1]
     // One source of truth: Today and the Grow brief name the same run-out day.

@@ -1,5 +1,6 @@
 ﻿import { expect, test } from '@playwright/test'
 import { enter, localOnly, seedShop } from './stories/support.js'
+import { openGrowTool } from './support/grow.js'
 
 const suppliers = {
   item: 'tea leaves',
@@ -81,7 +82,7 @@ test('OB-110: Purchase orders do not show SAP sample orders for a small shop', a
   await enter(page)
   await seedShop(page)
   await page.getByRole('button', { name: 'Grow', exact: true }).click()
-  await page.getByRole('button', { name: /^Purchase orders/ }).click()
+  await openGrowTool(page, /^Purchase orders/)
   await expect(page.getByRole('dialog', { name: 'Purchase orders' })).toBeVisible()
   await expect(page.getByText('Live from SAP sandbox')).toHaveCount(0)
   await expect(page.getByText(/\$332\.50/)).toHaveCount(0)

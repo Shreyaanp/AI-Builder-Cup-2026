@@ -33,21 +33,20 @@ TAB_LABELS: dict[str, frozenset[str]] = {
             "More",
         }
     ),
+    # Grow (simplify batch 4a): rows, then the More tools grid. Rows that group tools open on
+    # the same screen to each tool by name (INNER_LABELS).
     "Grow": frozenset(
         {
-            "Prep plan",
-            "Plan tomorrow",
+            "Morning brief",
+            "How much to make",
             "Close the day",
-            "Orders",
-            "Purchase orders",
-            "Supply chain",
+            "Buy stock",
+            "My sales",
+            "Get on Google",
             "Rescue deals",
             "Asked nearby",
             "Payments & rides",
-            "Get on Google",
             "Stamps & perks",
-            "Your week",
-            "Weekly recap",
         }
     ),
     "You": frozenset(
@@ -69,7 +68,9 @@ INNER_LABELS: dict[tuple[str, str], frozenset[str]] = {
     ("Shop", "Messages"): frozenset({"Your language (app and coach)"}),
     # The More row opens on the Shop screen itself: the stamp card and the billing app.
     ("Shop", "More"): frozenset({"Stamp card", "Link your billing app"}),
-    ("Grow", "Orders"): frozenset({"Find a supplier"}),
+    ("Grow", "How much to make"): frozenset({"Prep plan", "Plan tomorrow"}),
+    ("Grow", "Buy stock"): frozenset({"Orders", "Purchase orders", "Supply chain"}),
+    ("Grow", "My sales"): frozenset({"Your week", "Weekly recap"}),
     ("Grow", "Payments & rides"): frozenset({"Send a rider"}),
     ("You", "Privacy & your data"): frozenset({"Verify it’s you"}),
 }
@@ -174,7 +175,7 @@ FEATURES: tuple[Feature, ...] = (
         "Draft a reorder from the forecast and keep supplier rules; each order is sent only "
         "after you confirm it.",
         '"Reorder milk for tomorrow" or "Show purchase orders".',
-        ("Grow", "Purchase orders"),
+        ("Grow", "Buy stock", "Purchase orders"),
         ("purchase", "order", "reorder", "restock"),
         "Reorder tea dust",
         "चायपत्ती फिर से मँगाओ",
@@ -187,7 +188,7 @@ FEATURES: tuple[Feature, ...] = (
         "Deliveries on the way",
         "What your suppliers confirmed, what is on the way and what you received.",
         '"What\'s coming today?".',
-        ("Grow", "Supply chain"),
+        ("Grow", "Buy stock", "Supply chain"),
         ("coming", "deliveries", "delivered", "received", "arriving", "on the way"),
         "What's coming today?",
         "आज क्या आने वाला है?",
@@ -398,7 +399,7 @@ FEATURES: tuple[Feature, ...] = (
         "How much to prepare",
         "A count per item for tomorrow, based on your last weeks of sales.",
         '"How much chai should I make tomorrow?"',
-        ("Grow", "Prep plan"),
+        ("Grow", "How much to make", "Prep plan"),
         ("forecast", "prepare", "prep", "tomorrow", "how much", "plan"),
         "How much chai tomorrow?",
         "कल कितनी चाय बनाऊँ?",
@@ -411,7 +412,7 @@ FEATURES: tuple[Feature, ...] = (
         "How business is going",
         "Top sellers, slow movers and this week against last week, with 2-3 next steps.",
         '"How is business this week?"',
-        ("Grow", "Your week"),
+        ("Grow", "My sales", "Your week"),
         ("business", "going", "insights", "analyse", "analyze", "week", "summary"),
         "How was business this week?",
         "इस हफ़्ते बिक्री कैसी रही?",
@@ -424,7 +425,7 @@ FEATURES: tuple[Feature, ...] = (
         "Order supplies",
         "Find suppliers near you, prepare an order request and tap Send.",
         '"My flour is running low" or "I need 20 kg flour by tomorrow".',
-        ("Grow", "Orders", "Find a supplier"),
+        ("Grow", "Buy stock", "Orders"),
         ("supplier", "suppliers", "flour", "running low", "buy"),
         "My milk is running low",
         "दूध ख़त्म होने वाला है",
