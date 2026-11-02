@@ -471,7 +471,7 @@ def get_insights() -> dict[str, Any]:
     in these numbers. For "how did today go?" use `today`: today's saved total and, only when
     it is there, the same weekday it compares with (never compare with any other day). `today`
     is null until today's sales are saved; then suggest closing the day.
-    If has_sales_data is false, suggest importing a POS or Excel sales export."""
+    If has_sales_data is false, suggest importing a billing app or Excel sales file."""
     ctx = current.get()
     if not ctx or not ctx.business_id:
         return {"status": "needs_business"}

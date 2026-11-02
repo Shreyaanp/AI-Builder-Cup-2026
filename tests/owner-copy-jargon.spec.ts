@@ -7,7 +7,7 @@ import { aiInfoCopy } from '../src/features/v1/aiInfoCopy.js'
 // locale, may carry a developer word. Plan: SIMPLIFY-owner.md §5.
 
 const JARGON =
-  /\b(?:POS|ERP|API|XML|SAP|ADK|IDoc|TimesFM|BigQuery|fixture|parser|offline)\b|पार्सर|ऑफ़?लाइन|অফলাইন|ఆఫ్‌?లైన్|ಆಫ್‌?ಲೈನ್|ஆஃப்லைன்|离线|オフライン|오프라인|ออฟไลน์|luar talian|ngoại tuyến/i
+  /\b(?:POS|ERP|API|XML|SAP|ADK|IDoc|TimesFM|BigQuery|fixture|parser|offline|(?:connect )?your system)\b|पार्सर|ऑफ़?लाइन|অফলাইন|ఆఫ్‌?లైన్|ಆಫ್‌?ಲೈನ್|ஆஃப்லைன்|离线|オフライン|오프라인|ออฟไลน์|luar talian|ngoại tuyến/i
 
 const FILES = [
   'closeday/translations.ts',
@@ -18,6 +18,8 @@ const FILES = [
   'google/strings.ts',
   'sourcing/copy.ts',
   'connect/strings.ts',
+  'connect/uiStrings.ts',
+  'connect/photoCopy.ts',
   'supply/ioCopy.ts',
   'owner/copy.ts',
   'analytics/copy.ts',

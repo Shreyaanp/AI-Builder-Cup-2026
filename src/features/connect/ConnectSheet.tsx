@@ -94,7 +94,8 @@ export function ConnectSheet({
   const shop = ws.active
   const systems = KNOWN_SYSTEMS.map((system) => ({
     ...system,
-    displayLabel: system.key === 'other' ? ui.otherPos : system.label,
+    displayLabel:
+      system.key === 'other' ? ui.otherPos : system.key === 'sap' ? ui.bigShop : system.label,
   }))
 
   const [selectedSystem, setSelectedSystem] = useState<string>(initialSystem ?? 'Petpooja')
