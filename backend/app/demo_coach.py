@@ -502,10 +502,10 @@ async def _find_suppliers(ctx: Any, question: str) -> list[StreamEvent] | None:
         item = str((function.args or {}).get("item") or "")
     # The amount the owner said rides along, so the vendor list prices it and its Order asks
     # for the same amount.
-    said = next(((float(n), u) for n, u in AMOUNT.findall(asked) if u), None)
+    amount = next(((float(n), u) for n, u in AMOUNT.findall(asked) if u), None)
     found = await (
-        find_suppliers(item, said[0], HINDI_AMOUNT_UNITS.get(said[1], said[1]))
-        if said
+        find_suppliers(item, amount[0], HINDI_AMOUNT_UNITS.get(amount[1], amount[1]))
+        if amount
         else find_suppliers(item)
     )
     if found.get("status") != "found":
