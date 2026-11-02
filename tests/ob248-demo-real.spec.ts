@@ -266,6 +266,59 @@ test('OB-248 three plain orders bring a yes, a short reply and a new price', asy
   await expect(talk).toContainText(/₹235 a kg now, it was ₹224/)
 })
 
+// The owner's own "OK" shows after Accept changes in Hindi too (#637 review).
+test('OB-248 Hindi: a short reply and a new price, each accepted, show the owner OK', async ({
+  page,
+}) => {
+  test.setTimeout(240_000)
+  await page.addInitScript(() =>
+    localStorage.setItem('niva.starter.preferences', JSON.stringify({ language: 'hi' })),
+  )
+  await openDemo(page, 'छोड़ें')
+  await page.locator('[data-tour="nav-grow"]').click()
+  await page.locator('[data-tour="supply"]').click()
+  const sheet = page.getByRole('dialog')
+  const card = sheet.locator('article')
+  const talk = card.getByTestId('supplier-talk')
+  const okay = 'ठीक है, भेज दीजिए।'
+
+  async function delivered() {
+    await expect(talk).toContainText('आपका ऑर्डर निकल चुका है', { timeout: 20_000 })
+    await card.getByRole('button', { name: 'माल आ गया', exact: true }).click()
+    const review = page.getByRole('dialog').filter({ hasText: 'चाय पत्ती' }).last()
+    await review.getByRole('button', { name: /^पुष्टि कर/ }).click()
+    await expect(talk).toContainText('यह रहा बिल', { timeout: 20_000 })
+  }
+
+  await sheet.getByRole('button', { name: 'फिर से सामान मँगाएँ' }).click()
+  await card.getByRole('button', { name: 'मंज़ूर करके भेजें', exact: true }).click()
+  await expect(talk).toContainText('जी, पक्का है', { timeout: 20_000 })
+  await expect(talk).not.toContainText(okay)
+  await delivered()
+
+  await card.getByRole('button', { name: 'फिर से ऑर्डर करें', exact: true }).click()
+  await card.getByRole('button', { name: 'मंज़ूर करके भेजें', exact: true }).click()
+  await expect(talk).toContainText(/आज मेरे पास सिर्फ़ \d+ किलो चाय पत्ती है।/, { timeout: 20_000 })
+  await expect(talk).not.toContainText(okay)
+  await card.getByRole('button', { name: 'बदलाव मानें', exact: true }).click()
+  await expect(talk).toContainText(okay)
+  await expect(card.getByTestId('order-headline')).toContainText('₹896')
+  await delivered()
+
+  await card.getByRole('button', { name: 'फिर से ऑर्डर करें', exact: true }).click()
+  await card.getByRole('button', { name: 'मंज़ूर करके भेजें', exact: true }).click()
+  await expect(talk).toContainText(
+    /चाय पत्ती का दाम बढ़ गया है: अब ₹235 प्रति किलो, पहले ₹224 था/,
+    {
+      timeout: 20_000,
+    },
+  )
+  await expect(card.getByTestId('order-headline')).toContainText('₹1,344')
+  await card.getByRole('button', { name: 'बदलाव मानें', exact: true }).click()
+  await expect(talk.getByText(okay)).toHaveCount(1)
+  await expect(card.getByTestId('order-headline')).toContainText('₹1,410')
+})
+
 // Item names and units a Hindi owner must never see in English (OB-74, OB-248).
 const LATIN_ITEM =
   /\b(Tea dust|Milk|Sugar|Paper cups|Masala chai|Ginger chai|Bun maska|Samosa|Ragi biscuit|kg|litre|pack|piece|cup|cups)\b/

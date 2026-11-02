@@ -917,7 +917,7 @@ def new_order(
     delivery: str,
     distance_km: float | None,
     now: float,
-    lang: str = "en",
+    lang: str | None = "en",
 ) -> dict[str, Any]:
     lines, total = build_lines(shop, items, own.currency)
     when, words_ = delivery_slot(shop, own.timezone, now)
@@ -934,7 +934,7 @@ def new_order(
             "min_order": shop.get("min_order", ""),
         },
         "shop_name": own.name,
-        "lang": lang.split("-")[0].lower(),
+        "lang": (lang or "en").split("-")[0].lower(),
         "currency": own.currency,
         "lines": lines,
         "total": total,

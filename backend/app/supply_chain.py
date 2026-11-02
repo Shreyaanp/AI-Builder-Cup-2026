@@ -1531,7 +1531,9 @@ def settle_confirmation(po: dict[str, Any]) -> None:
     for line in po["lines"]:
         if line.get("line_status") == "rejected":
             line["confirmed"] = 0
-        price = line.get("confirmed_price", line.get("price"))
+        price = line.get("confirmed_price")
+        if price is None:
+            price = line.get("price")
         if price is not None:
             # The chat still tells what it was: "₹235 a kg now, it was ₹224".
             line["asked_price"] = line.get("asked_price", line.get("price"))
