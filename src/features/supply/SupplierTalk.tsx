@@ -72,6 +72,11 @@ export function SupplierTalk({
   const list = order.lines.map(size).join(', ')
   const day = order.delivery ? dayLabel(order.delivery, locale) : ''
 
+  const askedPrice = (item: string) => {
+    const row = order.lines.find((line) => line.item === item)
+    return row?.asked_price ?? row?.price
+  }
+
   const messages: { key: string; at: number; mine: boolean; text: string }[] = []
   for (const document of order.documents) {
     const base = { key: document.id, at: document.at }
@@ -81,8 +86,8 @@ export function SupplierTalk({
     } else if (document.kind === 'ORDRSP') {
       const short = linesOf(document).find((line) => line.status === 'backordered')
       const dearer = linesOf(document).find((line) => {
-        const asked = order.lines.find((row) => row.item === line.item)
-        return asked?.price != null && line.price != null && line.price > asked.price
+        const asked = askedPrice(line.item)
+        return asked != null && line.price != null && line.price > asked
       })
       if (short) {
         messages.push({
@@ -96,14 +101,13 @@ export function SupplierTalk({
           ),
         })
       } else if (dearer) {
-        const asked = order.lines.find((row) => row.item === dearer.item)
         messages.push({
           ...base,
           mine: false,
           text: c.dearer(
             productName(dearer.item, locale),
             money(dearer.price),
-            money(asked?.price),
+            money(askedPrice(dearer.item)),
             unitLabel(dearer.unit, shopCopy),
           ),
         })

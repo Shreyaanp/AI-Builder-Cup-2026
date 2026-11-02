@@ -1516,7 +1516,8 @@ def apply_document(
 
 
 def settle_confirmation(po: dict[str, Any]) -> None:
-    """Accepted confirmation: quantities, back-orders and substitutes become the order."""
+    """Accepted confirmation: quantities, prices, back-orders and substitutes become the order.
+    `quantity` stays what was asked for; `confirmed` is what is coming."""
     po["backorders"] = [
         {
             "item": line["item"],
@@ -1530,10 +1531,13 @@ def settle_confirmation(po: dict[str, Any]) -> None:
     for line in po["lines"]:
         if line.get("line_status") == "rejected":
             line["confirmed"] = 0
-    po["confirmed_total"] = sum(
-        round((line.get("confirmed_price") or 0) * float(line.get("confirmed", line["quantity"])))
-        for line in po["lines"]
-    )
+        price = line.get("confirmed_price", line.get("price"))
+        if price is not None:
+            # The chat still tells what it was: "₹235 a kg now, it was ₹224".
+            line["asked_price"] = line.get("asked_price", line.get("price"))
+            line["price"] = price
+            line["total"] = round(price * float(line.get("confirmed", line["quantity"])))
+    po["total"] = po["confirmed_total"] = sum(line.get("total") or 0 for line in po["lines"])
 
 
 def open_flags(po: dict[str, Any]) -> int:

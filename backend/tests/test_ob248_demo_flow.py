@@ -177,6 +177,13 @@ def test_OB_248_a_visitor_sees_yes_then_short_then_dearer_in_three_plain_orders(
         json={"version": short["version"]},
     )
     assert accepted.status_code == 200 and accepted.json()["status"] == "confirmed"
+    # The order now says what is coming: only what the supplier has, at the agreed price.
+    settled = accepted.json()
+    line = settled["lines"][0]
+    came = line["confirmed"]
+    assert 0 < came < line["quantity"]
+    assert line["total"] == settled["total"] == round(line["price"] * came)
+    assert settled["backorders"][0]["quantity"] == line["quantity"] - came
     receive(client, session, bid, second["id"])
 
     third = send(client, session, bid, again(client, session, bid, second["id"]))
@@ -185,6 +192,24 @@ def test_OB_248_a_visitor_sees_yes_then_short_then_dearer_in_three_plain_orders(
     assert "price_changed" in {change["code"] for change in dearer["changes"]}
     was, now = third["lines"][0]["price"], dearer["lines"][0]["confirmed_price"]
     assert was < now <= was * 1.1 + 100 and now % 100 == 0
+    # Before the owner says yes, the order keeps the price they approved.
+    assert dearer["lines"][0]["price"] == was
+    assert dearer["total"] == round(was * dearer["lines"][0]["quantity"])
+    # After: the header, the line and the total all show the accepted amount.
+    risen = owner(
+        client,
+        session,
+        f"businesses/{bid}/supply/orders/{third['id']}/accept",
+        "POST",
+        json={"version": dearer["version"]},
+    )
+    assert risen.status_code == 200, risen.text
+    line = risen.json()["lines"][0]
+    assert line["price"] == now
+    assert line["total"] == risen.json()["total"] == round(now * line["quantity"])
+    # The bill is that same amount, so the order and its bill agree.
+    receive(client, session, bid, third["id"])
+    assert order_of(client, session, bid, third["id"])["invoice_total"] == risen.json()["total"]
 
 
 def test_OB_248_a_cancelled_draft_never_shifts_the_replies(

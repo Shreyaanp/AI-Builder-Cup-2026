@@ -27,6 +27,8 @@ export interface PoLine {
   next_tier?: { min_quantity: number; price: number } | null
   confirmed?: number
   confirmed_price?: number | null
+  /** The price asked for, once an accepted reply has changed `price`. */
+  asked_price?: number | null
   line_status?: 'accepted' | 'changed' | 'backordered' | 'substituted' | 'rejected'
   backorder_quantity?: number
   backorder_date?: string

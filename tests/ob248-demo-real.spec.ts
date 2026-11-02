@@ -242,7 +242,13 @@ test('OB-248 three plain orders bring a yes, a short reply and a new price', asy
   })
   await card.getByRole('button', { name: 'Accept changes', exact: true }).click()
   await expect(talk).toContainText('OK, go ahead.')
+  // The header says what is coming and what it costs, beside the line for the rest.
+  const header = card.getByTestId('order-headline')
+  await expect(header).toContainText(/^4 kg Tea dust .*₹896/)
+  await expect(card).toContainText(/2 kg Tea dust/)
   await delivered()
+  await expect(card.getByRole('button', { name: /Approve invoice · ₹896/ })).toBeVisible()
+  await expect(header).toContainText('₹896')
 
   // 3: Order again once more: the price went up, and it waits for the owner.
   await card.getByRole('button', { name: 'Order again', exact: true }).click()
@@ -250,7 +256,14 @@ test('OB-248 three plain orders bring a yes, a short reply and a new price', asy
   await expect(talk).toContainText(/Tea dust has gone up: ₹[\d,]+ a kg now, it was ₹[\d,]+/, {
     timeout: 20_000,
   })
-  await expect(card.getByRole('button', { name: 'Accept changes', exact: true })).toBeVisible()
+  // Not agreed yet: the header still shows the approved price.
+  await expect(header).toContainText(/^6 kg Tea dust .*₹1,344/)
+  await card.getByRole('button', { name: 'Accept changes', exact: true }).click()
+  await expect(talk).toContainText('OK, go ahead.')
+  await expect(header).toContainText(/^6 kg Tea dust .*₹1,410/)
+  await expect(header).not.toContainText('₹1,344')
+  // And the chat still tells the story of the rise.
+  await expect(talk).toContainText(/₹235 a kg now, it was ₹224/)
 })
 
 // Item names and units a Hindi owner must never see in English (OB-74, OB-248).

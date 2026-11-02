@@ -37,7 +37,7 @@ import { Code } from './Code'
 import { ConfirmUndo } from './ConfirmUndo'
 import { useOrderChangeCopy } from './orderChangeCopy'
 import { useShowcaseCopy } from './showcaseCopy'
-import { orderLabel, orderTotal } from './orderFormat'
+import { agreedQuantity, orderLabel, orderTotal } from './orderFormat'
 import { useSupplyCopy, type SupplyCopy } from './copy'
 import { dayLabel, useOrderUnit, usePoActions, type SimVariant } from './supplyData'
 import type { DocFlag, DocKind, PurchaseOrder, RuleCheck, SupplyDocument } from './types'
@@ -76,7 +76,9 @@ function useFormat(order: PurchaseOrder) {
 /** The order in one plain line: "20 kg Atta · deliver Fri 17 Oct · ₹1,240 · 7-day credit". */
 function headline(order: PurchaseOrder, s: SupplyCopy, f: ReturnType<typeof useFormat>) {
   const [first, ...rest] = order.lines
-  const what = first ? `${f.qty(first.quantity)} ${f.unit(first.unit)} ${f.item(first.item)}` : ''
+  const what = first
+    ? `${f.qty(agreedQuantity(order, first))} ${f.unit(first.unit)} ${f.item(first.item)}`
+    : ''
   return [
     what + (rest.length ? ` +${rest.length}` : ''),
     order.delivery ? s.deliver(f.day(order.delivery)) : '',
@@ -248,6 +250,7 @@ export function PurchaseOrderCard({
           {order.supplier.name}
         </Typography>
         <Typography
+          data-testid="order-headline"
           variant="titleMedium"
           component="p"
           sx={{ mt: 1, overflowWrap: 'anywhere', ...chalkWrite }}
@@ -271,7 +274,7 @@ export function PurchaseOrderCard({
           <Box component="ul" sx={{ m: 0, mt: 2, pl: 5, display: 'grid', gap: 0.5 }}>
             {order.lines.map((line) => (
               <Typography component="li" variant="bodyMedium" key={line.line}>
-                {f.qty(line.quantity)} {f.unit(line.unit)} {f.item(line.item)} ·{' '}
+                {f.qty(agreedQuantity(order, line))} {f.unit(line.unit)} {f.item(line.item)} ·{' '}
                 {f.money(line.total)}
               </Typography>
             ))}
