@@ -4,6 +4,7 @@ import { hasHours } from '../../shop/hoursModel'
 import { closingMinutes, shopNow } from '../../owner/time'
 import { isFood, missingFacts, timeRanges, type AskFact } from '../shopProgress'
 import type { DayPart } from './todayCopy'
+import { leadOrder } from './leadOrder'
 
 export type TodayFacts = components['schemas']['Today']
 export type CoachLine = components['schemas']['CoachLine']
@@ -71,8 +72,9 @@ export interface TodayInput {
   now: Date
   /** The owner's face check (null while unknown): skipped at onboarding → a reminder. */
   face?: 'not_started' | 'verified' | 'in_review' | 'not_verified' | null
-  /** The supply card's lead item (null while unknown or nothing runs out). */
-  supply?: { item: string } | null
+  /** The supply card's lead item (null while unknown or nothing runs out); `soon` when it runs
+   * out within 2 days, the brief's rule for "Order now" (brief.py best_action). */
+  supply?: { item: string; soon?: boolean } | null
   /** This morning's promise was done or cleared here (before the server facts reload). */
   promiseAnswered?: boolean
 }
@@ -85,7 +87,6 @@ export function isCloseDayWindow(fields: Business['fields'], now: Date): boolean
   return currentMinutes >= threshold
 }
 
-const MAX_NEEDS = 3
 const MAX_PULSE_VALUES = 3
 
 export function dayPart(now: Date): DayPart {
@@ -173,33 +174,6 @@ export function byPlaybook(needs: Need[], hints?: TodayHints | null): Need[] {
     .map(({ need }) => need)
 }
 
-/**
- * In the close window, closing the day keeps row 1: the playbook has no rank for it, and three
- * low-stock rows must never push the one daily ritual off Today (OB-235).
- */
-export function closeDayFirst(needs: Need[]): Need[] {
-  return [
-    ...needs.filter((need) => need.kind === 'closeDay'),
-    ...needs.filter((need) => need.kind !== 'closeDay'),
-  ]
-}
-
-/**
- * The morning (HABIT change 2 and 4): last night's promise leads, after closing the day in the
- * close window. Stock is one surface: the supply row with its run-out day keeps a place in the
- * three, so the playbook can never push the shop's one dated stock line off Today.
- */
-export function leadOrder(needs: Need[]): Need[] {
-  const ordered = closeDayFirst([
-    ...needs.filter((need) => need.kind === 'promise'),
-    ...needs.filter((need) => need.kind !== 'promise'),
-  ])
-  const top = ordered.slice(0, MAX_NEEDS)
-  const supply = ordered.find((need) => need.kind === 'supply')
-  if (!supply || top.includes(supply)) return top
-  return [...top.slice(0, MAX_NEEDS - 1), supply]
-}
-
 function pulseLine(pulse: Pulse, when: PulseLine['when'], order: Metric[]): PulseLine | null {
   const values = order
     // Revenue already tells the day; the item count is the fallback when no prices were saved.
@@ -245,17 +219,22 @@ export function todayPlan(input: TodayInput): TodayPlan {
   const closeWindow = isCloseDayWindow(shop.fields, input.now)
 
   const all: Need[] = []
-  if (facts?.promise && !input.promiseAnswered)
-    all.push({ id: 'promise', kind: 'promise', promise: facts.promise })
+  const promise = facts?.promise && !input.promiseAnswered ? facts.promise : null
+  if (promise) all.push({ id: 'promise', kind: 'promise', promise })
   if (unread) all.push({ id: 'reply', kind: 'reply', count: unread })
   if (closeWindow && !isClosed) all.push({ id: 'close-day', kind: 'closeDay' })
+  const supply = input.supply?.item ?? null
+  const supplyRow: Need | null = supply ? { id: 'supply', kind: 'supply', item: supply } : null
+  // A supply that runs out within 2 days leads before the daily menu question, as in the brief.
+  if (supplyRow && input.supply?.soon) all.push(supplyRow)
   if (products.length && facts && shop.last_confirmed !== facts.date && !input.menuAnswered)
     all.push({ id: 'menu', kind: 'menu' })
   const soldOut = products.filter((product) => product.available === false)
-  const supply = input.supply?.item ?? null
-  if (supply) all.push({ id: 'supply', kind: 'supply', item: supply })
-  // The supply row already names this item with its run-out day: never twice on Today.
-  for (const low of (facts?.low_stock ?? []).filter((low) => low.name !== supply))
+  if (supplyRow && !input.supply?.soon) all.push(supplyRow)
+  // The supply row (with its run-out day) or last night's promise already names this item:
+  // never twice on Today.
+  const named = new Set([supply, promise?.item].filter(Boolean))
+  for (const low of (facts?.low_stock ?? []).filter((low) => !named.has(low.name)))
     all.push({
       id: `low-${low.name}`,
       kind: 'low',

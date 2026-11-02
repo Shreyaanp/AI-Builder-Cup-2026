@@ -13,7 +13,7 @@ import { shape } from '../../design/theme'
 import { productName } from '../../i18n/productNames'
 import { useLocale } from '../../state/hooks'
 import { AskHint } from '../v1/AskHint'
-import { usePromiseCopy } from '../v1/today/promiseCopy'
+import { promiseCopyFor } from '../v1/today/promiseCopy'
 import { useToday } from '../v1/today/useToday'
 import { useWorkspace } from '../v1/workspaceContext'
 
@@ -26,8 +26,8 @@ const MAX_TEXT = 80
  */
 export function TomorrowPromise() {
   const ws = useWorkspace()
-  const pc = usePromiseCopy()
   const locale = useLocale()
+  const pc = promiseCopyFor(locale)
   const roles = useTheme().material
   const facts = useToday()
   const [text, setText] = useState('')

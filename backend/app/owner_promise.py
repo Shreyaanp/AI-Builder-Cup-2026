@@ -165,11 +165,12 @@ async def answer_promise(
 
 
 @router.get("/{business_id}/promise", response_model=Promise | None)
-async def read_promise(business_id: str, request: Request) -> Promise | None:
+async def read_promise(business_id: str, request: Request, day: date | None = None) -> Promise | None:
+    """The open promise for a morning: this one by default, or a given day (tonight's for
+    tomorrow, so the close screen and tests can read it back)."""
     uid = await owner(request)
     await enforce_limits(request, [("owner:read", uid)])
     service = store(request)
     business = await anyio.to_thread.run_sync(service.owned_business, uid, business_id)
-    return await anyio.to_thread.run_sync(
-        promise_for, service, business_id, shop_day(business.get("fields") or {})
-    )
+    when = day or shop_day(business.get("fields") or {})
+    return await anyio.to_thread.run_sync(promise_for, service, business_id, when)

@@ -7,6 +7,13 @@ import { useWorkspace } from '../workspaceContext'
 import { todayPlan, type TodayPlan } from './todayPlan'
 import { useToday } from './useToday'
 
+/** Runs out within 2 days of the shop's today (both ISO dates); false when either is unknown. */
+function soon(runsOut: string | undefined, today: string | undefined): boolean {
+  if (!runsOut || !today) return false
+  const days = (Date.parse(runsOut.slice(0, 10)) - Date.parse(today)) / 86_400_000
+  return days <= 2
+}
+
 /** Today's plan for the active shop, with the daily menu answer remembered for this visit. */
 export function useTodayPlan(unread: number | null): {
   plan: TodayPlan | null
@@ -62,7 +69,9 @@ export function useTodayPlan(unread: number | null): {
     dayClosed: Boolean(facts ? closedDay === facts.date : closedDay),
     now,
     face: trust?.face ?? null,
-    supply: supply.item ? { item: supply.item } : null,
+    supply: supply.item
+      ? { item: supply.item, soon: soon(supply.need?.runs_out, facts?.date) }
+      : null,
     promiseAnswered: Boolean(facts?.promise && promiseDay === facts.promise.day),
   })
   return {

@@ -42,7 +42,7 @@ import { useWorkspace } from '../workspaceContext'
 import { useOnboardingCopy } from '../onboardingCopy'
 import { useSourceCopy } from './sourceCopy'
 import { useTodayCopy, type Festival } from './todayCopy'
-import { usePromiseCopy } from './promiseCopy'
+import { promiseCopyFor } from './promiseCopy'
 import type { CoachLine, Need, StepId, TodayPlan } from './todayPlan'
 import { useTodayPlan } from './useTodayPlan'
 import { countAction, countShown } from './habitCount'
@@ -464,8 +464,8 @@ function NeedRow({
   const tt = useTodayCopy()
   const sc = useSourceCopy()
   const o = useOnboardingCopy()
-  const pc = usePromiseCopy()
   const locale = useLocale()
+  const pc = promiseCopyFor(locale)
   const ws = useWorkspace()
   const roles = useTheme().material
   const [busy, setBusy] = useState(false)
@@ -501,7 +501,8 @@ function NeedRow({
         if (!ws.active) return
         await ws.api(
           `/businesses/${encodeURIComponent(ws.active.id)}/promise/${promise.day}/${state}`,
-          { method: 'POST' },
+          // 204, no body.
+          { method: 'POST', raw: true },
         )
         answerPromise(promise.day)
       })

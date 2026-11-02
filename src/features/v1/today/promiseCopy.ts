@@ -1,5 +1,4 @@
-import { useLocale } from '../../../state/hooks'
-import type { Locale } from '../../../i18n/locales'
+import type { Locale } from '../../../i18n/locales.js'
 
 /**
  * Tomorrow's promise (HABIT change 4): written down at close, shown the next morning on Today.
@@ -272,8 +271,4 @@ const copy: Record<Locale, PromiseCopy> = {
 
 export function promiseCopyFor(locale: Locale): PromiseCopy {
   return copy[locale] ?? copy.en
-}
-
-export function usePromiseCopy(): PromiseCopy {
-  return promiseCopyFor(useLocale())
 }
