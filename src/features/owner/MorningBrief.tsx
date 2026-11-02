@@ -17,6 +17,7 @@ import type { components } from '../../api/generated'
 import { hits, useChalkTimeline } from '../../design/chalkMotion'
 import { scrollArea, shape } from '../../design/theme'
 import { useLocale } from '../../state/hooks'
+import { productName } from '../../i18n/productNames'
 import { CloseDay } from '../closeday/CloseDay'
 import { closeDayCopy } from '../closeday/strings'
 import { useCopy as usePlanCopy } from '../planning/strings'
@@ -154,7 +155,7 @@ export function MorningBrief({
                 variant="bodyLarge"
                 sx={{ flex: 1, minWidth: 0, overflowWrap: 'anywhere' }}
               >
-                {row.name}
+                {productName(row.name, locale)}
               </Typography>
               <Typography
                 component="p"
@@ -240,7 +241,7 @@ export function MorningBrief({
                 variant="bodyLarge"
                 sx={{ flex: 1, minWidth: 0, overflowWrap: 'anywhere' }}
               >
-                {row.name}
+                {productName(row.name, locale)}
               </Typography>
               <Typography variant="bodyMedium" sx={{ fontVariantNumeric: 'tabular-nums' }}>
                 {fill(t.stockLeft, {

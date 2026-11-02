@@ -379,3 +379,21 @@ test('OB-248 Find suppliers lists the demo suppliers and drafts the order to sen
   await log.getByRole('button', { name: /^Send/ }).first().click()
   await expect(log).toContainText('Automatic demo reply', { timeout: 20_000 })
 })
+
+test('OB-248 a failed orders read stops retrying once the view is gone', async ({ page }) => {
+  await openDemo(page)
+  let reads = 0
+  await page.route('**/supply', async (route) => {
+    reads += 1
+    await new Promise((resolve) => setTimeout(resolve, 500))
+    await route.abort()
+  })
+  await page.locator('[data-tour="nav-grow"]').click()
+  await expect.poll(() => reads, { timeout: 15_000 }).toBeGreaterThan(0)
+  // Leaving Grow closes the tiles while their read is still failing.
+  await page.locator('[data-tour="nav-you"]').click()
+  await page.waitForTimeout(1_000)
+  const after = reads
+  await page.waitForTimeout(10_000)
+  expect(reads).toBe(after)
+})

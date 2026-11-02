@@ -521,3 +521,11 @@ def test_OB_248_writing_to_a_supplier_is_for_an_open_order_in_the_demo_only(
     with pytest.raises(HTTPException) as refused:
         demo_supplier.write(None, "firebase:someone", bid, order["id"], 1, "Hello")  # type: ignore[arg-type]
     assert refused.value.status_code == 404
+
+
+def test_OB_248_hindi_stock_answer_says_the_unit_in_hindi(live_parent_demo) -> None:  # noqa: F811
+    client, _app, session, _bid = live_parent_demo
+    response = client.post(
+        f"/api/v1/demo/sessions/{session}/coach", json={"message": "Tea dust का स्टॉक कितना है?"}
+    )
+    assert "6 किलो" in response.text

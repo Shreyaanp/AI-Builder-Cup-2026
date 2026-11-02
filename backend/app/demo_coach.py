@@ -31,6 +31,7 @@ FIND_SUPPLIERS = re.compile(
 )
 LOW_ON = re.compile(r"\b(?:running\s+low|low\s+on|run\s+out\s+of|restock)\b|कम\s+हो|खत्म\s+हो", re.I)
 DRAFT_QUANTITY = 10
+HINDI_UNITS = {"kg": "किलो", "litre": "लीटर", "pack": "पैक", "cup": "कप", "piece": "पीस"}
 DEMO_NOTE_HI = "यह डेमो दुकान है, इसलिए कुछ भी असली ग्राहकों तक नहीं जाता।"
 HINDI = re.compile(r"[ऀ-ॿ]")
 # The offline coach is conservative: a review card only for a short request that is all one of
@@ -622,20 +623,22 @@ def public_demo_reply(ctx: Any, question: str) -> str | None:
                 "डेमो में Google पर आने का अभ्यास करें: यह सिर्फ़ दिखावा है, Google को कुछ नहीं भेजा "
                 f"जाता। {next_line_hi('google')}"
             )
+        unit = str(product.get("unit") or "चीज़ें")
+        unit_hi = HINDI_UNITS.get(unit, unit)
         if any(term in words for term in ("आज", "बिक्री", "कमाई")):
             rows = [row for row in history if row["date"] == today.isoformat()]
             sold = sum(row["quantity"] for row in rows)
             revenue = sum(row.get("revenue", row.get("amount", 0)) for row in rows)
             return f"आज डेमो में {sold:g} चीज़ें बिकीं और बिक्री ₹{revenue:g} रही।"
         if any(term in words for term in ("स्टॉक", "बचा", "उपलब्ध", "खत्म", "कम")):
-            return f"डेमो में {name} का स्टॉक {stock:g} {product.get('unit', 'चीज़ें')} है।"
+            return f"डेमो में {name} का स्टॉक {stock:g} {unit_hi} है।"
         if any(term in words for term in ("कीमत", "दाम", "भाव")):
             return f"डेमो में {name} की कीमत ₹{price:g} है।"
         if any(term in words for term in ("ऑर्डर", "सप्लायर", "मंगाऊँ", "खरीद")):
             orders = supply_chain.orders(store, uid, bid)
             po = next((order for order in orders if order.get("supplier")), None)
             supplier = po["supplier"]["name"] if po else "डेमो सप्लायर"
-            return f"डेमो सप्लायर {supplier} है। {name} का स्टॉक {stock:g} {product.get('unit', '')} है।"
+            return f"डेमो सप्लायर {supplier} है। {name} का स्टॉक {stock:g} {unit_hi} है।"
         if any(term in words for term in ("कल", "तैयार", "बनाऊँ")):
             return f"कल {name} की तैयारी के लिए डेमो बिक्री का औसत देखें।"
         if any(term in words for term in ("समय", "खुला", "खुलती", "बंद")):

@@ -112,15 +112,21 @@ export function useSupply(open: boolean) {
     if (!open || !activeId) return
     let timer = 0
     let tries = 0
+    let stopped = false
     const attempt = (fresh: boolean) =>
       load(api, activeId, fresh, revision).catch(() => {
+        // A read that fails after the view closed must not start retrying again.
+        if (stopped) return
         setFailed(true)
         tries += 1
         timer = window.setTimeout(() => attempt(true), Math.min(1000 * 2 ** tries, 8000))
       })
     // Async on purpose: the list arrives after this effect, never synchronously inside it.
     timer = window.setTimeout(() => attempt(false), 0)
-    return () => window.clearTimeout(timer)
+    return () => {
+      stopped = true
+      window.clearTimeout(timer)
+    }
   }, [open, api, activeId, revision])
   return { data: loaded?.id === activeId ? loaded.data : null, refresh, failed }
 }
