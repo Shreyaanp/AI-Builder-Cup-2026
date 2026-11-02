@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { enter, localOnly, seedShop } from '../stories/support.js'
+import { openGrowTool } from '../support/grow.js'
 
 test.use({
   viewport: { width: 390, height: 844 },
@@ -99,11 +100,12 @@ test('Hindi phone sweep: supply, reminders, onboarding, tour and demo', async ({
   await page.getByRole('button', { name: 'स्थानीय प्रीव्यू जारी रखें', exact: true }).click()
 
   await tab(page, 'बढ़ाएँ').click()
-  await page.getByRole('button', { name: /^खरीद/ }).click()
+  // Purchase orders and Supply chain sit in the माल मँगाएँ row (batch 4a).
+  await openGrowTool(page, /^खरीद/)
   await hindiOnly(page, 'खरीद और उधार शर्तें')
   await page.getByRole('button', { name: 'सामान मँगाने का डेमो देखें', exact: true }).click()
   await tab(page, 'बढ़ाएँ').click()
-  await page.getByRole('button', { name: /^आपूर्ति/ }).click()
+  await openGrowTool(page, /^आपूर्ति/)
   await hindiOnly(page, 'माल की रवानगी, रसीद और ASN क्रम')
   await page.keyboard.press('Escape')
 

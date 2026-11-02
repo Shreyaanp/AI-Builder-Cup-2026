@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
+import { showInGrow } from './support/grow.js'
 
 // OB-248 (#635): one full supplier order in the public demo, and nothing blocked for a visitor.
 test.setTimeout(120_000)
@@ -37,7 +38,7 @@ async function teaDustStock(page: Page): Promise<number> {
 
 async function openOrders(page: Page) {
   await page.locator('[data-tour="nav-grow"]').click()
-  await page.locator('[data-tour="supply"]').click()
+  await (await showInGrow(page, page.locator('[data-tour="supply"]'))).click()
   const sheet = page.getByRole('dialog')
   await expect(sheet.getByText(/Sri Lakshmi/).first()).toBeVisible({ timeout: 15_000 })
   return sheet
@@ -80,8 +81,9 @@ test('OB-248 the supplier talks in the owner language', async ({ page }) => {
   await openDemo(page, 'छोड़ें')
   await page.locator('[data-tour="nav-grow"]').click()
   // The Morning brief's stock line carries the Hindi unit too.
-  await expect(page.getByText(/^बाकी: \S+ किलो$/).first()).toBeVisible({ timeout: 15_000 })
-  await page.locator('[data-tour="supply"]').click()
+  // It opens in place from its Morning brief row (batch 4a).
+  await showInGrow(page, page.getByText(/^बाकी: \S+ किलो$/).filter({ visible: true }))
+  await (await showInGrow(page, page.locator('[data-tour="supply"]'))).click()
   const sheet = page.getByRole('dialog')
   await expect(sheet.getByText(/Sri Lakshmi/).first()).toBeVisible({ timeout: 15_000 })
   await sheet
@@ -205,7 +207,7 @@ test('OB-248 a failed orders read says so and tries again, never "–" as if emp
   await page.reload()
   await expect(page.getByTestId('today')).toBeVisible({ timeout: 30_000 })
   await page.locator('[data-tour="nav-grow"]').click()
-  const tile = page.locator('[data-tour="supply"]')
+  const tile = await showInGrow(page, page.locator('[data-tour="supply"]'))
   await expect(tile).toContainText('Couldn’t load orders. Trying again…', { timeout: 15_000 })
   await expect(tile).not.toContainText('Orders drafted from your forecast')
   await expect(tile).toContainText(/\d+ open|None open/, { timeout: 30_000 })
@@ -276,7 +278,7 @@ test('OB-248 Hindi: a short reply and a new price, each accepted, show the owner
   )
   await openDemo(page, 'छोड़ें')
   await page.locator('[data-tour="nav-grow"]').click()
-  await page.locator('[data-tour="supply"]').click()
+  await (await showInGrow(page, page.locator('[data-tour="supply"]'))).click()
   const sheet = page.getByRole('dialog')
   const card = sheet.locator('article')
   const talk = card.getByTestId('supplier-talk')
@@ -345,11 +347,14 @@ test('OB-248 Hindi: Coach, Purchase orders, order card and supplier chat name ev
   await expect(page.getByTestId('today')).toContainText(/चाय पत्ती [^।]* को खत्म होगी/)
   // Purchase orders: the tile, the list, then each order card with its supplier chat.
   await page.locator('[data-tour="nav-grow"]').click()
-  await expect(page.locator('[data-tour="supply"]')).toContainText('Sri Lakshmi', {
-    timeout: 15_000,
-  })
+  await expect(await showInGrow(page, page.locator('[data-tour="supply"]'))).toContainText(
+    'Sri Lakshmi',
+    {
+      timeout: 15_000,
+    },
+  )
   await check('Purchase orders tile', await page.locator('[data-tour="supply"]').innerText())
-  await page.locator('[data-tour="supply"]').click()
+  await (await showInGrow(page, page.locator('[data-tour="supply"]'))).click()
   const sheet = page.getByRole('dialog')
   await expect(sheet.getByText(/Sri Lakshmi/).first()).toBeVisible({ timeout: 15_000 })
   await check('Purchase orders', await sheet.innerText())
@@ -405,7 +410,7 @@ test('OB-248 Hindi: morning brief, prep plan, the card after sending and chat an
   check('Coach answers', await log.innerText())
   // Grow: the morning brief's prep rows, the prep plan tile and its sheet.
   await page.locator('[data-tour="nav-grow"]').click()
-  const prepTile = page.locator('[data-tour="prep"]')
+  const prepTile = await showInGrow(page, page.locator('[data-tour="prep"]'))
   await expect(prepTile).toContainText('मसाला चाय', { timeout: 15_000 })
   await expect(page.getByText(/^\S+ कप$/).first()).toBeAttached({ timeout: 15_000 })
   check('Grow', (await page.locator('body').textContent()) ?? '')
@@ -415,7 +420,7 @@ test('OB-248 Hindi: morning brief, prep plan, the card after sending and chat an
   check('Prep plan', await prep.innerText())
   await prep.getByRole('button', { name: 'बंद करें', exact: true }).click()
   // An order card just after sending, its note included.
-  await page.locator('[data-tour="supply"]').click()
+  await (await showInGrow(page, page.locator('[data-tour="supply"]'))).click()
   const sheet = page.getByRole('dialog')
   await sheet.getByRole('button', { name: 'फिर से सामान मँगाएँ' }).click()
   const card = sheet.locator('article')
@@ -453,7 +458,7 @@ test('OB-248 Hindi: the Goods arrived check sheet shows the item, category and u
   )
   await openDemo(page, 'छोड़ें')
   await page.locator('[data-tour="nav-grow"]').click()
-  await page.locator('[data-tour="supply"]').click()
+  await (await showInGrow(page, page.locator('[data-tour="supply"]'))).click()
   const sheet = page.getByRole('dialog')
   await sheet.getByRole('button', { name: 'फिर से सामान मँगाएँ' }).click()
   const card = sheet.locator('article')

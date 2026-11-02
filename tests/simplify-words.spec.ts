@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import { FIRST_QUESTION } from './newShopTopics.js'
 import { enter, localOnly } from './stories/support.js'
+import { growTool, openGrowRows } from './support/grow.js'
 import { noJargon, textSizes } from './support/simplicity.js'
 import { shopMore } from './support/shopMore.js'
 
@@ -67,6 +68,8 @@ test('the demo shows no developer words on Coach, Shop, Grow and You', async ({ 
   await noJargon(page, JARGON)
   for (const name of ['shop', 'grow', 'you', 'coach'] as const) {
     await tab(page, name)
+    // Grow's rows open in place (batch 4a): the brief's slides and each tool's row too.
+    if (name === 'grow') await openGrowRows(page)
     await noJargon(page, JARGON)
   }
 })
@@ -82,8 +85,10 @@ test('the demo sheets show no developer words', async ({ page }) => {
     /^Your week/,
     /^Weekly recap/,
     /^Close the day/,
-  ])
+  ]) {
+    await growTool(page, button)
     await sheet(page, button)
+  }
   // The weather slide of the morning brief carries the data source.
   await expect(page.getByText('Open-Meteo')).toHaveCount(0)
   await tab(page, 'shop')

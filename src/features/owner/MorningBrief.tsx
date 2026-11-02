@@ -24,6 +24,7 @@ import { closeDayCopy } from '../closeday/strings'
 import { useCopy as usePlanCopy } from '../planning/strings'
 import type { ShopSheetKind } from '../v1/ShopTiles'
 import { useWorkspace } from '../v1/workspaceContext'
+import { useInGroup } from '../v1/growLayout'
 import { fill, useOwnerCopy } from './copy'
 import { shopNow } from './time'
 import { dayLabel } from '../supply/supplyData'
@@ -59,9 +60,12 @@ function hideToday(shop: string, date: string) {
 export function MorningBrief({
   onSheet,
   onRadar,
+  embedded = false,
 }: {
   onSheet: (kind: ShopSheetKind) => void
   onRadar: () => void
+  /** Inside Grow's Morning brief row: the row names it and opens it, so no title or hide. */
+  embedded?: boolean
 }) {
   const t = useOwnerCopy()
   const shopCopy = useShopCopy()
@@ -74,7 +78,8 @@ export function MorningBrief({
   const shop = ws.active!
   const today = shopNow(shopZone(shop.fields)).date
   const [brief, setBrief] = useState<Brief | null>(null)
-  const [hidden, setHidden] = useState(() => hiddenToday(shop.id, today))
+  const [hiddenByOwner, setHidden] = useState(() => hiddenToday(shop.id, today))
+  const hidden = hiddenByOwner && !embedded
   const [index, setIndex] = useState(0)
   const [closing, setClosing] = useState(false)
   const track = useRef<HTMLDivElement>(null)
@@ -103,6 +108,7 @@ export function MorningBrief({
     },
     [Boolean(brief)],
   )
+  useInGroup(t.brief, Boolean(brief) && !hidden)
   if (hidden || !brief) return null
 
   // Treat optional server collections as empty; the rest of the shop remains usable.
@@ -304,31 +310,43 @@ export function MorningBrief({
       component="section"
       aria-label={t.brief}
       aria-roledescription="carousel"
-      sx={{
-        borderRadius: `${shape.lgIncreased}px`,
-        bgcolor: roles.surfaceContainer,
-        border: `1px solid ${roles.outlineVariant}`,
-        overflow: 'hidden',
-      }}
+      sx={
+        embedded
+          ? { overflow: 'hidden' }
+          : {
+              borderRadius: `${shape.lgIncreased}px`,
+              bgcolor: roles.surfaceContainer,
+              border: `1px solid ${roles.outlineVariant}`,
+              overflow: 'hidden',
+            }
+      }
     >
-      <Stack direction="row" sx={{ alignItems: 'center', gap: 2, pl: 4, pr: 1, pt: 2 }}>
-        <Box aria-hidden="true" sx={{ display: 'flex', color: lilac.main }}>
-          <Sunrise size={20} />
-        </Box>
-        <Typography id="brief-title" component="h2" variant="labelLarge" sx={{ flex: 1 }}>
-          {t.brief}
-        </Typography>
-        {brief.demo && <Chip size="small" label={t.demo} />}
-        <IconButton
-          aria-label={t.hide}
-          onClick={() => {
-            hideToday(shop.id, today)
-            setHidden(true)
-          }}
-        >
-          <X size={18} />
-        </IconButton>
-      </Stack>
+      {embedded ? (
+        brief.demo && (
+          <Stack direction="row" sx={{ justifyContent: 'flex-end', px: 4, pt: 2 }}>
+            <Chip size="small" label={t.demo} />
+          </Stack>
+        )
+      ) : (
+        <Stack direction="row" sx={{ alignItems: 'center', gap: 2, pl: 4, pr: 1, pt: 2 }}>
+          <Box aria-hidden="true" sx={{ display: 'flex', color: lilac.main }}>
+            <Sunrise size={20} />
+          </Box>
+          <Typography id="brief-title" component="h2" variant="labelLarge" sx={{ flex: 1 }}>
+            {t.brief}
+          </Typography>
+          {brief.demo && <Chip size="small" label={t.demo} />}
+          <IconButton
+            aria-label={t.hide}
+            onClick={() => {
+              hideToday(shop.id, today)
+              setHidden(true)
+            }}
+          >
+            <X size={18} />
+          </IconButton>
+        </Stack>
+      )}
       <Box
         ref={track}
         onScroll={(event) => {

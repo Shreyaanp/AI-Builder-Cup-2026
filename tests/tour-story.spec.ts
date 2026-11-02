@@ -1,6 +1,7 @@
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test } from '@playwright/test'
 import { enter } from './stories/support.js'
+import { openGrowTool } from './support/grow.js'
 
 test.beforeEach(async ({ page, isMobile }) => {
   if (isMobile) await page.setViewportSize({ width: 390, height: 844 })
@@ -227,7 +228,7 @@ test('owner tour connects Today, forecast, payment preview and supplier timeline
   })
   await page.getByRole('button', { name: 'Back', exact: true }).click()
   await page.getByRole('button', { name: 'Grow', exact: true }).click()
-  await page.getByRole('button', { name: /Purchase orders/ }).click()
+  await openGrowTool(page, /^Purchase orders/)
   // OB-110: a small shop's Purchase orders hold its own orders only, no SAP sandbox sample.
   await expect(page.getByText('Recorded sample of SAP’s sandbox, not live')).toHaveCount(0)
   await page

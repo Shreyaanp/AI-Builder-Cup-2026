@@ -2,6 +2,7 @@ import { mkdir } from 'node:fs/promises'
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
 import { enter, image, localOnly } from './stories/support.js'
+import { showInGrow } from './support/grow.js'
 
 // The Coach tab's first view ("Today"): day one, items that need the owner, all set, and the
 // pill it shrinks to while chatting. Server facts are the real endpoint unless a test needs
@@ -246,7 +247,7 @@ for (const [language, preview, pointer, shopTile, tile, menu, draft] of [
       route.fulfill({ json: { status: 'ask_source', item: 'Shampoo' } }),
     )
     await page.locator('[data-tour="nav-grow"]').click()
-    await page.locator('[data-tour="supply"]').click()
+    await (await showInGrow(page, page.locator('[data-tour="supply"]'))).click()
     const sheet = page.getByRole('dialog')
     await sheet.getByRole('button', { name: draft }).click()
     await expect(sheet.getByRole('status')).toContainText(`${shopTile} › ${tile}`)

@@ -1,6 +1,7 @@
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
 import { enter, localOnly, seedShop } from './stories/support.js'
+import { openGrowTool } from './support/grow.js'
 
 const noSideScroll = async (page: Page) =>
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
@@ -16,12 +17,12 @@ test('Supply on a phone: forecast in → order → change → goods arrive → r
   await page.keyboard.press('Escape')
   // The private local demo: a milk shop with a purchase order sent to a simulated SAP dairy.
   await page.getByRole('button', { name: 'Grow', exact: true }).click()
-  await page.getByRole('button', { name: /^Purchase orders/ }).click()
+  await openGrowTool(page, /^Purchase orders/)
   await page.getByRole('button', { name: 'Try supply demo', exact: true }).click()
   await expect(page.getByRole('region', { name: 'Supply chain' })).toBeVisible()
 
   await page.getByRole('button', { name: 'Grow', exact: true }).click()
-  await page.getByRole('button', { name: /^Supply chain/ }).click()
+  await openGrowTool(page, /^Supply chain/)
   const hub = page.getByRole('dialog', { name: 'Supply chain' })
   await hub.getByRole('button', { name: /^On the way/ }).click()
   await expect(hub.getByRole('heading', { name: 'What’s coming in?' })).toBeVisible()

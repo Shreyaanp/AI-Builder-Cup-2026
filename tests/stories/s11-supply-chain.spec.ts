@@ -1,6 +1,7 @@
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Locator, type Page } from '@playwright/test'
 import { confirm, enter, liveOnly, localOnly } from './support.js'
+import { openGrowTool } from '../support/grow.js'
 
 /**
  * S11 · Supply chain: the forecast drafts a purchase order to a (simulated) SAP supplier, the
@@ -215,7 +216,7 @@ test('S11 · forecast → PO → ORDRSP (partial) → ASN → invoice, translate
 
   await test.step('5 · rules screen on Grow', async () => {
     await page.getByRole('button', { name: 'Grow', exact: true }).click()
-    await page.getByRole('button', { name: /^Purchase orders/ }).click()
+    await openGrowTool(page, /^Purchase orders/)
     const sheet = page.getByRole('dialog', { name: 'Purchase orders' })
     await expect(sheet).toContainText('Atta (wheat flour) from Kaveri Fresh & Dairy Supply')
     await sheet

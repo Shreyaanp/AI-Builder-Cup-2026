@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useContext, useState } from 'react'
 import type { ReactNode } from 'react'
 import {
   Alert,
@@ -66,6 +66,8 @@ import { useGallery } from '../google/useGallery'
 import { useLocale } from '../../state/hooks'
 import { productName } from '../../i18n/productNames'
 import { MapCard } from './MapCard'
+import { ListTile } from './GrowList'
+import { TileLayoutContext } from './growLayout'
 import type { Proposal } from './api'
 
 /** How many menu items the busy-hours question goes through (menu order). */
@@ -95,6 +97,7 @@ export function Tile({
   onClick,
   compact = false,
   tour,
+  alert = false,
 }: {
   icon: ReactNode
   label: string
@@ -108,9 +111,27 @@ export function Tile({
   compact?: boolean
   /** Guided-tour anchor (data-tour). */
   tour?: string
+  /** Something to act on now, not a tool: in a Grow group it is not one of the row's names. */
+  alert?: boolean
 }) {
   const roles = useTheme().material
   const columns = span ?? (wide ? 2 : 1)
+  // Grow draws the same tools as rows and a More tools grid (simplify batch 4a).
+  const layout = useContext(TileLayoutContext)
+  if (layout !== 'card')
+    return (
+      <ListTile
+        layout={layout}
+        icon={icon}
+        label={label}
+        value={value}
+        onClick={onClick}
+        tour={tour}
+        alert={alert}
+      >
+        {children}
+      </ListTile>
+    )
   return (
     <ButtonBase
       onClick={onClick}
