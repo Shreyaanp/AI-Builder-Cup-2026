@@ -69,10 +69,11 @@ def test_demo_is_the_full_owner_app_on_a_private_sandbox(app, monkeypatch):  # n
         assert sap.status_code == 200 and sap.json()["source"] == "recorded"
         drafted = owner(client, session, f"businesses/{bid}/supply/reorder", "POST", json={})
         assert drafted.status_code == 200, drafted.text
-        # Sandbox writes stay in the session; anything that would leave it is refused.
+        # Sandbox writes stay in the session (the real store below is never called); anything
+        # that would leave it is refused. OB-248: sharing is one of those sandbox writes.
         assert owner(client, session, "me/data", "DELETE").status_code == 403
         shared = owner(client, session, f"businesses/{bid}/share", "POST", json={"public": True})
-        assert shared.status_code == 403 and shared.json()["detail"] == "DEMO_NOT_SENT"
+        assert shared.status_code == 200 and shared.json()["public"] is True
         assert owner(client, session, "businesses/someone-else/inventory").status_code in {
             403,
             404,
@@ -179,7 +180,7 @@ def test_OB_59_public_demo_coach_answers_Hindi_in_Hindi(app):  # noqa: N802, F81
         ("आज बिक्री कैसी रही?", "आज डेमो में"),
         ("कल क्या तैयारी करूँ?", "कल"),
         ("ग्राहक क्या पूछ रहे हैं?", "ग्राहक सवाल"),
-        ("नमक खत्म है", "डेमो में"),
+        ("नमक खत्म है", "डेमो दुकान में नमक का स्टॉक दर्ज नहीं है"),
         ("कीमत बदलो", "कीमत"),
         ("ऑर्डर और सामान", "डेमो सप्लायर"),
         # Closed for today only is prepared for review, as on Shop details (#633).

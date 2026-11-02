@@ -3,6 +3,7 @@ import type { PurchaseOrder, PoStatus, Relationship } from '../supply/types.ts'
 import type { PaymentLink } from '../owner-tools/links.ts'
 import type { CoachAction } from './coachAction.ts'
 import { formatShopPrice, toMinor } from './format.ts'
+import { productName } from '../../i18n/productNames.ts'
 
 /**
  * OB-249: an earlier chat card shrinks to one line, "Order · Tea dust 10 kg · Needs your OK".
@@ -12,6 +13,7 @@ import { formatShopPrice, toMinor } from './format.ts'
 const en = {
   order: 'Order',
   suppliers: (item: string) => (item ? `Suppliers for ${item}` : 'Suppliers'),
+  unit: (raw: string) => raw,
   found: (n: number) => `${n} found`,
   forecast: 'Forecast',
   next7: 'Next 7 days',
@@ -55,6 +57,13 @@ export type SummaryCopy = typeof en
 const hi: SummaryCopy = {
   order: 'ऑर्डर',
   suppliers: (item: string) => (item ? `${item} के सप्लायर` : 'सप्लायर'),
+  unit: (raw: string) =>
+    (
+      ({ kg: 'किलो', litre: 'लीटर', pack: 'पैक', piece: 'पीस', cup: 'कप' }) as Record<
+        string,
+        string
+      >
+    )[raw] ?? raw,
   found: (n: number) => `${n} मिले`,
   forecast: 'अनुमान',
   next7: 'अगले 7 दिन',
@@ -133,7 +142,8 @@ function amount(
   const first = lines[0]
   if (!first) return ''
   const number = new Intl.NumberFormat(locale, { maximumFractionDigits: 2 })
-  const what = `${first.name ?? first.item ?? ''} ${number.format(first.quantity)} ${first.unit}`
+  const name = productName(first.name ?? first.item ?? '', locale)
+  const what = `${name} ${number.format(first.quantity)} ${c.unit(first.unit)}`
   return lines.length > 1 ? `${what} ${c.more(lines.length - 1)}` : what
 }
 
@@ -183,7 +193,7 @@ export function cardSummary(input: SummaryInput, locale: string): CardSummary {
     case 'suppliers': {
       const { result } = input
       return {
-        parts: [c.suppliers(result.item)],
+        parts: [c.suppliers(productName(result.item, locale))],
         status: c.found(result.suppliers.length),
         needsYou: false,
       }
@@ -192,7 +202,7 @@ export function cardSummary(input: SummaryInput, locale: string): CardSummary {
       const { chart } = input
       if (chart.type === 'forecast')
         return {
-          parts: [c.forecast, chart.items.map((row) => row.item).join(', ')],
+          parts: [c.forecast, chart.items.map((row) => productName(row.item, locale)).join(', ')],
           status: c.next7,
           needsYou: false,
         }

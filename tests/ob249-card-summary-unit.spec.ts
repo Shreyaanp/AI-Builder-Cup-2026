@@ -117,7 +117,7 @@ test('OB-249: suppliers, charts, payment, rules and reply lines', () => {
 })
 
 test('OB-249: Hindi lines; other languages fall back to English, never a {placeholder}', () => {
-  expect(line(order('draft'), 'hi')).toBe('ऑर्डर · Tea dust 10 kg · मंज़ूरी चाहिए')
+  expect(line(order('draft'), 'hi')).toBe('ऑर्डर · चाय पत्ती 10 किलो · मंज़ूरी चाहिए')
   expect(
     line({ kind: 'suppliers', result: { item: 'दूध', suppliers: [{}, {}] } } as never, 'hi'),
   ).toBe('दूध के सप्लायर · 2 मिले')

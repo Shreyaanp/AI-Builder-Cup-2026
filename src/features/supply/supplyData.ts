@@ -4,6 +4,8 @@ import { isServiceShop } from '../v1/tabsCopy'
 import { useWorkspace } from '../v1/workspaceContext'
 import { useLocale } from '../../state/hooks'
 import { productName } from '../../i18n/productNames'
+import { useShopCopy } from '../shop/strings'
+import { unitLabel } from '../shop/units'
 import { useSupplyCopy } from './copy'
 import { useOrderChangeCopy } from './orderChangeCopy'
 import { supplyBus, supplyChanged } from './supplyEvents'
@@ -80,19 +82,24 @@ function load(api: Api, id: string, fresh: boolean, revision?: number): Promise<
 export function useSupply(open: boolean) {
   const { api, activeId, active } = useWorkspace()
   const [loaded, setLoaded] = useState(shared)
+  // A read that failed says so and tries again by itself, never "–" as if there were no orders.
+  const [failed, setFailed] = useState(false)
   const revision = active?.revision
   const refresh = useCallback(async () => {
     if (!activeId) return
     try {
       await load(api, activeId, true, revision)
     } catch {
-      // Keep what is shown; the next refresh tries again.
+      setFailed(true)
     }
   }, [api, activeId, revision])
   useEffect(() => {
-    const show = () => setLoaded(shared)
+    const show = () => {
+      setLoaded(shared)
+      setFailed(false)
+    }
     const reload = () => {
-      if (open && activeId) load(api, activeId, false, revision).catch(() => undefined)
+      if (open && activeId) load(api, activeId, false, revision).catch(() => setFailed(true))
     }
     supplyBus.addEventListener('loaded', show)
     supplyBus.addEventListener('changed', reload)
@@ -103,14 +110,25 @@ export function useSupply(open: boolean) {
   }, [api, activeId, open, revision])
   useEffect(() => {
     if (!open || !activeId) return
+    let timer = 0
+    let tries = 0
+    let stopped = false
+    const attempt = (fresh: boolean) =>
+      load(api, activeId, fresh, revision).catch(() => {
+        // A read that fails after the view closed must not start retrying again.
+        if (stopped) return
+        setFailed(true)
+        tries += 1
+        timer = window.setTimeout(() => attempt(true), Math.min(1000 * 2 ** tries, 8000))
+      })
     // Async on purpose: the list arrives after this effect, never synchronously inside it.
-    const first = window.setTimeout(
-      () => load(api, activeId, false, revision).catch(() => undefined),
-      0,
-    )
-    return () => window.clearTimeout(first)
+    timer = window.setTimeout(() => attempt(false), 0)
+    return () => {
+      stopped = true
+      window.clearTimeout(timer)
+    }
   }, [open, api, activeId, revision])
-  return { data: loaded?.id === activeId ? loaded.data : null, refresh }
+  return { data: loaded?.id === activeId ? loaded.data : null, refresh, failed }
 }
 
 export type SimVariant = 'full' | 'partial' | 'substitute' | 'match' | 'price_mismatch'
@@ -165,7 +183,22 @@ export function usePoActions(onChange: (order: PurchaseOrder) => void) {
     },
     [api, base, notify, onChange, review, explain],
   )
+  // The demo supplier's reply arrives with a read; only a real change is passed on.
+  const refresh = useCallback(
+    async (order: PurchaseOrder) => {
+      try {
+        const next = await api<PurchaseOrder>(`${base}/orders/${encodeURIComponent(order.id)}`)
+        if (next.version === order.version) return
+        onChange(next)
+        supplyChanged()
+      } catch {
+        // The next check tries again; nothing here needs the owner.
+      }
+    },
+    [api, base, onChange],
+  )
   return {
+    refresh,
     approve: (order: PurchaseOrder) => run(order, 'approve'),
     cancel: (order: PurchaseOrder) => run(order, 'cancel'),
     fix: (order: PurchaseOrder, fix: unknown) => run(order, 'fix', { fix }),
@@ -175,6 +208,10 @@ export function usePoActions(onChange: (order: PurchaseOrder) => void) {
       run(order, `flags/${encodeURIComponent(flagId)}`, { value }),
     accept: (order: PurchaseOrder) => run(order, 'accept'),
     received: (order: PurchaseOrder) => run(order, 'received'),
+    /** The same items from the same supplier, as a new draft to review (OB-248). */
+    again: (order: PurchaseOrder) => run(order, 'again'),
+    /** Public demo: a message to the scripted supplier; nothing is sent to anyone. */
+    talk: (order: PurchaseOrder, text: string) => run(order, 'talk', { text }),
   }
 }
 
@@ -211,12 +248,23 @@ interface ReorderResult {
  * Some on order in a unit that does not convert sets `ask` to the item: the caller offers
  * "Order more", which drafts again with `anyway` (#603).
  */
+/** An order's unit: as saved in English ("12 l"), in the owner's words otherwise ("12 लीटर"). */
+export function useOrderUnit(): (raw: string) => string {
+  const locale = useLocale()
+  const shopCopy = useShopCopy()
+  return useCallback(
+    (raw: string) => (locale.startsWith('en') ? raw : unitLabel(raw, shopCopy)),
+    [locale, shopCopy],
+  )
+}
+
 export function useDraftReorder() {
   const { api, activeId, active } = useWorkspace()
   const services = isServiceShop(active?.fields.category)
   const s = useSupplyCopy()
   const c = useOrderChangeCopy()
   const locale = useLocale()
+  const unit = useOrderUnit()
   return useCallback(
     async (
       item = '',
@@ -237,7 +285,7 @@ export function useDraftReorder() {
             ask: result.item ?? item,
             note: c.unitsAsk(
               (result.other ?? [])
-                .map((row) => `${quantity.format(row.quantity)} ${row.unit}`)
+                .map((row) => `${quantity.format(row.quantity)} ${unit(row.unit)}`)
                 .join(', '),
               name,
               dayLabel(result.other?.[0]?.arrives ?? '', locale),
@@ -252,13 +300,13 @@ export function useDraftReorder() {
                 : result.days == null
                   ? c.checkUnits(
                       quantity.format(result.supplier_quantity ?? 0),
-                      result.supplier_unit ?? '',
+                      unit(result.supplier_unit ?? ''),
                       name,
-                      result.unit ?? '',
+                      unit(result.unit ?? ''),
                     )
                   : c.checkQuantity(
                       quantity.format(result.quantity ?? 0),
-                      result.unit ?? '',
+                      unit(result.unit ?? ''),
                       name,
                       result.days,
                     ),
@@ -270,7 +318,7 @@ export function useDraftReorder() {
           result.status === 'on_order'
             ? c.onOrder(
                 quantity.format(result.quantity ?? 0),
-                result.unit ?? '',
+                unit(result.unit ?? ''),
                 name,
                 dayLabel(result.arrives ?? '', locale),
               )
@@ -282,7 +330,7 @@ export function useDraftReorder() {
         return { order: null, note: s.failed }
       }
     },
-    [api, activeId, services, s, c, locale],
+    [api, activeId, services, s, c, locale, unit],
   )
 }
 
@@ -342,20 +390,23 @@ export function dayLabel(iso: string, locale: string): string {
 export function useOnOrderText() {
   const c = useOrderChangeCopy()
   const locale = useLocale()
+  const unit = useOrderUnit()
   const { products } = useWorkspace()
   return useCallback(
     (need: SupplyNeed) => {
       const number = new Intl.NumberFormat(locale, { maximumFractionDigits: 2 })
-      const unit = products.find((p) => p.name === need.item)?.unit ?? ''
+      const saved = products.find((p) => p.name === need.item)?.unit ?? ''
       return [
-        ...(need.on_order ? [{ quantity: need.on_order, unit, arrives: need.arrives ?? '' }] : []),
+        ...(need.on_order
+          ? [{ quantity: need.on_order, unit: saved, arrives: need.arrives ?? '' }]
+          : []),
         ...(need.on_order_other ?? []),
       ]
         .map((row) =>
-          c.onOrderLine(number.format(row.quantity), row.unit, dayLabel(row.arrives, locale)),
+          c.onOrderLine(number.format(row.quantity), unit(row.unit), dayLabel(row.arrives, locale)),
         )
         .join(' · ')
     },
-    [c, locale, products],
+    [c, locale, products, unit],
   )
 }

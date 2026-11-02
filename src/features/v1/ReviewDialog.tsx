@@ -10,6 +10,7 @@ import { formatShopPrice, shopCurrency } from './format'
 import { FactList } from './FactList'
 import { Sheet } from './Sheet'
 import { useLocale } from '../../state/hooks'
+import { productName } from '../../i18n/productNames'
 import { discoverCopy } from '../discover/strings'
 import { useRewardCopy } from '../rewards/strings'
 import { HoursList } from '../shop/Hours'
@@ -35,7 +36,8 @@ export function ReviewDialog({
   const t = useCopy()
   const rewards = useRewardCopy()
   const shopCopy = useShopCopy()
-  const pinCopy = discoverCopy(useLocale())
+  const locale = useLocale()
+  const pinCopy = discoverCopy(locale)
   const next = useNextStepsCopy()
   const { api, businesses, review, reload, openEditor, readOnlyMessage } = useWorkspace()
   const [busy, setBusy] = useState(false)
@@ -249,16 +251,19 @@ export function ReviewDialog({
               >
                 <Box sx={{ minWidth: 0 }}>
                   <Typography variant="bodyLarge" sx={{ overflowWrap: 'anywhere' }}>
-                    {product.name}
+                    {productName(product.name, locale)}
                   </Typography>
                   {product.category && (
                     <Typography variant="bodySmall" color="text.secondary">
-                      {shopCopy.category}: {categoryLabel(product.category, shopCopy)}
+                      {shopCopy.category}:{' '}
+                      {productName(categoryLabel(product.category, shopCopy), locale)}
                     </Typography>
                   )}
                   {(product.stock != null || product.available === false) && (
                     <Typography variant="bodySmall" color="text.secondary">
-                      {product.available === false ? t.soldOut : `${t.stock}: ${product.stock}`}
+                      {product.available === false
+                        ? t.soldOut
+                        : `${t.stock}: ${product.stock} ${unitLabel(product.unit, shopCopy)}`}
                     </Typography>
                   )}
                 </Box>

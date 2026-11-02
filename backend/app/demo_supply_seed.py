@@ -12,8 +12,9 @@ so the demo shows real processing, not canned screens.
 
 from __future__ import annotations
 
-from datetime import date, timedelta
+from datetime import date, datetime, time, timedelta
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException
 
@@ -221,6 +222,9 @@ def _plan(context: dict[str, Any]) -> tuple[Size, Plan]:
     return size, PLANS.get((size, currency)) or PLANS[(size, "INR")]
 
 
+ORDERED_AGO, DELIVERED_AGO = 6, 3
+
+
 def _supplier_order(
     context: dict[str, Any], today: date, size: Size, plan: Plan, index: int
 ) -> SupplyDoc:
@@ -235,11 +239,17 @@ def _supplier_order(
         "mid": f"PO-FM-{2210 + index}",
         "large": str(4500091500 + index),
     }[size]
+    # The first order is the one that already came: placed last week, delivered three days ago.
+    issued, delivery = (
+        (today - timedelta(days=ORDERED_AGO), today - timedelta(days=DELIVERED_AGO))
+        if index == 0
+        else (today, today + timedelta(days=index + 1))
+    )
     return SupplyDoc(
         kind="ORDERS",
         number=number,
-        issued=today.isoformat(),
-        delivery=(today + timedelta(days=index + 1)).isoformat(),
+        issued=issued.isoformat(),
+        delivery=delivery.isoformat(),
         currency=supply_chain.shop_currency(context["business"]["fields"]),
         buyer=Party(id=shop["id"], name=shop["name"]),
         supplier=partner,
@@ -284,6 +294,59 @@ def _supplier_loop(
         po["documents"].append(entry)
         supply_chain.apply_document(store, bid, po, doc, [])
     return supply_chain._save(store, bid, po)
+
+
+def _backdate(
+    store: MerchantRepository,
+    uid: str,
+    bid: str,
+    po_id: str,
+    today: date,
+    fields: dict[str, Any],
+) -> None:
+    """A closed order's history happened in the past, in order: ordered and confirmed six days
+    ago, sent off the day before delivery, billed with the goods and received three days ago. Each
+    document is written again with its own date, so its text and the timeline agree."""
+    zone = ZoneInfo(str(fields.get("timezone") or "Asia/Kolkata"))
+
+    def at(ago: int, hour: int) -> float:
+        return datetime.combine(today - timedelta(days=ago), time(hour), zone).timestamp()
+
+    when = {
+        "ORDERS": (ORDERED_AGO, 9),
+        "ORDRSP": (ORDERED_AGO, 11),
+        "DESADV": (DELIVERED_AGO + 1, 17),
+        "RECEIPT": (DELIVERED_AGO, 10),
+        "INVOIC": (DELIVERED_AGO, 9),
+    }
+    po = supply_chain.get_po(store, uid, bid, po_id)
+    for entry in po["documents"]:
+        ago, hour = when.get(entry["kind"], (DELIVERED_AGO, 12))
+        entry["at"] = at(ago, hour)
+        if entry.get("sent_at"):
+            entry["sent_at"] = entry["at"]
+        canonical = {
+            **entry["canonical"],
+            "issued": (today - timedelta(days=ago)).isoformat(),
+            "delivery": (today - timedelta(days=DELIVERED_AGO)).isoformat(),
+        }
+        doc = SupplyDoc.model_validate(canonical)
+        entry["canonical"] = doc.model_dump(mode="json")
+        entry["raw"] = render(doc, entry["raw_format"])
+        entry["translated"] = render(doc, entry["translated_format"])
+    po["documents"].sort(key=lambda entry: entry["at"])
+    po["created"] = po["documents"][0]["at"]
+    po["received_at"] = at(DELIVERED_AGO, 10)
+    for key, kind in (
+        ("sent_at", "ORDERS"),
+        ("confirmed_at", "ORDRSP"),
+        ("dispatched_at", "DESADV"),
+        ("invoiced_at", "INVOIC"),
+    ):
+        if po.get(key):
+            po[key] = at(*when[kind])
+    po["delivery"] = (today - timedelta(days=DELIVERED_AGO)).isoformat()
+    supply_chain._save(store, bid, po)
 
 
 def _supplier_change(
@@ -343,13 +406,15 @@ def seed_shop(store: MerchantRepository, uid: str, bid: str) -> None:
         po = result["order"]
         if po is None or result.get("duplicate"):
             continue
-        if size == "large":
+        if index == 0 or size == "large":
+            # The order that came went the whole way: confirmed, sent off, billed.
             po = _supplier_loop(store, bid, po, fmt, 3 if index == 0 else 2)
         if index == 0 and not po.get("received"):
             saved = supply_outbound.record_receipt(store, uid, bid, po["id"], po["version"])
             supply_outbound.send(
                 store, uid, bid, po["id"], saved["order"]["version"], saved["document"]["id"]
             )
+            _backdate(store, uid, bid, po["id"], today, context["business"]["fields"])
     if size == "mid":
         _supplier_change(store, bid, context, today, plan, fmt)
     if size != "large":

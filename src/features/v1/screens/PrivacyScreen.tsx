@@ -1,3 +1,4 @@
+import { useDemoCopy } from '../../frontdoors/strings'
 import { useState } from 'react'
 import {
   Alert,
@@ -66,6 +67,7 @@ export function PrivacyScreen() {
   const playbook = usePlaybookCopy()
   const language = useLocale()
   const ws = useWorkspace()
+  const demoCopy = useDemoCopy()
   const identity = useIdentity()
   const [legal, setLegal] = useState<LegalDocument>(null)
   // Destructive actions always confirm first.
@@ -145,7 +147,7 @@ export function PrivacyScreen() {
           )}
           {(erase.kind === 'idle' || erase.kind === 'working') && ws.demo && (
             <Typography variant="bodyMedium" color="text.secondary" sx={{ mt: 2 }}>
-              {t.deleteDemo}
+              {demoCopy.demoNotice}
             </Typography>
           )}
           <Box role="status" aria-live="polite" sx={{ mt: erase.kind === 'idle' ? 0 : 2 }}>

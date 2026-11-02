@@ -31,9 +31,6 @@ const pathLine = (feature: Feature, lang: Lang) =>
 // up is Batch 3 (Shop and You layout) and Batch 4 (Grow list and "More tools"), not this batch.
 // The check is strict: once a row reaches the first view its test fails until it leaves this list.
 const BELOW_FIRST_VIEW = new Set([
-  // Batch 1's readable text sizes (#624) pushed these two below the fold.
-  'Sold out today',
-  'Photos',
   'Shop details',
   'Messages',
   'Link your billing app',
@@ -75,7 +72,7 @@ async function openDemo(page: Page, visitor: string) {
   await page.clock.setFixedTime(morning())
   await localOnly(page, visitor)
   await page.goto('/demo')
-  await expect(page.getByText('Demo shop – nothing here is real', { exact: true })).toBeVisible({
+  await expect(page.getByText('Demo shop · sample data', { exact: true })).toBeVisible({
     timeout: 60_000,
   })
   await page.getByRole('dialog').getByRole('button', { name: 'Skip', exact: true }).click()
