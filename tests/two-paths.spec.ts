@@ -148,6 +148,8 @@ for (const name of ['Shop', 'Grow', 'You']) {
     const rows = features.filter((feature) => feature.path[0] === name)
     expect(rows.length).toBeGreaterThan(0)
     for (const feature of rows) {
+      // Arrive from another tab, as an owner does: Grow opens with its rows closed (batch 4a).
+      if (name === 'Grow') await tab(page, 'Shop')
       await tab(page, name)
       // Grow's rows settle once the brief has loaded (its row shows then).
       if (name === 'Grow')
