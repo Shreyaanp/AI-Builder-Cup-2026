@@ -77,6 +77,9 @@ test('Shop: one page card and short rows, calm at 390 and one screenful at 360',
   expect(view.tappable, 'tappable in the first view').toBeLessThanOrEqual(12)
   expect(view.words, 'words in the first view').toBeLessThanOrEqual(50)
   expect(view.filled, 'filled buttons').toBe(1)
+  // The one primary action sits in the thumb zone, below the rows (PHONE-UX-RULES rule 1).
+  const primary = await page.getByRole('button', { name: 'Show to customers' }).boundingBox()
+  expect(primary!.y + primary!.height / 2).toBeGreaterThan(844 / 2)
   // The waiting customer and the daily menu question live on Coach Today, not here too.
   // (Coach stays mounted while hidden, so look inside Shop only.)
   const shop = page.locator('section[aria-label="Shop"]')

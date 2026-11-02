@@ -168,10 +168,11 @@ export function Supporting({ children }: { children: ReactNode }) {
 }
 
 /**
- * Shop: one card for the customer page (name, whether customers see it, one action), then one
- * row per part of the shop, each with a single status. The quieter tools (stamp card, billing
- * app) sit behind More on the same screen. Also the desktop pane beside the coach. What needs
- * the owner (waiting customers, the daily menu question) lives on Coach Today, not here.
+ * Shop: one card for the customer page (name, whether customers see it), one row per part of
+ * the shop with a single status, then the one primary action in the thumb zone. The quieter
+ * tools (stamp card, billing app) sit behind More on the same screen. Also the desktop pane
+ * beside the coach. What needs the owner (waiting customers, the daily menu question) lives on
+ * Coach Today, not here.
  */
 export function ShopOverview({ narrow = false }: { narrow?: boolean }) {
   const [sheet, setSheet] = useState<ShopSheetKind | null>(null)
@@ -180,6 +181,7 @@ export function ShopOverview({ narrow = false }: { narrow?: boolean }) {
     <Stack spacing={3}>
       <YourPage onSheet={setSheet} />
       <ShopTiles unread={unread} onSheet={setSheet} />
+      <PageAction onSheet={setSheet} />
       {!narrow && <AskHint id="sold_out" />}
       <ShopSheets
         kind={sheet}
@@ -193,7 +195,7 @@ export function ShopOverview({ narrow = false }: { narrow?: boolean }) {
   )
 }
 
-/** The customer page, first: name, one status line and one primary action. */
+/** The customer page, first: name, kind and one status line; a tap opens the page sheet. */
 function YourPage({ onSheet }: { onSheet: (kind: ShopSheetKind) => void }) {
   const t = useCopy()
   const tabs = useTabsCopy()
@@ -201,20 +203,9 @@ function YourPage({ onSheet }: { onSheet: (kind: ShopSheetKind) => void }) {
   const roles = useTheme().material
   const shop = ws.active
   if (!shop) return null
-  const url = ws.shareUrl
-  const live = shop.public && Boolean(url)
+  const live = shop.public && Boolean(ws.shareUrl)
   // The kind of shop only: the full address lives in Shop details.
   const summary = shop.fields.category
-  function share() {
-    if (!url || !shop) return
-    const data = { title: shop.fields.name, text: t.shareMessage(shop.fields.name), url }
-    if (navigator.share) void navigator.share(data).catch(() => undefined)
-    else
-      void navigator.clipboard
-        .writeText(url)
-        .then(() => ws.notify(t.linkCopied))
-        .catch(() => ws.notify(t.actionFailed))
-  }
   return (
     <Box
       component="section"
@@ -288,30 +279,50 @@ function YourPage({ onSheet }: { onSheet: (kind: ShopSheetKind) => void }) {
           <Pencil size={20} />
         </IconButton>
       </Stack>
-      {live ? (
-        <Button
-          fullWidth
-          variant="contained"
-          disableFocusRipple
-          startIcon={<Share2 size={18} />}
-          onClick={share}
-          sx={{ mt: 3, minHeight: 48 }}
-        >
-          {tabs.sharePage}
-        </Button>
-      ) : (
-        <Button
-          fullWidth
-          variant="contained"
-          disableFocusRipple
-          aria-haspopup="dialog"
-          onClick={() => onSheet('customer')}
-          sx={{ mt: 3, minHeight: 48 }}
-        >
-          {tabs.turnOnPage}
-        </Button>
-      )}
     </Box>
+  )
+}
+
+/** The page's one primary action, in the thumb zone below the rows: show it, then share it. */
+function PageAction({ onSheet }: { onSheet: (kind: ShopSheetKind) => void }) {
+  const t = useCopy()
+  const tabs = useTabsCopy()
+  const ws = useWorkspace()
+  const shop = ws.active
+  if (!shop) return null
+  const url = ws.shareUrl
+  function share() {
+    if (!url || !shop) return
+    const data = { title: shop.fields.name, text: t.shareMessage(shop.fields.name), url }
+    if (navigator.share) void navigator.share(data).catch(() => undefined)
+    else
+      void navigator.clipboard
+        .writeText(url)
+        .then(() => ws.notify(t.linkCopied))
+        .catch(() => ws.notify(t.actionFailed))
+  }
+  return shop.public && url ? (
+    <Button
+      fullWidth
+      variant="contained"
+      disableFocusRipple
+      startIcon={<Share2 size={18} />}
+      onClick={share}
+      sx={{ minHeight: 48 }}
+    >
+      {tabs.sharePage}
+    </Button>
+  ) : (
+    <Button
+      fullWidth
+      variant="contained"
+      disableFocusRipple
+      aria-haspopup="dialog"
+      onClick={() => onSheet('customer')}
+      sx={{ minHeight: 48 }}
+    >
+      {tabs.turnOnPage}
+    </Button>
   )
 }
 
