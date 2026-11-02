@@ -315,7 +315,7 @@ export const vi: Copy = {
   prepLoading: 'Đang chuẩn bị dự báo…',
   prepEmpty: 'Nhập và lưu ít nhất 4 tuần doanh số cho mỗi món.',
   prepTimesfm: 'Dựa trên vài tuần gần đây',
-  prepWeekday: 'Trung bình cùng thứ · mùa vụ và xu hướng',
+  prepWeekday: 'Dựa trên vài tuần gần đây',
   prepQuestion: 'Ngày mai nên chuẩn bị bao nhiêu?',
   importing: 'Đang đọc tệp…',
   importFailed: 'Không đọc được tệp. Hãy gửi tệp CSV hoặc Excel có tên món và giá.',

@@ -313,7 +313,7 @@ export const ja: Copy = {
   prepLoading: '予測を準備中…',
   prepEmpty: '商品ごとに4週間以上の売上を取り込み、保存してください。',
   prepTimesfm: '直近数週間の売上をもとに',
-  prepWeekday: '同じ曜日の平均 · 季節性と傾向',
+  prepWeekday: '直近数週間の売上をもとに',
   prepQuestion: '明日はどのくらい仕込めばいいですか？',
   importing: 'ファイルを読み込んでいます…',
   importFailed:

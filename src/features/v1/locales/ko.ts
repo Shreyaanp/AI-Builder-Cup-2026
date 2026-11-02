@@ -311,7 +311,7 @@ export const ko: Copy = {
   prepLoading: '예측 준비 중…',
   prepEmpty: '상품별 최소 4주간의 매출을 가져와 저장하세요.',
   prepTimesfm: '최근 몇 주 판매 기준',
-  prepWeekday: '동일 요일 평균 · 계절성과 추세',
+  prepWeekday: '최근 몇 주 판매 기준',
   prepQuestion: '내일 얼마나 준비해야 하나요?',
   importing: '파일을 읽는 중…',
   importFailed: '파일을 읽지 못했어요. 상품명과 가격이 있는 CSV나 Excel 파일을 보내 주세요.',

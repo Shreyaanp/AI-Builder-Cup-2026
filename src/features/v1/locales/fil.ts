@@ -324,7 +324,7 @@ export const fil: Copy = {
   prepLoading: 'Inihahanda ang pagtataya…',
   prepEmpty: 'Mag-import at mag-save ng hindi bababa sa 4 na linggong benta bawat item.',
   prepTimesfm: 'Batay sa nakaraang mga linggo',
-  prepWeekday: 'Karaniwang benta sa parehong araw · panahon at takbo',
+  prepWeekday: 'Batay sa nakaraang mga linggo',
   prepQuestion: 'Gaano karami ang ihahanda ko bukas?',
   importing: 'Binabasa ang file…',
   importFailed:

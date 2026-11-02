@@ -304,7 +304,7 @@ export const zhHans: Copy = {
   prepLoading: '正在预测…',
   prepEmpty: '请导入并保存每个商品至少4周的销售数据。',
   prepTimesfm: '根据您最近几周的销售',
-  prepWeekday: '同星期平均值 · 季节性与趋势',
+  prepWeekday: '根据您最近几周的销售',
   prepQuestion: '明天应该准备多少？',
   importing: '正在读取文件…',
   importFailed: '无法读取这个文件。请上传包含品名和价格的 CSV 或 Excel 文件。',

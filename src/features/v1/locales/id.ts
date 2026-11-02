@@ -317,7 +317,7 @@ export const id: Copy = {
   prepLoading: 'Menyiapkan prakiraan…',
   prepEmpty: 'Impor dan simpan setidaknya 4 minggu penjualan per item.',
   prepTimesfm: 'Berdasarkan beberapa minggu terakhir',
-  prepWeekday: 'Rata-rata hari yang sama · musim dan tren',
+  prepWeekday: 'Berdasarkan beberapa minggu terakhir',
   prepQuestion: 'Berapa banyak yang harus saya siapkan besok?',
   importing: 'Membaca file Anda…',
   importFailed:
