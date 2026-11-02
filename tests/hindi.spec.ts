@@ -173,8 +173,14 @@ test('the owner app reads in Hindi: Today, coach, Shop, Grow tools, You, privacy
 
   await test.step('Shop: ₹ prices', async () => {
     await tab(page, 'दुकान').click()
-    await expect(page.getByText('₹18', { exact: true })).toBeVisible()
+    const menu = page.locator('[data-tour="menu"]').filter({ visible: true })
+    await expect(menu).toBeVisible()
     await readsInHindi(page, '04-shop')
+    // Prices live in the Menu sheet (Shop shows one row per part of the shop).
+    await menu.click()
+    await expect(page.getByRole('dialog').getByText('₹18', { exact: true })).toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('dialog')).toHaveCount(0)
   })
 
   await test.step('Grow: Hindi dates', async () => {

@@ -53,7 +53,8 @@ for (const width of [360, 390, 412]) {
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
           true,
         )
-        const edit = page.locator('[data-tour="customer"] button').first()
+        // The page card: the pencil edits, the card itself opens the page sheet.
+        const edit = page.locator('[data-tour="customer"] button').last()
         await edit.click()
         await expect(page.getByRole('dialog').getByRole('textbox').first()).toHaveValue(
           'Lantern Chai Corner (Demo)',
@@ -62,7 +63,7 @@ for (const width of [360, 390, 412]) {
           .getByRole('button', { name: language === 'en' ? 'Cancel' : 'रद्द करें', exact: true })
           .click()
         await expect(page.getByRole('dialog')).toHaveCount(0)
-        await page.locator('[data-tour="customer"] button').nth(1).click()
+        await page.locator('[data-tour="customer"] button').first().click()
         const publish = page.getByRole('dialog').getByRole('switch')
         // OB-248: the switch really works on the visitor's sandbox, with the plain note beside it.
         // The Hindi run must show the Hindi notice (strings are matched by position; OB-344 review).

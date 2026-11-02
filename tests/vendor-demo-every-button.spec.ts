@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
+import { shopMore } from './support/shopMore.js'
 import { openGrowTool, showInGrow } from './support/grow.js'
 
 test.setTimeout(90_000)
@@ -117,15 +118,29 @@ test('Grow: Prep plan opens its own screen', async ({ page }) => {
   await expect(page.getByTestId('today')).toBeHidden()
 })
 
-test('Shop: Customer page opens its sheet', async ({ page }) => {
+test('Shop: Your shop page opens its sheet', async ({ page }) => {
   await openDemo(page)
   await tab(page, 'shop')
-  await opensSheet(page, /^Customer page/, /Customer page/)
+  await opensSheet(page, /^Your shop page/, /Your shop page/)
+})
+
+test('Shop: Show to customers opens the page switch', async ({ page }) => {
+  await openDemo(page)
+  await tab(page, 'shop')
+  await opensSheet(page, /^Show to customers$/, /Your shop page/)
+})
+
+test('Shop: More, Stamp card opens its sheet', async ({ page }) => {
+  await openDemo(page)
+  await tab(page, 'shop')
+  await shopMore(page)
+  await opensSheet(page, /^Stamp card/, /Stamp card/)
 })
 
 test('Shop: Link your billing app opens its sheet', async ({ page }) => {
   await openDemo(page)
   await tab(page, 'shop')
+  await shopMore(page)
   await opensSheet(page, /Link your billing app/, /Link your billing app/)
 })
 

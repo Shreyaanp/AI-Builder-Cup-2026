@@ -59,7 +59,7 @@ test('public demo walks the whole owner lifecycle at 390 px', async ({ page }, i
   await expect(messages.getByText('Asha', { exact: true })).toBeVisible()
   await expect(messages.getByText(/@example\.invalid/)).toHaveCount(0)
   await expect(messages.getByText(/\[Demo\]/)).toHaveCount(0)
-  const openButtons = messages.getByRole('button', { name: 'Open conversation', exact: true })
+  const openButtons = messages.getByRole('button', { name: /^Open conversation/ })
   const buttonLefts = await openButtons.evaluateAll((buttons) =>
     buttons.map((button) => button.getBoundingClientRect().left),
   )

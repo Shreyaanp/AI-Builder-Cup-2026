@@ -60,7 +60,7 @@ async function sharedShop(page: Page) {
   await expect(page.getByRole('button', { name: 'Edit price: Chai, S$15.00' })).toBeVisible()
   await page.keyboard.press('Escape')
   await expect(page.getByRole('dialog')).toHaveCount(0)
-  await page.getByRole('button', { name: /^Customer page/ }).click()
+  await page.getByRole('button', { name: /^Your shop page/ }).click()
   // Onboarding put the shop live by itself (name + kind + place): the page is already shared.
   const sharing = page.getByRole('switch', { name: 'Share customer page' })
   await expect(sharing).toBeChecked()

@@ -123,19 +123,22 @@ test('guest on a 390 px phone: chat, follow, QR stamp, passport and claim gate',
     const inbox = owner.getByRole('region', { name: /Messages/ })
     await expect(inbox).toContainText(/Guest [a-f0-9]{6}/)
     await expect(inbox).not.toContainText('@guest.invalid')
-    await inbox.getByRole('button', { name: 'Open conversation', exact: true }).click()
+    await inbox.getByRole('button', { name: /^Open conversation/ }).click()
     await inbox
       .getByRole('textbox', { name: 'Reply', exact: true })
       .fill('Yes, see you this afternoon!')
     await inbox.getByRole('button', { name: 'Send message', exact: true }).click()
     await expect(page.getByText('Yes, see you this afternoon!', { exact: true })).toBeVisible()
-    await inbox.getByRole('button', { name: 'Block customer', exact: true }).click()
+    // Close and Block wait in the conversation's menu (simplify batch 3).
+    await inbox.getByRole('button', { name: 'More options', exact: true }).click()
+    await owner.getByRole('menuitem', { name: 'Block customer', exact: true }).click()
     await inbox
       .getByRole('group')
       .getByRole('button', { name: 'Block customer', exact: true })
       .click()
     await expect(page.getByText('This conversation is closed.', { exact: true })).toBeVisible()
-    await inbox.getByRole('button', { name: 'Unblock customer', exact: true }).click()
+    await inbox.getByRole('button', { name: 'More options', exact: true }).click()
+    await owner.getByRole('menuitem', { name: 'Unblock customer', exact: true }).click()
     await expect(page.getByRole('textbox', { name: 'Message', exact: true })).toBeEnabled()
     await owner.screenshot({ path: 'output/playwright/guest-phone-owner-inbox.png' })
     expect(

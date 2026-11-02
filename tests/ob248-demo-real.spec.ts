@@ -112,7 +112,7 @@ test('OB-248 no owner tab or sheet shows a demo block', async ({ page }) => {
 
   // Sheets that used to answer with the demo note now do the work.
   await page.locator('[data-tour="nav-shop"]').click()
-  await page.locator('[data-tour="customer"] button').nth(1).click()
+  await page.locator('[data-tour="customer"] button').first().click()
   const publish = page.getByRole('dialog').getByRole('switch')
   await publish.click()
   await expect(publish).toBeChecked()

@@ -64,8 +64,9 @@ for (const size of WIDTHS) {
     await page.goto('/demo?tab=you', { waitUntil: 'domcontentloaded' })
     const help = page.getByRole('region', { name: 'Help', exact: true })
     await expect(help).toBeVisible({ timeout: 30_000 })
-    const intro = help.getByRole('button', { name: 'Replay the intro', exact: true })
-    const rows = [intro, help.getByRole('button', { name: 'Take the tour', exact: true })]
+    // Simplify batch 3: Help is the tour and "What can I ask?"; the intro replays from there.
+    const ask = help.getByRole('button', { name: 'What can I ask?', exact: true })
+    const rows = [help.getByRole('button', { name: 'Take the tour', exact: true }), ask]
     const first = await edges(rows[0]!)
     for (const row of rows) {
       await expect(row).toBeVisible()
@@ -74,7 +75,8 @@ for (const size of WIDTHS) {
       expect(edge.icon).toBeCloseTo(first.icon, 0)
       expect(edge.text).toBeCloseTo(first.text, 0)
     }
-    await intro.click()
+    await ask.click()
+    await page.getByRole('button', { name: 'Replay the intro', exact: true }).click()
     await expect(page.getByRole('heading', { name: 'Talk. Your shop goes live.' })).toBeVisible()
   })
 

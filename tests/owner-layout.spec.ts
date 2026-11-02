@@ -1,5 +1,6 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
 import { enter, localOnly } from './stories/support.js'
+import { shopMore } from './support/shopMore.js'
 import { openGrowRows } from './support/grow.js'
 
 // Owner CSS fixes from the heatmap audit (#69): touch targets are at least 48px and nothing
@@ -122,6 +123,7 @@ for (const lang of LANGS) {
 
       // Shop → Link your billing app: system pills, tabs and the upload button.
       await page.locator('[data-tour="nav-shop"]').click()
+      await shopMore(page)
       await page
         .locator(
           'button:has-text("Link your billing app"), button:has-text("बिक्री का हिसाब जोड़ें")',

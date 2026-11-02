@@ -298,7 +298,7 @@ export async function seedShop(
 
 export async function share(page: Page) {
   await page.getByRole('button', { name: 'Shop', exact: true }).click()
-  await page.getByRole('button', { name: /^Customer page/ }).click()
+  await page.getByRole('button', { name: /^Your shop page/ }).click()
   const sharing = page.getByRole('switch', { name: 'Share customer page' })
   if (!(await sharing.isChecked())) await sharing.click()
   await expect(sharing).toBeChecked()

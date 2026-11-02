@@ -111,15 +111,16 @@ async function proof(page: Page, id: string) {
 test('B8: compact pending, freshness and completed readiness', async ({ page }) => {
   await enter(page)
   await page.getByRole('button', { name: 'Shop', exact: true }).click()
-  const pending = page.getByRole('region', { name: '1 customer is waiting' })
-  await expect(pending).toBeVisible()
-  expect((await pending.boundingBox())!.height).toBeLessThanOrEqual(80)
+  // Simplify batch 3: who is waiting shows once, on Coach Today; Shop's Messages row counts it.
+  const shop = page.locator('section[aria-label="Shop"]')
+  await expect(shop.getByRole('button', { name: /^Messages 1 new/ })).toBeVisible()
+  await expect(shop.getByRole('region', { name: '1 customer is waiting' })).toHaveCount(0)
   await proof(page, 'B8')
   // Readiness lives on Grow now, as the Get on Google card.
   await page.getByRole('button', { name: 'Grow', exact: true }).click()
   await expect(page.getByRole('button', { name: /^Get on Google Ready to list/ })).toBeVisible()
   await page.getByRole('button', { name: 'Shop', exact: true }).click()
-  await page.getByRole('button', { name: /^Customer page/ }).click()
+  await page.getByRole('button', { name: /^Your shop page/ }).click()
   const sharing = page.getByText('Customers with this link see your shop and live prices.', {
     exact: true,
   })

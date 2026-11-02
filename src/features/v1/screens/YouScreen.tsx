@@ -15,18 +15,20 @@ import {
 } from '@mui/material'
 import {
   Check,
+  ChevronDown,
   ChevronRight,
-  CircleHelp,
   Download,
+  Lightbulb,
   LogOut,
   MessageCircleQuestion,
+  Palette,
   Plus,
   ShieldCheck,
   Sparkles,
 } from 'lucide-react'
 import { useDemoCopy } from '../../frontdoors/strings'
+import { visuallyHidden } from '@mui/utils'
 import { openOwnerFeature } from '../../owner-tools/entry'
-import { useToolCopy } from '../../owner-tools/copy'
 import { TrustCard } from '../../trust/TrustCard'
 import { useIdentity } from '../../../auth/useIdentity'
 import { installState, offerInstall, subscribeInstall } from '../../../app/pwa'
@@ -34,16 +36,24 @@ import { shape } from '../../../design/theme'
 import type { ColorMode } from '../../../design/theme'
 import { isLanguagePref, LOCALE_NAMES, LOCALES, systemLocale } from '../../../i18n/locales'
 import { usePreferences, usePreferencesDispatch } from '../../../state/hooks'
-import { SeeAgain } from '../../first-run/FirstRun'
 import { TourMenuButton } from '../../tour/TourEntry'
 import { Sheet } from '../Sheet'
+import { PlaybookSheet } from '../playbook/ShopPlaybook'
 import { ReminderSettings } from '../ReminderSettings'
 import { useCopy } from '../strings'
 import { useTabsCopy } from '../tabsCopy'
 import { useWorkspace } from '../workspaceContext'
 
 /** One rounded group of rows, with a small heading above it. */
-function Group({ title, children }: { title?: string; children: ReactNode }) {
+function Group({
+  title,
+  testId,
+  children,
+}: {
+  title?: string
+  testId?: string
+  children: ReactNode
+}) {
   const roles = useTheme().material
   return (
     <Box component="section" aria-label={title}>
@@ -58,6 +68,7 @@ function Group({ title, children }: { title?: string; children: ReactNode }) {
         </Typography>
       )}
       <Box
+        data-testid={testId}
         sx={{
           bgcolor: roles.surfaceContainer,
           borderRadius: `${shape.lg}px`,
@@ -76,22 +87,32 @@ function Row({
   icon,
   label,
   hint,
+  value,
   trailing,
   onClick,
   current,
+  expanded,
+  controls,
 }: {
   icon: ReactNode
   label: string
   hint?: string
+  /** The current setting, at the end of the row. */
+  value?: string
   trailing?: ReactNode
   onClick: () => void
   current?: boolean
+  /** A disclosure row: its choices open under it instead of a new screen. */
+  expanded?: boolean
+  controls?: string
 }) {
   const roles = useTheme().material
   return (
     <ButtonBase
       onClick={onClick}
       aria-current={current ? 'true' : undefined}
+      aria-expanded={expanded}
+      aria-controls={controls}
       sx={{
         width: '100%',
         minHeight: 56,
@@ -122,19 +143,29 @@ function Row({
           </Typography>
         )}
       </Box>
-      {trailing ?? <ChevronRight size={18} aria-hidden="true" color={roles.onSurfaceVariant} />}
+      {value && (
+        <Typography component="span" variant="bodyMedium" color="text.secondary">
+          {value}
+        </Typography>
+      )}
+      {trailing ??
+        (expanded ? (
+          <ChevronDown size={18} aria-hidden="true" color={roles.onSurfaceVariant} />
+        ) : (
+          <ChevronRight size={18} aria-hidden="true" color={roles.onSurfaceVariant} />
+        ))}
     </ButtonBase>
   )
 }
 
 /**
- * You: who you are, the optional "Verify it's you", settings (language, look, coach voice),
- * your shops, privacy and your data (a sub-page), help and sign out.
+ * You: who you are, settings (language first, reminders, coach voice, look), your shops, the
+ * optional "Verify it's you", what the coach knows, privacy and your data (a sub-page), help
+ * (the tour, what to ask) and sign out.
  */
 export function YouScreen() {
   const t = useCopy()
   const tabs = useTabsCopy()
-  const tools = useToolCopy()
   const ws = useWorkspace()
   const demoCopy = useDemoCopy()
   const identity = useIdentity()
@@ -144,8 +175,15 @@ export function YouScreen() {
   // B36: share the banner's deferred prompt; dismissal only suppresses the banner.
   const installation = useSyncExternalStore(subscribeInstall, installState)
   const [installHelp, setInstallHelp] = useState(false)
+  const [lookOpen, setLookOpen] = useState(false)
+  const [knows, setKnows] = useState(false)
   const installButton = useRef<HTMLDivElement>(null)
   const shop = ws.active
+  const appearanceName = {
+    system: t.themeSystem,
+    light: t.themeLight,
+    dark: t.themeDark,
+  }[preferences.appearance]
 
   return (
     <Box component="section" aria-label={tabs.navYou} sx={{ maxWidth: 640, mx: 'auto', pt: 2 }}>
@@ -175,8 +213,7 @@ export function YouScreen() {
       </Stack>
 
       <Stack spacing={4}>
-        <Group title={t.settings}>
-          <ReminderSettings />
+        <Group title={t.settings} testId="you-settings">
           <Box sx={{ px: 3, py: 2 }}>
             {/* Default follows the phone's language setting; owners can pin a language here. */}
             <TextField
@@ -216,33 +253,7 @@ export function YouScreen() {
               ))}
             </TextField>
           </Box>
-          <Box sx={{ px: 3, py: 2 }}>
-            <Typography id="look-label" variant="labelLarge" sx={{ display: 'block', mb: 1 }}>
-              {tabs.look}
-            </Typography>
-            <ToggleButtonGroup
-              exclusive
-              fullWidth
-              size="small"
-              value={preferences.appearance}
-              onChange={(_, value: ColorMode | null) =>
-                value && dispatch({ type: 'appearance', appearance: value })
-              }
-              aria-labelledby="look-label"
-              sx={{
-                '& .MuiToggleButton-root': {
-                  color: roles.onSurface,
-                  minHeight: 48,
-                  p: 2,
-                  typography: 'labelLarge',
-                },
-              }}
-            >
-              <ToggleButton value="system">{t.themeSystem}</ToggleButton>
-              <ToggleButton value="light">{t.themeLight}</ToggleButton>
-              <ToggleButton value="dark">{t.themeDark}</ToggleButton>
-            </ToggleButtonGroup>
-          </Box>
+          <ReminderSettings />
           <Stack direction="row" sx={{ alignItems: 'center', gap: 2, px: 3, py: 1 }}>
             <Box sx={{ flex: 1 }}>
               <Typography variant="labelLarge" sx={{ display: 'block' }}>
@@ -258,6 +269,44 @@ export function YouScreen() {
               slotProps={{ input: { 'aria-label': t.readAloud } }}
             />
           </Stack>
+          {/* Rarely changed, so one row says the current look; the choice opens under it. */}
+          <Row
+            icon={<Palette size={20} />}
+            label={tabs.look}
+            value={appearanceName}
+            expanded={lookOpen}
+            controls="you-look"
+            onClick={() => setLookOpen((open) => !open)}
+          />
+          {lookOpen && (
+            <Box id="you-look" sx={{ px: 3, pb: 2 }}>
+              <Typography id="look-label" component="span" sx={visuallyHidden}>
+                {tabs.look}
+              </Typography>
+              <ToggleButtonGroup
+                exclusive
+                fullWidth
+                size="small"
+                value={preferences.appearance}
+                onChange={(_, value: ColorMode | null) =>
+                  value && dispatch({ type: 'appearance', appearance: value })
+                }
+                aria-labelledby="look-label"
+                sx={{
+                  '& .MuiToggleButton-root': {
+                    color: roles.onSurface,
+                    minHeight: 48,
+                    p: 2,
+                    typography: 'labelLarge',
+                  },
+                }}
+              >
+                <ToggleButton value="system">{t.themeSystem}</ToggleButton>
+                <ToggleButton value="light">{t.themeLight}</ToggleButton>
+                <ToggleButton value="dark">{t.themeDark}</ToggleButton>
+              </ToggleButtonGroup>
+            </Box>
+          )}
         </Group>
 
         <Group title={tabs.yourShops}>
@@ -284,6 +333,13 @@ export function YouScreen() {
         <TrustCard compact />
 
         <Group>
+          {shop && (
+            <Row
+              icon={<Lightbulb size={20} />}
+              label={tabs.coachKnows}
+              onClick={() => setKnows(true)}
+            />
+          )}
           <Row
             icon={<ShieldCheck size={20} />}
             label={tabs.privacyRow}
@@ -294,15 +350,12 @@ export function YouScreen() {
 
         <Group title={tabs.help}>
           {/* Every Help entry is a Row, so icons and labels share one edge (OB-71). */}
-          <SeeAgain app="owner">
-            {(open, label) => <Row icon={<CircleHelp size={20} />} label={label} onClick={open} />}
-          </SeeAgain>
           <TourMenuButton onStart={() => undefined}>
             {(start, label) => <Row icon={<Sparkles size={20} />} label={label} onClick={start} />}
           </TourMenuButton>
           <Row
             icon={<MessageCircleQuestion size={20} />}
-            label={tools.guideTitle}
+            label={tabs.whatCanIAsk}
             onClick={() => openOwnerFeature('guide')}
           />
           {installation !== 'installed' && (
@@ -333,6 +386,7 @@ export function YouScreen() {
         )}
       </Stack>
 
+      {shop && <PlaybookSheet open={knows} onClose={() => setKnows(false)} />}
       <Sheet
         open={installHelp}
         onClose={() => {

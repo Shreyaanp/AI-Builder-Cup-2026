@@ -20,6 +20,7 @@ const en = {
   priceInvalid: 'Enter a price, e.g. 2.50',
   unitCurrent: (unit: string) => `${unit} (current)`,
   unit: 'Unit',
+  moreDetails: 'More details',
   units: {
     item: 'item',
     piece: 'piece',
@@ -71,6 +72,7 @@ const translations: Record<Locale, Copy> = {
     priceInvalid: 'दाम लिखें, जैसे 2.50',
     unitCurrent: (unit: string) => `${unit} (अभी)`,
     unit: 'इकाई',
+    moreDetails: 'और जानकारी',
     units: {
       item: 'सामान',
       piece: 'नग',
@@ -119,6 +121,7 @@ const translations: Record<Locale, Copy> = {
     priceInvalid: 'দাম লিখুন, যেমন 2.50',
     unitCurrent: (unit: string) => `${unit} (বর্তমান)`,
     unit: 'একক',
+    moreDetails: 'আরও তথ্য',
     units: {
       item: 'পণ্য',
       piece: 'টি',
@@ -167,6 +170,7 @@ const translations: Record<Locale, Copy> = {
     priceInvalid: 'ధర రాయండి, ఉదా. 2.50',
     unitCurrent: (unit: string) => `${unit} (ప్రస్తుత)`,
     unit: 'యూనిట్',
+    moreDetails: 'మరిన్ని వివరాలు',
     units: {
       item: 'వస్తువు',
       piece: 'ముక్క',
@@ -215,6 +219,7 @@ const translations: Record<Locale, Copy> = {
     priceInvalid: 'दर लिहा, उदा. 2.50',
     unitCurrent: (unit: string) => `${unit} (सध्याचे)`,
     unit: 'एकक',
+    moreDetails: 'आणखी माहिती',
     units: {
       item: 'वस्तू',
       piece: 'नग',
@@ -263,6 +268,7 @@ const translations: Record<Locale, Copy> = {
     priceInvalid: 'ಬೆಲೆ ನಮೂದಿಸಿ, ಉದಾ. 2.50',
     unitCurrent: (unit: string) => `${unit} (ಪ್ರಸ್ತುತ)`,
     unit: 'ಘಟಕ',
+    moreDetails: 'ಇನ್ನಷ್ಟು ವಿವರ',
     units: {
       item: 'ವಸ್ತು',
       piece: 'ತುಂಡು',
@@ -313,6 +319,7 @@ const translations: Record<Locale, Copy> = {
     priceInvalid: '请输入价格，例如 2.50',
     unitCurrent: (unit: string) => `${unit}（当前）`,
     unit: '单位',
+    moreDetails: '更多信息',
     units: {
       item: '件',
       piece: '个',
@@ -355,6 +362,7 @@ const translations: Record<Locale, Copy> = {
     priceInvalid: 'Masukkan harga, cth. 2.50',
     unitCurrent: (unit: string) => `${unit} (semasa)`,
     unit: 'Unit',
+    moreDetails: 'Butiran lanjut',
     units: {
       item: 'item',
       piece: 'keping',
@@ -403,6 +411,7 @@ const translations: Record<Locale, Copy> = {
     priceInvalid: 'விலையை உள்ளிடவும், எ.கா. 2.50',
     unitCurrent: (unit: string) => `${unit} (தற்போது)`,
     unit: 'அலகு',
+    moreDetails: 'மேலும் விவரங்கள்',
     units: {
       item: 'பொருள்',
       piece: 'துண்டு',
@@ -451,6 +460,7 @@ const translations: Record<Locale, Copy> = {
     priceInvalid: '価格を入力してください（例：2.50）',
     unitCurrent: (unit: string) => `${unit}（現在）`,
     unit: '単位',
+    moreDetails: '詳しく入力',
     units: {
       item: '品',
       piece: '個',
@@ -499,6 +509,7 @@ const translations: Record<Locale, Copy> = {
     priceInvalid: '가격을 입력하세요 (예: 2.50)',
     unitCurrent: (unit: string) => `${unit} (현재)`,
     unit: '단위',
+    moreDetails: '자세히 입력',
     units: {
       item: '품목',
       piece: '개',
@@ -547,6 +558,7 @@ const translations: Record<Locale, Copy> = {
     priceInvalid: 'Masukkan harga, mis. 2.50',
     unitCurrent: (unit: string) => `${unit} (saat ini)`,
     unit: 'Satuan',
+    moreDetails: 'Detail lainnya',
     units: {
       item: 'item',
       piece: 'buah',
@@ -595,6 +607,7 @@ const translations: Record<Locale, Copy> = {
     priceInvalid: 'ใส่ราคา เช่น 2.50',
     unitCurrent: (unit: string) => `${unit} (ปัจจุบัน)`,
     unit: 'หน่วย',
+    moreDetails: 'รายละเอียดเพิ่มเติม',
     units: {
       item: 'รายการ',
       piece: 'ชิ้น',
@@ -643,6 +656,7 @@ const translations: Record<Locale, Copy> = {
     priceInvalid: 'Nhập giá, ví dụ 2.50',
     unitCurrent: (unit: string) => `${unit} (hiện tại)`,
     unit: 'Đơn vị',
+    moreDetails: 'Thêm chi tiết',
     units: {
       item: 'món',
       piece: 'cái',
@@ -691,6 +705,7 @@ const translations: Record<Locale, Copy> = {
     priceInvalid: 'Maglagay ng presyo, hal. 2.50',
     unitCurrent: (unit: string) => `${unit} (kasalukuyan)`,
     unit: 'Yunit',
+    moreDetails: 'Iba pang detalye',
     units: {
       item: 'item',
       piece: 'piraso',

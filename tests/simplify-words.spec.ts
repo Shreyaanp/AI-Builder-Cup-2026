@@ -3,6 +3,7 @@ import { FIRST_QUESTION } from './newShopTopics.js'
 import { enter, localOnly } from './stories/support.js'
 import { growTool, openGrowRows } from './support/grow.js'
 import { noJargon, textSizes } from './support/simplicity.js'
+import { shopMore } from './support/shopMore.js'
 
 // Simplify batch 1 (owner app, words only): the owner never reads a developer word, body text is
 // 16px, and the new-shop chat does not call a hidden page "live". Plan: SIMPLIFY-owner.md §5, §7.
@@ -91,8 +92,9 @@ test('the demo sheets show no developer words', async ({ page }) => {
   // The weather slide of the morning brief carries the data source.
   await expect(page.getByText('Open-Meteo')).toHaveCount(0)
   await tab(page, 'shop')
-  for (const button of [/^Menu/, /Link your billing app/, /^Customer page/])
-    await sheet(page, button)
+  for (const button of [/^Menu/, /^Your shop page/]) await sheet(page, button)
+  await shopMore(page)
+  await sheet(page, /Link your billing app/)
 })
 
 test('the order card speaks of the supplier and the item, not an order number', async ({

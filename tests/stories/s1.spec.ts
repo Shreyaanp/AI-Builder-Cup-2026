@@ -67,8 +67,8 @@ test('S1 · owner sets up and shares a shop', async ({ page, context }) => {
   })
   await test.step('5 · Shop page, then Grow: what is missing for Google', async () => {
     await page.getByRole('button', { name: 'Shop', exact: true }).click()
-    await expect(page.getByRole('region', { name: 'This is your page' })).toBeVisible()
-    await expect(page.getByRole('button', { name: /^Customer page/ })).toBeVisible()
+    await expect(page.getByRole('region', { name: 'Your shop page' })).toBeVisible()
+    await expect(page.getByRole('button', { name: /^Your shop page/ })).toBeVisible()
     await shot(page, 1, 5)
     await page.getByRole('button', { name: 'Grow', exact: true }).click()
     await expect(page.getByRole('button', { name: /^Get on Google.*missing/ })).toBeVisible()

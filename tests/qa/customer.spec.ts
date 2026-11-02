@@ -76,7 +76,7 @@ test('instant facts remain anonymous; owner chat needs sign-in, replies arrive, 
     await page.getByRole('button', { name: 'Shop', exact: true }).click()
     await page.getByRole('button', { name: /^Messages 1/ }).click()
     const messages = page.getByRole('region', { name: /Messages/ })
-    await messages.getByRole('button', { name: 'Open conversation', exact: true }).click()
+    await messages.getByRole('button', { name: /^Open conversation/ }).click()
     await messages.getByLabel('Reply', { exact: true }).fill('Please ask staff before ordering')
     await messages.getByRole('button', { name: 'Send message', exact: true }).click()
     await expect(customer.getByRole('list', { name: /Courtyard Chai/ })).toContainText(
@@ -87,7 +87,8 @@ test('instant facts remain anonymous; owner chat needs sign-in, replies arrive, 
     await expect(customer.getByRole('list', { name: /Courtyard Chai/ })).toContainText(
       'Please ask staff before ordering',
     )
-    await messages.getByRole('button', { name: 'Close conversation', exact: true }).click()
+    await messages.getByRole('button', { name: 'More options', exact: true }).click()
+    await page.getByRole('menuitem', { name: 'Close conversation', exact: true }).click()
     await expect(customer.getByText('This conversation is closed.')).toBeVisible({ timeout: 6500 })
     // Fixed Q11: hidden chat-author labels stay inside their bubbles; the page fits 1440px.
     await audit(customer)

@@ -6,12 +6,15 @@ export async function ownerTools(page: Page, pinned = false) {
   // OB-168: an unpinned owner really has no pin (the rides tool explains the next step).
   await seedShop(page, pinned, shopName, pinned)
 }
-/** Payments & rides is a Grow card; the coach guide is under You → Help. */
+/** Payments & rides is a Grow card; the coach guide is You → Help → What can I ask?. */
 export async function openTool(page: Page, name: string) {
   const payments = name === 'Payments & rides'
   await page.getByRole('button', { name: payments ? 'Grow' : 'You', exact: true }).click()
   await page
-    .getByRole('button', { name: payments ? /^Payments & rides/ : name, exact: !payments })
+    .getByRole('button', {
+      name: payments ? /^Payments & rides/ : 'What can I ask?',
+      exact: !payments,
+    })
     .click()
   await expect(page.getByRole('heading', { name, exact: true })).toBeVisible()
 }

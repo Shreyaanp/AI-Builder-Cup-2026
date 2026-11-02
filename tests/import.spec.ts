@@ -79,14 +79,30 @@ test('daily menu confirmation is an owner switch and changes the customer freshn
 }) => {
   await shopWithoutMenu(page)
   await page.getByRole('dialog', { name: 'Menu' }).getByRole('button', { name: 'Close' }).click()
-  // My shop keeps the daily check for a shop without a menu yet (Today asks once items exist).
-  await page.getByRole('button', { name: 'Something changed' }).click()
-  await expect(page.getByRole('textbox', { name: 'Message', exact: true })).toHaveValue('Today: ')
-  await page.getByRole('button', { name: 'Shop', exact: true }).click()
-  await page.getByRole('button', { name: 'Yes, all good' }).click()
-  await expect(page.getByText('Still the same menu today?')).not.toBeVisible()
+  // Simplify batch 3: the daily menu question is asked once, on Coach Today, once there are items.
   const businesses = await page.request.get('/api/v1/businesses').then((r) => r.json())
   const bid = businesses[0].id as string
+  const proposal = await (
+    await page.request.post('/api/v1/proposals', {
+      data: {
+        kind: 'inventory',
+        business_id: bid,
+        revision: businesses[0].revision,
+        products: [{ name: 'Kopi', price: 180, unit: 'cup' }],
+      },
+    })
+  ).json()
+  await page.request.post(`/api/v1/proposals/${proposal.id}/approve`, {
+    data: { digest: proposal.digest },
+  })
+  await page.reload()
+  await page.getByRole('button', { name: 'Continue local preview' }).click()
+  await page.getByRole('button', { name: 'Coach', exact: true }).click()
+  const card = page.getByTestId('today-needs')
+  await expect(card).toContainText('Still the same menu today?')
+  await expect(card.getByRole('button', { name: 'Changed', exact: true })).toBeVisible()
+  await card.getByRole('button', { name: 'Yes', exact: true }).click()
+  await expect(card).not.toContainText('Still the same menu today?')
   await page.request.post(`/api/v1/businesses/${bid}/share`, { data: { public: true } })
   await page.goto(`/s/${bid}`)
   await expect(page.getByText('Updated today', { exact: true })).toBeVisible()

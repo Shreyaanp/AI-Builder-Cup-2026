@@ -38,7 +38,7 @@ test('A3 · independent customer context polls visible prices and availability',
     await expect(kopi.locator('[data-price-changed]')).toBeVisible()
     await customer.screenshot({ path: 'docs/stories/S2-A3-price.png', animations: 'allow' })
     await expect(kopi.locator('[data-price-changed]')).toHaveCount(0)
-    await page.getByRole('button', { name: /^Sold out today/ }).click()
+    await page.getByRole('button', { name: /^Sold out/ }).click()
     await page.getByRole('switch', { name: 'Available: Kaya toast' }).click()
     await expect(customer.getByRole('listitem').filter({ hasText: 'Kaya toast' })).toContainText(
       'Sold out',
