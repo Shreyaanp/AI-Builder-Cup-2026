@@ -2235,7 +2235,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Read Promise */
+        /**
+         * Read Promise
+         * @description The open promise for a morning: this one by default, or a given day (tonight's for
+         *     tomorrow, so the close screen and tests can read it back).
+         */
         get: operations["read_promise_api_v1_businesses__business_id__promise_get"];
         put?: never;
         /** New Promise */
@@ -11852,7 +11856,9 @@ export interface operations {
     };
     read_promise_api_v1_businesses__business_id__promise_get: {
         parameters: {
-            query?: never;
+            query?: {
+                day?: string | null;
+            };
             header?: never;
             path: {
                 business_id: string;

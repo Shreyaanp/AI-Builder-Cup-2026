@@ -6692,6 +6692,7 @@
           "today"
         ],
         "summary": "Read Promise",
+        "description": "The open promise for a morning: this one by default, or a given day (tonight's for\ntomorrow, so the close screen and tests can read it back).",
         "operationId": "read_promise_api_v1_businesses__business_id__promise_get",
         "parameters": [
           {
@@ -6701,6 +6702,23 @@
             "schema": {
               "type": "string",
               "title": "Business Id"
+            }
+          },
+          {
+            "name": "day",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Day"
             }
           }
         ],

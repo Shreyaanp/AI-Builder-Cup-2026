@@ -165,7 +165,9 @@ async def answer_promise(
 
 
 @router.get("/{business_id}/promise", response_model=Promise | None)
-async def read_promise(business_id: str, request: Request, day: date | None = None) -> Promise | None:
+async def read_promise(
+    business_id: str, request: Request, day: date | None = None
+) -> Promise | None:
     """The open promise for a morning: this one by default, or a given day (tonight's for
     tomorrow, so the close screen and tests can read it back)."""
     uid = await owner(request)
