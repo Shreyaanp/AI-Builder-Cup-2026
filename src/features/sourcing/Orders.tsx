@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import {
   Badge,
@@ -9,6 +9,7 @@ import {
   ListItem,
   ListItemButton,
   ListItemText,
+  Skeleton,
   Stack,
   TextField,
   Typography,
@@ -26,7 +27,7 @@ import { useWorkspace } from '../v1/workspaceContext'
 import { ConfirmUndo } from '../supply/ConfirmUndo'
 import { supplyChanged } from '../supply/supplyEvents'
 import { useOrderChangeCopy } from '../supply/orderChangeCopy'
-import { useSourcingCopy } from './copy'
+import { useOrdersLoadFailedCopy, useSourcingCopy } from './copy'
 import { deliveryLabel, useOrders, useReceiveOrder } from './orderData'
 import { DemoChip, StatusChip } from './SourcingCards'
 import type { Order } from './types'
@@ -101,6 +102,30 @@ export function OrdersSheet({
     setPicked(orderId)
   }
   const selected = orders?.find((order) => order.id === picked) ?? null
+  // Opened on one order before the list arrives: hold its place instead of flashing the list
+  // and its search field, which a quick tap or typed word would land in by mistake.
+  // The sheet can stay mounted with an older list, so wait for a fetch that started after this
+  // open, not just for any list; fall back to the list only once that fetch has come back.
+  const [fetched, setFetched] = useState<'pending' | 'ok' | 'failed'>('pending')
+  const [attempt, setAttempt] = useState(0)
+  useEffect(() => {
+    if (!open) return
+    let current = true
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- a new open starts a new wait
+    setFetched('pending')
+    void refresh().then((ok) => {
+      if (current) setFetched(ok ? 'ok' : 'failed')
+    })
+    return () => {
+      current = false
+    }
+  }, [open, orderId, attempt, refresh])
+  const waitingOnPicked = picked !== null && !selected
+  const loadingPicked = waitingOnPicked && fetched === 'pending'
+  const loadFailed = waitingOnPicked && fetched === 'failed'
+  const failedCopy = useOrdersLoadFailedCopy()
+  // Stable, because the thread re-runs its effect when this changes.
+  const reload = useCallback(async () => void (await refresh()), [refresh])
   const receiveOrder = useReceiveOrder()
   function close() {
     setPicked(null)
@@ -130,12 +155,30 @@ export function OrdersSheet({
       }
     >
       {/* Always a screen way in, beside "tell the coach" (simplify batch 2). */}
-      {!selected && <FindSupplier onStart={close} />}
-      {selected ? (
+      {!selected && !loadingPicked && !loadFailed && <FindSupplier onStart={close} />}
+      {loadingPicked ? (
+        <Stack spacing={2} aria-busy="true">
+          <Skeleton variant="rounded" height={120} />
+          <Skeleton variant="rounded" height={56} />
+        </Stack>
+      ) : loadFailed ? (
+        <Stack spacing={2} role="alert" sx={{ alignItems: 'flex-start' }}>
+          <Typography variant="bodyLarge">{failedCopy.text}</Typography>
+          <Button
+            variant="outlined"
+            onClick={() => {
+              setFetched('pending')
+              setAttempt((n) => n + 1)
+            }}
+          >
+            {failedCopy.retry}
+          </Button>
+        </Stack>
+      ) : selected ? (
         <Thread
           key={selected.id}
           order={selected}
-          onChange={refresh}
+          onChange={reload}
           onReceived={(order) => {
             // The stock review is its own dialog; close this sheet first so modals never stack.
             close()
