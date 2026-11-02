@@ -43,6 +43,8 @@ import { useSourceCopy } from './sourceCopy'
 import { useTodayCopy, type Festival } from './todayCopy'
 import type { CoachLine, Need, StepId, TodayPlan } from './todayPlan'
 import { useTodayPlan } from './useTodayPlan'
+import { countAction, countShown } from './habitCount'
+import { useLocalDay } from './useLocalDay'
 import { FirstCustomers } from '../FirstCustomers'
 import { TodaySupply } from '../../supply/TodaySupply'
 import { TodaySupplyNeeds } from '../../supply/SupplyEntry'
@@ -76,6 +78,13 @@ export function TodayView({
   const { name } = useIdentity()
   const { plan, answerMenu, firstCustomers } = useTodayPlan(actions.unread)
   const shop = ws.active
+  const shown = plan?.needs.map((need) => need.kind).join(',') ?? null
+  const day = useLocalDay()
+  useEffect(() => {
+    if (shown !== null) countShown(ws, shown ? shown.split(',') : [])
+    // Counted when what Today shows changes (or the day turns over), not on every workspace update.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shown, ws.active?.id, day])
   if (!shop) return null
   if (!plan) {
     return (
@@ -600,6 +609,9 @@ function NeedRow({
     <Box
       component="li"
       data-need={need.kind}
+      onClickCapture={(event) => {
+        if ((event.target as HTMLElement).closest('button')) countAction(ws, need.kind)
+      }}
       aria-hidden={leaving || undefined}
       inert={leaving || undefined}
       sx={{
@@ -648,6 +660,8 @@ function PulseCard({ plan, actions }: { plan: TodayPlan; actions: TodayActions }
   const roles = useTheme().material
   const number = new Intl.NumberFormat(locale, { maximumFractionDigits: 1 })
   const currency = shopCurrency(ws.active)
+  // Once the day is closed the pulse is today's, and so is the question it asks (HABIT change 3).
+  const ask = plan.pulse?.when === 'today' ? tt.howToday : tt.howYesterday
   const lines: string[] = []
   if (plan.pulse) {
     const values = plan.pulse.values.map(({ metric, value }) => {
@@ -692,8 +706,8 @@ function PulseCard({ plan, actions }: { plan: TodayPlan; actions: TodayActions }
     <ButtonBase
       data-testid="today-pulse"
       data-tour="forecast"
-      aria-label={`${lines.join('. ')}. ${tt.howYesterday}`}
-      onClick={() => actions.ask(tt.howYesterday)}
+      aria-label={`${lines.join('. ')}. ${ask}`}
+      onClick={() => actions.ask(ask)}
       sx={{
         width: '100%',
         justifyContent: 'flex-start',

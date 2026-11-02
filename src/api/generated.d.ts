@@ -2194,6 +2194,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/businesses/{business_id}/day/{day}/reward": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Day Reward */
+        get: operations["day_reward_api_v1_businesses__business_id__day__day__reward_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/businesses/{business_id}/habit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Count Habit */
+        post: operations["count_habit_api_v1_businesses__business_id__habit_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/businesses/{business_id}/analytics": {
         parameters: {
             query?: never;
@@ -3975,6 +4009,22 @@ export interface components {
              */
             unread: number;
         };
+        /** CloseReward */
+        CloseReward: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Currency */
+            currency: string;
+            /** Total */
+            total: number | null;
+            /** Items */
+            items: number;
+            same_weekday?: components["schemas"]["SameWeekday"] | null;
+            forecast?: components["schemas"]["ForecastCheck"] | null;
+        };
         /** CoachLine */
         CoachLine: {
             /**
@@ -4628,6 +4678,17 @@ export interface components {
             /** Confidence Level */
             confidence_level?: number | null;
         };
+        /** ForecastCheck */
+        ForecastCheck: {
+            /** Item */
+            item: string;
+            /** Forecast */
+            forecast: number;
+            /** Sold */
+            sold: number;
+            /** Unit */
+            unit: string;
+        };
         /** FreezeInput */
         FreezeInput: {
             /**
@@ -4677,6 +4738,23 @@ export interface components {
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /** HabitEvent */
+        HabitEvent: {
+            /**
+             * Event
+             * @enum {string}
+             */
+            event: "opened" | "prompt_shown" | "action_done" | "closed" | "push_shown" | "push_opened" | "promise_set" | "promise_done";
+            /** Kind */
+            kind?: string | null;
+            /** Seconds */
+            seconds?: number | null;
+        };
+        /** HabitEvents */
+        HabitEvents: {
+            /** Events */
+            events: components["schemas"]["HabitEvent"][];
         };
         /** Helpful */
         Helpful: {
@@ -6100,6 +6178,20 @@ export interface components {
             booking: string;
             /** Walk Ins */
             walk_ins?: boolean | null;
+        };
+        /** SameWeekday */
+        SameWeekday: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Weeks Ago */
+            weeks_ago: number;
+            /** Total */
+            total: number;
+            /** Difference */
+            difference: number;
         };
         /**
          * ScratchView
@@ -11657,6 +11749,71 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Today"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    day_reward_api_v1_businesses__business_id__day__day__reward_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+                day: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CloseReward"] | null;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    count_habit_api_v1_businesses__business_id__habit_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HabitEvents"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

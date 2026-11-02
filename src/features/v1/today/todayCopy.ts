@@ -45,6 +45,7 @@ export type TodayCopy = {
   forecast: (quantity: string, item: string) => string
   busy: (hours: string) => string
   howYesterday: string
+  howToday: string
   festival: (name: string, days: number) => string
   rain: (percent: number) => string
   busiest: (weekday: string, count: string, item: string) => string
@@ -94,6 +95,7 @@ const copy: Record<Locale, TodayCopy> = {
     forecast: (q, item) => `Today: about ${q} ${item}`,
     busy: (hours) => `busiest ${hours}`,
     howYesterday: 'How did yesterday go?',
+    howToday: 'How did today go?',
     festival: (name, days) =>
       days === 0 ? `${name} is today: busy day ahead` : `${name} in ${days} days: plan your stock`,
     rain: (p) => `Rain likely today (${p}%): plan your prep`,
@@ -148,6 +150,7 @@ const copy: Record<Locale, TodayCopy> = {
     forecast: (q, item) => `आज: लगभग ${q} ${item}`,
     busy: (hours) => `सबसे व्यस्त ${hours}`,
     howYesterday: 'कल का दिन कैसा रहा?',
+    howToday: 'आज का दिन कैसा रहा?',
     festival: (name, days) =>
       days === 0
         ? `आज ${name} है: व्यस्त दिन होगा`
@@ -204,6 +207,7 @@ const copy: Record<Locale, TodayCopy> = {
     forecast: (q, item) => `আজ: প্রায় ${q} ${item}`,
     busy: (hours) => `সবচেয়ে ব্যস্ত ${hours}`,
     howYesterday: 'গতকাল কেমন গেল?',
+    howToday: 'আজ কেমন গেল?',
     festival: (name, days) =>
       days === 0 ? `আজ ${name}: ব্যস্ত দিন` : `${days} দিন পরে ${name}: স্টকের পরিকল্পনা করুন`,
     rain: (p) => `আজ বৃষ্টির সম্ভাবনা (${p}%): সেই মতো প্রস্তুতি নিন`,
@@ -258,6 +262,7 @@ const copy: Record<Locale, TodayCopy> = {
     forecast: (q, item) => `ఈరోజు: సుమారు ${q} ${item}`,
     busy: (hours) => `ఎక్కువ రద్దీ ${hours}`,
     howYesterday: 'నిన్న ఎలా జరిగింది?',
+    howToday: 'ఈరోజు ఎలా జరిగింది?',
     festival: (name, days) =>
       days === 0 ? `ఈరోజు ${name}: రద్దీ రోజు` : `${days} రోజుల్లో ${name}: స్టాక్ ప్లాన్ చేయండి`,
     rain: (p) => `ఈరోజు వర్షం పడే అవకాశం (${p}%): దానికి తగ్గట్టు సిద్ధం అవ్వండి`,
@@ -312,6 +317,7 @@ const copy: Record<Locale, TodayCopy> = {
     forecast: (q, item) => `आज: सुमारे ${q} ${item}`,
     busy: (hours) => `सर्वात गर्दी ${hours}`,
     howYesterday: 'काल कसा गेला?',
+    howToday: 'आज कसा गेला?',
     festival: (name, days) =>
       days === 0 ? `आज ${name}: गर्दीचा दिवस` : `${days} दिवसांत ${name}: स्टॉकची तयारी करा`,
     rain: (p) => `आज पावसाची शक्यता (${p}%): त्यानुसार तयारी करा`,
@@ -367,6 +373,7 @@ const copy: Record<Locale, TodayCopy> = {
     forecast: (q, item) => `ಇಂದು: ಸುಮಾರು ${q} ${item}`,
     busy: (hours) => `ಹೆಚ್ಚು ಜನಸಂದಣಿ ${hours}`,
     howYesterday: 'ನಿನ್ನೆ ಹೇಗಿತ್ತು?',
+    howToday: 'ಇಂದು ಹೇಗಿತ್ತು?',
     festival: (name, days) =>
       days === 0 ? `ಇಂದು ${name}: ಜನಸಂದಣಿಯ ದಿನ` : `${days} ದಿನಗಳಲ್ಲಿ ${name}: ಸ್ಟಾಕ್ ಯೋಜಿಸಿ`,
     rain: (p) => `ಇಂದು ಮಳೆಯ ಸಾಧ್ಯತೆ (${p}%): ಅದರಂತೆ ತಯಾರಾಗಿ`,
@@ -422,6 +429,7 @@ const copy: Record<Locale, TodayCopy> = {
     forecast: (q, item) => `今天：约 ${q} ${item}`,
     busy: (hours) => `最忙 ${hours}`,
     howYesterday: '昨天生意怎么样？',
+    howToday: '今天生意怎么样？',
     festival: (name, days) =>
       days === 0 ? `今天是${name}：会很忙` : `${days} 天后是${name}：提前备货`,
     rain: (p) => `今天可能下雨（${p}%）：按此准备`,
@@ -476,6 +484,7 @@ const copy: Record<Locale, TodayCopy> = {
     forecast: (q, item) => `Hari ini: kira-kira ${q} ${item}`,
     busy: (hours) => `paling sibuk ${hours}`,
     howYesterday: 'Bagaimana semalam?',
+    howToday: 'Bagaimana hari ini?',
     festival: (name, days) =>
       days === 0 ? `${name} hari ini: hari sibuk` : `${name} dalam ${days} hari: rancang stok`,
     rain: (p) => `Mungkin hujan hari ini (${p}%): rancang persediaan`,
@@ -530,6 +539,7 @@ const copy: Record<Locale, TodayCopy> = {
     forecast: (q, item) => `இன்று: சுமார் ${q} ${item}`,
     busy: (hours) => `அதிக கூட்டம் ${hours}`,
     howYesterday: 'நேற்று எப்படி இருந்தது?',
+    howToday: 'இன்று எப்படி இருந்தது?',
     festival: (name, days) =>
       days === 0
         ? `இன்று ${name}: கூட்டமான நாள்`
@@ -586,6 +596,7 @@ const copy: Record<Locale, TodayCopy> = {
     forecast: (q, item) => `今日：${item} 約 ${q}`,
     busy: (hours) => `ピーク ${hours}`,
     howYesterday: '昨日はどうだった？',
+    howToday: '今日はどうだった？',
     festival: (name, days) =>
       days === 0
         ? `今日は${name}：忙しくなりそう`
@@ -642,6 +653,7 @@ const copy: Record<Locale, TodayCopy> = {
     forecast: (q, item) => `오늘: ${item} 약 ${q}`,
     busy: (hours) => `가장 바쁜 시간 ${hours}`,
     howYesterday: '어제 장사 어땠어?',
+    howToday: '오늘 장사 어땠어?',
     festival: (name, days) =>
       days === 0 ? `오늘은 ${name}: 바쁜 날이에요` : `${name}까지 ${days}일: 재고를 준비하세요`,
     rain: (p) => `오늘 비 소식 (${p}%): 준비를 조절하세요`,
@@ -696,6 +708,7 @@ const copy: Record<Locale, TodayCopy> = {
     forecast: (q, item) => `Hari ini: sekitar ${q} ${item}`,
     busy: (hours) => `tersibuk ${hours}`,
     howYesterday: 'Bagaimana penjualan kemarin?',
+    howToday: 'Bagaimana penjualan hari ini?',
     festival: (name, days) =>
       days === 0
         ? `${name} hari ini: hari yang ramai`
@@ -752,6 +765,7 @@ const copy: Record<Locale, TodayCopy> = {
     forecast: (q, item) => `วันนี้: ${item} ประมาณ ${q}`,
     busy: (hours) => `ยุ่งสุด ${hours}`,
     howYesterday: 'เมื่อวานขายเป็นยังไงบ้าง',
+    howToday: 'วันนี้ขายเป็นยังไงบ้าง',
     festival: (name, days) =>
       days === 0 ? `วันนี้${name}: จะยุ่งทั้งวัน` : `อีก ${days} วันถึง${name}: วางแผนสต็อก`,
     rain: (p) => `วันนี้ฝนอาจตก (${p}%): เตรียมของให้พอดี`,
@@ -806,6 +820,7 @@ const copy: Record<Locale, TodayCopy> = {
     forecast: (q, item) => `Hôm nay: khoảng ${q} ${item}`,
     busy: (hours) => `đông nhất ${hours}`,
     howYesterday: 'Hôm qua bán thế nào?',
+    howToday: 'Hôm nay bán thế nào?',
     festival: (name, days) =>
       days === 0
         ? `Hôm nay là ${name}: ngày đông khách`
@@ -863,6 +878,7 @@ const copy: Record<Locale, TodayCopy> = {
     forecast: (q, item) => `Ngayon: mga ${q} ${item}`,
     busy: (hours) => `pinakaabala ${hours}`,
     howYesterday: 'Kumusta ang benta kahapon?',
+    howToday: 'Kumusta ang benta ngayon?',
     festival: (name, days) =>
       days === 0
         ? `${name} ngayon: abalang araw`

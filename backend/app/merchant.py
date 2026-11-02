@@ -454,6 +454,10 @@ class MerchantRepository(Protocol):
 
     def list_businesses(self, uid: str) -> list[dict[str, Any]]: ...
     def context(self, uid: str, bid: str | None) -> dict[str, Any]: ...
+    def owned_business(self, uid: str, bid: str) -> dict[str, Any]:
+        """The shop's own document (404 unless the caller owns it); no inventory read."""
+        ...
+
     def inventory(self, uid: str, bid: str) -> list[dict[str, Any]]: ...
     def sales_history(self, uid: str, bid: str) -> list[dict[str, Any]]: ...
     def prepare_sales(self, uid: str, bid: str, rows: list[dict[str, Any]]) -> dict[str, Any]: ...
@@ -878,6 +882,10 @@ class MerchantStore:
             "person_verification": person[0] if person else "not_enrolled",
         }
 
+    def owned_business(self, uid: str, bid: str) -> dict[str, Any]:
+        with self.connect() as db:
+            return {"fields": json.loads(self.owned(db, uid, bid)["fields"])}
+
     def inventory(self, uid: str, bid: str) -> list[dict[str, Any]]:
         with self.connect() as db:
             self.owned(db, uid, bid)
@@ -1118,7 +1126,14 @@ class MerchantStore:
             for table in ("proposals", "challenges", "consents", "people", "google_sim"):
                 db.execute(f"DELETE FROM {table} WHERE uid=?", (uid,))  # noqa: S608 - fixed names
         for bid in owned:
-            for kind in ("rescue", "brief", "brief_wording", "shop_daily", *SUPPLY_KINDS):
+            for kind in (
+                "rescue",
+                "brief",
+                "brief_wording",
+                "shop_daily",
+                "owner_habit",
+                *SUPPLY_KINDS,
+            ):
                 self.feature_docs.delete_scope(kind, bid)
         return owned
 
