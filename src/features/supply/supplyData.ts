@@ -41,6 +41,26 @@ export function leadNeed(needs: SupplyNeed[] | undefined) {
   return { need: open[0] ?? needs?.[0], more: Math.max(0, open.length - 1) }
 }
 
+/**
+ * The supply Today shows: the first need not yet covered, the same one the Grow tile shows
+ * (#603), else an order that has just arrived. `item` is null when there is nothing to say.
+ */
+export function useTodaySupplyLead() {
+  const { products } = useWorkspace()
+  const { data, refresh } = useSupply(true)
+  const { need, more } = leadNeed(data?.needs)
+  const received = data?.orders.find(
+    (po) =>
+      po.received &&
+      po.received_stock &&
+      Object.keys(po.received_stock).length > 0 &&
+      Object.entries(po.received_stock).every(([name, stock]) =>
+        products.some((p) => p.name === name && p.stock != null && p.stock >= stock),
+      ),
+  )
+  return { refresh, need, more, received, item: need?.item ?? received?.lines[0]?.item ?? null }
+}
+
 // One shop's supply, shared by every view of it (Today, the Grow tile, the Purchase orders
 // sheet): a load anywhere shows everywhere, and any order change loads it again, so a tile never
 // says "on order" after a cancel or "Find suppliers" after an approve on the same screen (#603).

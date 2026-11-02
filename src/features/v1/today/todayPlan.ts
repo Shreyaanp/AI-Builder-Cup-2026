@@ -9,6 +9,7 @@ export type TodayFacts = components['schemas']['Today']
 export type CoachLine = components['schemas']['CoachLine']
 type Pulse = components['schemas']['Pulse']
 type TodayHints = components['schemas']['TodayHints']
+export type TodayPromise = components['schemas']['Promise']
 
 export type StepId =
   'items' | 'category' | 'location' | 'hours' | 'photo' | 'phone' | 'share' | 'face'
@@ -16,6 +17,10 @@ export type StepId =
 const REMINDERS: StepId[] = ['photo', 'face']
 export type Need =
   | { id: string; kind: 'reply'; count: number }
+  /** What the owner wrote down last night for this morning (HABIT change 4). */
+  | { id: string; kind: 'promise'; promise: TodayPromise }
+  /** The supply that runs out first, with its run-out day: the one stock row with a date. */
+  | { id: string; kind: 'supply'; item: string }
   | { id: string; kind: 'closeDay' }
   | { id: string; kind: 'menu' }
   | {
@@ -43,7 +48,7 @@ export interface TodayPlan {
   food: boolean
   /** Setup progress while unfinished; null once complete. */
   progress: { done: number; total: number } | null
-  /** At most three live items, most urgent first. */
+  /** At most three live items, most urgent first; the first is the one lead action. */
   needs: Need[]
   line: CoachLine | null
   pulse: PulseLine | null
@@ -66,6 +71,10 @@ export interface TodayInput {
   now: Date
   /** The owner's face check (null while unknown): skipped at onboarding → a reminder. */
   face?: 'not_started' | 'verified' | 'in_review' | 'not_verified' | null
+  /** The supply card's lead item (null while unknown or nothing runs out). */
+  supply?: { item: string } | null
+  /** This morning's promise was done or cleared here (before the server facts reload). */
+  promiseAnswered?: boolean
 }
 
 export function isCloseDayWindow(fields: Business['fields'], now: Date): boolean {
@@ -140,6 +149,8 @@ export function metricsFor(shop: TodayInput['shop'], hints?: TodayHints | null):
 // The playbook's "needs you now" kinds, mapped onto what Today can show.
 const NEED_HINT: Record<Need['kind'], TodayHints['needs_you'][number] | null> = {
   reply: 'questions',
+  promise: null,
+  supply: 'low_stock',
   closeDay: null,
   menu: 'menu_check',
   low: 'low_stock',
@@ -171,6 +182,22 @@ export function closeDayFirst(needs: Need[]): Need[] {
     ...needs.filter((need) => need.kind === 'closeDay'),
     ...needs.filter((need) => need.kind !== 'closeDay'),
   ]
+}
+
+/**
+ * The morning (HABIT change 2 and 4): last night's promise leads, after closing the day in the
+ * close window. Stock is one surface: the supply row with its run-out day keeps a place in the
+ * three, so the playbook can never push the shop's one dated stock line off Today.
+ */
+export function leadOrder(needs: Need[]): Need[] {
+  const ordered = closeDayFirst([
+    ...needs.filter((need) => need.kind === 'promise'),
+    ...needs.filter((need) => need.kind !== 'promise'),
+  ])
+  const top = ordered.slice(0, MAX_NEEDS)
+  const supply = ordered.find((need) => need.kind === 'supply')
+  if (!supply || top.includes(supply)) return top
+  return [...top.slice(0, MAX_NEEDS - 1), supply]
 }
 
 function pulseLine(pulse: Pulse, when: PulseLine['when'], order: Metric[]): PulseLine | null {
@@ -218,12 +245,17 @@ export function todayPlan(input: TodayInput): TodayPlan {
   const closeWindow = isCloseDayWindow(shop.fields, input.now)
 
   const all: Need[] = []
+  if (facts?.promise && !input.promiseAnswered)
+    all.push({ id: 'promise', kind: 'promise', promise: facts.promise })
   if (unread) all.push({ id: 'reply', kind: 'reply', count: unread })
   if (closeWindow && !isClosed) all.push({ id: 'close-day', kind: 'closeDay' })
   if (products.length && facts && shop.last_confirmed !== facts.date && !input.menuAnswered)
     all.push({ id: 'menu', kind: 'menu' })
   const soldOut = products.filter((product) => product.available === false)
-  for (const low of facts?.low_stock ?? [])
+  const supply = input.supply?.item ?? null
+  if (supply) all.push({ id: 'supply', kind: 'supply', item: supply })
+  // The supply row already names this item with its run-out day: never twice on Today.
+  for (const low of (facts?.low_stock ?? []).filter((low) => low.name !== supply))
     all.push({
       id: `low-${low.name}`,
       kind: 'low',
@@ -243,7 +275,7 @@ export function todayPlan(input: TodayInput): TodayPlan {
     part: dayPart(input.now),
     food,
     progress: done < total ? { done, total } : null,
-    needs: closeDayFirst(byPlaybook(all, facts?.hints)).slice(0, MAX_NEEDS),
+    needs: leadOrder(byPlaybook(all, facts?.hints)),
     line: facts?.line ?? null,
     pulse,
     forecast,

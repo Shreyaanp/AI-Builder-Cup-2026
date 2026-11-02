@@ -23,6 +23,7 @@ import {
   MessageSquare,
   Mic,
   Moon,
+  NotebookPen,
   PackageMinus,
   PencilLine,
   Sparkles,
@@ -41,6 +42,7 @@ import { useWorkspace } from '../workspaceContext'
 import { useOnboardingCopy } from '../onboardingCopy'
 import { useSourceCopy } from './sourceCopy'
 import { useTodayCopy, type Festival } from './todayCopy'
+import { usePromiseCopy } from './promiseCopy'
 import type { CoachLine, Need, StepId, TodayPlan } from './todayPlan'
 import { useTodayPlan } from './useTodayPlan'
 import { countAction, countShown } from './habitCount'
@@ -76,7 +78,7 @@ export function TodayView({
   const tt = useTodayCopy()
   const roles = useTheme().material
   const { name } = useIdentity()
-  const { plan, answerMenu, firstCustomers } = useTodayPlan(actions.unread)
+  const { plan, answerMenu, answerPromise, firstCustomers } = useTodayPlan(actions.unread)
   const shop = ws.active
   const shown = plan?.needs.map((need) => need.kind).join(',') ?? null
   const day = useLocalDay()
@@ -132,10 +134,17 @@ export function TodayView({
           />
         </Box>
       )}
-      <TodaySupply key={shop.id} />
-      <TodaySupplyNeeds key={`needs-${shop.id}`} />
       {plan.dayOne && <DayOne step={plan.dayOne.step} food={plan.food} actions={actions} />}
-      <NeedsCard plan={plan} actions={actions} answerMenu={answerMenu} />
+      {/* One card, one filled button: the first row is the lead action, and stock (the supply
+          row with its run-out day, low items and supply exceptions) lives only here. */}
+      <NeedsCard
+        key={shop.id}
+        plan={plan}
+        actions={actions}
+        answerMenu={answerMenu}
+        answerPromise={answerPromise}
+        footer={<TodaySupplyNeeds inCard={plan.needs.length > 0} />}
+      />
       {firstCustomers && ws.shareUrl && (
         <FirstCustomers url={ws.shareUrl} name={shop.fields.name} />
       )}
@@ -334,28 +343,39 @@ export function NeedsCard({
   plan,
   actions,
   answerMenu,
+  answerPromise,
   compact = false,
+  footer,
 }: {
   plan: TodayPlan
   actions: TodayActions
   answerMenu: () => void
+  answerPromise: (day: string) => void
   compact?: boolean
+  /** Shown inside the card after the rows (Today's supply exceptions); alone when no rows. */
+  footer?: ReactNode
 }) {
   const tt = useTodayCopy()
+  const ws = useWorkspace()
   const roles = useTheme().material
   const rows = useLeaving(plan.needs)
   if (!rows.length)
-    return compact || plan.dayOne ? null : (
-      <Stack
-        direction="row"
-        data-testid="today-all-set"
-        sx={{ gap: 2, alignItems: 'center', color: roles.onSurfaceVariant, ...enterRise }}
-      >
-        <CircleCheck size={20} color={roles.primary} aria-hidden="true" />
-        <Typography variant="titleMedium" component="p">
-          {tt.allSet}
-        </Typography>
-      </Stack>
+    return compact || plan.dayOne ? (
+      footer
+    ) : (
+      <>
+        <Stack
+          direction="row"
+          data-testid="today-all-set"
+          sx={{ gap: 2, alignItems: 'center', color: roles.onSurfaceVariant, ...enterRise }}
+        >
+          <CircleCheck size={20} color={roles.primary} aria-hidden="true" />
+          <Typography variant="titleMedium" component="p">
+            {tt.allSet}
+          </Typography>
+        </Stack>
+        {footer}
+      </>
     )
   return (
     <Box
@@ -386,19 +406,39 @@ export function NeedsCard({
           {tt.needsTitle}
         </Typography>
       )}
-      <Stack component="ul" sx={{ listStyle: 'none', m: 0, p: 0 }}>
-        {rows.map(({ need, leaving }, index) => (
-          <NeedRow
-            key={need.id}
-            need={need}
-            leaving={leaving}
-            first={index === 0 && !plan.dayOne && !compact}
-            food={plan.food}
-            actions={actions}
-            answerMenu={answerMenu}
-          />
-        ))}
+      <Stack
+        component="ul"
+        sx={{
+          listStyle: 'none',
+          m: 0,
+          p: 0,
+          '& > li + li': { borderTop: `1px solid ${roles.outlineVariant}` },
+        }}
+      >
+        {rows.map(({ need, leaving }, index) =>
+          need.kind === 'supply' ? (
+            leaving ? null : (
+              <TodaySupply
+                key={need.id}
+                first={index === 0 && !plan.dayOne && !compact}
+                onAct={() => countAction(ws, 'supply')}
+              />
+            )
+          ) : (
+            <NeedRow
+              key={need.id}
+              need={need}
+              leaving={leaving}
+              first={index === 0 && !plan.dayOne && !compact}
+              food={plan.food}
+              actions={actions}
+              answerMenu={answerMenu}
+              answerPromise={answerPromise}
+            />
+          ),
+        )}
       </Stack>
+      {footer}
     </Box>
   )
 }
@@ -410,6 +450,7 @@ function NeedRow({
   food,
   actions,
   answerMenu,
+  answerPromise,
 }: {
   need: Need
   leaving: boolean
@@ -417,11 +458,13 @@ function NeedRow({
   food: boolean
   actions: TodayActions
   answerMenu: () => void
+  answerPromise: (day: string) => void
 }) {
   const t = useCopy()
   const tt = useTodayCopy()
   const sc = useSourceCopy()
   const o = useOnboardingCopy()
+  const pc = usePromiseCopy()
   const locale = useLocale()
   const ws = useWorkspace()
   const roles = useTheme().material
@@ -439,9 +482,54 @@ function NeedRow({
     }
   }
   let icon: ReactNode
-  let text: string
+  let text = ''
   let buttons: ReactNode
-  if (need.kind === 'reply') {
+  if (need.kind === 'promise') {
+    // Last night's promise (HABIT change 4): do it, or "Not today" clears it with no comment.
+    const { promise } = need
+    const item = promise.item ? productName(promise.item, locale) : null
+    icon = <NotebookPen size={20} />
+    text = pc.said(
+      item && promise.kind === 'order'
+        ? pc.orderThing(item)
+        : item && promise.kind === 'make'
+          ? pc.makeThing(item)
+          : promise.text,
+    )
+    const settle = (state: 'done' | 'skipped') =>
+      void run(async () => {
+        if (!ws.active) return
+        await ws.api(
+          `/businesses/${encodeURIComponent(ws.active.id)}/promise/${promise.day}/${state}`,
+          { method: 'POST' },
+        )
+        answerPromise(promise.day)
+      })
+    const doIt =
+      promise.item && promise.kind === 'order'
+        ? { label: pc.orderNow, ask: tt.orderDraft(promise.item) }
+        : promise.item && promise.kind === 'make'
+          ? { label: pc.makeMore, ask: sc.makeDraft(promise.item) }
+          : null
+    buttons = (
+      <>
+        <Button
+          variant={primary}
+          disabled={busy}
+          sx={{ minHeight: 48 }}
+          onClick={() => {
+            settle('done')
+            if (doIt) actions.ask(doIt.ask)
+          }}
+        >
+          {doIt?.label ?? pc.done}
+        </Button>
+        <Button disabled={busy} sx={{ minHeight: 48 }} onClick={() => settle('skipped')}>
+          {pc.notToday}
+        </Button>
+      </>
+    )
+  } else if (need.kind === 'reply') {
     icon = <MessageSquare size={20} />
     text = tt.waiting(need.count)
     buttons = (
@@ -589,7 +677,7 @@ function NeedRow({
         )}
       </>
     )
-  } else {
+  } else if (need.kind === 'facts') {
     icon = <CircleHelp size={20} />
     const fact = need.facts[0]!
     text = t.customersAsk(need.facts.map((f) => t.askNames[f]).join(' '))
@@ -621,7 +709,6 @@ function NeedRow({
         px: 1,
         py: 2,
         minHeight: 56,
-        '& + &': { borderTop: `1px solid ${roles.outlineVariant}` },
         ...(leaving
           ? {
               pointerEvents: 'none',
@@ -741,7 +828,7 @@ function PulseCard({ plan, actions }: { plan: TodayPlan; actions: TodayActions }
 export function NeedsPill({ actions }: { actions: TodayActions }) {
   const tt = useTodayCopy()
   const roles = useTheme().material
-  const { plan, answerMenu } = useTodayPlan(actions.unread)
+  const { plan, answerMenu, answerPromise } = useTodayPlan(actions.unread)
   const [open, setOpen] = useState(false)
   const count = plan?.needs.length ?? 0
   if (!plan || !count) return null
@@ -781,7 +868,13 @@ export function NeedsPill({ actions }: { actions: TodayActions }) {
       </ButtonBase>
       {open && (
         <Box id="today-pill-panel" sx={{ mt: 2 }}>
-          <NeedsCard plan={plan} actions={actions} answerMenu={answerMenu} compact />
+          <NeedsCard
+            plan={plan}
+            actions={actions}
+            answerMenu={answerMenu}
+            answerPromise={answerPromise}
+            compact
+          />
         </Box>
       )}
     </Box>
