@@ -93,7 +93,7 @@ const en = {
   willSend: (what: string, supplier: string, format: string) =>
     `${what} to ${supplier} · ${format}`,
   format: { idoc: 'Supplier’s format', csv: 'CSV file', text: 'Message', json: 'JSON' },
-  simulated: 'Demo supplier: sending is simulated.',
+  simulated: 'Demo supplier: nothing is really sent.',
   sendingIn: (n: number) => `Sending in ${n} s`,
   step: {
     created: 'Created',
@@ -216,7 +216,7 @@ const hi: IoCopy = {
   more: (item) => `${item} बढ़ाएँ`,
   willSend: (what, partner, format) => `${partner} को ${what} · ${format}`,
   format: { idoc: 'सप्लायर का फ़ॉर्मैट', csv: 'CSV फ़ाइल', text: 'संदेश', json: 'JSON' },
-  simulated: 'डेमो सप्लायर: भेजना नकली है।',
+  simulated: 'डेमो सप्लायर: असल में कुछ नहीं भेजा जाता।',
   sendingIn: (n) => `${n} सेकंड में भेजेंगे`,
   step: {
     created: 'बना',
@@ -384,11 +384,28 @@ const tileCopy: Record<string, TileCopy> = {
   },
 }
 
+const simulatedCopy: Record<string, string> = {
+  'zh-Hans': '演示供应商：不会真的发送。',
+  ms: 'Pembekal demo: tiada apa-apa yang benar-benar dihantar.',
+  id: 'Pemasok demo: tidak ada yang benar-benar dikirim.',
+  ja: 'デモの仕入先：実際には何も送信されません。',
+  ko: '데모 공급업체: 실제로는 아무것도 전송되지 않습니다.',
+  th: 'ผู้ขายเดโม: ไม่มีการส่งจริง',
+  vi: 'Nhà cung cấp demo: không có gì được gửi thật.',
+  ta: 'டெமோ சப்ளையர்: உண்மையில் எதுவும் அனுப்பப்படாது.',
+  fil: 'Demo na supplier: walang talagang ipinapadala.',
+  bn: 'ডেমো সরবরাহকারী: আসলে কিছুই পাঠানো হয় না।',
+  te: 'డెమో సరఫరాదారు: నిజంగా ఏదీ పంపబడదు.',
+  mr: 'डेमो पुरवठादार: प्रत्यक्षात काहीही पाठवले जात नाही.',
+  kn: 'ಡೆಮೊ ಪೂರೈಕೆದಾರ: ನಿಜವಾಗಿ ಏನನ್ನೂ ಕಳುಹಿಸಲಾಗುವುದಿಲ್ಲ.',
+}
+
 export function useIoCopy(): IoCopy {
   const locale = useLocale()
   const copy = tables[locale] ?? en
+  const simulated = simulatedCopy[locale] ?? copy.simulated
   const tile = tileCopy[locale]
-  if (!tile) return copy
+  if (!tile) return { ...copy, simulated }
   const { sent, ...labels } = tile
-  return { ...copy, ...labels, empty: { ...copy.empty, send: sent } }
+  return { ...copy, ...labels, simulated, empty: { ...copy.empty, send: sent } }
 }
