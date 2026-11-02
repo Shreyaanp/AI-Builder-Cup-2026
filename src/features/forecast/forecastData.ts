@@ -52,6 +52,14 @@ export function useForecast() {
   return { state, value: state?.value, retry: () => retry((n) => n + 1) }
 }
 
+/** "Thu": the day alone, for a one-line status; the full date when it is not a date. */
+function weekday(iso: string, locale: string) {
+  const day = new Date(`${(iso ?? '').slice(0, 10)}T12:00:00`)
+  return Number.isNaN(day.getTime())
+    ? dayLabel(iso, locale)
+    : new Intl.DateTimeFormat(locale, { weekday: 'short' }).format(day)
+}
+
 /**
  * What runs out first, from the supply needs Today reads, so the two screens cannot disagree
  * (#603): the first need not yet covered leads, with how many more. Only items with no forecast
@@ -91,6 +99,14 @@ export function useRunsOut() {
             .slice(0, 3)
             .join(', '),
         ),
+    /** The same in a few words for Grow's Buy stock row: "Tea dust runs out Thu" (OB-254). */
+    short: need
+      ? s.runsOut(
+          productName(need.item, locale),
+          weekday(need.runs_out, locale),
+          productFeminine(need.item, locale),
+        )
+      : s.runningLow(productName(low[0]!.name, locale)),
     /** Asks the coach to reorder what is partly on order, or to find suppliers for the rest. */
     act: () => {
       const name = (need?.item ?? low[0]?.name ?? '').toLowerCase()

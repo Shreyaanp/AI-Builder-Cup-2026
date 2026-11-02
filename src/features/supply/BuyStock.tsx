@@ -68,7 +68,7 @@ export function BuyStockRow({
   const s = useSupplyCopy()
   const runsOut = useRunsOut()
   const stock = useStock(tab !== null)
-  const line = [runsOut?.label, stock.toDo ? grow.toDo(stock.toDo) : ''].filter(Boolean).join(' · ')
+  const line = [runsOut?.short, stock.toDo ? grow.toDo(stock.toDo) : ''].filter(Boolean).join(' · ')
   return (
     <>
       <Tile

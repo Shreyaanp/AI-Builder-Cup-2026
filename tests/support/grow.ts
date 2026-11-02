@@ -42,11 +42,10 @@ export async function openBuyStock(page: Page, tab: StockTab = 'To do') {
   await openGrowTool(page, /^Buy stock/)
   const sheet = page.getByRole('dialog', { name: /^Buy stock/ })
   await expect(sheet).toBeVisible()
-  if (tab !== 'To do') await sheet.getByRole('button', { name: new RegExp(`^${tab}`) }).click()
-  await expect(sheet.getByRole('button', { name: new RegExp(`^${tab}`) })).toHaveAttribute(
-    'aria-pressed',
-    'true',
-  )
+  // The tabs lead the sheet (a form below may have a button of the same name).
+  const button = sheet.getByRole('button', { name: new RegExp(`^${tab}`) }).first()
+  if (tab !== 'To do') await button.click()
+  await expect(button).toHaveAttribute('aria-pressed', 'true')
   return sheet
 }
 

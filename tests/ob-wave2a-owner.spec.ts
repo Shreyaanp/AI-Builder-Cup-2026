@@ -25,7 +25,7 @@ const suppliers = {
   })),
 }
 
-test('OB-108: supplier cards scroll inside the coach at phone widths', async ({ page }) => {
+test('OB-108: the supplier list fits inside the coach at phone widths', async ({ page }) => {
   await localOnly(page)
   await page.setViewportSize({ width: 360, height: 800 })
   await enter(page)

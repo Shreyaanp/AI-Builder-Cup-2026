@@ -47,7 +47,7 @@ test('How much to make uses approved sales, labels its method and passes axe on 
   await page.getByRole('button', { name: 'Continue local preview' }).click()
   await page.getByRole('button', { name: 'Grow', exact: true }).click()
   await growTool(page, /^How much to make/)
-  await expect(tile).toContainText('Kopi · 30')
+  await expect(tile).toContainText('Kopi 30')
   // The sheet (simplify batch 4b): the list, its method, and the chat path.
   const sheet = await openMake(page)
   await expect(sheet).toContainText('Kopi')

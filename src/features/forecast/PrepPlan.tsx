@@ -34,8 +34,10 @@ export function MakeRow({
   const tomorrow = value?.predictions?.[0]?.date
   const tomorrowRows = value?.predictions?.filter((row) => row.date === tomorrow) ?? []
   const number = new Intl.NumberFormat(locale, { maximumFractionDigits: 1 })
+  // The row's one line: the first two items, "Masala chai 89 cup, Ginger chai 73 cup".
   const line = (row: (typeof tomorrowRows)[number]) =>
-    `${productName(row.item, locale)} · ${number.format(row.quantity)} ${unit(row.unit)}`
+    `${productName(row.item, locale)} ${number.format(row.quantity)} ${unit(row.unit)}`
+  const list = new Intl.ListFormat(locale, { style: 'narrow', type: 'unit' })
   const method = value ? (value.method === 'timesfm' ? t.prepTimesfm : t.prepWeekday) : ''
   return (
     <>
@@ -51,7 +53,7 @@ export function MakeRow({
               : value.status === 'insufficient'
                 ? t.prepEmpty
                 : tomorrowRows.length
-                  ? tomorrowRows.slice(0, 3).map(line).join(' · ')
+                  ? list.format(tomorrowRows.slice(0, 2).map(line))
                   : t.prepTomorrow
         }
         onClick={() => (state?.error ? retry() : onSheet('list'))}
