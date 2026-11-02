@@ -46,6 +46,8 @@ export type CheckCode =
   | 'over_approval'
   | 'new_supplier'
   | 'no_price'
+  // A draft far beyond what the shop uses, flagged when the orders are read (OB-250).
+  | 'too_big'
 
 export interface Fix {
   kind: 'quantity' | 'cash' | 'supplier'

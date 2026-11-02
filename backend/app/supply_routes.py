@@ -98,10 +98,10 @@ async def overview(business_id: str, request: Request) -> dict[str, Any]:
     today = supply_chain.shop_today(context)
     forecast = await forecaster(request).forecast(history, today, context["inventory"])
     predicted = forecast.model_dump(mode="json")
-    # A draft of a wrong size never reaches the screen with a Send button, even if no reorder has
-    # run since it was saved (OB-242).
-    await anyio.to_thread.run_sync(
-        supply_coming.withdraw_wrong_sizes,
+    # A draft of a wrong size shows flagged, with Send off, even if no reorder has run since it
+    # was saved (OB-242). Reading never writes: the next reorder withdraws it (OB-250).
+    orders = await anyio.to_thread.run_sync(
+        supply_coming.flag_wrong_sizes,
         store(request),
         business_id,
         orders,
@@ -109,7 +109,6 @@ async def overview(business_id: str, request: Request) -> dict[str, Any]:
         predicted,
         today,
     )
-    orders = [po for po in orders if po["status"] != "cancelled" or po["sent"]]
     category = str(context["business"]["fields"].get("category") or "")
     needs = [
         {"item": product["name"], **need}

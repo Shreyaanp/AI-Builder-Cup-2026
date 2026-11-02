@@ -328,6 +328,13 @@ def _check_version(po: dict[str, Any], version: int) -> None:
         raise HTTPException(409, "STALE")
 
 
+def agreed_price(line: dict[str, Any]) -> int | None:
+    """The supplier's confirmed price, else the ordered one: a confirmation without a price
+    (None) keeps the order's (OB-250)."""
+    price = line.get("confirmed_price")
+    return line.get("price") if price is None else price
+
+
 def price_line(line: dict[str, Any], rule: ItemRule | None) -> None:
     line["price"] = tier_price(rule, line["quantity"], line.get("list_price"))
     line["total"] = round(line["price"] * line["quantity"]) if line["price"] is not None else None
@@ -550,9 +557,11 @@ async def draft_reorder(
     if wrong and not quantity:
         # Sized from sales that were never this item's use (540 kg of tea dust from 60 cups of
         # chai, OB-242): it is withdrawn, never resized or sent, and this reorder goes on as a
-        # new one, to the same checks.
-        await anyio.to_thread.run_sync(withdraw, store, bid, coming["draft"], wrong)
-        coming = {**coming, "draft": None}
+        # new one, to the same checks. If the owner changed it meanwhile, their draft stays the
+        # one open draft for this need, never a second one beside it (OB-250).
+        gone = await anyio.to_thread.run_sync(withdraw, store, bid, coming["draft"], wrong)
+        if gone or coming["draft"]["status"] != "draft":
+            coming = {**coming, "draft": None}
     if coming["draft"]:
         # One draft per need: the open one comes back, sized again for what is now on its way
         # (or with the owner's quantity, if named).
@@ -1210,7 +1219,7 @@ def supplier_document(
     for index, line in enumerate(po["lines"]):
         rule = item_rule(rules, line["item"])
         quantity = float(line.get("confirmed", line["quantity"]))
-        price = line.get("confirmed_price", line["price"])
+        price = agreed_price(line)
         doc_line = DocLine(
             line=line["line"],
             item=line.get("substitute") or line["item"],
@@ -1469,7 +1478,7 @@ def apply_document(
             line = line_for(po, got.line)
             if line is None:
                 continue
-            agreed = line.get("confirmed_price", line["price"])
+            agreed = agreed_price(line)
             delivered = float(line.get("shipped", line.get("confirmed", line["quantity"])))
             line["invoiced_quantity"] = got.quantity
             line["invoiced_price"] = got.price
@@ -1531,9 +1540,7 @@ def settle_confirmation(po: dict[str, Any]) -> None:
     for line in po["lines"]:
         if line.get("line_status") == "rejected":
             line["confirmed"] = 0
-        price = line.get("confirmed_price")
-        if price is None:
-            price = line.get("price")
+        price = agreed_price(line)
         if price is not None:
             # The chat still tells what it was: "₹235 a kg now, it was ₹224".
             line["asked_price"] = line.get("asked_price", line.get("price"))

@@ -215,9 +215,10 @@ def wrong_size(
     return "too_big" if amount > need["daily"] * CHECK_DAYS else ""
 
 
-def withdraw(store: MerchantRepository, bid: str, po: dict[str, Any], why: str) -> None:
-    """Cancel an unsent draft. Losing a race with the owner's own change leaves it as it is: the
-    next reorder, or the check on approving, sees it again."""
+def withdraw(store: MerchantRepository, bid: str, po: dict[str, Any], why: str) -> bool:
+    """Cancel an unsent draft; True when it was. Losing a race with the owner's own change keeps
+    the owner's: `po` becomes what is saved now, so the caller never drafts a second order beside
+    it (OB-250). The next reorder, or the check on approving, sees it again."""
     changed = {
         **po,
         "status": "cancelled",
@@ -225,9 +226,22 @@ def withdraw(store: MerchantRepository, bid: str, po: dict[str, Any], why: str) 
     }
     try:
         po.update(_save(store, bid, changed))
+        return True
     except HTTPException as error:
         if error.status_code != 409:
             raise
+    _reload(store, bid, po)
+    return False
+
+
+def _reload(store: MerchantRepository, bid: str, po: dict[str, Any]) -> None:
+    """Replace `po` in place with the saved order (someone changed it meanwhile)."""
+    from .supply_chain import ORDERS, _key
+
+    saved = store.feature_docs.get(ORDERS, _key(bid, po["id"]))
+    if saved:
+        po.clear()
+        po.update(saved)
 
 
 def withdraw_wrong_sizes(
@@ -239,13 +253,54 @@ def withdraw_wrong_sizes(
     today: date,
     skip: str = "",
 ) -> None:
-    """Withdraw every open draft of a wrong size (wrong_size), except the item named `skip`."""
+    """Withdraw every open draft of a wrong size (wrong_size), except the item named `skip`.
+    Only an owner action writes this: reading the orders flags them instead (flag_wrong_sizes)."""
     for po in orders:
         if str((po.get("reason") or {}).get("item") or "").casefold() == skip.casefold():
             continue
         why = wrong_size(po, inventory, forecast, today)
         if why:
             withdraw(store, bid, po, why)
+
+
+def flag_wrong_sizes(
+    store: MerchantRepository,
+    bid: str,
+    orders: list[dict[str, Any]],
+    inventory: list[dict[str, Any]],
+    forecast: dict[str, Any],
+    today: date,
+) -> list[dict[str, Any]]:
+    """The orders as shown: an open draft of a wrong size carries a blocking "too_big" check, so
+    Send is off, with the amount its real use calls for as the one-tap fix when there is one.
+    Nothing is saved: opening Purchase orders never changes data (OB-250). The next reorder
+    withdraws it, and approving refuses it until the owner sets the amount."""
+    shown = []
+    for po in orders:
+        if not wrong_size(po, inventory, forecast, today):
+            shown.append(po)
+            continue
+        item = str(po["reason"]["item"])
+        product = next((p for p in inventory if p["name"].casefold() == item.casefold()), None)
+        need = need_from_forecast(product, forecast, item, today)
+        unit = (product or {}).get("unit") or po["reason"].get("unit") or "kg"
+        wanted = still_wanted(need, 0.0) if need["daily"] else 0.0
+        sized = sized_line(store, bid, po, item, unit, wanted) if wanted else None
+        fits = sized and sized[1] is not None and sized[1] < float(sized[0]["quantity"])
+        check = {
+            "code": "too_big",
+            "line": sized[0]["line"] if sized else None,
+            "item": item,
+            "values": {},
+            "fix": (
+                {"kind": "quantity", "line": sized[0]["line"], "value": sized[1]}
+                if sized and fits
+                else None
+            ),
+            "blocking": True,
+        }
+        shown.append({**po, "checks": [check, *po.get("checks", [])], "blocked": True})
+    return shown
 
 
 def settle_drafts(
@@ -288,4 +343,10 @@ def settle_drafts(
             reason["wanted"] = round(wanted, 2)
             reason["on_order"] = coming["quantity"]
             recheck(store, bid, draft, today)
-        _save(store, bid, draft)
+        try:
+            draft.update(_save(store, bid, draft))
+        except HTTPException as error:
+            # The owner changed it meanwhile: theirs stays, sized as they left it (OB-250).
+            if error.status_code != 409:
+                raise
+            _reload(store, bid, draft)
