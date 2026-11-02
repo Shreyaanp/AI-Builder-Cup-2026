@@ -16,7 +16,14 @@ import {
 import { Camera, Check, ClipboardList, Keyboard, Moon, Plus, Receipt, Truck, X } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useLocale } from '../../state/hooks'
-import { currencySymbol, formatShopPrice, shopCurrency, toMinor } from '../v1/format'
+import {
+  currencySymbol,
+  formatAmount,
+  formatShopPrice,
+  shopCurrency,
+  toMajor,
+  toMinor,
+} from '../v1/format'
 import { useNextStepsCopy } from '../v1/nextStepsCopy'
 import { useOnline } from '../v1/useOnline'
 import { Tile, Supporting } from '../v1/ShopTiles'
@@ -24,7 +31,12 @@ import { useWorkspace } from '../v1/workspaceContext'
 import { useIdentity } from '../../auth/useIdentity'
 import { dismissFreshness } from '../sales/freshnessDismissal'
 import { closeDayCopy } from './strings'
+import { comparisonKind } from './compare'
 import { AskHint } from '../v1/AskHint'
+import { countClosed } from '../v1/today/habitCount'
+import type { components } from '../../api/generated'
+
+type CloseReward = components['schemas']['CloseReward']
 
 export type Kind = 'sales' | 'stock_count' | 'delivery'
 type Line = {
@@ -93,7 +105,8 @@ export function CloseDay({
   onClose: () => void
   initial?: { kind: Kind; file: File }
 }) {
-  const t = closeDayCopy(useLocale())
+  const locale = useLocale()
+  const t = closeDayCopy(locale)
   const ws = useWorkspace()
   const { scope } = useIdentity()
   const roles = useTheme().material
@@ -105,6 +118,7 @@ export function CloseDay({
   const [failed, setFailed] = useState('')
   const [dropped, setDropped] = useState<Set<string>>(new Set())
   const [saved, setSaved] = useState({ revenue: 0, stock: 0 })
+  const [reward, setReward] = useState<CloseReward | null>(null)
   const input = useRef<HTMLInputElement>(null)
   const pending = useRef<Kind>('sales')
   const counter = useRef(0)
@@ -236,7 +250,20 @@ export function CloseDay({
         }
       }
       setSaved({ revenue, stock: stockBody.length })
-      await ws.reload()
+      const savedDay = progress.current.date || day
+      const [facts] = await Promise.all([
+        // What the day pays back, from the saved records; the screen still closes without it.
+        salesBody.length && savedDay
+          ? ws
+              .api<CloseReward | null>(`${base}/day/${encodeURIComponent(savedDay)}/reward`, {
+                signal: AbortSignal.timeout(6000),
+              })
+              .catch(() => null)
+          : Promise.resolve(null),
+        ws.reload(),
+      ])
+      setReward(facts)
+      countClosed(ws)
       dismissFreshness(`chalkboard.closeday.${scope}.${shop.id}`, progress.current.date || day)
       setPhase('done')
     } catch {
@@ -552,14 +579,19 @@ export function CloseDay({
               variant="headlineSmall"
               sx={{ mt: 3, animation: `cdRise 400ms ${EASE} 700ms both` }}
             >
-              {t.doneTitle}
+              {reward?.total != null
+                ? t.doneTotal.replace('{sales}', wholeMoney(reward.total, currency, locale))
+                : t.doneTitle}
             </Typography>
+            <CloseRewardLines reward={reward} />
             <Typography
+              variant="bodyMedium"
               color="text.secondary"
-              sx={{ mt: 1, animation: `cdRise 400ms ${EASE} 820ms both` }}
+              sx={{ mt: 2, animation: `cdRise 400ms ${EASE} 940ms both` }}
             >
               {[
-                saved.revenue > 0 &&
+                reward?.total == null &&
+                  saved.revenue > 0 &&
                   t.doneSales.replace(
                     '{sales}',
                     formatShopPrice(toMinor(saved.revenue, currency), currency),
@@ -636,6 +668,69 @@ export function CloseDay({
       />
     </Dialog>
   )
+}
+
+/**
+ * The close screen's reward (HABIT change 3): only what the saved records say. A comparison is
+ * with the same weekday only, and is left out without one (a shop's first week has none).
+ */
+function CloseRewardLines({ reward }: { reward: CloseReward | null }) {
+  const locale = useLocale()
+  const t = closeDayCopy(locale)
+  const ws = useWorkspace()
+  const currency = shopCurrency(ws.active)
+  if (!reward) return null
+  const lines: string[] = []
+  const same = reward.same_weekday
+  if (same && reward.total != null) {
+    const then = new Date(`${same.date}T12:00:00Z`)
+    const weekday = new Intl.DateTimeFormat(locale, { weekday: 'long', timeZone: 'UTC' }).format(
+      then,
+    )
+    const when =
+      same.weeks_ago === 1
+        ? t.lastWeekday.replace('{weekday}', weekday)
+        : new Intl.DateTimeFormat(locale, {
+            weekday: 'long',
+            day: 'numeric',
+            month: 'short',
+            timeZone: 'UTC',
+          }).format(then)
+    const amount = wholeMoney(Math.abs(same.difference), currency, locale)
+    const kind = comparisonKind(toMajor(same.difference, currency))
+    lines.push(
+      (kind === 'more' ? t.moreThan : kind === 'less' ? t.lessThan : t.sameAs)
+        .replace('{amount}', amount)
+        .replace('{when}', when),
+    )
+  }
+  if (reward.forecast) {
+    const number = new Intl.NumberFormat(locale, { maximumFractionDigits: 1 })
+    lines.push(
+      t.forecastSold
+        .replace('{forecast}', number.format(reward.forecast.forecast))
+        .replace('{item}', reward.forecast.item)
+        .replace('{sold}', number.format(reward.forecast.sold)),
+    )
+  }
+  if (!lines.length) return null
+  return (
+    <Stack
+      data-testid="close-reward"
+      sx={{ mt: 2, gap: 1, animation: `cdRise 400ms ${EASE} 820ms both` }}
+    >
+      {lines.map((line) => (
+        <Typography key={line} variant="bodyLarge" sx={{ overflowWrap: 'anywhere' }}>
+          {line}
+        </Typography>
+      ))}
+    </Stack>
+  )
+}
+
+/** A day's takings read best whole: ₹2,490, not ₹2,490.00. */
+function wholeMoney(minor: number, currency: string, locale: string): string {
+  return formatAmount(Math.round(toMajor(minor, currency)), currency, locale)
 }
 
 function ReviewList({

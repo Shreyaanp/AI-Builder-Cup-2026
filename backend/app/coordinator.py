@@ -468,7 +468,9 @@ def get_insights() -> dict[str, Any]:
     sellers, slow movers, revenue vs the 7 days before), sold-out count, customer questions and
     unanswered messages, and when the menu was last confirmed. Call it when the owner asks how
     business is going or what to do next, then give 2-3 short, concrete suggestions grounded only
-    in these numbers.
+    in these numbers. For "how did today go?" use `today`: today's saved total and, only when
+    it is there, the same weekday it compares with (never compare with any other day). `today`
+    is null until today's sales are saved; then suggest closing the day.
     If has_sales_data is false, suggest importing a POS or Excel sales export."""
     ctx = current.get()
     if not ctx or not ctx.business_id:
@@ -513,8 +515,24 @@ def get_insights() -> dict[str, Any]:
         {"date": day, "revenue": to_major(total, currency)}
         for day, total in sorted(by_day.items())[-14:]
     ]
+    from .close_reward import close_reward
+
+    closed = close_reward(sales, today, currency)
     return {
         **facts,
+        "today": {
+            "total": to_major(closed.total, currency) if closed.total is not None else None,
+            "items": closed.items,
+            "same_weekday": {
+                "date": closed.same_weekday.date.isoformat(),
+                "total": to_major(closed.same_weekday.total, currency),
+                "difference": to_major(closed.same_weekday.difference, currency),
+            }
+            if closed.same_weekday
+            else None,
+        }
+        if closed
+        else None,
         "daily_revenue": daily,
         "has_sales_data": bool(sales),
         "unanswered_customer_messages": len(waiting),

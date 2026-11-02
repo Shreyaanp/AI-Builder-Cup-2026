@@ -18,6 +18,7 @@ from fastapi import APIRouter, Request
 from pydantic import BaseModel
 
 from . import brief
+from .close_reward import CloseReward, close_reward
 from .limits import enforce_limits
 from .merchant import MerchantRepository
 from .merchant_routes import owner, store
@@ -314,3 +315,21 @@ async def today_page(business_id: str, request: Request) -> Today:
         hints=hints,
         has_customer_stamp=customer_stamp,
     )
+
+
+@router.get("/{business_id}/day/{day}/reward", response_model=CloseReward | None)
+async def day_reward(business_id: str, day: date, request: Request) -> CloseReward | None:
+    uid = await owner(request)
+    await enforce_limits(request, [("owner:read", uid)])
+    service = store(request)
+    context = await anyio.to_thread.run_sync(service.context, uid, business_id)
+    fields = context["business"]["fields"]
+    if day == local_now(fields).date():
+        # Same forecast and cache as Today, so the number matches what the owner saw there.
+        sales, forecast = await brief.today_forecast(
+            service, uid, business_id, request.app.state.forecaster, context
+        )
+    else:
+        sales = await anyio.to_thread.run_sync(service.sales_history, uid, business_id)
+        forecast = None
+    return close_reward(sales, day, shop_currency(fields), forecast)
