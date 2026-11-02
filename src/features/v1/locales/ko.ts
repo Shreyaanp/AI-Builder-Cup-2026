@@ -403,8 +403,6 @@ export const ko: Copy = {
   dataSection: '내 데이터',
   dataBody: 'Chalkboard에서 가게, 상품, 대화, 기억, 사진, 얼굴 데이터를 삭제해요.',
   deleteAll: '내 데이터 모두 삭제',
-  deleteDemo:
-    '데모에서는 데이터를 삭제할 수 없습니다. 실제 계정에서는 여기서 모두 삭제할 수 있습니다.',
   deleteTitle: '모두 삭제할까요?',
   deleteBody: '모든 가게, 상품, 대화, 사진, 얼굴 데이터를 영구 삭제해요. 되돌릴 수 없어요.',
   deleteConfirm: '영구 삭제',

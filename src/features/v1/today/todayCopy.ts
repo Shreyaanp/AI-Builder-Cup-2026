@@ -21,7 +21,8 @@ export type TodayCopy = {
   low: (item: string, left: number) => string
   order: string
   orderDraft: (item: string) => string
-  soldOut: (item: string) => string
+  /** `feminine`: Hindi grammar for the item's name (चीनी खत्म हो गई). */
+  soldOut: (item: string, feminine?: boolean) => string
   soldOutMany: (count: number) => string
   backInStock: string
   see: string
@@ -124,7 +125,7 @@ const copy: Record<Locale, TodayCopy> = {
     low: (item, left) => `${item}: सिर्फ़ ${left} बचे`,
     order: 'ऑर्डर करें',
     orderDraft: (item) => `और ${item} ऑर्डर करो`,
-    soldOut: (item) => `${item} खत्म हो गया`,
+    soldOut: (item, feminine) => `${item} खत्म हो ${feminine ? 'गई' : 'गया'}`,
     soldOutMany: (n) => `${n} चीज़ें खत्म हैं`,
     backInStock: 'फिर से उपलब्ध',
     see: 'देखें',

@@ -54,7 +54,12 @@ const en = {
   addPhone: 'Add your shop phone number first so the supplier can reach you.',
   sendFailed: 'Couldn’t send. Try again.',
   markReceived: 'Mark as received',
-  runsOut: (item: string, day: string) => `${item} runs out ${day}`,
+  // `feminine` is for Hindi grammar (चाय पत्ती … खत्म होगी); English has no need of it.
+  runsOut: ((item: string, day: string) => `${item} runs out ${day}`) as (
+    item: string,
+    day: string,
+    feminine?: boolean,
+  ) => string,
   choose: 'Choose',
   sendTo: (name: string) => `Send to ${name}`,
   // Starts the owner's order in the composer; they add what and how much.
@@ -569,7 +574,8 @@ const copies: Record<string, SourcingCopy> = {
     addPhone: 'सप्लायर संपर्क कर सके, इसलिए पहले दुकान का फ़ोन नंबर जोड़ें।',
     sendFailed: 'भेज नहीं पाए। फिर कोशिश करें।',
     markReceived: 'मिल गया चिह्नित करें',
-    runsOut: (item: string, day: string) => `${item} ${day} को खत्म होगा`,
+    runsOut: (item: string, day: string, feminine?: boolean) =>
+      `${item} ${day} को खत्म ${feminine ? 'होगी' : 'होगा'}`,
     choose: 'चुनें',
     sendTo: (name: string) => `${name} को भेजें`,
     // Starts the owner's order in the composer; they add what and how much.

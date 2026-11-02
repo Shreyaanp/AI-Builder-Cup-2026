@@ -173,7 +173,8 @@ def test_demo_answers_every_chat_phrase_on_topic_with_its_screen_path(app, featu
         # Orders → Find a supplier sends the owner's item (sourcing/copy.ts lowMessage).
         (
             "My milk 20 litres is running low. Find suppliers.",
-            r"suppliers near you for milk 20 litres",
+            # The demo does the work now: it lists the suppliers and drafts the order (OB-248).
+            r"Demo suppliers near you for Milk",
             "Grow → Orders → Find a supplier",
         ),
         ("मेरा दूध 20 लीटर कम हो रहा है। सप्लायर खोजें।", r"सप्लायर.*दूध 20 लीटर", None),

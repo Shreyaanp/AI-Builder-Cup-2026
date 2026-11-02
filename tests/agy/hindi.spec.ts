@@ -88,7 +88,7 @@ test.describe('Hindi language flows on phone (390px)', () => {
     })
 
     await page.goto('/demo')
-    const banner = 'डेमो दुकान – यहाँ कुछ भी असली नहीं है'
+    const banner = 'डेमो दुकान · नमूना डेटा'
     await expect(page.getByText(banner, { exact: true })).toBeVisible({ timeout: 30_000 })
 
     // Exit demo button in Hindi

@@ -31,7 +31,7 @@ test('public demo walks the whole owner lifecycle at 390 px', async ({ page }, i
       realApi.push(path)
   })
   await page.goto('/demo')
-  await expect(page.getByText('Demo shop – nothing here is real', { exact: true })).toBeVisible({
+  await expect(page.getByText('Demo shop · sample data', { exact: true })).toBeVisible({
     timeout: 30_000,
   })
 
@@ -44,19 +44,12 @@ test('public demo walks the whole owner lifecycle at 390 px', async ({ page }, i
   await welcome.getByRole('button', { name: 'Skip' }).click()
   await expect(page.getByRole('dialog')).toHaveCount(0)
 
-  // OB-127: the supplier pointer names the tab that contains Supplies.
+  // OB-248: Find suppliers does the work: the demo suppliers and a draft order, no pointer.
   const coach = page.getByRole('textbox', { name: 'Message', exact: true })
   await coach.fill('My masala chai is running low. Find suppliers.')
   await page.getByRole('button', { name: 'Send', exact: true }).click()
-  // OB-127: suppliers live on Grow. Simplify batch 2 replaced the stale "Grow → Supplies" with the
-  // tile owners see; a running-low message points to Find a supplier, for that item (#633).
-  await expect(page.getByRole('log')).toContainText(
-    'suppliers near you for masala chai and prepares an order request for you to send. Demo ' +
-      'supply records show Sri Lakshmi Provisions (Demo). Next, open Grow → Orders → Find a supplier.',
-    { timeout: 30_000 },
-  )
-  await expect(page.getByRole('log')).not.toContainText('Grow → Supplies')
-  await expect(page.getByRole('log')).not.toContainText('Shop → Supplies')
+  await expect(page.getByRole('log')).toContainText('I drafted 10', { timeout: 30_000 })
+  await expect(page.getByRole('log')).not.toContainText('Supplies')
 
   // OB-129: demo message cards show a name and plain question, with a shared button edge.
   await page.locator('[data-tour="nav-shop"]').click()
@@ -106,7 +99,7 @@ test('public demo walks the whole owner lifecycle at 390 px', async ({ page }, i
   await page.locator('[data-tour="supply"]').click()
   const sheet = page.getByRole('dialog')
   await expect(sheet.getByText(/Sri Lakshmi/).first()).toBeVisible({ timeout: 15_000 })
-  await expect(page.getByText('Demo: not sent')).toHaveCount(0)
+  await expect(page.getByText('In the demo this is pretend: nothing is sent')).toHaveCount(0)
   // #282: draft a reorder inside the sandbox.
   await sheet.getByRole('button', { name: 'Draft a reorder' }).click()
   await expect(sheet.locator('article')).toBeVisible({ timeout: 15_000 })
@@ -139,7 +132,7 @@ test('public demo walks the whole owner lifecycle at 390 px', async ({ page }, i
   await page.screenshot({ path: 'output/playwright/demo-full-08-you.png', fullPage: true })
   await reminders.click()
   await expect(reminders).toBeChecked()
-  await expect(page.getByText('Demo: not sent').first()).toBeVisible()
+  await expect(page.getByText('In the demo this is pretend: nothing is sent').first()).toBeVisible()
   await expect(reminders).toBeEnabled()
   await reminders.click()
   await expect(reminders).not.toBeChecked()

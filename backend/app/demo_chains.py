@@ -14,8 +14,12 @@ from .money import to_minor
 
 
 def _menu(rows: list[tuple[str, float, str, str]]) -> list[ProductFields]:
+    # A minimart or supermarket resells everything it stocks (OB-248: never an "I make it?" ask).
     return [
-        item(name, to_minor(price, "INR"), unit, True, group) for name, price, unit, group in rows
+        item(name, to_minor(price, "INR"), unit, True, group).model_copy(
+            update={"source": "bought"}
+        )
+        for name, price, unit, group in rows
     ]
 
 

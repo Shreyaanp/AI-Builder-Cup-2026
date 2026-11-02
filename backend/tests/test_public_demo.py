@@ -69,10 +69,11 @@ def test_demo_is_the_full_owner_app_on_a_private_sandbox(app, monkeypatch):  # n
         assert sap.status_code == 200 and sap.json()["source"] == "recorded"
         drafted = owner(client, session, f"businesses/{bid}/supply/reorder", "POST", json={})
         assert drafted.status_code == 200, drafted.text
-        # Sandbox writes stay in the session; anything that would leave it is refused.
+        # Sandbox writes stay in the session (the real store below is never called); anything
+        # that would leave it is refused. OB-248: sharing is one of those sandbox writes.
         assert owner(client, session, "me/data", "DELETE").status_code == 403
         shared = owner(client, session, f"businesses/{bid}/share", "POST", json={"public": True})
-        assert shared.status_code == 403 and shared.json()["detail"] == "DEMO_NOT_SENT"
+        assert shared.status_code == 200 and shared.json()["public"] is True
         assert owner(client, session, "businesses/someone-else/inventory").status_code in {
             403,
             404,

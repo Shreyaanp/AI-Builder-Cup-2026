@@ -306,7 +306,16 @@ def seed_supply(store: MerchantRepository, uid: str, demo: DemoShop, day: date) 
         system_format=channel,
         terms_days=0,
         items=[
-            ItemRule(item=p.name, unit=p.unit, moq=1, pack=1, lead_days=1, tiers=[]) for p in stock
+            # Tea dust or kopi powder is sold by the 5 kg sack: a reorder is never a stray 1 kg.
+            ItemRule(
+                item=p.name,
+                unit=p.unit,
+                moq=5 if p.name == product.name else 1,
+                pack=1,
+                lead_days=1,
+                tiers=[],
+            )
+            for p in stock
         ],
     )
     relationship = {
@@ -333,7 +342,8 @@ def seed_supply(store: MerchantRepository, uid: str, demo: DemoShop, day: date) 
         "predictions": [p.model_dump(mode="json") for p in predictions if p.item == product.name],
     }
     need = supply.need_from_forecast(product.model_dump(), forecast, product.name, day)
-    wanted = max(5, round(need["daily"] * 9 - need["stock"]))
+    # About a week's cover, so a Reorder on top of this order is a real top-up (OB-248).
+    wanted = max(5, round(need["daily"] * 7 - need["stock"]))
     lines = []
     best: dict[str, Any] = {}
     wishes = [wanted, *(q for _, _, q, _ in extras)]

@@ -7948,6 +7948,117 @@
         }
       }
     },
+    "/api/v1/businesses/{business_id}/supply/orders/{order_id}/again": {
+      "post": {
+        "summary": "Order Again",
+        "operationId": "order_again_api_v1_businesses__business_id__supply_orders__order_id__again_post",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          },
+          {
+            "name": "order_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Order Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Order Again Api V1 Businesses  Business Id  Supply Orders  Order Id  Again Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/businesses/{business_id}/supply/orders/{order_id}/talk": {
+      "post": {
+        "summary": "Talk",
+        "description": "Public demo only: a message to the scripted supplier. Nothing is sent to anyone.",
+        "operationId": "talk_api_v1_businesses__business_id__supply_orders__order_id__talk_post",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          },
+          {
+            "name": "order_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Order Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TalkBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Talk Api V1 Businesses  Business Id  Supply Orders  Order Id  Talk Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/businesses/{business_id}/supply/orders/{order_id}/simulate": {
       "post": {
         "summary": "Simulate",
@@ -13660,6 +13771,11 @@
             "type": "integer",
             "title": "Stock"
           },
+          "unit": {
+            "type": "string",
+            "title": "Unit",
+            "default": ""
+          },
           "runs_out": {
             "anyOf": [
               {
@@ -18176,6 +18292,28 @@
         "additionalProperties": false,
         "type": "object",
         "title": "TailorAttributes"
+      },
+      "TalkBody": {
+        "properties": {
+          "version": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Version"
+          },
+          "text": {
+            "type": "string",
+            "maxLength": 300,
+            "pattern": "\\S",
+            "title": "Text"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "version",
+          "text"
+        ],
+        "title": "TalkBody"
       },
       "ThreadMessage": {
         "properties": {

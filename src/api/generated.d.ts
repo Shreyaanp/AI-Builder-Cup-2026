@@ -2645,6 +2645,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/businesses/{business_id}/supply/orders/{order_id}/again": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Order Again */
+        post: operations["order_again_api_v1_businesses__business_id__supply_orders__order_id__again_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/businesses/{business_id}/supply/orders/{order_id}/talk": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Talk
+         * @description Public demo only: a message to the scripted supplier. Nothing is sent to anyone.
+         */
+        post: operations["talk_api_v1_businesses__business_id__supply_orders__order_id__talk_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/businesses/{business_id}/supply/orders/{order_id}/simulate": {
         parameters: {
             query?: never;
@@ -4899,6 +4936,11 @@ export interface components {
             name: string;
             /** Stock */
             stock: number;
+            /**
+             * Unit
+             * @default
+             */
+            unit: string;
             /** Runs Out */
             runs_out: string | null;
             /**
@@ -6752,6 +6794,13 @@ export interface components {
              * @default
              */
             measurements: string;
+        };
+        /** TalkBody */
+        TalkBody: {
+            /** Version */
+            version: number;
+            /** Text */
+            text: string;
         };
         /** ThreadMessage */
         ThreadMessage: {
@@ -12539,6 +12588,78 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["Version"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    order_again_api_v1_businesses__business_id__supply_orders__order_id__again_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+                order_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    talk_api_v1_businesses__business_id__supply_orders__order_id__talk_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+                order_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TalkBody"];
             };
         };
         responses: {

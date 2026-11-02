@@ -20,6 +20,7 @@ import {
   FlaskConical,
   PackageCheck,
   Receipt,
+  RotateCcw,
   Send,
   Truck,
 } from 'lucide-react'
@@ -27,14 +28,17 @@ import { useLocale } from '../../state/hooks'
 import { enterRise, fieldFade, shape } from '../../design/theme'
 import { chalkWrite, stampThud } from '../../design/chalkMotion'
 import { formatShopPrice } from '../v1/format'
+import { productName } from '../../i18n/productNames'
 import { Sheet } from '../v1/Sheet'
+import { useWorkspace } from '../v1/workspaceContext'
+import { SupplierTalk } from './SupplierTalk'
 import { Code } from './Code'
 import { ConfirmUndo } from './ConfirmUndo'
 import { useOrderChangeCopy } from './orderChangeCopy'
 import { useShowcaseCopy } from './showcaseCopy'
 import { orderLabel, orderTotal } from './orderFormat'
 import { useSupplyCopy, type SupplyCopy } from './copy'
-import { dayLabel, usePoActions, type SimVariant } from './supplyData'
+import { dayLabel, useOrderUnit, usePoActions, type SimVariant } from './supplyData'
 import type { DocFlag, DocKind, PurchaseOrder, RuleCheck, SupplyDocument } from './types'
 
 const STEPS: DocKind[] = ['ORDERS', 'ORDRSP', 'DESADV', 'INVOIC']
@@ -54,9 +58,13 @@ const NEXT: Partial<Record<PurchaseOrder['status'], DocKind>> = {
 
 function useFormat(order: PurchaseOrder) {
   const locale = useLocale()
+  const unit = useOrderUnit()
   const number = new Intl.NumberFormat(locale, { maximumFractionDigits: 2 })
   return {
     locale,
+    // Item names and units in the owner's language (चाय पत्ती, किलो), as stored otherwise.
+    item: (name: string) => productName(name, locale),
+    unit,
     money: (minor: number | null | undefined) =>
       minor == null ? '–' : formatShopPrice(minor, order.currency, locale),
     qty: (value: number | null | undefined) => number.format(value ?? 0),
@@ -67,7 +75,7 @@ function useFormat(order: PurchaseOrder) {
 /** The order in one plain line: "20 kg Atta · deliver Fri 17 Oct · ₹1,240 · 7-day credit". */
 function headline(order: PurchaseOrder, s: SupplyCopy, f: ReturnType<typeof useFormat>) {
   const [first, ...rest] = order.lines
-  const what = first ? `${f.qty(first.quantity)} ${first.unit} ${first.item}` : ''
+  const what = first ? `${f.qty(first.quantity)} ${f.unit(first.unit)} ${f.item(first.item)}` : ''
   return [
     what + (rest.length ? ` +${rest.length}` : ''),
     order.delivery ? s.deliver(f.day(order.delivery)) : '',
@@ -82,11 +90,11 @@ function why(order: PurchaseOrder, s: SupplyCopy, f: ReturnType<typeof useFormat
   const r = order.reason
   const parts = [
     r.runs_out
-      ? s.left(f.qty(r.stock), r.unit, f.day(r.runs_out))
+      ? s.left(f.qty(r.stock), f.unit(r.unit), f.day(r.runs_out))
       : r.method === 'none'
         ? s.noForecast
         : '',
-    r.tier_min ? s.tier(f.qty(r.tier_min), order.lines[0]?.unit ?? r.unit) : '',
+    r.tier_min ? s.tier(f.qty(r.tier_min), f.unit(order.lines[0]?.unit ?? r.unit)) : '',
     order.delivery ? s.arrives(f.day(order.delivery)) : '',
     r.headroom != null && r.headroom > 0 ? s.creditLeft(f.money(r.headroom)) : '',
   ]
@@ -162,6 +170,7 @@ export function PurchaseOrderCard({
       setBusy(null)
     }
   }
+  const { demo } = useWorkspace()
   const spinner = (key: string, icon: ReactNode) =>
     busy === key ? <CircularProgress size={16} color="inherit" /> : icon
   if (preview === 'timeline')
@@ -178,7 +187,7 @@ export function PurchaseOrderCard({
   return (
     <Box
       component="article"
-      aria-label={orderLabel(order, s.orderTitle)}
+      aria-label={orderLabel(order, s.orderTitle, f.item)}
       sx={{
         borderRadius: `${shape.xl}px`,
         bgcolor: draft ? roles.surfaceContainerLow : roles.surfaceContainer,
@@ -198,7 +207,7 @@ export function PurchaseOrderCard({
           color="text.secondary"
           sx={{ flex: '1 1 160px', minWidth: 0, overflowWrap: 'anywhere' }}
         >
-          {orderLabel(order, s.orderTitle)}
+          {orderLabel(order, s.orderTitle, f.item)}
         </Typography>
         {order.simulated && (
           <Chip
@@ -253,7 +262,7 @@ export function PurchaseOrderCard({
         {draft && (
           <Typography variant="bodyMedium" color="text.secondary" sx={{ mt: 1 }}>
             {order.reason.moq != null &&
-              `${s.moq}: ${f.qty(order.reason.moq)} ${order.reason.unit} · `}
+              `${s.moq}: ${f.qty(order.reason.moq)} ${f.unit(order.reason.unit)} · `}
             {why(order, s, f)}
           </Typography>
         )}
@@ -261,7 +270,8 @@ export function PurchaseOrderCard({
           <Box component="ul" sx={{ m: 0, mt: 2, pl: 5, display: 'grid', gap: 0.5 }}>
             {order.lines.map((line) => (
               <Typography component="li" variant="bodyMedium" key={line.line}>
-                {f.qty(line.quantity)} {line.unit} {line.item} · {f.money(line.total)}
+                {f.qty(line.quantity)} {f.unit(line.unit)} {f.item(line.item)} ·{' '}
+                {f.money(line.total)}
               </Typography>
             ))}
           </Box>
@@ -399,6 +409,9 @@ export function PurchaseOrderCard({
               </Box>
             )}
           </Sheet>
+          {demo && order.simulated && (
+            <SupplierTalk order={order} refresh={actions.refresh} write={actions.talk} />
+          )}
           <Timeline order={order} busy={busy} act={act} actions={actions} />
           <NextStep order={order} busy={busy} act={act} actions={actions} />
           {/* A sent order can still be cancelled until the supplier confirms it (OB-225). */}
@@ -597,7 +610,7 @@ function DocumentDetail({
               {warn ? <CircleAlert size={16} /> : <ArrowLeftRight size={16} />}
             </Box>
             <span>
-              {line ? `${line.item}: ` : ''}
+              {line ? `${f.item(line.item)}: ` : ''}
               {text}
             </span>
           </Typography>
@@ -726,12 +739,12 @@ function FlagRow({
       : flag.reason === 'date'
         ? f.day(value)
         : flag.reason === 'quantity'
-          ? `${f.qty(Number(value))} ${line?.unit ?? ''}`.trim()
+          ? `${f.qty(Number(value))} ${f.unit(line?.unit ?? '')}`.trim()
           : value
   return (
     <Box>
       <Typography variant="bodyMedium" sx={{ overflowWrap: 'anywhere' }}>
-        {line ? `${line.item} · ` : ''}
+        {line ? `${f.item(line.item)} · ` : ''}
         {s.flagQuestion(s.flagReason[flag.reason], show(flag.value))}
       </Typography>
       <Stack direction="row" sx={{ mt: 1.5, flexWrap: 'wrap', gap: 1.5 }}>
@@ -767,6 +780,7 @@ function NextStep({
   const showcase = useShowcaseCopy()
   const f = useFormat(order)
   const roles = useTheme().material
+  const { demo } = useWorkspace()
   const [paste, setPaste] = useState(false)
   const [text, setText] = useState('')
   const flags = order.open_flags ?? 0
@@ -793,7 +807,12 @@ function NextStep({
     <Stack spacing={3}>
       {(order.backorders ?? []).map((item, index) => (
         <Typography key={index} variant="bodyMedium" color="text.secondary">
-          {s.backorder(f.qty(item.quantity), item.unit, item.item, f.day(item.date))}
+          {s.backorder(
+            f.qty(item.quantity),
+            f.unit(item.unit),
+            f.item(item.item),
+            f.day(item.date),
+          )}
         </Typography>
       ))}
       {order.status === 'changed' && (
@@ -848,6 +867,17 @@ function NextStep({
           {s.closed}
         </Typography>
       )}
+      {order.received && (order.status === 'closed' || order.status === 'invoiced') && (
+        <Button
+          variant="outlined"
+          disabled={busy !== null}
+          onClick={() => void act('again', () => actions.again(order))}
+          startIcon={icon('again', <RotateCcw size={18} />)}
+          sx={{ alignSelf: 'flex-start', minHeight: 48 }}
+        >
+          {s.orderAgain}
+        </Button>
+      )}
       {waitingFor && !(order.status === 'received' && invoiced) && (
         <Box
           sx={{
@@ -856,7 +886,8 @@ function NextStep({
             border: `1px dashed ${roles.outline}`,
           }}
         >
-          {order.simulated && sim.length > 0 && (
+          {/* The public demo's supplier answers by itself (SupplierTalk). */}
+          {order.simulated && !demo && sim.length > 0 && (
             <>
               <Button
                 variant="contained"

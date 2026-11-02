@@ -1,3 +1,5 @@
+import { useShopCopy } from '../shop/strings'
+import { unitLabel } from '../shop/units'
 import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Box, Button, Chip, IconButton, Link, Stack, Typography, useTheme } from '@mui/material'
@@ -15,6 +17,7 @@ import type { components } from '../../api/generated'
 import { hits, useChalkTimeline } from '../../design/chalkMotion'
 import { scrollArea, shape } from '../../design/theme'
 import { useLocale } from '../../state/hooks'
+import { productName } from '../../i18n/productNames'
 import { CloseDay } from '../closeday/CloseDay'
 import { closeDayCopy } from '../closeday/strings'
 import { useCopy as usePlanCopy } from '../planning/strings'
@@ -60,6 +63,7 @@ export function MorningBrief({
   onRadar: () => void
 }) {
   const t = useOwnerCopy()
+  const shopCopy = useShopCopy()
   const locale = useLocale()
   const theme = useTheme()
   const roles = theme.material
@@ -151,7 +155,7 @@ export function MorningBrief({
                 variant="bodyLarge"
                 sx={{ flex: 1, minWidth: 0, overflowWrap: 'anywhere' }}
               >
-                {row.name}
+                {productName(row.name, locale)}
               </Typography>
               <Typography
                 component="p"
@@ -237,10 +241,12 @@ export function MorningBrief({
                 variant="bodyLarge"
                 sx={{ flex: 1, minWidth: 0, overflowWrap: 'anywhere' }}
               >
-                {row.name}
+                {productName(row.name, locale)}
               </Typography>
               <Typography variant="bodyMedium" sx={{ fontVariantNumeric: 'tabular-nums' }}>
-                {fill(t.stockLeft, { n: number(row.stock) })}
+                {fill(t.stockLeft, {
+                  n: `${number(row.stock)} ${unitLabel(row.unit ?? '', shopCopy)}`.trim(),
+                })}
               </Typography>
               {typeof row.runs_out === 'string' && (
                 <Typography variant="bodySmall" color="text.secondary">

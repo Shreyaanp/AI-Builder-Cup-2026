@@ -94,7 +94,7 @@ MENUS: dict[str, list[tuple[str, int, str, str]]] = {
         ("Shirt fitting", 250, "service", "Alterations"),
         ("Kurta stitching", 850, "service", "Stitching"),
         ("Button repair", 40, "service", "Repairs"),
-        ("Curtain shortening", 200, "piece", "Home"),
+        ("Curtain shortening", 200, "service", "Home"),
     ],
     "delhi-food": [
         ("Aloo tikki", 70, "plate", "Chaat"),
@@ -118,7 +118,7 @@ MENUS: dict[str, list[tuple[str, int, str, str]]] = {
     ],
     "florist": [
         ("Marigold garland", 120, "piece", "Garlands"),
-        ("Rose bouquet", 450, "set", "Bouquets"),
+        ("Rose bouquet", 450, "item", "Bouquets"),
         ("Jasmine flowers", 80, "pack", "Flowers"),
         ("Desk arrangement", 650, "set", "Arrangements"),
         ("Gift wrapping", 60, "service", "Services"),

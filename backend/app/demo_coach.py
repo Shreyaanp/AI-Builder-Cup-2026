@@ -24,6 +24,14 @@ SUGGESTIONS = (
     "What should I prep tomorrow?",
 )
 DEMO_NOTE = "This is the demo shop, so nothing reaches real customers."
+# Asks to find a supplier, or says a saved item is low: the demo finds them and drafts the order.
+FIND_SUPPLIERS = re.compile(
+    r"\b(?:find|need|search|looking\s+for)\b[^.?!]*\bsuppliers?\b|सप्लायर[^।?!]*(?:ढूँढ|ढूंढ|खोज)",
+    re.I,
+)
+LOW_ON = re.compile(r"\b(?:running\s+low|low\s+on|run\s+out\s+of|restock)\b|कम\s+हो|खत्म\s+हो", re.I)
+DRAFT_QUANTITY = 10
+HINDI_UNITS = {"kg": "किलो", "litre": "लीटर", "pack": "पैक", "cup": "कप", "piece": "पीस"}
 DEMO_NOTE_HI = "यह डेमो दुकान है, इसलिए कुछ भी असली ग्राहकों तक नहीं जाता।"
 HINDI = re.compile(r"[ऀ-ॿ]")
 # The offline coach is conservative: a review card only for a short request that is all one of
@@ -316,6 +324,7 @@ OPENS = {"radar", "rider", "reminders"}
 # others get what the feature does. Several share a path (Shop → Shop details), so the path
 # alone does not say the answer is about the feature.
 RECORDS = {
+    "google",
     "supply",
     "suppliers",
     "price_change",
@@ -431,6 +440,83 @@ def _visits(ctx: Any) -> list[StreamEvent]:
     ]
 
 
+async def _find_suppliers(ctx: Any, question: str) -> list[StreamEvent] | None:
+    """What the real coach does for "find suppliers": list them, then draft the order card to the
+    first one, on the sandbox's demo suppliers. Nothing goes until the visitor sends it."""
+    from . import supply_chain
+    from .coordinator import find_suppliers, prepare_order
+    from .money import to_minor
+    from .sourcing import OrderItem, money_text
+    from .sourcing_offline import sourcing_call
+
+    inventory = ctx.store.inventory(ctx.uid, ctx.business_id)
+    # A screen's Hindi phrase means its English one, whose item the shop's records can name.
+    shown = by_ask(question)
+    asked = shown.ask if shown and shown.id == "suppliers" else question
+    words = asked.casefold()
+    # What the shop buys is on its orders too (Milk, Sugar), not only on its menu.
+    supplies = [
+        {"name": line["item"], "source": "bought"}
+        for order in supply_chain.orders(ctx.store, ctx.uid, ctx.business_id)
+        for line in order.get("lines") or []
+    ]
+    named = [item for item in [*inventory, *supplies] if item["name"].casefold() in words]
+    product = max(named, key=lambda item: len(item["name"]), default=None)
+    bought = next((item for item in inventory if item.get("source") == "bought"), None)
+    if not FIND_SUPPLIERS.search(asked) and not (product and LOW_ON.search(asked)):
+        return None
+    made = product["name"] if product and product.get("source") == "made" else ""
+    if product and not made:
+        item = product["name"]
+    elif made and bought:
+        # The shop makes it itself, so what it can run out of is what it buys.
+        item = bought["name"]
+    else:
+        call = sourcing_call(asked, [], ctx)
+        function = call.function_call if call else None
+        if not function or function.name != "find_suppliers":
+            return None
+        item = str((function.args or {}).get("item") or "")
+    found = await find_suppliers(item)
+    if found.get("status") != "found":
+        return None
+    suppliers = found["suppliers"]
+    first = suppliers[0]
+    unit = first["item"]["unit"]
+    line = OrderItem(name=first["item"]["name"], quantity=DRAFT_QUANTITY, unit=unit)
+    drafted = prepare_order(first["id"], [line])
+    if drafted.get("status") != "needs_owner_tap":
+        return None
+    currency = found["currency"]
+    if HINDI.search(question):
+        names = "; ".join(
+            f"{rank}. {row['name']}, {row['distance_km']:g} किमी"
+            for rank, row in enumerate(suppliers[:3], 1)
+        )
+        text = (
+            f"पास के डेमो सप्लायर: {names}। {first['name']} के लिए ऑर्डर नीचे तैयार है। आपके भेजे "
+            f"बिना कुछ नहीं जाता, और यह सिर्फ़ डेमो है। {next_line_hi('suppliers')}"
+        )
+    else:
+        names = "; ".join(
+            f"{rank}. {row['name']}, {row['distance_km']:g} km, "
+            f"{money_text(to_minor(row['item']['price'], currency), currency)} "
+            f"a {row['item']['unit']}"
+            for rank, row in enumerate(suppliers[:3], 1)
+        )
+        lead = f"You make {made} yourself, so these are for {item}. " if made else ""
+        text = (
+            f"{lead}Demo suppliers near you for {item}: {names}. I drafted "
+            f"{DRAFT_QUANTITY:g} {unit} from {first['name']} below. It goes only when you tap "
+            f"Send, and only in the demo. {next_line('suppliers')}"
+        )
+    return [
+        StreamEvent(kind="suppliers", data=ctx.cards[found["card_id"]][1]),
+        StreamEvent(kind="order", data=ctx.cards[drafted["card_id"]][1]),
+        StreamEvent(kind="reply", text=text),
+    ]
+
+
 async def public_demo_turn(ctx: Any, question: str) -> list[StreamEvent] | None:
     """A whole offline demo turn: the proposal and chart cards the real coach would show, then
     the reply. Deterministic and model-free, so the public demo never calls a paid model."""
@@ -438,8 +524,13 @@ async def public_demo_turn(ctx: Any, question: str) -> list[StreamEvent] | None:
         return None
     text = _plain(question)
     reply: str | None = None
+    if not NEGATION.search(text):
+        events = await _find_suppliers(ctx, question)
+        if events:
+            return events
     feature = by_ask(question)
-    if feature and HINDI.search(question):
+    # In the demo, Get on Google is the practice run, not the real guide's "finish on Google".
+    if feature and HINDI.search(question) and feature.id != "google":
         return _hindi(ctx, feature)
     if not HINDI.search(question):
         asked = "?" in question or ASKED.match(text)
@@ -527,20 +618,27 @@ def public_demo_reply(ctx: Any, question: str) -> str | None:
             return f"पिछले 7 दिनों में डेमो के सबसे ज़्यादा बिकने वाले आइटम: {names}। " + next_line_hi(
                 "insights"
             )
+        if "गूगल" in words or "google" in words:
+            return (
+                "डेमो में Google पर आने का अभ्यास करें: यह सिर्फ़ दिखावा है, Google को कुछ नहीं भेजा "
+                f"जाता। {next_line_hi('google')}"
+            )
+        unit = str(product.get("unit") or "चीज़ें")
+        unit_hi = HINDI_UNITS.get(unit, unit)
         if any(term in words for term in ("आज", "बिक्री", "कमाई")):
             rows = [row for row in history if row["date"] == today.isoformat()]
             sold = sum(row["quantity"] for row in rows)
             revenue = sum(row.get("revenue", row.get("amount", 0)) for row in rows)
             return f"आज डेमो में {sold:g} चीज़ें बिकीं और बिक्री ₹{revenue:g} रही।"
         if any(term in words for term in ("स्टॉक", "बचा", "उपलब्ध", "खत्म", "कम")):
-            return f"डेमो में {name} का स्टॉक {stock:g} {product.get('unit', 'चीज़ें')} है।"
+            return f"डेमो में {name} का स्टॉक {stock:g} {unit_hi} है।"
         if any(term in words for term in ("कीमत", "दाम", "भाव")):
             return f"डेमो में {name} की कीमत ₹{price:g} है।"
         if any(term in words for term in ("ऑर्डर", "सप्लायर", "मंगाऊँ", "खरीद")):
             orders = supply_chain.orders(store, uid, bid)
             po = next((order for order in orders if order.get("supplier")), None)
             supplier = po["supplier"]["name"] if po else "डेमो सप्लायर"
-            return f"डेमो सप्लायर {supplier} है। {name} का स्टॉक {stock:g} है।"
+            return f"डेमो सप्लायर {supplier} है। {name} का स्टॉक {stock:g} {unit_hi} है।"
         if any(term in words for term in ("कल", "तैयार", "बनाऊँ")):
             return f"कल {name} की तैयारी के लिए डेमो बिक्री का औसत देखें।"
         if any(term in words for term in ("समय", "खुला", "खुलती", "बंद")):
@@ -557,6 +655,11 @@ def public_demo_reply(ctx: Any, question: str) -> str | None:
         return (
             f"{shop} has {len(inventory)} menu items and {len(history)} sales records. "
             "Next, ask about sales, stock, prep or customers."
+        )
+    if re.search(r"\bgoogle\b", words):
+        return (
+            "In the demo, getting on Google is a practice run. It is pretend: nothing is sent to "
+            "Google. " + next_line("google")
         )
     if re.search(r"\b(?:hours|open|opening|closed|timing|sunday)\b", words):
         return (
@@ -596,8 +699,8 @@ def public_demo_reply(ctx: Any, question: str) -> str | None:
                 f"order for {wanted['item']} for review. " + next_line("supply")
             )
         return (
-            f"Demo supply records show {supplier}; {name} has {stock:g} in stock. "
-            "In your real shop, this would draft an order for review. " + next_line("supply")
+            f"Demo supply records show {supplier}; {name} has {stock:g} "
+            f"{product.get('unit', 'items')} in stock. " + next_line("supply")
         )
     if any(
         term in words

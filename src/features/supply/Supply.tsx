@@ -20,6 +20,7 @@ import {
 } from '@mui/material'
 import { ArrowLeft, ChevronRight, FileText, Settings2, Sparkles } from 'lucide-react'
 import { useLocale } from '../../state/hooks'
+import { productName } from '../../i18n/productNames'
 import { enterRise, shape } from '../../design/theme'
 import { formatShopPrice, toMajor, toMinor } from '../v1/format'
 import { Sheet } from '../v1/Sheet'
@@ -27,9 +28,9 @@ import { useWorkspace } from '../v1/workspaceContext'
 import { useShowcaseCopy } from './showcaseCopy'
 import { Supporting, Tile } from '../v1/ShopTiles'
 import { useSupplyCopy } from './copy'
-import { orderLabel, orderTotal, termsLabel } from './orderFormat'
+import { orderLabel, orderSize, orderTotal, termsLabel } from './orderFormat'
 import { PurchaseOrderCard } from './PurchaseOrderCard'
-import { useDraftReorder, useRulesActions, useSupply } from './supplyData'
+import { useDraftReorder, useOrderUnit, useRulesActions, useSupply } from './supplyData'
 import { useOrderChangeCopy } from './orderChangeCopy'
 import type { ItemRule, PurchaseOrder, Relationship, RuleSet, SystemFormat } from './types'
 
@@ -46,8 +47,9 @@ const OPEN = new Set([
 /** My shop: the Purchase orders tile, opening the sheet. */
 export function SupplyTile() {
   const s = useSupplyCopy()
+  const locale = useLocale()
   const [open, setOpen] = useState(false)
-  const { data, refresh } = useSupply(true)
+  const { data, refresh, failed } = useSupply(true)
   const orders = data?.orders ?? []
   const active = orders.filter((order) => OPEN.has(order.status))
   const latest = orders[0]
@@ -62,8 +64,10 @@ export function SupplyTile() {
       >
         <Supporting>
           {latest
-            ? `${orderLabel(latest, s.orderTitle)} · ${s.status[latest.status]}`
-            : s.tileEmpty}
+            ? `${orderLabel(latest, s.orderTitle, (item) => productName(item, locale))} · ${s.status[latest.status]}`
+            : data === null && failed
+              ? s.loadFailed
+              : s.tileEmpty}
         </Supporting>
       </Tile>
       <SupplySheet
@@ -85,6 +89,7 @@ export function SupplySheet({ open, onClose }: { open: boolean; onClose: () => v
   const ws = useWorkspace()
   const roles = useTheme().material
   const locale = useLocale()
+  const unit = useOrderUnit()
   const money = (order: PurchaseOrder) => {
     const total = orderTotal(order)
     return total == null ? '–' : formatShopPrice(total, order.currency, locale)
@@ -109,6 +114,8 @@ export function SupplySheet({ open, onClose }: { open: boolean; onClose: () => v
     view.kind === 'rules' ? data?.suppliers.find((row) => row.supplier.id === view.id) : undefined
   function update(order: PurchaseOrder) {
     setLocal((known) => ({ ...known, [order.id]: order }))
+    // "Order again" answers with the new draft: show it, ready to review and send.
+    if (view.kind === 'order' && order.id !== view.id) setView({ kind: 'order', id: order.id })
   }
   function close() {
     setView({ kind: 'list' })
@@ -135,7 +142,7 @@ export function SupplySheet({ open, onClose }: { open: boolean; onClose: () => v
             {back}
             <Box component="span" sx={{ minWidth: 0, overflowWrap: 'anywhere' }}>
               {view.kind === 'order' && selected
-                ? orderLabel(selected, s.orderTitle)
+                ? orderLabel(selected, s.orderTitle, (item) => productName(item, locale))
                 : supplier
                   ? s.rulesFor(supplier.supplier.name)
                   : s.title}
@@ -254,8 +261,8 @@ export function SupplySheet({ open, onClose }: { open: boolean; onClose: () => v
                   >
                     <FileText size={20} color={roles.primary} aria-hidden="true" />
                     <ListItemText
-                      primary={orderLabel(order, s.orderTitle)}
-                      secondary={`${s.status[order.status]} · ${money(order)}`}
+                      primary={orderLabel(order, s.orderTitle, (item) => productName(item, locale))}
+                      secondary={`${orderSize(order, locale, unit)} · ${s.status[order.status]} · ${money(order)}`}
                     />
                     <ChevronRight size={18} aria-hidden="true" />
                   </ListItemButton>

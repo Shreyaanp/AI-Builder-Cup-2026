@@ -10,6 +10,7 @@ const en = {
     'Official pages open separately. Business Profile API access is pending. No verification or publication is confirmed here.',
   claimSaved: 'Saved fictional ownership request. No request was sent to Google.',
   banner: 'Simulated — no Google listing is created or changed',
+  pretend: 'In the demo this is pretend: nothing is sent to Google',
   start: 'Put my shop on Google',
   title: 'Practice: Google owner journey',
   close: 'Close and keep progress',
@@ -178,6 +179,7 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
       'आधिकारिक पेज अलग खुलते हैं। Business Profile API की अनुमति बाकी है। यहाँ सत्यापन या प्रकाशन की पुष्टि नहीं है।',
     claimSaved: 'काल्पनिक मालिकाना अनुरोध सहेजा। Google को कोई अनुरोध नहीं भेजा।',
     banner: 'अभ्यास — Google की कोई लिस्टिंग नहीं बनेगी या बदलेगी',
+    pretend: 'डेमो में यह सिर्फ़ दिखावा है: Google को कुछ नहीं भेजा जाता',
     start: 'मेरी दुकान Google पर लाएँ',
     title: 'अभ्यास: Google मालिक के कदम',
     close: 'बंद करें और प्रगति रखें',
@@ -338,6 +340,7 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
       'সরকারি পেজ আলাদা খোলে। Business Profile API অনুমতি বাকি। এখানে যাচাই বা প্রকাশের নিশ্চয়তা নেই।',
     claimSaved: 'কাল্পনিক মালিকানার অনুরোধ সেভ। Google-এ কোনো অনুরোধ যায়নি।',
     banner: 'অনুকরণ — Google-এর কোনো তালিকা তৈরি বা বদল হবে না',
+    pretend: 'ডেমোতে এটি শুধু ভান: Google-এ কিছুই পাঠানো হয় না',
     start: 'আমার দোকান Google-এ আনুন',
     title: 'অনুশীলন: Google মালিকের ধাপ',
     close: 'বন্ধ করে অগ্রগতি রাখুন',
@@ -498,6 +501,7 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
       'అధికారిక పేజీలు వేరుగా తెరుస్తాయి. Business Profile API అనుమతి పెండింగ్. ఇక్కడ ధృవీకరణ లేదా ప్రచురణ నిర్ధారించలేదు.',
     claimSaved: 'కల్పిత యాజమాన్య అభ్యర్థన సేవ్ అయింది. Googleకు ఏ అభ్యర్థనా పంపలేదు.',
     banner: 'అనుకరణ — Google లిస్టింగ్ సృష్టించరు లేదా మార్చరు',
+    pretend: 'డెమోలో ఇది నటన మాత్రమే: Google కి ఏదీ పంపబడదు',
     start: 'నా దుకాణం Googleలో చేర్చండి',
     title: 'సాధన: Google యజమాని దశలు',
     close: 'మూసి ప్రగతి ఉంచండి',
@@ -659,6 +663,7 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
       'अधिकृत पेज वेगळे उघडतात. Business Profile API परवानगी बाकी. इथे पडताळणी किंवा प्रसिद्धीची खात्री नाही.',
     claimSaved: 'काल्पनिक मालकी विनंती जतन केली. Google ला विनंती पाठवलेली नाही.',
     banner: 'सराव — Google ची नोंद तयार किंवा बदलणार नाही',
+    pretend: 'डेमोमध्ये हे फक्त नाटक आहे: Google ला काहीही पाठवले जात नाही',
     start: 'माझे दुकान Google वर आणा',
     title: 'सराव: Google मालकाचा प्रवास',
     close: 'बंद करा आणि प्रगती ठेवा',
@@ -818,6 +823,7 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
       'ಅಧಿಕೃತ ಪೇಜ್ ಪ್ರತ್ಯೇಕವಾಗಿ ತೆರೆಯುತ್ತವೆ. Business Profile API ಅನುಮತಿ ಬಾಕಿ. ಇಲ್ಲಿ ಪರಿಶೀಲನೆ ಅಥವಾ ಪ್ರಕಟಣೆ ಖಚಿತವಾಗಿಲ್ಲ.',
     claimSaved: 'ಕಲ್ಪಿತ ಮಾಲೀಕತ್ವ ವಿನಂತಿ ಉಳಿಸಲಾಗಿದೆ. Googleಗೆ ವಿನಂತಿ ಕಳುಹಿಸಿಲ್ಲ.',
     banner: 'ಅಭ್ಯಾಸ — Google ಪಟ್ಟಿ ರಚನೆ ಅಥವಾ ಬದಲಾವಣೆ ಆಗುವುದಿಲ್ಲ',
+    pretend: 'ಡೆಮೊದಲ್ಲಿ ಇದು ಕೇವಲ ಅಭ್ಯಾಸ: Google ಗೆ ಏನನ್ನೂ ಕಳುಹಿಸುವುದಿಲ್ಲ',
     start: 'ನನ್ನ ಅಂಗಡಿ Googleಗೆ ಸೇರಿಸಿ',
     title: 'ಅಭ್ಯಾಸ: Google ಮಾಲೀಕರ ಹಂತಗಳು',
     close: 'ಮುಚ್ಚಿ ಪ್ರಗತಿ ಉಳಿಸಿ',
@@ -974,6 +980,7 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
   en,
   'zh-Hans': {
     banner: '模拟流程 — 不会创建或更改 Google 商家资料',
+    pretend: '演示中这只是模拟：不会向 Google 发送任何内容',
     start: '把店铺加入 Google',
     title: '练习：Google 店主流程',
     close: '关闭并保留进度',
@@ -1125,6 +1132,7 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
   },
   ms: {
     banner: 'Simulasi — tiada penyenaraian Google dibuat atau diubah',
+    pretend: 'Dalam demo ini hanya lakonan: tiada apa-apa dihantar kepada Google',
     start: 'Letak kedai di Google',
     title: 'Latihan: proses pemilik Google',
     close: 'Tutup dan simpan kemajuan',
@@ -1285,6 +1293,7 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
   },
   ta: {
     banner: 'மாதிரி செயல்பாடு — Google பதிவு உருவாகாது, மாறாது',
+    pretend: 'டெமோவில் இது வெறும் பாவனை: Google-க்கு எதுவும் அனுப்பப்படாது',
     start: 'Google-இல் கடை சேர்த்தல்',
     title: 'பயிற்சி: Google உரிமையாளர் நடைமுறை',
     close: 'மூடி முன்னேற்றத்தை வைத்திருங்கள்',
@@ -1452,6 +1461,7 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
   },
   ja: {
     banner: 'シミュレーション・Google の掲載情報は作成・変更されません',
+    pretend: 'デモでは練習です。Google には何も送信されません',
     start: 'Google 掲載を試す',
     title: '練習：Google オーナー手続き',
     close: '進捗を残して閉じる',
@@ -1613,6 +1623,7 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
   },
   ko: {
     banner: '시뮬레이션 · Google 등록 정보를 만들거나 바꾸지 않아요',
+    pretend: '데모에서는 연습입니다. Google에 아무것도 보내지 않습니다',
     start: 'Google에 가게 등록',
     title: '연습: Google 점주 절차',
     close: '진행 상황 유지하고 닫기',
@@ -1772,6 +1783,7 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
   },
   id: {
     banner: 'Simulasi — tidak membuat atau mengubah listing Google',
+    pretend: 'Di demo ini hanya pura-pura: tidak ada yang dikirim ke Google',
     start: 'Daftarkan toko di Google',
     title: 'Latihan: alur pemilik Google',
     close: 'Tutup dan simpan progres',
@@ -1932,6 +1944,7 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
   },
   th: {
     banner: 'การจำลอง ไม่สร้างหรือเปลี่ยนข้อมูลร้านบน Google',
+    pretend: 'ในเดโมนี้เป็นเพียงการจำลอง: ไม่มีการส่งสิ่งใดไปยัง Google',
     start: 'เพิ่มร้านบน Google',
     title: 'ฝึก: ขั้นตอนเจ้าของ Google',
     close: 'ปิดและเก็บความคืบหน้า',
@@ -2087,6 +2100,7 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
   },
   vi: {
     banner: 'Mô phỏng — không tạo hoặc đổi thông tin trên Google',
+    pretend: 'Trong bản demo, đây chỉ là giả lập: không có gì được gửi đến Google',
     start: 'Đưa cửa hàng lên Google',
     title: 'Thực hành: quy trình chủ cửa hàng Google',
     close: 'Đóng và giữ tiến độ',
@@ -2247,6 +2261,7 @@ export const simTranslations: Partial<Record<Locale, Partial<Copy>>> = {
   },
   fil: {
     banner: 'Simulation — walang gagawin o babaguhing listing sa Google',
+    pretend: 'Sa demo, kunwari lang ito: walang ipinapadala sa Google',
     start: 'Ilagay sa Google',
     title: 'Pagsasanay: proseso ng may-ari sa Google',
     close: 'Isara at panatilihin ang progreso',

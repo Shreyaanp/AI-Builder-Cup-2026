@@ -87,6 +87,19 @@ export interface SupplyDocument {
   /** gemini (live AI), parser (offline fixture) or template (we wrote it). */
   reader: 'gemini' | 'parser' | 'template'
   simulated?: boolean
+  /** The document in plain fields, whatever format it arrived in. */
+  canonical?: {
+    total?: number | null
+    lines?: {
+      item: string
+      quantity: number
+      unit: string
+      price?: number | null
+      status?: string
+      backorder_quantity?: number | null
+      backorder_date?: string | null
+    }[]
+  }
 }
 
 export interface OrderChange {
@@ -157,6 +170,9 @@ export interface PurchaseOrder {
   documents: SupplyDocument[]
   backorders: { item: string; quantity: number; unit: string; date: string }[]
   changes?: OrderChange[]
+  changes_accepted?: boolean
+  /** Public demo: what the visitor wrote to the scripted supplier, and its answers. */
+  talk?: { id: string; at: number; text?: string; answer?: 'when' | 'price' | 'noted' }[]
   received: boolean
   received_at?: number
   received_stock?: Record<string, number>

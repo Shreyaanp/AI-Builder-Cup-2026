@@ -41,10 +41,7 @@ for (const width of [360, 390, 412]) {
             realApi.push(path)
         })
         await page.goto('/demo')
-        const banner =
-          language === 'en'
-            ? 'Demo shop – nothing here is real'
-            : 'डेमो दुकान – यहाँ कुछ भी असली नहीं है'
+        const banner = language === 'en' ? 'Demo shop · sample data' : 'डेमो दुकान · नमूना डेटा'
         await expect(page.getByText(banner, { exact: true })).toBeVisible({ timeout: 30_000 })
         await page
           .getByRole('dialog')
@@ -67,18 +64,21 @@ for (const width of [360, 390, 412]) {
         await expect(page.getByRole('dialog')).toHaveCount(0)
         await page.locator('[data-tour="customer"] button').nth(1).click()
         const publish = page.getByRole('dialog').getByRole('switch')
+        // OB-248: the switch really works on the visitor's sandbox, with the plain note beside it.
+        // The Hindi run must show the Hindi notice (strings are matched by position; OB-344 review).
+        await publish.click()
+        await expect(publish).toBeChecked()
+        await expect(
+          page
+            .getByRole('dialog')
+            .getByText(
+              language === 'en'
+                ? 'In the demo this is pretend: nothing is sent'
+                : 'डेमो में यह नकली है: कुछ भेजा नहीं जाता',
+            ),
+        ).toBeVisible()
         await publish.click()
         await expect(publish).not.toBeChecked()
-        // Blocked writes answer with the friendly demo note (#322), never an error alert.
-        // The Hindi run must show the Hindi notice (strings are matched by position; OB-344 review).
-        await expect(
-          page.locator('.MuiSnackbar-root', {
-            hasText:
-              language === 'en'
-                ? "This is a demo shop; changes aren't saved"
-                : 'डेमो: बदलाव सहेजे नहीं जाते',
-          }),
-        ).toBeVisible()
         await page.keyboard.press('Escape')
         await expect(page.getByRole('dialog')).toHaveCount(0)
         await page.locator('[data-tour="menu"]').click()
