@@ -76,6 +76,7 @@ from .merchant_firestore import FirestoreMerchantStore
 from .merchant_routes import router as merchant_router
 from .new_shop_resume import is_empty, merge_drafts
 from .new_shop_tools import go_live, pin_typed_place
+from .owner_habit import router as owner_habit_router
 from .owner_routes import router as owner_router
 from .passport_routes import router as passport_router
 from .photos import PhotoPipeline
@@ -319,6 +320,7 @@ def create_app(
     app.include_router(games_router)
     app.include_router(today_router)
     app.include_router(shop_today_router)
+    app.include_router(owner_habit_router)
     app.include_router(analytics_router)
     app.include_router(playbook_router)
     app.include_router(sourcing_router)

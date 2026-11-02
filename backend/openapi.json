@@ -6531,6 +6531,111 @@
         }
       }
     },
+    "/api/v1/businesses/{business_id}/day/{day}/reward": {
+      "get": {
+        "tags": [
+          "today"
+        ],
+        "summary": "Day Reward",
+        "operationId": "day_reward_api_v1_businesses__business_id__day__day__reward_get",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          },
+          {
+            "name": "day",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "title": "Day"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/CloseReward"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Day Reward Api V1 Businesses  Business Id  Day  Day  Reward Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/businesses/{business_id}/habit": {
+      "post": {
+        "tags": [
+          "today"
+        ],
+        "summary": "Count Habit",
+        "operationId": "count_habit_api_v1_businesses__business_id__habit_post",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HabitEvents"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/businesses/{business_id}/analytics": {
       "get": {
         "summary": "Shop Analytics",
@@ -11228,6 +11333,62 @@
         ],
         "title": "ChatSummary"
       },
+      "CloseReward": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date",
+            "title": "Date"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency"
+          },
+          "total": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total"
+          },
+          "items": {
+            "type": "number",
+            "title": "Items"
+          },
+          "same_weekday": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SameWeekday"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "forecast": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ForecastCheck"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "date",
+          "currency",
+          "total",
+          "items"
+        ],
+        "title": "CloseReward"
+      },
       "CoachLine": {
         "properties": {
           "kind": {
@@ -12969,6 +13130,34 @@
         ],
         "title": "Forecast"
       },
+      "ForecastCheck": {
+        "properties": {
+          "item": {
+            "type": "string",
+            "title": "Item"
+          },
+          "forecast": {
+            "type": "integer",
+            "title": "Forecast"
+          },
+          "sold": {
+            "type": "number",
+            "title": "Sold"
+          },
+          "unit": {
+            "type": "string",
+            "title": "Unit"
+          }
+        },
+        "type": "object",
+        "required": [
+          "item",
+          "forecast",
+          "sold",
+          "unit"
+        ],
+        "title": "ForecastCheck"
+      },
       "FreezeInput": {
         "properties": {
           "week": {
@@ -13113,6 +13302,72 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "HabitEvent": {
+        "properties": {
+          "event": {
+            "type": "string",
+            "enum": [
+              "opened",
+              "prompt_shown",
+              "action_done",
+              "closed",
+              "push_shown",
+              "push_opened",
+              "promise_set",
+              "promise_done"
+            ],
+            "title": "Event"
+          },
+          "kind": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 20
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kind"
+          },
+          "seconds": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 3600.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seconds"
+          }
+        },
+        "type": "object",
+        "required": [
+          "event"
+        ],
+        "title": "HabitEvent"
+      },
+      "HabitEvents": {
+        "properties": {
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/HabitEvent"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "minItems": 1,
+            "title": "Events"
+          }
+        },
+        "type": "object",
+        "required": [
+          "events"
+        ],
+        "title": "HabitEvents"
       },
       "Helpful": {
         "properties": {
@@ -16615,6 +16870,35 @@
         "additionalProperties": false,
         "type": "object",
         "title": "SalonAttributes"
+      },
+      "SameWeekday": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date",
+            "title": "Date"
+          },
+          "weeks_ago": {
+            "type": "integer",
+            "title": "Weeks Ago"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "difference": {
+            "type": "integer",
+            "title": "Difference"
+          }
+        },
+        "type": "object",
+        "required": [
+          "date",
+          "weeks_ago",
+          "total",
+          "difference"
+        ],
+        "title": "SameWeekday"
       },
       "ScratchView": {
         "properties": {

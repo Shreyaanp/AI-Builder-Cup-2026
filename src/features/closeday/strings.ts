@@ -39,6 +39,13 @@ const en = {
   doneSales: 'Sales of {sales} saved.',
   doneStock: 'Stock updated for {n} items.',
   donePlan: 'Your prep plan uses them from now on.',
+  // The close screen's reward (HABIT change 3): only facts from saved records.
+  doneTotal: 'Day closed: {sales}',
+  moreThan: '{amount} more than {when}',
+  lessThan: '{amount} less than {when}',
+  sameAs: 'Same as {when}',
+  lastWeekday: 'last {weekday}',
+  forecastSold: 'Forecast said about {forecast} {item}. You sold {sold}.',
   finish: 'Done',
   close: 'Close',
 }
