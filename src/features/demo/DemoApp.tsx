@@ -19,6 +19,7 @@ import { AppShell } from '../v1/AppShell'
 import { BackHistory } from '../v1/backStack'
 import { ApiError, type Api } from '../v1/api'
 import { setCoachEndpoint } from '../../api/stream'
+import { nameSampleShops } from '../../i18n/productNames'
 import { DemoWelcome } from './DemoWelcome'
 import { DemoBrowse } from '../customer/DemoBrowse'
 import { currentPath, subscribePath, customerNavigate } from '../frontdoors/navigation'
@@ -31,6 +32,8 @@ import {
   setCustomerTour,
   type Session,
 } from './demoSession'
+
+nameSampleShops()
 
 type DemoShop = { id: string; name: string }
 const PublicShop = lazy(() => import('../public/PublicShop'))

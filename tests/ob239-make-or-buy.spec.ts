@@ -68,7 +68,7 @@ async function open(page: Page, continueLabel = 'Continue local preview') {
   await page.reload()
   await page.getByRole('button', { name: continueLabel }).click()
   await expect(page.locator('[data-need]').first()).toBeVisible()
-  return page.locator('[data-need="low"]').filter({ hasText: /Samosa|समोसा/ })
+  return page.locator('[data-need="low"]').filter({ hasText: 'Samosa' })
 }
 
 async function fitsThePhone(page: Page, row: ReturnType<Page['locator']>) {
@@ -142,8 +142,8 @@ test('OB-239: the make-or-buy question in Hindi, 360 px dark', async ({ page }) 
   await cafe(page, 'Corner Café hi')
   const row = await open(page, 'स्थानीय प्रीव्यू जारी रखें')
   await expect(row).toContainText('सिर्फ़ 4 बचे। आप इसे बनाते हैं या खरीदते हैं?')
-  await expect(row.getByRole('button', { name: 'समोसा: बनाते हैं' })).toBeVisible()
-  await expect(row.getByRole('button', { name: 'समोसा: खरीदते हैं' })).toBeVisible()
+  await expect(row.getByRole('button', { name: 'Samosa: बनाते हैं' })).toBeVisible()
+  await expect(row.getByRole('button', { name: 'Samosa: खरीदते हैं' })).toBeVisible()
   await fitsThePhone(page, row)
   await page.screenshot({ path: test.info().outputPath('make-or-buy-360-dark-hi.png') })
 })

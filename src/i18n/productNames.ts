@@ -1,7 +1,8 @@
 /**
  * Display seeded product names in the selected UI language without changing stored names.
- * Every item in the Indian demo shops, chains and their suppliers has a Hindi name (OB-74,
- * OB-248); an owner's own items show as they typed them.
+ * In the public demo every item in the Indian sample shops, chains and their suppliers has a
+ * Hindi name (OB-74, OB-248). Everywhere else an owner's items show as they typed them, even
+ * when one happens to be called "Milk bread" too.
  */
 // [Hindi name, feminine]: the gender picks "खत्म होगी" or "खत्म होगा".
 const HINDI: Record<string, readonly [string, boolean]> = {
@@ -106,13 +107,20 @@ const HINDI: Record<string, readonly [string, boolean]> = {
   'Zip replacement': ['ज़िप बदलाई', true],
 }
 
-const hindi = (locale: string) => locale.toLowerCase().startsWith('hi')
+let sampleShops = false
+/** The public demo calls this as it loads; leaving it reloads the page. */
+export function nameSampleShops() {
+  sampleShops = true
+}
+
+const hindi = (locale: string, name: string) =>
+  locale.toLowerCase().startsWith('hi') && (sampleShops || name === 'Tea dust')
 
 export function productName(name: string, locale: string): string {
-  return hindi(locale) ? (HINDI[name]?.[0] ?? name) : name
+  return hindi(locale, name) ? (HINDI[name]?.[0] ?? name) : name
 }
 
 /** Hindi grammar for "runs out": true when the item's Hindi name is feminine (चाय पत्ती). */
 export function productFeminine(name: string, locale: string): boolean {
-  return hindi(locale) && Boolean(HINDI[name]?.[1])
+  return hindi(locale, name) && Boolean(HINDI[name]?.[1])
 }
