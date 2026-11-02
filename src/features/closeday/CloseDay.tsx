@@ -16,7 +16,14 @@ import {
 import { Camera, Check, ClipboardList, Keyboard, Moon, Plus, Receipt, Truck, X } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useLocale } from '../../state/hooks'
-import { currencySymbol, formatShopPrice, shopCurrency, toMajor, toMinor } from '../v1/format'
+import {
+  currencySymbol,
+  formatAmount,
+  formatShopPrice,
+  shopCurrency,
+  toMajor,
+  toMinor,
+} from '../v1/format'
 import { useNextStepsCopy } from '../v1/nextStepsCopy'
 import { useOnline } from '../v1/useOnline'
 import { Tile, Supporting } from '../v1/ShopTiles'
@@ -721,12 +728,7 @@ function CloseRewardLines({ reward }: { reward: CloseReward | null }) {
 
 /** A day's takings read best whole: ₹2,490, not ₹2,490.00. */
 function wholeMoney(minor: number, currency: string, locale: string): string {
-  return new Intl.NumberFormat(locale, {
-    style: 'currency',
-    currency,
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(toMajor(minor, currency))
+  return formatAmount(Math.round(toMajor(minor, currency)), currency, locale)
 }
 
 function ReviewList({
