@@ -76,7 +76,7 @@ export const en = {
   rateLimited: 'Too many requests. Please wait a minute and try again.',
   appName: 'Chalkboard',
   independent: 'Independent prototype · not a Google product',
-  connectionOffline: 'Offline',
+  connectionOffline: 'No connection',
   connectionReconnecting: 'Reconnecting…',
   voiceFailed: 'Voice connection ended. Try again or use text.',
   voiceOffline: 'Voice needs a connection. Type your message instead.',
