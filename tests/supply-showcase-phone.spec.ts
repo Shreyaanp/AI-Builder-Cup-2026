@@ -34,7 +34,7 @@ test('Today → forecast reorder → SAP → replies → reviewed stock → Toda
   await page.screenshot({ path: 'output/playwright/supply-sap.png' })
   await page.keyboard.press('Escape')
   for (const step of ['Confirmed', 'On its way', 'Invoice']) {
-    await card.getByRole('button', { name: 'Simulate supplier reply', exact: true }).click()
+    await card.getByRole('button', { name: 'See the supplier’s reply', exact: true }).click()
     const row = card.getByRole('listitem').filter({ hasText: step }).first()
     await expect(row).not.toContainText('Waiting')
     await expect(row).toContainText(/\d{1,2}:\d{2}/)
