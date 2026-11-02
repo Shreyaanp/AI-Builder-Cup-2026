@@ -17,6 +17,7 @@
   "messages": { "en": "customer questions?", "hi": "सवाल" },
   "reply_language": { "en": "language", "hi": "भाषा" },
   "close_day": { "en": "sales", "hi": "बिक्री" },
+  "promise": { "en": "tomorrow", "hi": "कल" },
   "rescue": { "en": "leftovers", "hi": "छूट" },
   "radar": { "en": "near your shop", "hi": "आस-पास" },
   "forecast": { "en": "forecast", "hi": "कल" },

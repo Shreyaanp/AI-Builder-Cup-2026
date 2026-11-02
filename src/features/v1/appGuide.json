@@ -146,6 +146,14 @@
       "screen": "close_day"
     },
     {
+      "id": "promise",
+      "title": "One thing for tomorrow",
+      "path": ["Grow", "Close the day"],
+      "ask": "Remind me to order milk tomorrow",
+      "ask_hi": "कल सुबह दूध मँगाना याद दिलाना",
+      "screen": "close_day"
+    },
+    {
       "id": "rescue",
       "title": "Rescue leftovers",
       "path": ["Grow", "Rescue deals"],

@@ -12,7 +12,7 @@ import re
 from collections import OrderedDict
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Literal
 
 import anyio
 
@@ -93,6 +93,25 @@ HOW_TODAY = re.compile(
     re.I,
 )
 SOLD_OUT_LIST = re.compile(r"^what(?:'s|\s+is)\s+sold\s+out\b", re.I)
+# Tomorrow's promise by chat (HABIT change 4): "remind me to order milk tomorrow (morning)",
+# "tomorrow remind me to call Ganesh", "kal subah doodh yaad dilana". Only with "tomorrow" or
+# "kal": "remind me every morning" stays the Remind me screen.
+TOMORROW = r"(?:tomorrow|tmrw|kal)(?:\s+(?:morning|subah))?"
+PROMISE = (
+    re.compile(
+        rf"^(?:{TOMORROW}\s+)?(?:please\s+)?remind\s+me\s+(?:{TOMORROW}\s+)?(?:to|about)\s+"
+        rf"(?P<what>.+?)\s+{TOMORROW}$"
+        rf"|^(?:{TOMORROW}\s+)(?:please\s+)?remind\s+me\s+(?:to|about)\s+(?P<before>.+)$"
+        rf"|^(?:please\s+)?remind\s+me\s+{TOMORROW}\s+(?:to|about)\s+(?P<after>.+)$",
+        re.I,
+    ),
+    re.compile(
+        rf"^{TOMORROW}\s+(?P<what>.+?)\s+(?:yaad|yad)\s+(?:dila|dilaa)(?:na|o|dena|iye|ana)$",
+        re.I,
+    ),
+)
+ORDER_WORDS = re.compile(r"^(?:re-?order|order|buy|get)\s+(?:more\s+|some\s+)?(?P<item>.+)$", re.I)
+MAKE_WORDS = re.compile(r"^(?:make|prep|prepare)\s+(?:more\s+|some\s+)?(?P<item>.+)$", re.I)
 
 # Known phrasings of read-only and navigation intents, for embedding matches.
 EXEMPLARS: dict[str, tuple[str, ...]] = {
@@ -276,6 +295,47 @@ def _read_intent(ctx: MerchantContext, intent: str) -> InstantResult | None:
     return None
 
 
+def promise_words(lowered: str) -> str | None:
+    """What to remind the owner of tomorrow, from a chat message; None when it is not one."""
+    for pattern in PROMISE:
+        found = pattern.match(lowered)
+        if found:
+            what = next(v for v in found.groupdict().values() if v)
+            # "remind me tomorrow" alone has nothing to write down: the coach asks what.
+            if what.strip() and not re.fullmatch(TOMORROW, what.strip(), re.I):
+                return what.strip()
+    return None
+
+
+def _promise(ctx: MerchantContext, what: str) -> InstantResult:
+    """Write tomorrow's promise and say where it will be. The owner's words are kept as said;
+    "order milk" with a Milk item on the menu gets an Order button tomorrow morning."""
+    from .owner_promise import NewPromise, set_promise
+
+    fields, inventory = _shop(ctx)
+    kind: Literal["order", "make", "note"] = "note"
+    item: str | None = None
+    for pattern, named in ((ORDER_WORDS, "order"), (MAKE_WORDS, "make")):
+        found = pattern.match(what)
+        if found:
+            wanted = found["item"].casefold()
+            item = next(
+                (str(p["name"]) for p in inventory if str(p.get("name", "")).casefold() == wanted),
+                None,
+            )
+            if item:
+                kind = "order" if named == "order" else "make"
+            break
+    promise = set_promise(
+        ctx.store, ctx.business_id or "", fields, NewPromise(text=what, kind=kind, item=item)
+    )
+    return InstantResult(
+        "promise",
+        f'Written down for tomorrow morning: "{promise.text}". It will be at the top of Coach. '
+        + where_line("promise"),
+    )
+
+
 def _upkeep(ctx: MerchantContext, text: str) -> InstantResult | None:
     from .agent import upkeep_call
 
@@ -336,6 +396,10 @@ async def route(
             f"I've prepared this for you to check: {result['changes'][0]}. Confirm it on screen.",
             _proposal_events(ctx, result),
         )
+    # The owner's words keep their own case: they are shown back tomorrow as written.
+    promised = promise_words(message.rstrip(" .!"))
+    if promised:
+        return _promise(ctx, promised)
     upkeep = _upkeep(ctx, message)
     if upkeep:
         return upkeep

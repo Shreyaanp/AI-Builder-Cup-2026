@@ -80,6 +80,8 @@ ALLOWED: tuple[tuple[str, re.Pattern[str]], ...] = tuple(
         ("POST", rf"proposals/{_ID}/approve"),
         ("POST", rf"{_BIZ}/inventory/{_ID}/availability"),
         ("POST", rf"{_BIZ}/freshness/confirm"),
+        # Tomorrow's promise: kept in the visitor's sandbox, never counted (a demo shop).
+        ("POST", rf"{_BIZ}/promise(?:/{_ID}/(?:done|skipped))?"),
         ("POST", rf"{_BIZ}/import/{_ID}/approve"),
         ("POST", rf"{_BIZ}/day/(?:read|prepare)"),
         ("POST", rf"{_BIZ}/supply/reorder"),
