@@ -177,7 +177,7 @@ export function ShopOverview({ narrow = false }: { narrow?: boolean }) {
   const [sheet, setSheet] = useState<ShopSheetKind | null>(null)
   const { unread, refresh } = useUnread()
   return (
-    <Stack spacing={4}>
+    <Stack spacing={3}>
       <YourPage onSheet={setSheet} />
       <ShopTiles unread={unread} onSheet={setSheet} />
       {!narrow && <AskHint id="sold_out" />}
@@ -203,7 +203,8 @@ function YourPage({ onSheet }: { onSheet: (kind: ShopSheetKind) => void }) {
   if (!shop) return null
   const url = ws.shareUrl
   const live = shop.public && Boolean(url)
-  const summary = [shop.fields.category, shop.fields.location].filter(Boolean).join(' · ')
+  // The kind of shop only: the full address lives in Shop details.
+  const summary = shop.fields.category
   function share() {
     if (!url || !shop) return
     const data = { title: shop.fields.name, text: t.shareMessage(shop.fields.name), url }

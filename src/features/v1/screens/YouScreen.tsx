@@ -45,7 +45,15 @@ import { useTabsCopy } from '../tabsCopy'
 import { useWorkspace } from '../workspaceContext'
 
 /** One rounded group of rows, with a small heading above it. */
-function Group({ title, children }: { title?: string; children: ReactNode }) {
+function Group({
+  title,
+  testId,
+  children,
+}: {
+  title?: string
+  testId?: string
+  children: ReactNode
+}) {
   const roles = useTheme().material
   return (
     <Box component="section" aria-label={title}>
@@ -60,6 +68,7 @@ function Group({ title, children }: { title?: string; children: ReactNode }) {
         </Typography>
       )}
       <Box
+        data-testid={testId}
         sx={{
           bgcolor: roles.surfaceContainer,
           borderRadius: `${shape.lg}px`,
@@ -204,7 +213,7 @@ export function YouScreen() {
       </Stack>
 
       <Stack spacing={4}>
-        <Group title={t.settings}>
+        <Group title={t.settings} testId="you-settings">
           <Box sx={{ px: 3, py: 2 }}>
             {/* Default follows the phone's language setting; owners can pin a language here. */}
             <TextField

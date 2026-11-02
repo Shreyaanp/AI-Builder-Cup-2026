@@ -52,9 +52,9 @@ export function ShopRow({
       aria-controls={controls}
       sx={{
         width: '100%',
-        minHeight: 56,
+        minHeight: 52,
         px: 4,
-        py: 2,
+        py: 1,
         gap: 3,
         justifyContent: 'flex-start',
         textAlign: 'start',
