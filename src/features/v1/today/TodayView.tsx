@@ -656,6 +656,8 @@ function PulseCard({ plan, actions }: { plan: TodayPlan; actions: TodayActions }
   const roles = useTheme().material
   const number = new Intl.NumberFormat(locale, { maximumFractionDigits: 1 })
   const currency = shopCurrency(ws.active)
+  // Once the day is closed the pulse is today's, and so is the question it asks (HABIT change 3).
+  const ask = plan.pulse?.when === 'today' ? tt.howToday : tt.howYesterday
   const lines: string[] = []
   if (plan.pulse) {
     const values = plan.pulse.values.map(({ metric, value }) => {
@@ -697,8 +699,8 @@ function PulseCard({ plan, actions }: { plan: TodayPlan; actions: TodayActions }
     <ButtonBase
       data-testid="today-pulse"
       data-tour="forecast"
-      aria-label={`${lines.join('. ')}. ${tt.howYesterday}`}
-      onClick={() => actions.ask(tt.howYesterday)}
+      aria-label={`${lines.join('. ')}. ${ask}`}
+      onClick={() => actions.ask(ask)}
       sx={{
         width: '100%',
         justifyContent: 'flex-start',

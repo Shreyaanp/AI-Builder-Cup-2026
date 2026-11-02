@@ -146,6 +146,14 @@ test('Close the day leads at 20:30, pays back a same-weekday comparison, and cou
   const pulse = page.getByTestId('today-pulse')
   await expect(pulse).toContainText('₹2,490')
   await expect(pulse).not.toContainText('Yesterday')
+  // The chat path gives the same facts: tapping today's pulse asks how today went.
+  await expect(pulse).toHaveAccessibleName(/How did today go\?$/)
+  await pulse.click()
+  await expect(
+    page.getByText(`₹2,490 saved. That is ₹240 more than last ${weekday(7)}.`),
+  ).toBeVisible({
+    timeout: 20_000,
+  })
 
   // The visit was counted: opened, the close prompt shown and acted on, the day closed.
   await expect
