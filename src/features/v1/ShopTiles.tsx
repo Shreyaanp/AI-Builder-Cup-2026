@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useContext, useState } from 'react'
 import type { ReactNode } from 'react'
 import {
   Alert,
@@ -69,6 +69,8 @@ import { useGallery } from '../google/useGallery'
 import { useLocale } from '../../state/hooks'
 import { productName } from '../../i18n/productNames'
 import { MapCard } from './MapCard'
+import { ListTile } from './GrowList'
+import { TileLayoutContext } from './growLayout'
 import type { Proposal } from './api'
 
 export type ShopSheetKind =
@@ -101,6 +103,19 @@ export function Tile({
 }) {
   const roles = useTheme().material
   const columns = span ?? (wide ? 2 : 1)
+  // Grow draws the same tools as rows and a More tools grid (simplify batch 4a).
+  const layout = useContext(TileLayoutContext)
+  if (layout !== 'card')
+    return (
+      <ListTile
+        layout={layout}
+        icon={icon}
+        label={label}
+        value={value}
+        onClick={onClick}
+        tour={tour}
+      />
+    )
   return (
     <ButtonBase
       onClick={onClick}

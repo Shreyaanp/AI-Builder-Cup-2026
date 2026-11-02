@@ -170,12 +170,12 @@ def test_demo_answers_every_chat_phrase_on_topic_with_its_screen_path(app, featu
 @pytest.mark.parametrize(
     ("message", "topic", "where"),
     [
-        # Orders → Find a supplier sends the owner's item (sourcing/copy.ts lowMessage).
+        # Buy stock → Orders → Find a supplier sends the owner's item (sourcing/copy.ts lowMessage).
         (
             "My milk 20 litres is running low. Find suppliers.",
             # The demo does the work now: it lists the suppliers and drafts the order (OB-248).
             r"Demo suppliers near you for Milk",
-            "Grow → Orders → Find a supplier",
+            "Grow → Buy stock → Orders",
         ),
         # And in Hindi: the same work, in the same words the screens use (OB-248).
         (
@@ -183,16 +183,16 @@ def test_demo_answers_every_chat_phrase_on_topic_with_its_screen_path(app, featu
             r"दूध के लिए पास के डेमो सप्लायर: 1\. Sri Lakshmi Provisions \(Demo\), [\d.]+ किमी, ₹54 "
             r"प्रति लीटर; 2\. FreshMart \(Demo\), [\d.]+ किमी, ₹29 प्रति पैक। Sri Lakshmi Provisions "
             r"\(Demo\) से 10 लीटर दूध का ऑर्डर नीचे तैयार है। आपके भेजे बिना कुछ नहीं जाता, और यह "
-            r"सिर्फ़ डेमो है। अब Grow → Orders → Find a supplier खोलें।",
+            r"सिर्फ़ डेमो है। अब Grow → Buy stock → Orders खोलें।",
             None,
         ),
         # The PR's own "Owner looks at" phrases.
         (
             "how was this week",
             r"In the last 7 days the demo shop sold [\d,]+ items for ₹[\d,]+\.",
-            "Grow → Your week",
+            "Grow → My sales → Your week",
         ),
-        ("reorder milk", r"order for milk", "Grow → Purchase orders"),
+        ("reorder milk", r"order for milk", "Grow → Buy stock → Purchase orders"),
     ],
 )
 def test_demo_typed_supply_and_week_questions_stay_on_topic(app, message, topic, where):  # noqa: F811

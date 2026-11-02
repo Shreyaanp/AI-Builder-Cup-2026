@@ -1,8 +1,17 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
-import { Box, LinearProgress, Stack, Typography, useTheme } from '@mui/material'
+import { Box, Stack, Typography } from '@mui/material'
 import { visuallyHidden } from '@mui/utils'
-import { CalendarClock, Globe, Stamp, Wallet } from 'lucide-react'
+import {
+  BarChart3,
+  CalendarClock,
+  ChefHat,
+  Globe,
+  Stamp,
+  Sunrise,
+  Truck,
+  Wallet,
+} from 'lucide-react'
 import { useIdentity } from '../../../auth/useIdentity'
 import { CloseDayTile } from '../../closeday/CloseDay'
 import { openOwnerFeature } from '../../owner-tools/entry'
@@ -15,8 +24,9 @@ import { WeekPulseTile } from '../../analytics/WeekPulse'
 import { growOrderOf } from '../playbook/growOrder'
 import { usePlaybook } from '../playbook/usePlaybook'
 import { readiness } from '../shopProgress'
-import { ShopSheets, Supporting, Tile, type ShopSheetKind } from '../ShopTiles'
-import { tileGrid } from '../tileSpan'
+import { ShopSheets, Tile, type ShopSheetKind } from '../ShopTiles'
+import { GrowGroup, GrowRows, MoreTools } from '../GrowList'
+import { useGrowCopy } from '../growCopy'
 import { useCopy } from '../strings'
 import { useTabsCopy } from '../tabsCopy'
 import { useWorkspace } from '../workspaceContext'
@@ -24,12 +34,14 @@ import { ShopGate } from './ShopScreen'
 import { AskHint } from '../AskHint'
 import { clearOpen, wantsOpen } from '../openRequest'
 import { MorningBrief } from '../../owner/MorningBrief'
+import { useOwnerCopy } from '../../owner/copy'
 import { RadarSheet, RadarTile } from '../../owner/RadarTile'
 import { RescueTile } from '../../owner/RescueTile'
 
 /**
- * Grow: every owner tool as a card with its live one-line status. Cards open the existing
- * screens and flows; the shop playbook decides which tool leads.
+ * Grow: a short list of rows, then the weekly tools as a More tools grid (simplify batch 4a).
+ * Rows that hold more than one tool open on the same screen to each tool under its own name;
+ * every tool keeps its own screen. The shop playbook decides which row leads.
  */
 // The prep plan and supply tiles pull in the forecast chart and purchase orders; load them after first paint.
 const PrepPlanTile = lazy(() =>
@@ -54,24 +66,25 @@ export function GrowScreen() {
   )
 }
 
-/** Tools the playbook suggests first, the rest in their usual order (stable). Cards without a
- * playbook tool of their own stay beside the closest one (supply with orders). */
+/** Rows the playbook suggests first, the rest in their usual order (stable). A row ranks by
+ * its best-placed tool; tools without a playbook id of their own count as the closest one. */
 const GROW_ALIAS: Record<string, string> = {
   supply: 'orders',
   supply_io: 'orders',
-  radar: 'rescue',
-  payments: 'rescue',
   week: 'recap',
 }
-function byGrowOrder(grow: string[], tools: [string, ReactNode][]): ReactNode[] {
-  const rank = (id: string) => {
-    const index = grow.indexOf(GROW_ALIAS[id] ?? id)
-    return index < 0 ? grow.length : index
-  }
-  return tools
-    .map(([id, node], index) => ({ id, node, index }))
-    .sort((a, b) => rank(a.id) - rank(b.id) || a.index - b.index)
-    .map((tool) => tool.node)
+function byGrowOrder(grow: string[], rows: [string[], ReactNode][]): ReactNode[] {
+  const rank = (ids: string[]) =>
+    Math.min(
+      ...ids.map((id) => {
+        const index = grow.indexOf(GROW_ALIAS[id] ?? id)
+        return index < 0 ? grow.length : index
+      }),
+    )
+  return rows
+    .map(([ids, node], index) => ({ node, index, rank: rank(ids) }))
+    .sort((a, b) => a.rank - b.rank || a.index - b.index)
+    .map((row) => row.node)
 }
 
 function GrowTiles() {
@@ -79,9 +92,10 @@ function GrowTiles() {
   const tabs = useTabsCopy()
   const plan = usePlanCopy()
   const tools = useToolCopy()
+  const grow = useGrowCopy()
+  const owner = useOwnerCopy()
   const { features } = useIdentity()
   const ws = useWorkspace()
-  const roles = useTheme().material
   const { state: playbook } = usePlaybook()
   const [planOpen, setPlanOpen] = useState(false)
   const [sheet, setSheet] = useState<ShopSheetKind | null>(null)
@@ -92,97 +106,108 @@ function GrowTiles() {
   if (!shop) return null
   const { done, total } = readiness(ws)
   const missing = total - done
-  const stamps = shop.fields.stamps_needed ?? 8
   // Evenings lead with closing the day; the rest of the day with what to prepare.
   const evening = new Date().getHours() >= 17
-  const prep: [string, ReactNode] = [
-    'prep',
-    <Suspense key="prep" fallback={null}>
-      <PrepPlanTile />
-    </Suspense>,
+  const make: [string[], ReactNode] = [
+    ['prep', 'plan'],
+    <GrowGroup
+      key="make"
+      icon={<ChefHat size={20} />}
+      label={grow.make}
+      items={[
+        <Suspense key="prep" fallback={null}>
+          <PrepPlanTile />
+        </Suspense>,
+        <Tile
+          key="plan"
+          icon={<CalendarClock size={20} />}
+          label={plan.title}
+          value={t.planHint}
+          onClick={() => setPlanOpen(true)}
+        />,
+      ]}
+    />,
   ]
-  const close: [string, ReactNode] = ['close_day', <CloseDayTile key="close" />]
-  // The shop's playbook decides which tool comes first; without one, the usual order.
-  const cards = byGrowOrder(growOrderOf(playbook), [
-    ...(evening ? [close, prep] : [prep, close]),
-    ['orders', <OrdersTile key="orders" />],
+  const close: [string[], ReactNode] = [['close_day'], <CloseDayTile key="close" />]
+  // The shop's playbook decides which row comes first; without one, the usual order.
+  const rows = byGrowOrder(growOrderOf(playbook), [
+    ...(evening ? [close, make] : [make, close]),
     [
-      'supply',
-      <Suspense key="supply" fallback={null}>
-        <SupplyTile />
-      </Suspense>,
-    ],
-    ['supply_io', <SupplyHubTile key="supply_io" />],
-    [
-      'plan',
-      <Tile
-        key="plan"
-        icon={<CalendarClock size={20} />}
-        label={plan.title}
-        value={t.planHint}
-        onClick={() => setPlanOpen(true)}
+      ['orders', 'supply', 'supply_io'],
+      <GrowGroup
+        key="stock"
+        icon={<Truck size={20} />}
+        label={grow.stock}
+        items={[
+          <OrdersTile key="orders" />,
+          <Suspense key="supply" fallback={null}>
+            <SupplyTile />
+          </Suspense>,
+          <SupplyHubTile key="supply_io" />,
+        ]}
       />,
     ],
-    ['rescue', <RescueTile key="rescue" />],
-    ['radar', <RadarTile key="radar" />],
     [
-      'payments',
-      <Tile
-        key="payments"
-        icon={<Wallet size={20} />}
-        label={tools.payTitle}
-        value={tools.create}
-        onClick={() => openOwnerFeature('payments')}
-      >
-        <Supporting>{tools.riderTitle}</Supporting>
-      </Tile>,
+      ['week', 'recap'],
+      <GrowGroup
+        key="sales"
+        icon={<BarChart3 size={20} />}
+        label={grow.sales}
+        items={[<WeekPulseTile key="week" />, <RecapTile key="recap" />]}
+      />,
     ],
     ...(features.google_guide
       ? [
           [
-            'google',
+            ['google'],
             <Tile
               key="google"
-              span={2}
               tour="google"
               icon={<Globe size={20} />}
               label={t.googleTitle}
               value={missing > 0 ? tabs.googleMissing(missing) : tabs.googleReady}
               onClick={() => ws.go('google')}
-            >
-              {missing > 0 && (
-                <LinearProgress
-                  variant="determinate"
-                  value={(done / total) * 100}
-                  aria-hidden="true"
-                  sx={{ height: 4, borderRadius: 2, bgcolor: roles.surfaceContainerHighest }}
-                />
-              )}
-            </Tile>,
-          ] as [string, ReactNode],
+            />,
+          ] as [string[], ReactNode],
         ]
       : []),
-    [
-      'perks',
-      <Tile
-        key="perks"
-        icon={<Stamp size={20} />}
-        label={tabs.perks}
-        value={shop.fields.reward_text || tabs.perksOff}
-        onClick={() => ws.openEditor({ kind: 'business', fields: shop.fields, step: 'reward' })}
-      >
-        {shop.fields.reward_text && <Supporting>{tabs.perksAfter(stamps)}</Supporting>}
-      </Tile>,
-    ],
-    ['week', <WeekPulseTile key="week" />],
-    ['recap', <RecapTile key="recap" />],
   ])
   return (
-    <Stack spacing={4}>
-      <MorningBrief key={shop.id} onSheet={setSheet} onRadar={() => setRadarOpen(true)} />
-      <Box data-testid="grow-tiles" sx={tileGrid}>
-        {cards}
-      </Box>
+    <Stack spacing={6}>
+      <GrowRows>
+        {/* The brief keeps its own row: Coach Today shows only part of it (one forecast, the
+            rain line, low stock), not the whole prep list, the weather or the best action. */}
+        <GrowGroup
+          icon={<Sunrise size={20} />}
+          label={owner.brief}
+          hint={[owner.prep, owner.weather, owner.lowStock].join(' · ')}
+          items={[
+            <MorningBrief
+              key={shop.id}
+              embedded
+              onSheet={setSheet}
+              onRadar={() => setRadarOpen(true)}
+            />,
+          ]}
+        />
+        {rows}
+      </GrowRows>
+      <MoreTools title={grow.moreTools}>
+        <RescueTile />
+        <RadarTile />
+        <Tile
+          icon={<Wallet size={20} />}
+          label={tools.payTitle}
+          value={tools.create}
+          onClick={() => openOwnerFeature('payments')}
+        />
+        <Tile
+          icon={<Stamp size={20} />}
+          label={tabs.perks}
+          value={shop.fields.reward_text || tabs.perksOff}
+          onClick={() => ws.openEditor({ kind: 'business', fields: shop.fields, step: 'reward' })}
+        />
+      </MoreTools>
       <AskHint id="forecast" />
       <ShopSheets
         kind={sheet ?? (planOpen ? 'plan' : null)}
