@@ -8,6 +8,7 @@ after they were made.
 from __future__ import annotations
 
 import math
+from collections.abc import Callable
 from datetime import date
 from typing import Any
 
@@ -32,6 +33,8 @@ from .supply_rules import item_rule, round_quantity
 # ON_THE_WAY (ioFormat.ts) is the same list; a pytest keeps the two equal.
 ON_ITS_WAY = {"sent", "changed", "confirmed", "dispatched", "invoiced"}
 CHAT_ON_ITS_WAY = {"sent", "confirmed"}
+# A withdrawal that keeps losing to the owner's edits stops, and nothing is sent (OB-250).
+WITHDRAW_TRIES = 3
 
 
 def earliest(one: str, other: str) -> str:
@@ -190,8 +193,6 @@ def wrong_size(
     """Why an open draft must not go out: "no_use" when its item has no use of its own on record,
     "too_big" when it is more than a month of that use, else "". The owner's own quantity is
     always fine, and an amount in a unit that does not convert cannot be judged (OB-242)."""
-    from .sourcing import convert, matches
-
     reason = po.get("reason") or {}
     item = str(reason.get("item") or "")
     if (
@@ -206,31 +207,52 @@ def wrong_size(
     if not need["daily"]:
         return "no_use"
     unit = (product or {}).get("unit") or reason.get("unit") or "kg"
+    return "too_big" if draft_amount(po, item, unit) > need["daily"] * CHECK_DAYS else ""
+
+
+def draft_amount(po: dict[str, Any], item: str, unit: str) -> float:
+    """How much of the item the order asks for, in the shop's unit; lines whose unit does not
+    convert are left out."""
+    from .sourcing import convert, matches
+
     amounts = [
         convert(line["quantity"], line["unit"], unit)
         for line in po["lines"]
         if matches(line["item"], item) or matches(item, line["item"])
     ]
-    amount = sum(known for known in amounts if known is not None)
-    return "too_big" if amount > need["daily"] * CHECK_DAYS else ""
+    return sum(known for known in amounts if known is not None)
 
 
-def withdraw(store: MerchantRepository, bid: str, po: dict[str, Any], why: str) -> bool:
+def withdraw(
+    store: MerchantRepository,
+    bid: str,
+    po: dict[str, Any],
+    why: str,
+    still_wrong: Callable[[dict[str, Any]], str] | None = None,
+) -> bool:
     """Cancel an unsent draft; True when it was. Losing a race with the owner's own change keeps
     the owner's: `po` becomes what is saved now, so the caller never drafts a second order beside
-    it (OB-250). The next reorder, or the check on approving, sees it again."""
-    changed = {
-        **po,
-        "status": "cancelled",
-        "reason": {**(po.get("reason") or {}), "withdrawn": why},
-    }
-    try:
-        po.update(_save(store, bid, changed))
-        return True
-    except HTTPException as error:
-        if error.status_code != 409:
-            raise
-    _reload(store, bid, po)
+    it (OB-250). With `still_wrong`, only an edit that makes the size right keeps it (the owner
+    set the amount); any other (Pay cash this time, a note) is withdrawn again at its new
+    version. The next reorder, or the check on approving, sees what is left."""
+    for _ in range(WITHDRAW_TRIES):
+        changed = {
+            **po,
+            "status": "cancelled",
+            "reason": {**(po.get("reason") or {}), "withdrawn": why},
+        }
+        try:
+            po.update(_save(store, bid, changed))
+            return True
+        except HTTPException as error:
+            if error.status_code != 409:
+                raise
+        _reload(store, bid, po)
+        if po["status"] != "draft" or po.get("sent") or not still_wrong:
+            return False
+        why = still_wrong(po)
+        if not why:
+            return False
     return False
 
 

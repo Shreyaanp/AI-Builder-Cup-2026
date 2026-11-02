@@ -11,13 +11,16 @@ from app.supply_offline import TOO_BIG_REPLY, supply_reply
 from tests.test_ob239_made_or_bought import draft, neighbour, open_shop
 from tests.test_ob242_supply_units import (  # noqa: F401 - shared fixtures
     TEA_DUST,
+    allow_auto_send,
     client,
     current_forecast,
     http_wrong_draft,
     product,
+    seed_wrong_draft,
     settings,
     slow_tea_stall,
     store,
+    tea_stall,
 )
 
 
@@ -107,6 +110,106 @@ def test_ob250_the_owners_edit_during_a_withdrawal_stays_the_one_draft(
     left = open_orders(repo, bid, item)
     assert [po["id"] for po in left] == [wrong["id"]], left
     assert left[0]["lines"][0]["quantity"] == 50 and left[0]["reason"]["owner_quantity"]
+
+
+def owner_pays_cash_first(
+    monkeypatch, repo: MerchantStore, bid: str, po_id: str, times: int = 1
+) -> list:
+    """Stage the review's clash: the owner taps Pay cash this time on the card (apply_fix, its
+    own write) just before the reorder's withdrawal of that draft lands, `times` times over."""
+    real_save = supply_coming._save
+    paid: list[dict] = []
+
+    def save(saved_in, bid_: str, changed: dict) -> dict:
+        if changed["id"] == po_id and changed["status"] == "cancelled" and len(paid) < times:
+            mine = supply_chain.get_po(repo, "alice", bid, po_id)
+            paid.append(
+                supply_chain.apply_fix(repo, "alice", bid, po_id, mine["version"], {"kind": "cash"})
+            )
+        return real_save(saved_in, bid_, changed)
+
+    monkeypatch.setattr(supply_coming, "_save", save)
+    return paid
+
+
+@pytest.mark.parametrize("item", ["Tea dust", ""])
+def test_ob250_paying_cash_during_a_withdrawal_never_sends_the_wrong_size(
+    store,  # noqa: F811
+    monkeypatch,
+    item: str,
+) -> None:
+    # The review's repro: auto-send on, the limit above the total, 540 kg of tea dust.
+    bid, wrong = slow_tea_stall(store)
+    paid = owner_pays_cash_first(monkeypatch, store, bid, wrong["id"])
+    result = draft(store, bid, item)
+    assert paid, "the clash was not staged"
+    assert result["status"] == "check" and result["reason"] == "month", result
+    after = supply_chain.get_po(store, "alice", bid, wrong["id"])
+    assert not after["sent"] and not after["auto_sent"]
+    assert after["status"] == "cancelled" and after["reason"]["withdrawn"] == "too_big"
+    assert not any(po["sent"] for po in open_orders(store, bid, "Tea dust"))
+
+
+def test_ob250_paying_cash_during_a_no_use_withdrawal_never_sends_it(
+    store,  # noqa: F811
+    monkeypatch,
+) -> None:
+    bid = tea_stall(store)
+    wrong = seed_wrong_draft(store, bid)
+    allow_auto_send(store, bid, wrong["supplier"]["id"])
+    paid = owner_pays_cash_first(monkeypatch, store, bid, wrong["id"])
+    result = draft(store, bid, "Tea dust")
+    assert paid, "the clash was not staged"
+    assert result["status"] == "check" and result["reason"] == "no_history", result
+    after = supply_chain.get_po(store, "alice", bid, wrong["id"])
+    assert not after["sent"] and not after["auto_sent"]
+    assert after["status"] == "cancelled" and after["reason"]["withdrawn"] == "no_use"
+
+
+def test_ob250_a_withdrawal_that_keeps_losing_sends_nothing(store, monkeypatch) -> None:  # noqa: F811
+    bid, wrong = slow_tea_stall(store)
+    paid = owner_pays_cash_first(monkeypatch, store, bid, wrong["id"], times=99)
+    result = draft(store, bid, "Tea dust")
+    assert len(paid) == supply_coming.WITHDRAW_TRIES
+    assert result["status"] == "check" and result["reason"] == "month", result
+    assert result["quantity"] == 540 and "order" not in result
+    after = supply_chain.get_po(store, "alice", bid, wrong["id"])
+    assert after["status"] == "draft" and not after["sent"] and not after["auto_sent"]
+    assert [po["id"] for po in open_orders(store, bid, "Tea dust")] == [wrong["id"]]
+
+
+def test_ob250_a_wrong_size_never_goes_out_by_itself_whatever_led_there(
+    store,  # noqa: F811
+    monkeypatch,
+) -> None:
+    # Belt and braces: even if the draft slipped past the withdrawal, the auto-send checks it.
+    bid, wrong = slow_tea_stall(store)
+    real = supply_coming.wrong_size
+    calls: list[str] = []
+
+    def misses_once(*args):
+        calls.append("")
+        return "" if len(calls) == 1 else real(*args)
+
+    monkeypatch.setattr(supply_coming, "wrong_size", misses_once)
+    result = draft(store, bid, "Tea dust")
+    assert result["status"] == "drafted" and result["existing"], result
+    order = result["order"]
+    assert not order["sent"] and order["blocked"] and order["checks"][0]["code"] == "too_big"
+    after = supply_chain.get_po(store, "alice", bid, wrong["id"])
+    assert after["status"] == "draft" and not after["sent"] and not after["auto_sent"]
+
+
+def test_ob250_a_card_refreshed_or_fixed_still_shows_the_flag(client) -> None:  # noqa: F811
+    base, repo, bid, wrong = http_wrong_draft(client)
+    url = f"{base}/orders/{wrong['id']}"
+    read = client.get(url).json()
+    assert read["blocked"] and read["checks"][0]["code"] == "too_big", read
+    paid = client.post(f"{url}/fix", json={"version": wrong["version"], "fix": {"kind": "cash"}})
+    assert paid.status_code == 200, paid.text
+    assert paid.json()["blocked"] and paid.json()["checks"][0]["code"] == "too_big"
+    stored = next(po for po in supply_chain.all_orders(repo, bid) if po["id"] == wrong["id"])
+    assert "too_big" not in {check["code"] for check in stored["checks"]}
 
 
 def test_ob250_the_owners_edit_while_settling_keeps_theirs(store, monkeypatch) -> None:  # noqa: F811

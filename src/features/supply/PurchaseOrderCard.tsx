@@ -316,7 +316,9 @@ export function PurchaseOrderCard({
                         )
                       : s.fixQuantity(
                           f.qty(Number(check.fix.value)),
-                          order.lines.find((line) => line.line === check.fix?.line)?.unit ?? '',
+                          f.unit(
+                            order.lines.find((line) => line.line === check.fix?.line)?.unit ?? '',
+                          ),
                         )}
                 </Button>
               )}

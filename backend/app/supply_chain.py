@@ -457,6 +457,8 @@ async def draft_reorder(
         coming_orders,
         cover,
         covered,
+        draft_amount,
+        flag_wrong_sizes,
         on_order,
         resize,
         settle_drafts,
@@ -554,14 +556,54 @@ async def draft_reorder(
         wanted = 0.0
     done = not quantity and covered(need, coming["quantity"])
     wrong = wrong_size(coming["draft"], inventory, forecast, today) if coming["draft"] else ""
+
+    def held(po: dict[str, Any], why: str) -> dict[str, Any]:
+        # A draft still of a wrong size: nothing is sent, and the owner checks the amount first,
+        # as for a new one (OB-250).
+        line = po["lines"][0]
+        amount = draft_amount(po, target, unit)
+        return {
+            "status": "check",
+            "reason": "no_history" if why == "no_use" or not need["daily"] else "month",
+            "item": target,
+            "unit": unit,
+            "quantity": round(amount, 2),
+            "days": math.floor(amount / need["daily"]) if need["daily"] else None,
+            "supplier": po["supplier"]["name"],
+            "supplier_item": line["item"],
+            "supplier_quantity": line["quantity"],
+            "supplier_unit": line["unit"],
+        }
+
+    async def send_if_right(po: dict[str, Any]) -> dict[str, Any]:
+        # Belt and braces: a draft of a wrong size never goes out by itself, whatever led here.
+        # It stays a draft, shown flagged with Send off (OB-250).
+        if not po.get("auto_send_allowed"):
+            return po
+        if wrong_size(po, inventory, forecast, today):
+            shown = await anyio.to_thread.run_sync(
+                flag_wrong_sizes, store, bid, [po], inventory, forecast, today
+            )
+            return {**shown[0], "auto_send_allowed": False}
+        return await anyio.to_thread.run_sync(_send, store, bid, po, True)
+
     if wrong and not quantity:
         # Sized from sales that were never this item's use (540 kg of tea dust from 60 cups of
         # chai, OB-242): it is withdrawn, never resized or sent, and this reorder goes on as a
         # new one, to the same checks. If the owner changed it meanwhile, their draft stays the
         # one open draft for this need, never a second one beside it (OB-250).
-        gone = await anyio.to_thread.run_sync(withdraw, store, bid, coming["draft"], wrong)
-        if gone or coming["draft"]["status"] != "draft":
+        # Only the owner's own amount makes it right: after any other edit (Pay cash this time,
+        # a note) it is withdrawn again at the new version, and never sent at the wrong size.
+        def still_wrong(po: dict[str, Any]) -> str:
+            return wrong_size(po, inventory, forecast, today)
+
+        gone = await anyio.to_thread.run_sync(
+            withdraw, store, bid, coming["draft"], wrong, still_wrong
+        )
+        if gone or coming["draft"]["status"] != "draft" or coming["draft"].get("sent"):
             coming = {**coming, "draft": None}
+        elif wrong := still_wrong(coming["draft"]):
+            return held(coming["draft"], wrong)
     if coming["draft"]:
         # One draft per need: the open one comes back, sized again for what is now on its way
         # (or with the owner's quantity, if named).
@@ -602,9 +644,7 @@ async def draft_reorder(
             reason["owner_quantity"] = bool(quantity) or bool(reason.get("owner_quantity"))
         await anyio.to_thread.run_sync(recheck, store, bid, waiting, today)
         waiting = await anyio.to_thread.run_sync(_save, store, bid, waiting)
-        if waiting.get("auto_send_allowed"):
-            waiting = await anyio.to_thread.run_sync(_send, store, bid, waiting, True)
-        return {"status": "drafted", "order": waiting, "existing": True}
+        return {"status": "drafted", "order": await send_if_right(waiting), "existing": True}
     if done:
         return {"status": "on_order", "item": target, "unit": unit, **coming}
     if not quantity and not anyway and coming["other"]:
@@ -786,9 +826,7 @@ async def draft_reorder(
     }
     await anyio.to_thread.run_sync(recheck, store, bid, po, today)
     po = await anyio.to_thread.run_sync(_save, store, bid, po)
-    if po["auto_send_allowed"]:
-        po = await anyio.to_thread.run_sync(_send, store, bid, po, True)
-    return {"status": "drafted", "order": po}
+    return {"status": "drafted", "order": await send_if_right(po)}
 
 
 def order_again(store: MerchantRepository, uid: str, bid: str, po_id: str) -> dict[str, Any]:
