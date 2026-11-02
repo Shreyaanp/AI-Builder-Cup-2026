@@ -1,5 +1,10 @@
 import { expect, test } from '@playwright/test'
 
+test.beforeEach(async ({ context }) => {
+  // OB-132: a long shard opens many demos from one IP; these checks opt out of its limit.
+  await context.setExtraHTTPHeaders({ 'x-test-rate-limit-bypass': '1' })
+})
+
 test('OB-57: a 410 from the demo coach clears its saved session', async ({ page }) => {
   await page.goto('/explore/')
   const result = await page.evaluate(async () => {
