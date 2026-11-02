@@ -1,6 +1,7 @@
 """Hindi names of the public demo's items, so the coach calls them what the screens do (OB-248).
 
-The same table as src/i18n/productNames.ts; a test keeps the two equal.
+The same item rows as src/i18n/productNames.ts; a test keeps the two equal. Shop categories
+("Tea stall", "Minimart") are translated only there, or "मेरी चाय की दुकान" would read as an item.
 """
 
 HINDI_ITEMS = {
@@ -103,8 +104,6 @@ HINDI_ITEMS = {
     "Wall hooks": "दीवार के हुक",
     "Weekend biryani": "वीकेंड बिरयानी",
     "Zip replacement": "ज़िप बदलाई",
-    "Tea stall": "चाय की दुकान",
-    "Minimart": "मिनीमार्ट",
     "A4 printer paper (500 sheets)": "A4 प्रिंटर पेपर (500 शीट)",
     "Baking powder": "बेकिंग पाउडर",
     "Ballpoint pens (box of 20)": "बॉलपेन (20 का डिब्बा)",

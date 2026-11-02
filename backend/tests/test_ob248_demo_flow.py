@@ -620,6 +620,16 @@ def _hindi_reply(client, session: str, message: str) -> str:
         ("चीनी का दाम क्या है?", r"चीनी डेमो दुकान के मेन्यू में नहीं है।"),
         ("चीनी का ऑर्डर करो", r"डेमो दुकान में चीनी का स्टॉक दर्ज नहीं है।"),
         ("दूध ऑर्डर करो", r"डेमो दुकान में दूध का स्टॉक दर्ज नहीं है।"),
+        # The shop's own category is not an item.
+        ("मेरी चाय की दुकान में स्टॉक कितना है?", r"डेमो में चाय पत्ती का स्टॉक 6 किलो है।"),
+        (
+            "मेरी चाय की दुकान के लिए क्या ऑर्डर करूँ?",
+            r"डेमो सप्लायर .+ है। चाय पत्ती का स्टॉक 6 किलो है।",
+        ),
+        (
+            "चाय की दुकान का सप्लायर कौन है?",
+            r"डेमो सप्लायर .+ है। चाय पत्ती का स्टॉक 6 किलो है।",
+        ),
         # Asked without a name: the item the shop counts, not the first one on the menu.
         ("स्टॉक कितना है?", r"डेमो में चाय पत्ती का स्टॉक 6 किलो है।"),
     ],
@@ -648,6 +658,8 @@ def test_OB_248_backend_hindi_names_match_the_apps_table() -> None:
         (quoted or bare): hindi
         for quoted, bare, hindi in re.findall(r"^\s+(?:'([^']+)'|(\w+)): \['([^']+)'", table, re.M)
     }
+    for category in ("Tea stall", "Minimart"):
+        shown.pop(category)  # shop categories are the app's only; the coach must not read them as items
     assert shown and demo_item_names.HINDI_ITEMS == shown
 
 
