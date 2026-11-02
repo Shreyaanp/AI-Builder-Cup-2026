@@ -38,8 +38,8 @@ async function checkSavedShopPin(page: Page, width: number, appearance: 'light' 
   await page.reload()
   await page.getByRole('button', { name: 'Continue local preview' }).click()
   await page.getByRole('button', { name: 'Shop', exact: true }).click()
-  await page.getByRole('button', { name: 'Customer page', exact: true }).click()
-  const sheet = page.getByRole('dialog', { name: 'Customer page', exact: true })
+  await page.getByRole('button', { name: /^Your shop page/ }).click()
+  const sheet = page.getByRole('dialog', { name: 'Your shop page', exact: true })
   await expect(sheet).toContainText('Add your location so customers can find you.')
   await expect(sheet.getByRole('switch')).toHaveCount(0)
   expect(
@@ -57,7 +57,7 @@ async function checkSavedShopPin(page: Page, width: number, appearance: 'light' 
   await expect(review).toBeVisible()
   await review.getByRole('button', { name: 'Confirm and save', exact: true }).click()
   await expect(review).toHaveCount(0)
-  await page.getByRole('button', { name: 'Customer page', exact: true }).click()
+  await page.getByRole('button', { name: /^Your shop page/ }).click()
   await expect(sheet.getByRole('switch', { name: 'Share customer page' })).toBeVisible()
 }
 

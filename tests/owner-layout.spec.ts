@@ -1,5 +1,6 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
 import { enter, localOnly } from './stories/support.js'
+import { shopMore } from './support/shopMore.js'
 
 // Owner CSS fixes from the heatmap audit (#69): touch targets are at least 48px and nothing
 // clips or overflows at 360, 390 and 412px, in English and Hindi. Phone project only.
@@ -121,6 +122,7 @@ for (const lang of LANGS) {
 
       // Shop → Link your billing app: system pills, tabs and the upload button.
       await page.locator('[data-tour="nav-shop"]').click()
+      await shopMore(page)
       await page
         .locator(
           'button:has-text("Link your billing app"), button:has-text("बिक्री का हिसाब जोड़ें")',

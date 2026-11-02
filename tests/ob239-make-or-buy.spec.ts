@@ -281,6 +281,8 @@ test('OB-239: a new menu item saves make or buy with the item', async ({ page })
   const form = page.getByRole('dialog', { name: 'Add product' })
   await form.getByRole('textbox', { name: 'Product name' }).fill('Masala vada')
   await form.getByRole('textbox', { name: 'Price' }).fill('20')
+  // A new item asks for name and price first; the rest is behind More details.
+  await form.getByRole('button', { name: 'More details', exact: true }).click()
   await form.getByRole('button', { name: 'Make', exact: true }).click()
   await form.getByRole('button', { name: 'Review', exact: true }).click()
   await page.getByRole('button', { name: 'Confirm and save' }).click()

@@ -39,7 +39,7 @@ for (const width of [360, 390, 412]) {
       await page.getByRole('button', { name: 'Shop', exact: true }).click()
       await page.getByRole('button', { name: /^Messages/ }).click()
       const messages = page.getByRole('region', { name: /Messages/ })
-      await messages.getByRole('button', { name: 'Open conversation', exact: true }).click()
+      await messages.getByRole('button', { name: /^Open conversation/ }).click()
       const thread = messages.getByRole('listitem')
       await expect(thread.filter({ hasText: 'AI instant answer' })).toHaveCount(1, slow)
       // The owner wrote nothing yet: no bubble may claim "You".

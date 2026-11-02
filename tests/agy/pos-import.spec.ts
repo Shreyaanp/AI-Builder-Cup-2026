@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { confirm, enter, localOnly, reviewName, seedShop } from '../stories/support.js'
+import { shopMore } from '../support/shopMore.js'
 
 test.use({
   viewport: { width: 390, height: 844 },
@@ -66,6 +67,7 @@ test.describe('POS import flows on phone (390px)', () => {
     await seedShop(page)
 
     await page.getByRole('button', { name: 'Shop', exact: true }).click()
+    await shopMore(page)
     await page.getByRole('button', { name: /Link your billing app/i }).click()
 
     const connectDialog = page.getByRole('dialog', { name: 'Link your billing app' })
@@ -113,6 +115,7 @@ test.describe('POS import flows on phone (390px)', () => {
     await seedShop(page)
 
     await page.getByRole('button', { name: 'Shop', exact: true }).click()
+    await shopMore(page)
     await page.getByRole('button', { name: /Link your billing app/i }).click()
 
     const connectDialog = page.getByRole('dialog', { name: 'Link your billing app' })
@@ -147,6 +150,7 @@ test.describe('POS import flows on phone (390px)', () => {
     await seedShop(page)
 
     await page.getByRole('button', { name: 'Shop', exact: true }).click()
+    await shopMore(page)
     await page.getByRole('button', { name: /Link your billing app/i }).click()
 
     const connectDialog = page.getByRole('dialog', { name: 'Link your billing app' })
@@ -181,6 +185,7 @@ test.describe('POS import flows on phone (390px)', () => {
     await seedShop(page)
 
     await page.getByRole('button', { name: 'Shop', exact: true }).click()
+    await shopMore(page)
     await page.getByRole('button', { name: /Link your billing app/i }).click()
 
     const connectDialog = page.getByRole('dialog', { name: 'Link your billing app' })

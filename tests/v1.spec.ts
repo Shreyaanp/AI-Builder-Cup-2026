@@ -221,7 +221,7 @@ test('customer facts: the card starts the chat, the owner confirms, customers se
   await page.keyboard.press('Escape')
   await expect(page.getByRole('dialog')).toHaveCount(0)
 
-  await page.getByRole('button', { name: /^Customer page/ }).click()
+  await page.getByRole('button', { name: /^Your shop page/ }).click()
   await page.getByRole('switch', { name: 'Share customer page' }).click()
   await expect(
     page.getByRole('img', { name: 'QR code for Halal Corner’s customer page' }),

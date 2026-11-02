@@ -27,13 +27,11 @@ const phrase = (feature: Feature, lang: Lang) => (lang === 'en' ? feature.ask : 
 const pathLine = (feature: Feature, lang: Lang) =>
   lang === 'en' ? `Next, open ${where(feature)}.` : `अब ${where(feature)} खोलें।`
 
-// Rows that are reachable in 2 taps but still sit below the first view at 390 x 844. Moving them
-// up is Batch 3 (Shop and You layout) and Batch 4 (Grow list and "More tools"), not this batch.
-// The check is strict: once a row reaches the first view its test fails until it leaves this list.
+// Rows that are reachable in 2 taps but still sit below the first view at 390 x 844. Batch 3 put
+// every Shop row in the first view; moving the Grow ones up is Batch 4 (Grow list and "More
+// tools"). The check is strict: once a row reaches the first view its test fails until it leaves
+// this list.
 const BELOW_FIRST_VIEW = new Set([
-  'Shop details',
-  'Messages',
-  'Link your billing app',
   'Orders',
   'Close the day',
   'Purchase orders',
@@ -134,7 +132,9 @@ async function closeAll(page: Page) {
 
 /** Opens the row (tap 2) and finds the control inside it, scrolling the open screen only. */
 async function inner(page: Page, row: string, control: string) {
-  await entry(page, row).click()
+  const opener = entry(page, row)
+  // Shop → More opens on the same screen; a second tap would close it again.
+  if ((await opener.getAttribute('aria-expanded')) !== 'true') await opener.click()
   const dialog = page.getByRole('dialog')
   const scope = (await dialog.count()) ? dialog.last() : page
   const found = entry(scope, control)

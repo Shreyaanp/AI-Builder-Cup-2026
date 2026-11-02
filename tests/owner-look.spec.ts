@@ -40,6 +40,9 @@ for (const viewport of [
         // No appearance is seeded: exercise the same first-run default as a new owner.
         await enter(page)
         await page.getByRole('button', { name: 'You', exact: true }).click()
+        // Look is one row saying the current choice; the three choices open under it.
+        await expect(page.getByRole('button', { name: /^Look/ })).toContainText('Light')
+        await page.getByRole('button', { name: /^Look/ }).click()
         const look = page.getByRole('group', { name: 'Look', exact: true })
         const system = look.getByRole('button', { name: 'System', exact: true })
         await expect(look.getByRole('button', { name: 'Light', exact: true })).toHaveAttribute(
