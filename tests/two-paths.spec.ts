@@ -39,7 +39,8 @@ const BELOW_FIRST_VIEW = new Set([
   'Stamps & perks',
   'Your week',
   'Privacy & your data',
-  'Talk to your coach',
+  'What the coach knows',
+  'What can I ask?',
 ])
 
 // The demo hides Get on Google (DemoApp passes hiddenFeatures) while its coach still names it:
@@ -216,32 +217,38 @@ async function ask(page: Page, text: string, expected = '') {
   return found
 }
 
-// The demo allows 30 coach messages per visitor in ten minutes; each tab's phrases (English and
-// Hindi, at most 28) are one visitor.
+// The demo allows 30 coach messages per visitor in ten minutes; each tab's phrases go in groups
+// of 14 features (English and Hindi, at most 28 messages), one visitor per group. Shop has more
+// than 14 since the stamp card moved there (simplify batch 3).
+const PER_VISITOR = 14
 for (const name of ['Coach', 'Shop', 'Grow', 'You']) {
-  test(`${name}: each chat phrase answers on topic with its screen path, and that path exists`, async ({
-    page,
-  }, info) => {
-    test.skip(info.project.name !== 'phone', 'Phone (390) layout')
-    test.setTimeout(360_000)
-    await openDemo(page, `chat-${name}-${info.testId}`)
-    for (const feature of features.filter((f) => f.path[0] === name)) {
-      for (const lang of LANGS) {
-        const reply = await ask(page, phrase(feature, lang), pathLine(feature, lang))
-        expect(reply, `${phrase(feature, lang)}: about ${feature.id}`).toMatch(
-          new RegExp(TOPICS[feature.id]![lang], 'i'),
-        )
+  const rows = features.filter((f) => f.path[0] === name)
+  for (let start = 0; start < rows.length; start += PER_VISITOR) {
+    const part = start ? ` (part ${start / PER_VISITOR + 1})` : ''
+    test(`${name}${part}: each chat phrase answers on topic with its screen path, and that path exists`, async ({
+      page,
+    }, info) => {
+      test.skip(info.project.name !== 'phone', 'Phone (390) layout')
+      test.setTimeout(360_000)
+      await openDemo(page, `chat-${name}-${start}-${info.testId}`)
+      for (const feature of rows.slice(start, start + PER_VISITOR)) {
+        for (const lang of LANGS) {
+          const reply = await ask(page, phrase(feature, lang), pathLine(feature, lang))
+          expect(reply, `${phrase(feature, lang)}: about ${feature.id}`).toMatch(
+            new RegExp(TOPICS[feature.id]![lang], 'i'),
+          )
+          if (await page.getByRole('dialog').count()) await closeAll(page)
+        }
+        // Screens the coach opens itself are checked below; close them to follow the path by hand.
         if (await page.getByRole('dialog').count()) await closeAll(page)
+        if (feature.path.length === 1 || NOT_IN_DEMO.has(feature.path[1])) continue
+        await tab(page, feature.path[0])
+        const target = entry(page, feature.path[1])
+        await target.scrollIntoViewIfNeeded()
+        await expect(target, `${feature.ask} → ${where(feature)}`).toBeVisible()
       }
-      // Screens the coach opens itself are checked below; close them to follow the path by hand.
-      if (await page.getByRole('dialog').count()) await closeAll(page)
-      if (feature.path.length === 1 || NOT_IN_DEMO.has(feature.path[1])) continue
-      await tab(page, feature.path[0])
-      const target = entry(page, feature.path[1])
-      await target.scrollIntoViewIfNeeded()
-      await expect(target, `${feature.ask} → ${where(feature)}`).toBeVisible()
-    }
-  })
+    })
+  }
 }
 
 // Each phrase on its own, in a fresh demo session (a new visitor each), so no earlier answer or
