@@ -4,7 +4,7 @@ import { hasHours } from '../../shop/hoursModel'
 import { closingMinutes, shopNow } from '../../owner/time'
 import { isFood, missingFacts, timeRanges, type AskFact } from '../shopProgress'
 import type { DayPart } from './todayCopy'
-import { leadOrder } from './leadOrder'
+import { leadSplit } from './leadOrder'
 
 export type TodayFacts = components['schemas']['Today']
 export type CoachLine = components['schemas']['CoachLine']
@@ -51,6 +51,8 @@ export interface TodayPlan {
   progress: { done: number; total: number } | null
   /** At most three live items, most urgent first; the first is the one lead action. */
   needs: Need[]
+  /** Everything else that needs the owner, behind "N more things" in the same card. */
+  more: Need[]
   line: CoachLine | null
   pulse: PulseLine | null
   forecast: { quantity: number; item: string; busy: [number, number] | null } | null
@@ -224,7 +226,11 @@ export function todayPlan(input: TodayInput): TodayPlan {
   if (unread) all.push({ id: 'reply', kind: 'reply', count: unread })
   if (closeWindow && !isClosed) all.push({ id: 'close-day', kind: 'closeDay' })
   const supply = input.supply?.item ?? null
-  const supplyRow: Need | null = supply ? { id: 'supply', kind: 'supply', item: supply } : null
+  const same = (a?: string | null, b?: string | null) =>
+    Boolean(a && b && a.toLocaleLowerCase() === b.toLocaleLowerCase())
+  // Last night's promise already names the supply ("Order milk"): it leads, said once.
+  const supplyRow: Need | null =
+    supply && !same(supply, promise?.item) ? { id: 'supply', kind: 'supply', item: supply } : null
   // A supply that runs out within 2 days leads before the daily menu question, as in the brief.
   if (supplyRow && input.supply?.soon) all.push(supplyRow)
   if (products.length && facts && shop.last_confirmed !== facts.date && !input.menuAnswered)
@@ -233,8 +239,8 @@ export function todayPlan(input: TodayInput): TodayPlan {
   if (supplyRow && !input.supply?.soon) all.push(supplyRow)
   // The supply row (with its run-out day) or last night's promise already names this item:
   // never twice on Today.
-  const named = new Set([supply, promise?.item].filter(Boolean))
-  for (const low of (facts?.low_stock ?? []).filter((low) => !named.has(low.name)))
+  const named = [supply, promise?.item]
+  for (const low of (facts?.low_stock ?? []).filter((low) => !named.some((n) => same(n, low.name))))
     all.push({
       id: `low-${low.name}`,
       kind: 'low',
@@ -250,11 +256,13 @@ export function todayPlan(input: TodayInput): TodayPlan {
   const asked = shop.public ? missingFacts(shop.fields) : []
   if (asked.length) all.push({ id: 'facts', kind: 'facts', facts: asked.slice(0, 2) })
 
+  const { lead, more } = leadSplit(byPlaybook(all, facts?.hints))
   return {
     part: dayPart(input.now),
     food,
     progress: done < total ? { done, total } : null,
-    needs: leadOrder(byPlaybook(all, facts?.hints)),
+    needs: lead,
+    more,
     line: facts?.line ?? null,
     pulse,
     forecast,

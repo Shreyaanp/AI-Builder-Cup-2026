@@ -16,7 +16,7 @@ from typing import Any, Literal
 
 import anyio
 
-from .app_guide import guide_reply, where_line
+from .app_guide import BY_ID, guide_reply, where_line
 from .close_reward import close_reward, reward_text
 from .contracts import StreamEvent
 from .coordinator import MerchantContext, propose_products
@@ -109,7 +109,15 @@ PROMISE = (
         rf"^{TOMORROW}\s+(?P<what>.+?)\s+(?:yaad|yad)\s+(?:dila|dilaa)(?:na|o|dena|iye|ana)$",
         re.I,
     ),
+    # The same in Devanagari: Hindi typing and Hindi voice ("कल सुबह दूध मँगाना याद दिलाना",
+    # the close screen's own Hindi hint).
+    re.compile(
+        r"^(?:मुझे\s+)?कल(?:\s+सुबह)?\s+(?:मुझे\s+)?(?P<what>.+?)\s+(?:की\s+)?याद\s+"
+        r"(?:दिला|करा)(?:ना|ओ|\s*देना|\s*दो|\s*दीजिए|इए|इये|एँ|एं|ना\s+है)$"
+    ),
 )
+# "kal subah yaad dilana" names no thing to write down: just tomorrow's words.
+WHEN_ONLY = re.compile(rf"{TOMORROW}|morning|subah|सुबह|कल(?:\s+सुबह)?", re.I)
 ORDER_WORDS = re.compile(r"^(?:re-?order|order|buy|get)\s+(?:more\s+|some\s+)?(?P<item>.+)$", re.I)
 MAKE_WORDS = re.compile(r"^(?:make|prep|prepare)\s+(?:more\s+|some\s+)?(?P<item>.+)$", re.I)
 
@@ -302,17 +310,25 @@ def promise_words(lowered: str) -> str | None:
         if found:
             what = next(v for v in found.groupdict().values() if v)
             # "remind me tomorrow" alone has nothing to write down: the coach asks what.
-            if what.strip() and not re.fullmatch(TOMORROW, what.strip(), re.I):
+            if what.strip() and not WHEN_ONLY.fullmatch(what.strip()):
                 return what.strip()
     return None
 
 
-def _promise(ctx: MerchantContext, what: str) -> InstantResult:
+def _promise(ctx: MerchantContext, what: str, hindi: bool = False) -> InstantResult:
     """Write tomorrow's promise and say where it will be. The owner's words are kept as said;
     "order milk" with a Milk item on the menu gets an Order button tomorrow morning."""
-    from .owner_promise import NewPromise, set_promise
+    from .owner_promise import NewPromise, consent_current, set_promise
 
     fields, inventory = _shop(ctx)
+    # Like the close screen's route (428 there): nothing is written before the current terms.
+    if not fields.get("demo") and not consent_current(ctx.store, ctx.uid):
+        return InstantResult(
+            "promise",
+            "पहले नई शर्तें स्वीकार करें। फिर मैं इसे कल के लिए लिख लूँगा।"
+            if hindi
+            else "Please accept the updated terms first. Then I can write this down for tomorrow.",
+        )
     kind: Literal["order", "make", "note"] = "note"
     item: str | None = None
     for pattern, named in ((ORDER_WORDS, "order"), (MAKE_WORDS, "make")):
@@ -327,8 +343,18 @@ def _promise(ctx: MerchantContext, what: str) -> InstantResult:
                 kind = "order" if named == "order" else "make"
             break
     promise = set_promise(
-        ctx.store, ctx.business_id or "", fields, NewPromise(text=what, kind=kind, item=item)
+        ctx.store,
+        ctx.business_id or "",
+        fields,
+        NewPromise(text=what, kind=kind, item=item),
+        uid=ctx.uid,
     )
+    if hindi:
+        return InstantResult(
+            "promise",
+            f"कल सुबह के लिए लिख लिया: “{promise.text}”। यह Coach में सबसे ऊपर दिखेगा। "
+            f"यह {BY_ID['promise'].where} में भी है।",
+        )
     return InstantResult(
         "promise",
         f'Written down for tomorrow morning: "{promise.text}". It will be at the top of Coach. '
@@ -377,6 +403,11 @@ async def route(
     message = " ".join(text.split())
     if not ctx or not ctx.business_id or ctx.new_shop or not message or len(message) > 200:
         return None
+    # Tomorrow's promise in any script the router knows (the close screen's Hindi hint is
+    # Devanagari). The owner's words keep their own case: they are shown back as written.
+    promised = promise_words(message.rstrip(" .!।"))
+    if promised:
+        return _promise(ctx, promised, hindi=not LATIN.match(message))
     if not LATIN.match(message):
         return None
     lowered = message.casefold().rstrip(" .!")
@@ -396,10 +427,6 @@ async def route(
             f"I've prepared this for you to check: {result['changes'][0]}. Confirm it on screen.",
             _proposal_events(ctx, result),
         )
-    # The owner's words keep their own case: they are shown back tomorrow as written.
-    promised = promise_words(message.rstrip(" .!"))
-    if promised:
-        return _promise(ctx, promised)
     upkeep = _upkeep(ctx, message)
     if upkeep:
         return upkeep

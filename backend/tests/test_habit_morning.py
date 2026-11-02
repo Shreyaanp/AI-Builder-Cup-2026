@@ -7,18 +7,23 @@ and promise_done as counts: never the words, never for a demo shop, only with co
 
 import json
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
 
 from app import owner_habit, owner_promise, shop_today
+from app.app_guide import FEATURES
 from app.coordinator import MerchantContext
 from app.instant import promise_words, route
+from app.merchant_routes import LEGAL_VERSION
 from app.owner_promise import NewPromise, answer, promise_for, set_promise
 from app.rescue import local_now
 from tests.test_analytics import owned_shop
 from tests.test_photos import app  # noqa: F401
+
+ROOT = Path(__file__).resolve().parents[2]
 
 
 def at(monkeypatch: pytest.MonkeyPatch, when: datetime) -> None:
@@ -216,15 +221,42 @@ def test_erasing_the_owner_erases_the_promise(app, monkeypatch) -> None:  # noqa
         ("please remind me about the gas cylinder tomorrow", "the gas cylinder"),
         ("kal subah doodh yaad dilana", "doodh"),
         ("Kal doodh mangana yaad dilao", "doodh mangana"),
+        # Devanagari: Hindi typing and Hindi voice.
+        ("कल सुबह दूध मँगाना याद दिलाना", "दूध मँगाना"),
+        ("कल गैस सिलेंडर याद दिला देना", "गैस सिलेंडर"),
+        ("मुझे कल सुबह चीनी मँगाने की याद दिलाओ", "चीनी मँगाने"),
+        ("कल मुझे गणेश को फ़ोन करना याद दिलाइए", "गणेश को फ़ोन करना"),
     ],
 )
 def test_chat_phrases_that_set_a_promise(message: str, what: str) -> None:
     assert promise_words(message) == what
 
 
+def _promise_asks() -> list[str]:
+    """Every "Or just ask" phrase the app shows for the promise, both copies of the guide."""
+    feature = next(f for f in FEATURES if f.id == "promise")
+    shown = json.loads((ROOT / "src/features/v1/appGuide.json").read_text(encoding="utf-8"))
+    entry = next(f for f in shown["features"] if f["id"] == "promise")
+    return sorted({feature.ask, feature.ask_hi, entry["ask"], entry["ask_hi"]})
+
+
+@pytest.mark.parametrize("message", _promise_asks())
+def test_the_guides_own_ask_phrases_set_a_promise(message: str) -> None:
+    """The close screen's hint and the chat router can't drift apart (two paths)."""
+    assert message and promise_words(message)
+
+
 @pytest.mark.parametrize(
     "message",
-    ["Remind me every morning", "remind me tomorrow", "turn on reminders", "order milk"],
+    [
+        "Remind me every morning",
+        "remind me tomorrow",
+        "turn on reminders",
+        "order milk",
+        "kal subah yaad dilana",
+        "कल सुबह याद दिलाना",
+        "दूध मँगाना है",
+    ],
 )
 def test_chat_phrases_that_do_not(message: str) -> None:
     assert promise_words(message) is None
@@ -253,6 +285,55 @@ async def test_the_offline_coach_sets_a_promise_from_the_chat(app, monkeypatch) 
     every = await route("Remind me every morning", ctx)
     assert every is None or every.intent != "promise"
     assert counts(app, bid, close)["promise_set"] == 2
+
+
+async def test_the_chat_writes_nothing_and_counts_nothing_without_current_consent(
+    app,  # noqa: F811
+    monkeypatch,
+) -> None:
+    """Like the screen route (428): an owner on old terms is asked to accept them first."""
+    with TestClient(app) as client:
+        uid, bid = owned_shop(client, app)
+    repo = app.state.merchant
+    close = evening(app, uid, bid)
+    at(monkeypatch, close)
+    repo.record_consent(uid, "old")
+    ctx = MerchantContext(store=repo, uid=uid, business_id=bid, recalled=[])
+    english = await route("Remind me to order milk tomorrow", ctx)
+    assert english is not None and english.intent == "promise"
+    assert "accept the updated terms" in english.reply
+    assert "Written down" not in english.reply and "remind" not in english.reply.lower()
+    hindi = await route("कल सुबह दूध मँगाना याद दिलाना", ctx)
+    assert hindi is not None and hindi.intent == "promise"
+    assert "शर्तें स्वीकार" in hindi.reply and "लिख लिया" not in hindi.reply
+    assert owner_promise.stored(repo, bid) is None
+    assert counts(app, bid, close).get("promise_set", 0) == 0
+    # Accepting the current terms opens the chat path again.
+    repo.record_consent(uid, LEGAL_VERSION)
+    reply = await route("कल सुबह दूध मँगाना याद दिलाना।", ctx)
+    assert reply is not None and reply.intent == "promise"
+    assert "लिख लिया" in reply.reply and "Grow → Close the day" in reply.reply
+    found = promise_for(repo, bid, close.date() + timedelta(days=1))
+    assert found is not None and found.text == "दूध मँगाना"
+    assert counts(app, bid, close)["promise_set"] == 1
+
+
+def test_counts_need_current_consent_even_from_the_store(app, monkeypatch) -> None:  # noqa: F811
+    """_count checks the owner's consent itself, so no caller can count around it."""
+    with TestClient(app) as client:
+        uid, bid = owned_shop(client, app)
+    repo = app.state.merchant
+    close = evening(app, uid, bid)
+    at(monkeypatch, close)
+    fields = repo.context(uid, bid)["business"]["fields"]
+    repo.record_consent(uid, "old")
+    set_promise(repo, bid, fields, NewPromise(text="order milk"), uid=uid)
+    # No uid at all is never counted either.
+    set_promise(repo, bid, fields, NewPromise(text="order milk"))
+    assert counts(app, bid, close).get("promise_set", 0) == 0
+    repo.record_consent(uid, LEGAL_VERSION)
+    set_promise(repo, bid, fields, NewPromise(text="order milk"), uid=uid)
+    assert counts(app, bid, close)["promise_set"] == 1
 
 
 def test_answer_is_false_without_an_open_promise(app, monkeypatch) -> None:  # noqa: F811

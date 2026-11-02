@@ -1,4 +1,4 @@
-/** Today shows at most three things; the first is the one lead action (HABIT change 2). */
+/** Today leads with at most three things; the first is the one lead action (HABIT change 2). */
 export const MAX_NEEDS = 3
 
 /**
@@ -18,12 +18,20 @@ export function closeDayFirst<T extends { kind: string }>(needs: T[]): T[] {
  * three, so the playbook can never push the shop's one dated stock line off Today.
  */
 export function leadOrder<T extends { kind: string }>(needs: T[]): T[] {
+  return leadSplit(needs).lead
+}
+
+/**
+ * The three shown first, and the rest for "N more things" in the same card (SIMPLIFY Batch 5):
+ * nothing the playbook ranks lower ever drops off Coach.
+ */
+export function leadSplit<T extends { kind: string }>(needs: T[]): { lead: T[]; more: T[] } {
   const ordered = closeDayFirst([
     ...needs.filter((need) => need.kind === 'promise'),
     ...needs.filter((need) => need.kind !== 'promise'),
   ])
   const top = ordered.slice(0, MAX_NEEDS)
   const supply = ordered.find((need) => need.kind === 'supply')
-  if (!supply || top.includes(supply)) return top
-  return [...top.slice(0, MAX_NEEDS - 1), supply]
+  const lead = !supply || top.includes(supply) ? top : [...top.slice(0, MAX_NEEDS - 1), supply]
+  return { lead, more: ordered.filter((need) => !lead.includes(need)) }
 }

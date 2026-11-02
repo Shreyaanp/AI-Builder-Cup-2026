@@ -4,7 +4,7 @@ import { LOCALES } from '../src/i18n/locales.js'
 import { comparisonKind } from '../src/features/closeday/compare.js'
 import { countClosed, countShown, type Workspace } from '../src/features/v1/today/habitCount.js'
 import { promiseCopyFor, type PromiseCopy } from '../src/features/v1/today/promiseCopy.js'
-import { leadOrder } from '../src/features/v1/today/leadOrder.js'
+import { leadOrder, leadSplit } from '../src/features/v1/today/leadOrder.js'
 
 const REWARD_KEYS = [
   'doneTotal',
@@ -134,4 +134,14 @@ test('one stock surface: the supply row with its run-out day always keeps a plac
     'promise',
     'supply',
   ])
+})
+
+test('"N more things": every row past the three is kept for the same card, none dropped', () => {
+  const needs = rows('reply', 'closeDay', 'menu', 'supply', 'low', 'low', 'soldOut', 'step')
+  const { lead, more } = leadSplit(needs)
+  expect(lead.map((need) => need.kind)).toEqual(['closeDay', 'reply', 'supply'])
+  expect(more.map((need) => need.kind)).toEqual(['menu', 'low', 'low', 'soldOut', 'step'])
+  // Nothing lost, nothing said twice.
+  expect([...lead, ...more].map((need) => need.id).sort()).toEqual(needs.map((n) => n.id).sort())
+  expect(leadSplit(rows('reply', 'menu')).more).toEqual([])
 })

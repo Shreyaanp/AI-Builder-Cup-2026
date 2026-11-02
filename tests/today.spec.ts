@@ -203,6 +203,111 @@ test('needs you now: at most three, most urgent first, each leaves when done', a
   await expect(rows.nth(2)).toContainText('Share your page')
 })
 
+// SIMPLIFY Batch 5: one lead card plus "N more things" in it, so nothing drops off Coach.
+for (const [language, preview, more, hide, rowNames] of [
+  [
+    'en',
+    'Continue local preview',
+    '5 more things',
+    'Hide',
+    [
+      /Still the same menu today?/,
+      /Masala chai: only 4 left/,
+      /Sugar: only 2 left/,
+      /Kulhad chai/,
+      /phone number/i,
+      /share your page/i,
+    ],
+  ],
+  [
+    'hi',
+    'स्थानीय प्रीव्यू जारी रखें',
+    '5 और काम',
+    'छिपाएँ',
+    [/मेन्यू/, /Masala chai/, /Sugar/, /Kulhad chai/, /फ़ोन/, /पेज/],
+  ],
+] as const) {
+  test(`N more things: eight needs, every one reachable in the one card (${language})`, async ({
+    page,
+  }) => {
+    await facts(page, {
+      yesterday: { sales: 420000, items: 210, views: 38, questions: 3, stamps: 9, returning: 4 },
+      forecast: { item: 'Masala chai', quantity: 45, unit: 'cup' },
+      low_stock: [
+        { name: 'Masala chai', stock: 4, runs_out: null, source: 'made' },
+        { name: 'Sugar', stock: 2, runs_out: null, source: 'bought' },
+      ],
+    })
+    const id = await shop(page, { name: 'Courtyard Chai', ...FULL, phone: '' }, [
+      ...PRODUCTS,
+      { name: 'Sugar', price: 4800, unit: 'kg', stock: 2 },
+      { name: 'Kulhad chai', price: 3000, unit: 'cup', category: 'Drinks' },
+    ])
+    const inventory = await (await page.request.get(`/api/v1/businesses/${id}/inventory`)).json()
+    const kulhad = inventory.find((item: { name: string }) => item.name === 'Kulhad chai')
+    const sold = await page.request.post(
+      `/api/v1/businesses/${id}/inventory/${kulhad.id}/availability`,
+      { data: { available: false } },
+    )
+    expect(sold.ok()).toBe(true)
+    await page.evaluate(
+      (value) => localStorage.setItem('niva.starter.preferences', JSON.stringify(value)),
+      { language },
+    )
+    await page.reload()
+    await page.getByRole('button', { name: preview }).click()
+    const today = page.getByTestId('today')
+    const card = page.getByTestId('today-needs')
+    const toggle = card.getByRole('button', { name: more })
+    for (const width of [360, 390, 412]) {
+      await page.setViewportSize({ width, height: 844 })
+      // Three lead rows, then the disclosure that names how many more there are.
+      await expect(card.locator('[data-need]')).toHaveCount(3)
+      await expect(toggle).toHaveAttribute('aria-expanded', 'false')
+      await toggle.click()
+      const hider = card.getByRole('button', { name: hide, exact: true })
+      await expect(hider).toHaveAttribute('aria-expanded', 'true')
+      const all = card.locator('[data-need]')
+      await expect(all).toHaveCount(8)
+      // Every need is in the card, each with a control found by role and name.
+      for (const name of rowNames) {
+        const row = all.filter({ hasText: name })
+        await expect(row, String(name)).toHaveCount(1)
+        expect(await row.getByRole('button').count(), String(name)).toBeGreaterThan(0)
+      }
+      // ...including the reminders past those (shop photo, face check).
+      for (const row of await all.all()) {
+        const buttons = await row.getByRole('button').all()
+        expect(buttons.length).toBeGreaterThan(0)
+        for (const button of buttons)
+          expect(
+            ((await button.getAttribute('aria-label')) ?? (await button.innerText())).trim(),
+          ).not.toBe('')
+      }
+      if (language === 'en') {
+        await expect(card.getByRole('button', { name: 'Yes', exact: true })).toBeVisible()
+        await expect(card.getByRole('button', { name: 'Order', exact: true })).toBeVisible()
+        await expect(card.getByRole('button', { name: 'Make more', exact: true })).toBeVisible()
+        await expect(card.getByRole('button', { name: 'Back in stock' })).toBeVisible()
+      }
+      // Still one filled button on the card, on the first row; the rest are outlined or text.
+      await expect(today.locator('.MuiButton-contained')).toHaveCount(1)
+      await expect(all.first().locator('.MuiButton-contained')).toHaveCount(1)
+      for (const button of await card.getByRole('button').all())
+        expect(Math.round((await button.boundingBox())!.height)).toBeGreaterThanOrEqual(48)
+      expect(
+        await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1),
+      ).toBe(true)
+      if (width === 390) {
+        await axe(page)
+        await shot(page, `more-things-${language}`)
+      }
+      await hider.click()
+      await expect(card.locator('[data-need]')).toHaveCount(3)
+    }
+  })
+}
+
 for (const [language, preview, pointer, shopTile, tile, menu, draft] of [
   [
     'en',

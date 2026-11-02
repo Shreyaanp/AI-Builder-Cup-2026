@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import { AiInfo } from '../AiInfo'
 import type { ReactNode } from 'react'
 import {
@@ -338,7 +338,7 @@ function useLeaving(needs: Need[]): { need: Need; leaving: boolean }[] {
   return rows.map((row) => ({ ...row, need: latest.get(row.need.id) ?? row.need }))
 }
 
-/** "Needs you now": at most three live items; "All set for today" when nothing is left. */
+/** "Needs you now": three live items, then "N more things"; "All set for today" when none. */
 export function NeedsCard({
   plan,
   actions,
@@ -359,6 +359,32 @@ export function NeedsCard({
   const ws = useWorkspace()
   const roles = useTheme().material
   const rows = useLeaving(plan.needs)
+  const moreRows = useLeaving(plan.more)
+  const [open, setOpen] = useState(false)
+  const moreId = useId()
+  const row = ({ need, leaving }: { need: Need; leaving: boolean }, first: boolean) =>
+    need.kind === 'supply' ? (
+      leaving ? null : (
+        <TodaySupply key={need.id} first={first} onAct={() => countAction(ws, 'supply')} />
+      )
+    ) : (
+      <NeedRow
+        key={need.id}
+        need={need}
+        leaving={leaving}
+        first={first}
+        food={plan.food}
+        actions={actions}
+        answerMenu={answerMenu}
+        answerPromise={answerPromise}
+      />
+    )
+  const list = {
+    listStyle: 'none',
+    m: 0,
+    p: 0,
+    '& > li + li': { borderTop: `1px solid ${roles.outlineVariant}` },
+  }
   if (!rows.length)
     return compact || plan.dayOne ? (
       footer
@@ -406,38 +432,41 @@ export function NeedsCard({
           {tt.needsTitle}
         </Typography>
       )}
-      <Stack
-        component="ul"
-        sx={{
-          listStyle: 'none',
-          m: 0,
-          p: 0,
-          '& > li + li': { borderTop: `1px solid ${roles.outlineVariant}` },
-        }}
-      >
-        {rows.map(({ need, leaving }, index) =>
-          need.kind === 'supply' ? (
-            leaving ? null : (
-              <TodaySupply
-                key={need.id}
-                first={index === 0 && !plan.dayOne && !compact}
-                onAct={() => countAction(ws, 'supply')}
-              />
-            )
-          ) : (
-            <NeedRow
-              key={need.id}
-              need={need}
-              leaving={leaving}
-              first={index === 0 && !plan.dayOne && !compact}
-              food={plan.food}
-              actions={actions}
-              answerMenu={answerMenu}
-              answerPromise={answerPromise}
-            />
-          ),
-        )}
+      <Stack component="ul" sx={list}>
+        {rows.map((each, index) => row(each, index === 0 && !plan.dayOne && !compact))}
       </Stack>
+      {/* The rest stay one tap away in the same card, with text buttons only: one filled
+          button on the card, and nothing drops off Coach (SIMPLIFY Batch 5). */}
+      {moreRows.length > 0 && (
+        <>
+          <Button
+            variant="text"
+            aria-expanded={open}
+            aria-controls={open ? moreId : undefined}
+            onClick={() => setOpen((was) => !was)}
+            endIcon={
+              <ChevronDown
+                size={18}
+                aria-hidden="true"
+                style={{ transform: open ? 'rotate(180deg)' : undefined }}
+              />
+            }
+            sx={{ minHeight: 48, mt: 1, px: 1 }}
+          >
+            {open ? tt.hide : tt.more(plan.more.length)}
+          </Button>
+          {open && (
+            <Stack
+              component="ul"
+              id={moreId}
+              data-testid="today-more"
+              sx={{ ...list, borderTop: `1px solid ${roles.outlineVariant}` }}
+            >
+              {moreRows.map((each) => row(each, false))}
+            </Stack>
+          )}
+        </>
+      )}
       {footer}
     </Box>
   )
@@ -525,7 +554,13 @@ function NeedRow({
         >
           {doIt?.label ?? pc.done}
         </Button>
-        <Button disabled={busy} sx={{ minHeight: 48 }} onClick={() => settle('skipped')}>
+        {/* Clearing it is not a useful action: never action_done, never the first action. */}
+        <Button
+          disabled={busy}
+          data-uncounted
+          sx={{ minHeight: 48 }}
+          onClick={() => settle('skipped')}
+        >
           {pc.notToday}
         </Button>
       </>
@@ -697,7 +732,8 @@ function NeedRow({
       component="li"
       data-need={need.kind}
       onClickCapture={(event) => {
-        if ((event.target as HTMLElement).closest('button')) countAction(ws, need.kind)
+        const button = (event.target as HTMLElement).closest('button')
+        if (button && !button.hasAttribute('data-uncounted')) countAction(ws, need.kind)
       }}
       aria-hidden={leaving || undefined}
       inert={leaving || undefined}
@@ -831,7 +867,7 @@ export function NeedsPill({ actions }: { actions: TodayActions }) {
   const roles = useTheme().material
   const { plan, answerMenu, answerPromise } = useTodayPlan(actions.unread)
   const [open, setOpen] = useState(false)
-  const count = plan?.needs.length ?? 0
+  const count = plan ? plan.needs.length + plan.more.length : 0
   if (!plan || !count) return null
   return (
     <Box data-testid="today-pill" sx={{ pb: 2 }}>

@@ -23,7 +23,7 @@ from pydantic import BaseModel, Field
 
 from .limits import enforce_limits
 from .merchant import MerchantRepository
-from .merchant_routes import consented_owner, owner, store
+from .merchant_routes import LEGAL_VERSION, consented_owner, owner, store
 from .owner_habit import HabitEvent, record
 from .rescue import local_now
 
@@ -62,11 +62,22 @@ def clean(text: str) -> str:
     return re.sub(r"[\x00-\x1f\x7f]+", " ", " ".join(text.split()))[:MAX_TEXT].strip()
 
 
-def _count(repository: MerchantRepository, bid: str, fields: dict[str, Any], event: str) -> None:
-    """Add the count for today, never for a demo shop; a lost count is fine."""
+def consent_current(repository: MerchantRepository, uid: str) -> bool:
+    """The owner accepted the current Terms and Privacy Notice (as consented_owner checks)."""
+    record = repository.consent(uid) if uid else None
+    return bool(record and record.get("version") == LEGAL_VERSION)
+
+
+def _count(
+    repository: MerchantRepository, bid: str, fields: dict[str, Any], event: str, uid: str
+) -> None:
+    """Add the count for today: never for a demo shop, only with current consent; a lost
+    count is fine."""
     if fields.get("demo"):
         return
     try:
+        if not consent_current(repository, uid):
+            return
         record(
             repository,
             bid,
@@ -99,6 +110,7 @@ def set_promise(
     fields: dict[str, Any],
     new: NewPromise,
     count: bool = True,
+    uid: str = "",
 ) -> Promise:
     """Write one promise for tomorrow (shop-local), replacing any earlier one."""
     text = clean(new.text)
@@ -113,7 +125,7 @@ def set_promise(
     )
     repository.feature_docs.put(KIND, bid, bid, time.time(), value.model_dump(mode="json"))
     if count:
-        _count(repository, bid, fields, "promise_set")
+        _count(repository, bid, fields, "promise_set", uid)
     return value
 
 
@@ -124,6 +136,7 @@ def answer(
     day: date,
     state: Literal["done", "skipped"],
     count: bool = True,
+    uid: str = "",
 ) -> bool:
     """Mark this morning's promise done or cleared. False when there is no open one."""
     changed: list[bool] = []
@@ -137,7 +150,7 @@ def answer(
 
     repository.feature_docs.update(KIND, bid, bid, change)
     if changed and state == "done" and count:
-        _count(repository, bid, fields, "promise_done")
+        _count(repository, bid, fields, "promise_done", uid)
     return bool(changed)
 
 
@@ -148,7 +161,9 @@ async def new_promise(business_id: str, body: NewPromise, request: Request) -> P
     service = store(request)
     business = await anyio.to_thread.run_sync(service.owned_business, uid, business_id)
     fields = business.get("fields") or {}
-    return await anyio.to_thread.run_sync(set_promise, service, business_id, fields, body)
+    return await anyio.to_thread.run_sync(
+        lambda: set_promise(service, business_id, fields, body, uid=uid)
+    )
 
 
 @router.post("/{business_id}/promise/{day}/{state}", status_code=204)
@@ -161,7 +176,9 @@ async def answer_promise(
     business = await anyio.to_thread.run_sync(service.owned_business, uid, business_id)
     fields = business.get("fields") or {}
     # Answering again (a double tap, a second phone) is not an error.
-    await anyio.to_thread.run_sync(answer, service, business_id, fields, day, state)
+    await anyio.to_thread.run_sync(
+        lambda: answer(service, business_id, fields, day, state, uid=uid)
+    )
 
 
 @router.get("/{business_id}/promise", response_model=Promise | None)

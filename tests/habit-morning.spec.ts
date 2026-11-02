@@ -252,15 +252,19 @@ test('a promise set at close leads next morning; "Not today" clears it and it ne
     page.locator('[data-need="low"]').filter({ hasText: 'Milk: only 2 left' }),
   ).toBeVisible()
   expect(await promiseFor(page, id, tomorrow)).toBeNull()
-  // Counted as numbers only: the promise row was shown and acted on, never its words.
+  // Counted as numbers only: the promise row was shown, never its words.
+  const said = () => counted.map((e) => `${e.event}${e.kind ? `:${e.kind}` : ''}`)
   await expect
-    .poll(() => counted.map((e) => `${e.event}${e.kind ? `:${e.kind}` : ''}`), { timeout: 10_000 })
-    .toEqual(expect.arrayContaining(['prompt_shown:promise', 'action_done:promise']))
-  expect(JSON.stringify(counted)).not.toContain('Milk')
+    .poll(said, { timeout: 10_000 })
+    .toEqual(expect.arrayContaining(['prompt_shown:promise']))
   // It does not reappear: not after a reload, not later that day.
   await open(page, name)
   await expect(page.getByTestId('today')).toBeVisible()
   await expect(page.locator('[data-need="promise"]')).toHaveCount(0)
+  // Clearing it is not a useful action, so never action_done (nor the visit's first action,
+  // which only action_done carries). The reload above sent everything the visit counted.
+  expect(said()).not.toContain('action_done:promise')
+  expect(JSON.stringify(counted)).not.toContain('Milk')
   await page.clock.setFixedTime(new Date(`${tomorrow}T13:00:00+05:30`))
   await open(page, name)
   await expect(page.getByTestId('today')).toBeVisible()
@@ -363,5 +367,63 @@ test('Hindi: the morning promise row is all Hindi', async ({ page }) => {
   await expect(row.getByRole('button', { name: 'अभी मँगाएँ' })).toBeVisible()
   await expect(row.getByRole('button', { name: 'आज नहीं' })).toBeVisible()
   await expect(row).not.toContainText(/Last night|Order now|Not today/)
+  expect(await fitsWidth(page)).toBe(true)
+})
+
+test('the promise and the supply row name the same item: it is said once, by the promise', async ({
+  page,
+}) => {
+  test.setTimeout(180_000)
+  await page.setViewportSize({ width: 390, height: 844 })
+  const tomorrow = shopDay(-1)
+  await localOnly(page)
+  await enter(page)
+  const name = 'Once Lane Chai'
+  const id = await teaStall(page, name, [
+    { name: 'Masala chai', price: 2000, unit: 'cup', category: 'Drinks', stock: 40 },
+    { name: 'Milk', price: 6000, unit: 'litre', stock: 12 },
+  ])
+  await fourWeeks(page, id)
+  await open(page, name)
+  // Without a promise, Milk is the supply row with its run-out day.
+  await expect(page.locator('[data-need="supply"]')).toContainText('Milk runs out')
+  const made = await page.request.post(`/api/v1/businesses/${id}/promise`, {
+    data: { text: 'order milk', kind: 'order', item: 'Milk' },
+  })
+  expect(made.ok()).toBe(true)
+  await morningOf(page, id, tomorrow)
+  await open(page, name)
+  const today = page.getByTestId('today')
+  await expect(today.locator('[data-need="promise"]')).toContainText(
+    'Last night you said: order Milk',
+  )
+  await expect(today.locator('[data-need="supply"]')).toHaveCount(0)
+  await expect(today.locator('[data-need]').filter({ hasText: /milk/i })).toHaveCount(1)
+  await expect(today.locator('.MuiButton-contained')).toHaveCount(1)
+})
+
+test('Hindi: the close screen’s own Hindi hint, typed into the chat, writes the promise down', async ({
+  page,
+}) => {
+  test.setTimeout(120_000)
+  await page.setViewportSize({ width: 390, height: 844 })
+  const tonight = shopDay(0)
+  const tomorrow = shopDay(-1)
+  await page.clock.setFixedTime(new Date(`${tonight}T20:30:00+05:30`))
+  await localOnly(page)
+  await enter(page)
+  const name = 'Hindi Chat Chai'
+  const id = await teaStall(page, name, [
+    { name: 'Masala chai', price: 2000, unit: 'cup', category: 'Drinks', stock: 40 },
+  ])
+  await prefer(page, 'light', 'hi')
+  await open(page, name, 'स्थानीय प्रीव्यू जारी रखें')
+  await page.getByLabel('संदेश', { exact: true }).fill('कल सुबह दूध मँगाना याद दिलाना')
+  await page.getByRole('button', { name: 'भेजें', exact: true }).click()
+  await expect(page.getByRole('log')).toContainText(
+    'कल सुबह के लिए लिख लिया: “दूध मँगाना”। यह Coach में सबसे ऊपर दिखेगा।',
+    { timeout: 20_000 },
+  )
+  expect(await promiseFor(page, id, tomorrow)).toMatchObject({ text: 'दूध मँगाना', kind: 'note' })
   expect(await fitsWidth(page)).toBe(true)
 })
