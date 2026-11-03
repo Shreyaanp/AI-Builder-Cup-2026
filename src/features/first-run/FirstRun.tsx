@@ -2,6 +2,7 @@ import { useRef, useState, type ReactNode } from 'react'
 import { Box, Button, Dialog, Stack, Typography, useTheme } from '@mui/material'
 import { MapPin, QrCode, Gift, Store, Stamp, Bot, CircleHelp } from 'lucide-react'
 import { useLocale } from '../../state/hooks'
+import { LanguagePicker } from '../frontdoors/LanguagePicker'
 import { settingsRowSx } from '../frontdoors/settingsRow'
 import { explainerCopy } from './copy'
 import { hasSeen, remember, type Audience } from './seen'
@@ -135,9 +136,10 @@ function Cards({ app, onClose }: { app: Audience; onClose: () => void }) {
           '& button': { minHeight: 48, minWidth: 48 },
         }}
       >
-        <Box sx={{ alignSelf: 'flex-end' }}>
+        <Stack direction="row" sx={{ alignSelf: 'flex-end', alignItems: 'center', gap: 1 }}>
+          {app === 'owner' && <LanguagePicker variant="inline" plainName />}
           <Button onClick={onClose}>{t[6]}</Button>
-        </Box>
+        </Stack>
         <Stack
           sx={{
             flex: 1,
