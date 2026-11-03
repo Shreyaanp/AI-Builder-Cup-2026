@@ -50,8 +50,8 @@ export interface Workspace {
   go: (destination: Destination) => void
   select: (id: string | null) => void
   reload: () => Promise<void>
-  /** Owner's immediate sold-out switch. */
-  setAvailability: (product: Product, available: boolean) => Promise<void>
+  /** Owner's immediate sold-out switch; false when it did not save (the switch moves back). */
+  setAvailability: (product: Product, available: boolean) => Promise<boolean>
   /** Turns the public customer page on or off. */
   setShared: (shared: boolean) => Promise<void>
   shareUrl: string | null

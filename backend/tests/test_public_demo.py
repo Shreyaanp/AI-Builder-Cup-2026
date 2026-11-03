@@ -164,7 +164,8 @@ def test_demo_coach_answers_offline(app, monkeypatch):  # noqa: F811
 def test_OB_59_public_demo_coach_answers_Hindi_in_Hindi(app):  # noqa: N802, F811
     prompts = [
         ("Help me update my products", "demo menu"),
-        ("Help me close the day", "demo sales"),
+        # Closing the day opens Close the day, never a sales total (S2-9).
+        ("Help me close the day", "saves your sales"),
         ("Forecast demand for Masala chai", "demo forecast"),
         ("Reorder milk for tomorrow", "Demo supply records"),
         ("My flour is running low", "Demo supply records"),
@@ -185,7 +186,8 @@ def test_OB_59_public_demo_coach_answers_Hindi_in_Hindi(app):  # noqa: N802, F81
         ("ऑर्डर और सामान", "डेमो सप्लायर"),
         # Closed for today only is prepared for review, as on Shop details (#633).
         ("We are closed today", "Closed today ("),
-        ("What is my business called?", "I can help with"),
+        # Unsure: one short question, never the old examples list (S2-9).
+        ("What is my business called?", "What would you like to do"),
     ]
     with TestClient(app) as client:
         app.state.v1_settings.public_demo_enabled = True
@@ -204,7 +206,7 @@ def test_OB_59_public_demo_coach_answers_Hindi_in_Hindi(app):  # noqa: N802, F81
             reply = " ".join(event.get("text", "") for event in events)
             assert expected in reply, (message, events)
             assert "What is your business called?" not in reply
-            if expected != "I can help with" and not any(
+            if expected != "What would you like to do" and not any(
                 "\u0900" <= ch <= "\u097f" for ch in message
             ):
                 assert "next" in reply.lower()
