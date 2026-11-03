@@ -124,15 +124,14 @@ test('S11 · forecast → PO → ORDRSP (partial) → ASN → invoice, translate
   const same = page.getByRole('button', { name: 'Yes, all good' })
   if (process.env.S11_SAME && (await same.count())) await same.click()
 
-  // The demo suppliers nearby are shared by every shop in the area, so which one is cheapest
-  // depends on what other shops asked for: the story follows whichever one drafted the order.
-  let drafted = ''
+  // OB-260: the kirana gets demo suppliers of its own, so the cheapest is always Kaveri,
+  // whatever other shops nearby searched for before this one.
+  const drafted = 'Atta (wheat flour) from Kaveri Fresh & Dairy Supply'
   await test.step('1 · the coach drafts the PO from the forecast and the rules', async () => {
     await page.getByRole('textbox', { name: 'Message', exact: true }).fill('Reorder atta')
     await page.getByRole('button', { name: 'Send', exact: true }).click()
-    const card = page.getByRole('article', { name: /^Atta \(wheat flour\) from / })
+    const card = page.getByRole('article', { name: drafted, exact: true })
     await expect(card).toBeVisible()
-    drafted = (await card.getAttribute('aria-label')) ?? ''
     // The authored kirana sells Atta; the older supplier fixture calls it Wheat flour.
     await expect(card).toContainText(/kg (?:Wheat flour|Atta) · deliver/)
     await expect(card).toContainText('6 kg left, runs out')

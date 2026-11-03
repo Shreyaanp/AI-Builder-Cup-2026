@@ -490,3 +490,138 @@ def test_603_cancelling_a_sent_order_respects_the_message_limit(ctx) -> None:
     assert error.value.status_code == 409
     kept = sourcing.get_order(ctx.store, "alice", ctx.business_id, order["id"])
     assert kept["status"] != "cancelled" and len(kept["messages"]) == sourcing.MAX_MESSAGES
+
+
+class FixtureSuppliers:
+    """The offline supplier generator, whatever COACH_MODE the test run has."""
+
+    async def generate(
+        self, item: str, unit: str, currency: str, location: str, shop_category: str
+    ) -> tuple[sourcing.DemoSuppliers, str]:
+        return sourcing.fixture_suppliers(item, unit, currency), "fixture"
+
+
+def neighbour(store: MerchantStore, uid: str, name: str) -> str:
+    """Another shop in the same ~2 km area as the ctx bakery."""
+    proposal = store.propose(
+        uid,
+        ProposalRequest(
+            kind="business",
+            business=BusinessFields(
+                name=name,
+                category="Cafe",
+                location="Indiranagar, Bengaluru",
+                lat=BENGALURU[0] + 0.001,
+                lng=BENGALURU[1],
+                currency="INR",
+                timezone="Asia/Kolkata",
+            ),
+        ),
+    )
+    return str(store.commit(uid, proposal["id"], proposal["digest"])["business_id"])
+
+
+def catalogue(store: MerchantStore, cards: list[dict]) -> dict[str, list[tuple[str, int]]]:
+    """Each supplier's items and prices, as the owner who found them would see them."""
+    return {
+        card["id"]: sorted(
+            (p["name"], p["price"]) for p in store.public_shop(card["id"])["products"]
+        )
+        for card in cards
+    }
+
+
+def find(store: MerchantStore, uid: str, bid: str, item: str) -> dict:
+    return asyncio.run(
+        sourcing.find(store, uid, bid, item, None, "", FixtureSuppliers(), DEMO_OWNER_UID)
+    )
+
+
+def test_OB_260_one_shops_search_never_changes_a_neighbours_suppliers(ctx) -> None:  # noqa: N802
+    store = ctx.store
+    other = neighbour(store, "carol", "Carol Cafe")
+    mine = find(store, "alice", ctx.business_id, "zorblax syrup")
+    assert mine["generated_demo_suppliers"] is True
+    before = catalogue(store, mine["suppliers"])
+    assert any(name == "Zorblax syrup" for rows in before.values() for name, _ in rows)
+
+    # A neighbour searching another unknown item gets suppliers of its own: it never sees
+    # Alice's free text, and her suppliers' items and prices stay exactly as they were.
+    theirs = find(store, "carol", other, "quuxberry jam")
+    assert theirs["generated_demo_suppliers"] is True
+    assert not {c["id"] for c in theirs["suppliers"]} & {c["id"] for c in mine["suppliers"]}
+    assert catalogue(store, mine["suppliers"]) == before
+    seen = catalogue(store, theirs["suppliers"])
+    assert not any("zorblax" in name.casefold() for rows in seen.values() for name, _ in rows)
+    # Even searching the same words, Carol is never offered Alice's suppliers.
+    assert not {c["id"] for c in find(store, "carol", other, "zorblax syrup")["suppliers"]} & set(
+        before
+    )
+
+
+def test_OB_260_a_later_search_only_adds_to_the_shops_own_suppliers(ctx) -> None:  # noqa: N802
+    store = ctx.store
+    first = find(store, "alice", ctx.business_id, "zorblax syrup")
+    before = catalogue(store, first["suppliers"])
+    again = find(store, "alice", ctx.business_id, "quuxberry jam")
+    assert again["generated_demo_suppliers"] is True
+    after = catalogue(store, first["suppliers"])
+    # Nothing the owner already saw is dropped or repriced; the new item is added.
+    for sid, rows in before.items():
+        assert set(rows) <= set(after[sid])
+    assert any(name == "Quuxberry jam" for rows in after.values() for name, _ in rows)
+    assert find(store, "alice", ctx.business_id, "zorblax syrup")["suppliers"]
+
+
+def test_OB_260_prices_are_the_same_whatever_ran_before(tmp_path: Path) -> None:  # noqa: N802
+    """The same shop finds the same suppliers at the same prices, in any run order."""
+
+    def cheapest(path: Path, earlier: list[str]) -> tuple[str, float]:
+        store = MerchantStore(str(path))
+        for index, item in enumerate(earlier):
+            find(store, f"n{index}", neighbour(store, f"n{index}", f"Neighbour {index}"), item)
+        bid = neighbour(store, "alice", "Asha Bakery")
+        card = min(find(store, "alice", bid, "atta")["suppliers"], key=lambda c: c["item"]["price"])
+        return card["name"], card["item"]["price"]
+
+    alone = cheapest(tmp_path / "a.sqlite3", [])
+    assert cheapest(tmp_path / "b.sqlite3", ["zorblax syrup", "flour", "sugar"]) == alone
+
+
+def test_OB_260_old_shared_area_suppliers_are_never_offered(ctx) -> None:  # noqa: N802
+    """Suppliers made per area before OB-260 still serve their orders, but new searches skip
+    them: their catalogue held other visitors' words."""
+    legacy = "demo-sup-0123456789-0"
+    sid, fields, products = sourcing.demo_records(
+        sourcing.fixture_suppliers("zorblax syrup", "kg", "INR"),
+        *BENGALURU,
+        "INR",
+        "Asia/Kolkata",
+        "someone",
+    )[0]
+    ctx.store.seed_demo_shop(DEMO_OWNER_UID, legacy, fields, products)
+    found = find(ctx.store, "alice", ctx.business_id, "zorblax syrup")
+    assert legacy not in {card["id"] for card in found["suppliers"]}
+    assert ctx.store.public_shop(legacy)
+
+
+def test_OB_260_two_demo_sandboxes_never_see_each_others_suppliers() -> None:  # noqa: N802
+    from app.public_demo import sandbox
+
+    first, _ = sandbox("Asia/Kolkata")
+    second, _ = sandbox("Asia/Kolkata")
+    try:
+        assert first.store and second.store
+        one = find(first.store, first.uid, first.bid, "zorblax syrup")
+        before = catalogue(first.store, one["suppliers"])
+        two = find(second.store, second.uid, second.bid, "quuxberry jam")
+        assert two["suppliers"]
+        names = {n for rows in catalogue(second.store, two["suppliers"]).values() for n, _ in rows}
+        assert not any("zorblax" in n.casefold() for n in names)
+        # A second search in the other sandbox (once a reset of shared suppliers) changes
+        # nothing in the first.
+        find(second.store, second.uid, second.bid, "flour")
+        assert catalogue(first.store, one["suppliers"]) == before
+    finally:
+        first.close()
+        second.close()

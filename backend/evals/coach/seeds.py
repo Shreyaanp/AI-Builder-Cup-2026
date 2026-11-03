@@ -151,7 +151,12 @@ def kirana_with_sent_order(store: MerchantStore, uid: str) -> str:
 
     bid = kirana(store, uid)
     records = sourcing.demo_records(
-        sourcing.fixture_suppliers("flour", "kg", "INR"), 12.9716, 77.5946, "INR", "Asia/Kolkata"
+        sourcing.fixture_suppliers("flour", "kg", "INR"),
+        12.9716,
+        77.5946,
+        "INR",
+        "Asia/Kolkata",
+        bid,
     )
     for sid, fields, products in records:
         store.seed_demo_shop("eval-demo-owner", sid, fields, products)
