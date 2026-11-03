@@ -33,6 +33,8 @@ export function useDaySales(day: string) {
   return {
     rows: current?.rows ?? null,
     failed: current?.failed ?? false,
+    /** Look again without blanking what is shown (after the sheet closes). */
+    refresh: () => setAttempt((n) => n + 1),
     retry: () => {
       setResult(null)
       setAttempt((n) => n + 1)

@@ -251,8 +251,10 @@ test('Hindi: the close screen says the same-weekday line in Hindi', async ({ pag
   await expect(dialog.getByRole('heading', { name: 'दिन बंद हुआ: ₹2,490' })).toBeVisible({
     timeout: 20_000,
   })
-  // ₹110 less than last week's same day, said plainly once.
+  // A quieter day than last week's, said kindly once (no amount).
   await expect(dialog.getByTestId('close-reward')).toContainText('पिछले')
-  await expect(dialog.getByTestId('close-reward')).toContainText('₹110 कम')
+  await expect(dialog.getByTestId('close-reward')).toContainText(
+    'आज थोड़ा शांत दिन रहा। कल नया दिन है।',
+  )
   expect(await fitsWidth(page)).toBe(true)
 })

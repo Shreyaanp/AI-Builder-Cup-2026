@@ -35,7 +35,7 @@ import { HAND_FONT, enterRise, motion, shape } from '../../../design/theme'
 import { productFeminine, productName } from '../../../i18n/productNames'
 import { useLocale } from '../../../state/hooks'
 import { closeDayCopy } from '../../closeday/strings'
-import { shopCurrency, toMajor } from '../format'
+import { formatAmount, shopCurrency, toMajor } from '../format'
 import { useCopy } from '../strings'
 import { isServiceShop } from '../tabsCopy'
 import { useWorkspace } from '../workspaceContext'
@@ -790,13 +790,8 @@ function PulseCard({ plan, actions }: { plan: TodayPlan; actions: TodayActions }
     const values = plan.pulse.values.map(({ metric, value }) => {
       const n = number.format(value)
       if (metric === 'sales')
-        // A day's takings read best whole: ₹4,200, not ₹4,200.00.
-        return new Intl.NumberFormat(locale, {
-          style: 'currency',
-          currency,
-          minimumFractionDigits: 0,
-          maximumFractionDigits: 0,
-        }).format(toMajor(value, currency))
+        // A day's takings read best whole, in the shop's grouping: ₹1,01,000.
+        return formatAmount(Math.round(toMajor(value, currency)), currency, locale)
       if (metric === 'items') return tt.sold(n)
       if (metric === 'views') return tt.views(n)
       if (metric === 'questions') return tt.asked(n)
@@ -816,11 +811,7 @@ function PulseCard({ plan, actions }: { plan: TodayPlan; actions: TodayActions }
       const [start, end] = plan.forecast.busy.map(
         (minutes) => new Date(Date.UTC(2026, 0, 1, Math.floor(minutes / 60), minutes % 60)),
       )
-      const hours = new Intl.DateTimeFormat(locale, {
-        hour: 'numeric',
-        minute: plan.forecast.busy.some((m) => m % 60) ? '2-digit' : undefined,
-        timeZone: 'UTC',
-      }).formatRange(start!, end!)
+      const hours = busyHours(locale, plan.forecast.busy, start!, end!)
       text += `, ${tt.busy(hours)}`
     }
     lines.push(text)
@@ -920,4 +911,27 @@ export function NeedsPill({ actions }: { actions: TodayActions }) {
       )}
     </Box>
   )
+}
+
+/** "7:30–9:30 am"; Hindi names the part of the day instead (सुबह 7:30–9:30). */
+function busyHours(locale: string, busy: [number, number], start: Date, end: Date): string {
+  const minute = busy.some((m) => m % 60) ? '2-digit' : undefined
+  if (!locale.toLowerCase().startsWith('hi')) {
+    return new Intl.DateTimeFormat(locale, {
+      hour: 'numeric',
+      minute,
+      timeZone: 'UTC',
+    }).formatRange(start, end)
+  }
+  const part = (d: Date) => {
+    const h = d.getUTCHours()
+    return h < 12 ? 'सुबह' : h < 16 ? 'दोपहर' : h < 20 ? 'शाम' : 'रात'
+  }
+  const clock = (d: Date) => {
+    const m = d.getUTCMinutes()
+    return `${d.getUTCHours() % 12 || 12}${minute || m ? `:${String(m).padStart(2, '0')}` : ''}`
+  }
+  return part(start) === part(end)
+    ? `${part(start)} ${clock(start)}–${clock(end)}`
+    : `${part(start)} ${clock(start)}–${part(end)} ${clock(end)}`
 }
