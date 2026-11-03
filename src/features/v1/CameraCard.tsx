@@ -20,13 +20,16 @@ import { useInChatCopy } from './inChatCopy'
 import { useOnboardingCopy } from './onboardingCopy'
 import { useVoiceModeCopy } from './voiceModeCopy'
 import { useIdentity } from '../../auth/useIdentity'
-import { clearOnboardingPhoto, loadOnboardingPhoto, saveOnboardingPhoto } from './onboardingDraft'
+import {
+  PHOTO_TYPES,
+  clearOnboardingPhoto,
+  loadOnboardingPhoto,
+  saveOnboardingPhoto,
+} from './onboardingDraft'
 
 export type Shot = 'board' | 'front'
 type Problem = 'blocked' | 'no-camera' | 'failed'
 type Phase = 'ask' | 'starting' | 'live' | 'preview' | 'sending' | 'problem'
-
-const PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 
 /**
  * The camera's entry point in the conversation: a card with the reason, "Open camera", upload and
@@ -167,9 +170,12 @@ export function CameraCard({
     retryFile.current = file
     setReadError(null)
     setPhase('sending')
-    await saveOnboardingPhoto(scope, file, 'camera')
+    // Only the shutter keeps a shot for recovery; an upload can be picked again. onPhoto checks
+    // the type and size before anything is read.
     const error = await onPhoto(file)
     if (error) {
+      // A refused or unreadable photo is not kept in the browser; Try again uses this tab's copy.
+      clearOnboardingPhoto(scope, 'camera')
       stop()
       setPreview(null)
       setReadError(error)

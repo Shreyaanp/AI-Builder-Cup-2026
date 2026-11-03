@@ -92,10 +92,10 @@ import {
   loadOnboardingPhoto,
   readOnboardingDraft,
   saveOnboardingDraft,
+  acceptablePhoto,
   saveOnboardingPhoto,
 } from './onboardingDraft'
 
-const PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 /** With no answer this long after the coach has spoken, the coach carries on by itself. */
 const SILENCE_MS = 9_000
 
@@ -143,6 +143,8 @@ type ChatDraft = {
   lines: Line[]
   note: string
   pending?: string
+  /** The client id the pending turn was sent with: sending it again is not a second turn. */
+  pendingId?: string
   session: string | null
   ended: boolean
 }
@@ -242,7 +244,14 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
   const keyboardOpen = useKeyboardViewport()
   const [recovery] = useState(() => readOnboardingDraft<ChatDraft>(identity.scope, 'chat'))
 
-  const [lines, setLines] = useState<Line[]>(recovery?.lines ?? [])
+  // A turn the server may already have: its owner line goes back into the box, not twice in the log.
+  const [lines, setLines] = useState<Line[]>(() => {
+    const saved = recovery?.lines ?? []
+    const last = saved.at(-1)
+    return recovery?.pending && last?.role === 'owner' && last.text === recovery.pending
+      ? saved.slice(0, -1)
+      : saved
+  })
   const [live, setLiveText] = useState('')
   // What the owner is saying right now (live transcript), for the caption.
   const [heard, setHeard] = useState('')
@@ -268,7 +277,14 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
   const [busy, setBusyState] = useState<'idle' | 'reply' | 'photo' | 'review'>('idle')
   const busyRef = useRef(busy)
   const [note, setNoteState] = useState(recovery?.note || recovery?.pending || '')
-  const [unacknowledged, setUnacknowledged] = useState('')
+  // The restored pending turn: sent again with its first id, so the server can tell.
+  const restoredTurn = useRef(
+    recovery?.pending && recovery.pendingId
+      ? { text: recovery.pending, id: recovery.pendingId }
+      : null,
+  )
+  const [unacknowledged, setUnacknowledged] = useState(restoredTurn.current)
+  const lastTurnId = useRef<string | undefined>(undefined)
   const noteRef = useRef(note)
   const [error, setError] = useState('')
   // "Review my shop": always one tap away, whatever the coach is doing.
@@ -328,7 +344,8 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
     saveOnboardingDraft(identity.scope, 'chat', {
       draft,
       note,
-      pending: unacknowledged,
+      pending: unacknowledged?.text ?? '',
+      pendingId: unacknowledged?.id,
       ended,
       session: session.current,
       // Photo bytes stay with the upload rather than filling tab storage with data URLs.
@@ -418,7 +435,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
   function retryTurn() {
     const message = stalled
     setStalled(null)
-    if (message) void say(message)
+    if (message) void say(message, message === lastTurn.current ? lastTurnId.current : undefined)
   }
   function clearSilence() {
     window.clearTimeout(silence.current)
@@ -775,7 +792,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
       setDraft(withServerDraft(draftRef.current, event.data as unknown as Draft))
     if (event.kind === 'interrupted') commitCoach(false)
     if (event.kind === 'turn_complete') {
-      setUnacknowledged('')
+      setUnacknowledged(null)
       commitCoach(true)
     }
     // Typed: the goodbye is in; the conversation ends here (voice ends on its own close).
@@ -846,7 +863,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
   }, [muted, voiceMuted, toggleMute])
 
   /** Any turn: in the live voice session when one is open, otherwise a streamed text turn. */
-  async function say(message: string) {
+  async function say(message: string, turnId?: string) {
     if (/^(stop|that's enough|that is enough|we're done|we are done)$/i.test(message.trim()))
       track('stop_said')
     clearSilence()
@@ -858,6 +875,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
     setError('')
     setStalled(null)
     lastTurn.current = message
+    lastTurnId.current = turnId
     if (voiceRef.current?.sendText(message, draftRef.current)) {
       pending.current = message
       setBusy('reply')
@@ -869,10 +887,13 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
       setBusy('reply')
       return
     }
-    await sendText(message)
+    await sendText(message, turnId)
   }
-  async function sendText(message: string) {
+  async function sendText(message: string, turnId?: string) {
     lastTurn.current = message
+    lastTurnId.current = turnId
+    // Any coach event means the server has this turn: it is not offered for sending again.
+    let heard = false
     stopSpeaking()
     controller.current?.abort()
     const abort = new AbortController()
@@ -886,12 +907,16 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
           language,
           currency: defaultCurrency(),
           session_id: session.current,
+          turn_id: turnId ?? null,
           business_id: null,
           new_shop: true,
           new_shop_draft: draftRef.current,
         },
         abort.signal,
-        receive,
+        (event) => {
+          heard = true
+          receive(event)
+        },
         identity.getToken,
         undefined,
         TURN_IDLE_MS,
@@ -904,7 +929,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
         setLive('')
         if (cause instanceof TooSlowError) setStalled(message)
         else setError(cause instanceof RateLimitError ? t.rateLimited : t.replyFailed)
-        if (message !== f.start) setNote(message)
+        if (message !== f.start && !heard) setNote(message)
       }
     } finally {
       if (controller.current === abort) {
@@ -1031,12 +1056,15 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
   async function submit() {
     const text = note.trim()
     if (!text || busy !== 'idle') return
-    setUnacknowledged(text)
+    const restored = restoredTurn.current
+    restoredTurn.current = null
+    const id = restored?.text === text ? restored.id : crypto.randomUUID()
+    setUnacknowledged({ text, id })
     setNote('')
     nudges.current = 0
     ownerTurnOpen.current = false
     add({ role: 'owner', text })
-    await say(text)
+    await say(text, id)
   }
   function skip() {
     if (busy !== 'idle') return
@@ -1046,7 +1074,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
   }
 
   async function uploadPhoto(file: File) {
-    if (!PHOTO_TYPES.includes(file.type) || file.size > 20_000_000) {
+    if (!acceptablePhoto(file)) {
       return t.photoType
     }
     clearSilence()

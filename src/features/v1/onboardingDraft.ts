@@ -77,11 +77,20 @@ async function photoStore(
   }
 }
 
+export const PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp']
+
+/** The photos a shop photo upload accepts: these types, at most 20 MB. */
+export function acceptablePhoto(file: File) {
+  return PHOTO_TYPES.includes(file.type) && file.size <= 20_000_000
+}
+
 export async function saveOnboardingPhoto(
   scope: string,
   file: File,
   slot: 'photo' | 'camera' = 'photo',
 ) {
+  // A hard cap: a file the upload would refuse is never kept in the browser.
+  if (!acceptablePhoto(file)) return
   const id = readOnboardingDraft<string>(scope, `${slot}-id`) ?? crypto.randomUUID()
   saveOnboardingDraft(scope, `${slot}-id`, id)
   await photoStore(`${scope}:${id}`, 'write', file)
@@ -89,7 +98,8 @@ export async function saveOnboardingPhoto(
 
 export async function loadOnboardingPhoto(scope: string, slot: 'photo' | 'camera' = 'photo') {
   const id = readOnboardingDraft<string>(scope, `${slot}-id`)
-  return id ? photoStore(`${scope}:${id}`, 'read') : null
+  const file = id ? await photoStore(`${scope}:${id}`, 'read') : null
+  return file && acceptablePhoto(file) ? file : null
 }
 
 export function clearOnboardingPhoto(scope: string, slot: 'photo' | 'camera' = 'photo') {
