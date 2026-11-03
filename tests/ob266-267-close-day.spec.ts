@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import { enter, localOnly, seedShop } from './stories/support.js'
 import { AxeBuilder } from '@axe-core/playwright'
+import { LOCALE_NAMES } from '../src/i18n/locales.js'
 
 test.use({ locale: 'en-IN', timezoneId: 'Asia/Kolkata', reducedMotion: 'reduce' })
 
@@ -12,11 +13,38 @@ const shopWeekday = new Intl.DateTimeFormat('en', { weekday: 'short', timeZone: 
   .format(noon)
   .toLowerCase()
 
-async function open(page: Page, hour = 10) {
+async function open(page: Page, hour = 10, close = '20:00', currency = 'INR') {
   await localOnly(page)
   await page.clock.setFixedTime(new Date(`${day}T${hour}:00:00+05:30`))
   await enter(page)
-  await seedShop(page)
+  if (currency === 'INR') {
+    await seedShop(page)
+  } else {
+    // Saved-shop edits preserve their original currency; create this fixture in its currency.
+    const pin =
+      currency === 'IDR' ? { lat: -6.2088, lng: 106.8456 } : { lat: 21.0278, lng: 105.8342 }
+    const draft = await (
+      await page.request.post('/api/v1/proposals', {
+        data: {
+          kind: 'business',
+          business: { name: 'Kopi', category: 'Cafe', currency, timezone: 'Asia/Kolkata' },
+          owner_location: {
+            ...pin,
+            accuracy_m: 0,
+            source: 'pin',
+          },
+          products: [{ name: 'Kopi', price: 1800, unit: 'cup', category: 'Drinks' }],
+        },
+      })
+    ).json()
+    expect(
+      (
+        await page.request.post(`/api/v1/proposals/${draft.id}/approve`, {
+          data: { digest: draft.digest },
+        })
+      ).ok(),
+    ).toBe(true)
+  }
   // Give the shared Thursday-only fixture a closing time for the tested shop day.
   const [shop] = await (await page.request.get('/api/v1/businesses')).json()
   const proposal = await (
@@ -27,7 +55,8 @@ async function open(page: Page, hour = 10) {
         revision: shop.revision,
         business: {
           ...shop.fields,
-          weekly_hours: [{ day: shopWeekday, open: '07:00', close: '20:00', closed: false }],
+          currency,
+          weekly_hours: [{ day: shopWeekday, open: '07:00', close, closed: false }],
         },
       },
     })
@@ -39,6 +68,8 @@ async function open(page: Page, hour = 10) {
       })
     ).ok(),
   ).toBe(true)
+  const [savedShop] = await (await page.request.get('/api/v1/businesses')).json()
+  expect(savedShop.fields.currency).toBe(currency)
   await page.reload()
   await page.getByRole('button', { name: 'Continue local preview' }).click()
   await page.getByRole('button', { name: 'Grow', exact: true }).click()
@@ -54,6 +85,114 @@ async function addLine(page: Page, amount = '200', quantity = '10') {
   await dialog.getByLabel('Total for this item (₹)', { exact: true }).fill(amount)
   await dialog.getByRole('button', { name: 'Add line', exact: true }).click()
   await dialog.getByRole('button', { name: 'Review (1 line)', exact: true }).click()
+}
+
+for (const [hour, close, early] of [
+  [13, '14:00', true],
+  [14, '14:00', false],
+  [15, '14:00', false],
+  [15, '20:00', true],
+  [16, '20:00', false],
+] as const) {
+  test(`OB-283: ${hour}:00 with usual close ${close} asks early=${early}`, async ({ page }) => {
+    const dialog = await open(page, hour, close)
+    await addLine(page)
+    await dialog.getByRole('button', { name: 'Close the day', exact: true }).click()
+    if (early) {
+      await expect(
+        dialog.getByText("It's still early. Close anyway?", { exact: true }),
+      ).toBeVisible()
+      await dialog.getByRole('button', { name: 'Not now', exact: true }).click()
+      await expect(dialog.getByRole('button', { name: 'Close the day', exact: true })).toBeVisible()
+    } else {
+      await expect(dialog.getByText('Day closed: ₹200', { exact: true })).toBeVisible()
+      await expect(dialog.getByRole('button', { name: 'Close anyway', exact: true })).toHaveCount(0)
+    }
+  })
+}
+
+for (const [language, currency, input] of [
+  ['id', 'INR', '1,000'],
+  ['vi', 'INR', '15,000'],
+  ['id', 'IDR', '1,000'],
+  ['vi', 'VND', '1,000'],
+  ['en', 'INR', '1.005'],
+] as const) {
+  test(`OB-279 OB-284 OB-288: ${language} + ${currency} shows inline errors for ${input}`, async ({
+    page,
+  }) => {
+    const copy = {
+      en: {
+        error: 'Number not clear.',
+        review: 'Review (1 line)',
+        save: 'Close the day',
+        done: 'Done',
+      },
+      id: {
+        error: 'Angka tidak jelas.',
+        review: 'Periksa (1 baris)',
+        save: 'Tutup hari',
+        done: 'Selesai',
+      },
+      vi: { error: 'Số chưa rõ.', review: 'Kiểm tra (1 dòng)', save: 'Chốt ngày', done: 'Xong' },
+    }[language]
+    await open(page, 22, '20:00', currency)
+    if (language !== 'en') {
+      await page.keyboard.press('Escape')
+      await page.getByRole('button', { name: 'You', exact: true }).click()
+      await page.getByRole('combobox', { name: 'Language', exact: true }).click()
+      await page.getByRole('option', { name: LOCALE_NAMES[language], exact: true }).click()
+      await page.locator('[data-tour="nav-grow"]').click()
+      await page.locator('[data-tour="closeday"]').click()
+    }
+    const dialog = page.getByRole('dialog')
+    await dialog
+      .getByRole('button', { name: /Type the numbers instead|Ketik angkanya|Nhập số/ })
+      .click()
+    const form = dialog.getByTestId('close-day-typed')
+    await form.locator('input[name=item]').fill('Kopi')
+    const quantity = form.locator('input[name=quantity]')
+    const amount = form.locator('input[name=amount]')
+    await quantity.fill(input)
+    await amount.fill(input)
+    await form.locator('button[type=submit]').click()
+    for (const field of [quantity, amount]) {
+      await expect(field).toHaveAttribute('aria-invalid', 'true')
+      const helper = page.locator(`[id="${await field.getAttribute('aria-describedby')}"]`)
+      await expect(helper).toContainText(copy.error)
+      await expect(helper).toHaveAttribute('aria-live', 'polite')
+      await expect(field).toHaveValue(input)
+    }
+    await expect(quantity).toBeFocused()
+    await quantity.fill('1')
+    await form.locator('button[type=submit]').click()
+    await expect(amount).toBeFocused()
+    await expect(quantity).toHaveAttribute('aria-invalid', 'false')
+    await amount.fill(language === 'en' ? '1.01' : '1000')
+    await form.locator('button[type=submit]').click()
+    await expect(form.getByRole('listitem')).toHaveCount(1)
+    await dialog.getByRole('button', { name: copy.review, exact: true }).click()
+    if (language === 'en') await expect(dialog.getByText('₹1.01', { exact: true })).toBeVisible()
+    await dialog.getByRole('button', { name: copy.save, exact: true }).click()
+    await expect(dialog.getByRole('button', { name: copy.done, exact: true })).toBeVisible()
+    if (language === 'en')
+      await expect(dialog.getByText('Day closed: ₹1.01', { exact: true })).toBeVisible()
+    const [shop] = await (await page.request.get('/api/v1/businesses')).json()
+    const rows = await (await page.request.get(`/api/v1/businesses/${shop.id}/sales`)).json()
+    expect(rows.filter((row: { date: string }) => row.date === day)).toEqual([
+      {
+        date: day,
+        item: 'Kopi',
+        quantity: 1,
+        revenue: language === 'en' ? 101 : currency === 'INR' ? 100000 : 1000,
+      },
+    ])
+    if (language === 'en') {
+      await dialog.getByRole('button', { name: copy.done, exact: true }).click()
+      await page.locator('[data-tour="closeday"]').click()
+      await expect(dialog.getByText('Already closed today: ₹1.01', { exact: true })).toBeVisible()
+    }
+  })
 }
 
 test('OB-279: grouped amounts and quantities keep their value in review and saved totals', async ({

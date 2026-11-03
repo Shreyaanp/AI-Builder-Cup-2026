@@ -21,6 +21,7 @@ import type { ReactNode } from 'react'
 import { useLocale } from '../../state/hooks'
 import {
   currencySymbol,
+  exponent,
   formatAmount,
   formatShopPrice,
   shopCurrency,
@@ -223,7 +224,7 @@ export function CloseDay({
   const usualClose = closingMinutes(shop.fields, timezone)
   const pastUsualClose = usualClose !== null && minutes >= usualClose
   const looksComplete = wholeDay || pastUsualClose
-  const early = minutes < 16 * 60
+  const early = !pastUsualClose && minutes < 16 * 60
 
   function requestSave() {
     if (early) setPhase('confirm')
@@ -392,7 +393,7 @@ export function CloseDay({
           <Typography variant="headlineSmall" sx={{ mt: 3 }}>
             {t.alreadyClosed.replace(
               '{sales}',
-              wholeMoney(
+              formatShopPrice(
                 existing.reduce((sum, row) => sum + (row.revenue ?? 0), 0),
                 currency,
                 locale,
@@ -677,7 +678,7 @@ export function CloseDay({
               sx={{ mt: 3, animation: `cdRise 400ms ${EASE} 700ms both` }}
             >
               {reward?.total != null
-                ? t.doneTotal.replace('{sales}', wholeMoney(reward.total, currency, locale))
+                ? t.doneTotal.replace('{sales}', formatShopPrice(reward.total, currency, locale))
                 : t.doneTitle}
             </Typography>
             {complete && <CloseRewardLines reward={reward} />}
@@ -944,11 +945,11 @@ function TypedSales({
   const [qty, setQty] = useState('')
   const [amount, setAmount] = useState('')
   const [invalid, setInvalid] = useState(false)
-  const quantity = parseCloseDayNumber(qty, numberLocale)
-  const total = parseCloseDayNumber(amount, numberLocale)
+  const quantity = parseCloseDayNumber(qty, numberLocale, currency)
+  const total = parseCloseDayNumber(amount, numberLocale, currency)
   const numberError = closeDayCopy(locale).numberInvalid.replace(
     '{example}',
-    new Intl.NumberFormat(numberLocale).format(1000.5),
+    new Intl.NumberFormat(numberLocale).format(exponent(currency) === 0 ? 1000 : 1000.5),
   )
   function add(form: HTMLFormElement) {
     if (!item.trim() || quantity === null || total === null) {

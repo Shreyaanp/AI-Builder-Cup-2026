@@ -1,5 +1,7 @@
+import { exponent } from '../v1/format.js'
+
 /** A non-negative close-day quantity or amount; null means the entry needs correction. */
-export function parseCloseDayNumber(text: string, locale: string): number | null {
+export function parseCloseDayNumber(text: string, locale: string, currency = 'INR'): number | null {
   const formatter = new Intl.NumberFormat(locale, { maximumFractionDigits: 2 })
   const parts = formatter.formatToParts(1234567.89)
   const group = parts.find((part) => part.type === 'group')?.value
@@ -13,7 +15,11 @@ export function parseCloseDayNumber(text: string, locale: string): number | null
   }
   const input = normalize(text.trim())
   const [integer = '', fraction, ...extra] = input.split(decimal)
-  if (extra.length || (fraction !== undefined && !/^\d+$/.test(fraction))) return null
+  if (
+    extra.length ||
+    (fraction !== undefined && (!/^\d+$/.test(fraction) || fraction.length > exponent(currency)))
+  )
+    return null
 
   let whole = integer
   if (group && integer.includes(group)) {

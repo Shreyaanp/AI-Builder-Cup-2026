@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test'
 import { LOCALES } from '../src/i18n/locales.js'
 import { parseCloseDayNumber } from '../src/features/closeday/parseNumber.js'
+import { moneyLocale } from '../src/region/region.js'
 
 for (const locale of LOCALES) {
   test(`OB-279: ${locale} parses whole entries using its number convention`, () => {
@@ -37,6 +38,7 @@ for (const locale of LOCALES) {
       `1${group}0000`,
       `1${decimal}2${decimal}3`,
       `1${decimal}`,
+      `1${decimal}005`,
       `1${decimal}000${group}50`,
       '9007199254740992',
     ]) {
@@ -65,9 +67,31 @@ for (const locale of ['en-IN', 'hi', 'bn', 'ta', 'te', 'mr', 'kn']) {
 
 for (const locale of ['id', 'vi']) {
   test(`OB-279: ${locale} keeps a decimal comma distinct from grouping`, () => {
-    expect(parseCloseDayNumber('1,000', locale)).toBe(1)
+    expect(parseCloseDayNumber('1,000', locale)).toBeNull()
     expect(parseCloseDayNumber('1.000', locale)).toBe(1000)
     expect(parseCloseDayNumber('1000.50', locale)).toBeNull()
     expect(parseCloseDayNumber('1.00.000', locale)).toBeNull()
   })
 }
+
+for (const language of ['id', 'vi', 'de', 'fr']) {
+  for (const currency of ['INR', 'SGD', 'MYR', 'IDR', 'VND', 'JPY', 'KRW']) {
+    test(`OB-279 OB-284: ${language} + ${currency} refuses excess decimal digits`, () => {
+      const locale = moneyLocale(currency, language) ?? language
+      const zeroDigits = ['IDR', 'VND', 'JPY', 'KRW'].includes(currency)
+      for (const input of ['1,000', '15,000', '1,005']) {
+        expect(parseCloseDayNumber(input, locale, currency), input).toBeNull()
+      }
+      expect(parseCloseDayNumber('1000', locale, currency)).toBe(1000)
+      expect(parseCloseDayNumber('1000,50', locale, currency)).toBe(zeroDigits ? null : 1000.5)
+      expect(parseCloseDayNumber('1,0', locale, currency)).toBe(zeroDigits ? null : 1)
+    })
+  }
+}
+
+test('OB-279 OB-284: INR 1.005 is refused instead of rounding review and save differently', () => {
+  expect(parseCloseDayNumber('1.005', 'en-IN', 'INR')).toBeNull()
+  expect(parseCloseDayNumber('1.01', 'en-IN', 'INR')).toBe(1.01)
+  expect(parseCloseDayNumber('1.005', 'en', 'KWD')).toBe(1.005)
+  expect(parseCloseDayNumber('1.0050', 'en', 'KWD')).toBeNull()
+})
