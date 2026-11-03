@@ -858,7 +858,7 @@ function PulseCard({ plan, actions }: { plan: TodayPlan; actions: TodayActions }
     )
     // The busiest hours are the owner's own setting; a coach line (rain, a festival) is news, so
     // it takes that place and the row stays short.
-    if (plan.forecast.busy && !coachLine) {
+    if (plan.forecast.busy && !plan.line) {
       const [start, end] = plan.forecast.busy.map(
         (minutes) => new Date(Date.UTC(2026, 0, 1, Math.floor(minutes / 60), minutes % 60)),
       )
