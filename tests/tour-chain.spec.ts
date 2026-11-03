@@ -124,13 +124,15 @@ for (const world of [
 
       await test.step('1 · Today: the real supply card with the seeded numbers', async () => {
         await next(page)
-        await expect(page.locator('#tour-title')).toContainText(`${world.item} runs out`)
+        // With its order on the way counted (OB-263), the title says so instead of a run-out day.
+        const said = new RegExp(`${world.item}( runs out|: order on its way)`)
+        await expect(page.locator('#tour-title')).toContainText(said)
         await expect(card).toContainText(
           `${qty(story.today.stock, story.today.unit)} left, about ${qty(story.today.daily, story.today.unit)} a day`,
         )
         const real = page.locator('[data-tour="today-supply"]')
-        await expect(real).toContainText(`${world.item} runs out`)
-        await expect(real.getByRole('button', { name: 'Reorder' })).toBeVisible()
+        await expect(real).toContainText(new RegExp(`${world.item}( runs out|: .+ arriving)`))
+        await expect(real.getByRole('button', { name: /^(Reorder|Order more)$/ })).toBeVisible()
         await noSideScroll(page)
         await shot(1)
       })

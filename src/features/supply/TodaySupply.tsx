@@ -171,8 +171,9 @@ export function TodaySupply({
           <Stack direction="row" sx={{ gap: 1, flexShrink: 0, ml: 'auto' }}>
             {need && reorder && (
               <Button
-                // Ordering more on top of an order is never the lead action (OB-263).
-                variant={first && !coming ? 'contained' : 'text'}
+                // Ordering more on top of an order is never the lead action, unless last night's
+                // promise ("order milk") asks for it (OB-263).
+                variant={first && (!coming || promise) ? 'contained' : 'text'}
                 data-tour="reorder"
                 disabled={busy || promise?.busy}
                 sx={{ minHeight: 48 }}
