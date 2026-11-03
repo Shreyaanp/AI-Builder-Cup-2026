@@ -70,7 +70,7 @@ PRICE_CUE = re.compile(
 # Hindi, matched without the nukta (ख़त्म and खत्म are one word to the owner).
 HI_NAME = r"[ऀ-ॿ]+(?:\s+[ऀ-ॿ]+){0,3}?"
 HI_LEAD = r"(?:(?:आज|अब|मेरा|मेरी|मेरे)\s+)*"
-HI_SOLD = r"(?:खत्म|खतम|समाप्त|नहीं\s+है|नहीं\s+बचा|नहीं\s+बचे|नहीं\s+बची|बिक\s+गय[ाेी]|बिक\s+गई)"
+HI_SOLD = r"(?:खत्म|खतम|समाप्त|नहीं\s+है|नहीं\s+बचा|नहीं\s+बचे|नहीं\s+बची|बिक\s+ग(?:य[ाेी]|ई|ए))"
 HI_SOLD_OUT = re.compile(
     rf"{HI_LEAD}(?P<name>{HI_NAME})\s+(?:(?:आज|अब|सब|पूरा|पूरे)\s+)*{HI_SOLD}"
     r"(?:\s+(?:हो|गया|गए|गये|गयी|गई|है|हैं|चुका|चुके|चुकी|आज|अब))*"
@@ -259,8 +259,14 @@ def menu_item(
     ("chai" is the shop's best-selling chai, "Masala chai")."""
     words = _words(said)
     text = bare(said)
+    # Hinglish plurals end in -e ("samose" for "samosa").
+    plural = [*words[:-1], words[-1][:-1] + "a"] if words and words[-1].endswith("e") else words
     for item in inventory:
-        if words == _words(item["name"]) or text in _hindi_forms(item["name"]):
+        if (
+            words == _words(item["name"])
+            or plural == _words(item["name"])
+            or text in _hindi_forms(item["name"])
+        ):
             return item
     if len(words) != 1:
         return None
@@ -299,12 +305,21 @@ def owner_changes(ctx: Any, question: str) -> list[StreamEvent] | None:
     for row in ctx.store.sales_history(ctx.uid, ctx.business_id):
         sold[row["item"]] = sold.get(row["item"], 0) + float(row["quantity"])
     said: list[tuple[str, dict[str, Any], float | None]] = []
+    bare_items: list[dict[str, Any]] = []
     for clause in clauses:
         found = _clause(clause)
         item = menu_item(found[1], inventory, sold) if found else None
+        if not found and (just_named := menu_item(clause, inventory, sold)):
+            bare_items.append(just_named)  # "samosa aur bun maska khatam": one verb, two items
+            continue
         if not found or not item:
             return None
+        if found[0] != "price":
+            said.extend((found[0], earlier, None) for earlier in bare_items)
+            bare_items = []
         said.append((found[0], item, found[2]))
+    if bare_items:
+        return None
     hindi = speaks_hindi(question)
     category = str(fields.get("category") or "")
     bought = next(

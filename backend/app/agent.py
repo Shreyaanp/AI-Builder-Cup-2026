@@ -327,8 +327,13 @@ NUMBER_WORDS = {
 SOLD_OUT = (
     r"sold\s*out|finished|out of stock|not available|unavailable"
     r"|(?:khatam|khatm|khattam|khalas|khallas)(?!\s+(?:ho\s+rah|hone))"
-    r"|nahin?\s+(?:hai|bacha)|bik\s+gay[aie]"
+    r"|bik\s+gay[aie]"
 )
+# "nahi hai / nahi bacha" is sold out only straight after the item name ("samosa nahi hai"), never
+# mid-clause ("cheeni nahi hai" in the chai); a "don't" / "mat" / "nahi hua" clause is no change.
+NAHI_AFTER_NAME = r"^\s*(?:ab\s+|aaj\s+|abhi\s+)?nahin?\s+(?:hai|bacha)\b"
+CHANGE_NEGATED = r"\b(?:mat|na|nahi\s+hu[aei]|don'?t|do\s+not|never)\b"
+
 BACK = r"back(?:\s+in\s+stock)?|available again|in stock"
 # Spoken currency names and the shop currencies they can mean; a price in another currency is
 # never converted or guessed.
@@ -479,8 +484,11 @@ def upkeep_call(question: str, ctx: Any) -> types.Part | None:
         return None
     names = sorted({p["name"] for p in inventory}, key=len, reverse=True)
     items: dict[str, dict[str, object]] = {}
+    bare_names: list[str] = []
     for clause in re.split(r"[,;.\n]|\band\b|\baur\b|\bbut\b", question, flags=re.I):
         lowered = clause.casefold()
+        if re.search(CHANGE_NEGATED, lowered):
+            return None
         name = next((n for n in names if n.casefold() in lowered), None)
         if not name:
             # "Chai is 20 rupees now, samosa sold out" with no item called Chai: a card for the
@@ -489,11 +497,18 @@ def upkeep_call(question: str, ctx: Any) -> types.Part | None:
                 return None
             continue
         rest = lowered.split(name.casefold(), 1)[1]
-        if re.search(rf"\b(?:{SOLD_OUT})\b", rest):
-            items.setdefault(name, {"name": name})["available"] = False
+        if re.search(rf"\b(?:{SOLD_OUT})\b", rest) or re.search(NAHI_AFTER_NAME, rest):
+            for bare in [*bare_names, name]:
+                items.setdefault(bare, {"name": bare})["available"] = False
+            bare_names = []
             continue
         if re.search(rf"\b(?:{BACK})\b", rest):
-            items.setdefault(name, {"name": name})["available"] = True
+            for bare in [*bare_names, name]:
+                items.setdefault(bare, {"name": bare})["available"] = True
+            bare_names = []
+            continue
+        if not rest.strip():
+            bare_names.append(name)  # "samosa aur bun maska khatam": the verb covers both
             continue
         named = [
             codes
@@ -512,8 +527,8 @@ def upkeep_call(question: str, ctx: Any) -> types.Part | None:
             )
         elif word is not None:
             items.setdefault(name, {"name": name})["price"] = float(word)
-    if not items:
-        return None
+    if not items or bare_names:
+        return None  # a named item with no change said: the coach model reads it, never half of it
     return types.Part(
         function_call=types.FunctionCall(
             name="propose_products", args={"items": list(items.values())}

@@ -45,7 +45,8 @@ FIND_SUPPLIERS = re.compile(
 # Running low, not sold out: "समोसा खत्म हो गया" is an availability statement (OB-261), while
 # "दूध ख़त्म होने वाला है" and "आटा ख़त्म हो रहा है" are about to run out.
 LOW_ON = re.compile(
-    r"\b(?:running\s+low|low\s+on|run\s+out\s+of|restock)\b|कम\s+हो|ख़?त्म\s+हो(?:ने|\s+रह)",
+    r"\b(?:running\s+low|low\s+on|run\s+out\s+of|restock)\b"
+    r"|\bkha?t+a?m\s+(?:ho\s+rah[aie]|hone\s+wal[aie])\b|कम\s+हो|ख़?त्म\s+हो(?:ने|\s+रह)",
     re.I,
 )
 DRAFT_QUANTITY = 10

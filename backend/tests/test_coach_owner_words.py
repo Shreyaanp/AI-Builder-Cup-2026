@@ -94,6 +94,8 @@ def no_purchase(events: list[dict]) -> None:
         ("Samosa khatam", "en"),
         ("samosa nahi hai", "en"),
         ("I've run out of samosa", "en"),
+        ("आज समोसे सब बिक गए", "hi"),
+        ("samose khatam ho gaye", "en"),
     ],
 )
 def test_OB_261_a_sold_out_statement_marks_the_item_sold_out(demo, message, language):  # noqa: N802
@@ -426,3 +428,50 @@ def test_OB_262_live_instant_path_keeps_two_changes_together(shop):  # noqa: N80
     assert run("Chai is 20 rupees now, samosa sold out", shop) is None
     # Running low is not sold out.
     assert run("samosa khatam ho rahi hai", shop) is None
+
+
+def test_OB_262_live_instant_path_never_reads_a_dont_as_sold_out(shop):  # noqa: N802, F811
+    for message in (
+        "samosa khatam mat karo",
+        "samosa khatam nahi hua",
+        "masala chai mein cheeni nahi hai",
+        "don't mark samosa sold out",
+    ):
+        assert run(message, shop) is None, message
+    # "not available" is itself a sold-out phrase.
+    result = run("samosa not available", shop)
+    assert result and result.intent == "upkeep"
+
+
+def test_OB_262_live_instant_path_keeps_both_items_of_one_verb(shop):  # noqa: N802, F811
+    for message in (
+        "samosa aur masala chai khatam",
+        "samosa and masala chai are sold out",
+        "samosa and masala chai sold out",
+    ):
+        result = run(message, shop)
+        assert result and result.intent == "upkeep", message
+        [event] = result.events
+        sold = {p["name"]: p["available"] for p in event.data["snapshot"]["products"]}
+        assert len(sold) == 2 and not any(sold.values()), (message, sold)
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        "milk khatam ho raha hai, order karo",
+        "milk khatam hone wala hai",
+        "दूध ख़त्म हो रहा है, ऑर्डर करो",
+    ],
+)
+def test_OB_262_running_low_drafts_an_order_that_waits_for_send(demo, message):  # noqa: N802
+    events = demo(message, "en")
+    kinds = {e["kind"] for e in events}
+    assert {"suppliers", "order"} <= kinds and not cards(events), events
+    assert "for karo" not in reply_of(events).casefold()
+
+
+def test_OB_262_demo_keeps_both_items_of_one_verb(demo):  # noqa: N802
+    for message in ("samosa aur bun maska khatam", "samosa and bun maska are sold out"):
+        both = products(demo(message, "en"))
+        assert set(both) == {"Samosa", "Bun maska"} and not any(a for _, a in both.values())
