@@ -17,6 +17,8 @@ import { overlayHandled } from './backStack'
 import { track } from '../../app/analytics'
 import { tabFromUrl } from './workspaceContext'
 import { carried, entryState, pushEntry, replaceEntry, restoreScroll } from '../../app/history'
+import { useIdentity } from '../../auth/useIdentity'
+import { clearOnboardingDraft, readOnboardingDraft, saveOnboardingDraft } from './onboardingDraft'
 
 const FaceDialog = lazy(() => import('./FaceDialog').then((m) => ({ default: m.FaceDialog })))
 
@@ -45,19 +47,30 @@ export function WorkspaceProvider({
   onStartOwnShop?: () => void
 }) {
   const t = useCopy()
+  const { scope } = useIdentity()
   const theme = useTheme()
   const [installOffer, setInstallOffer] = useState(false)
   const [businesses, setBusinesses] = useState<Business[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
-  const [activeId, setActiveId] = useState<string | null>(null)
-  // A reload inside the flow starts it again from the welcome (drafts are never stored).
+  const [activeId, setActiveId] = useState<string | null>(() =>
+    new URLSearchParams(location.search).get('step') === 'ready'
+      ? readOnboardingDraft<string>(scope, 'ready')
+      : null,
+  )
+  // Restore the unfinished step; account-scoped tab drafts recover unsent edits.
   const [creatingShop, setCreatingShop] = useState(
     location.pathname === '/new-shop' &&
       new URLSearchParams(location.search).get('step') !== 'ready',
   )
-  const [newShopPhase, setNewShopPhase] = useState<NewShopPhase>('hero')
-  const [shopReady, setShopReady] = useState(false)
+  const [newShopPhase, setNewShopPhase] = useState<NewShopPhase>(() => {
+    const step = new URLSearchParams(location.search).get('step')
+    return step === 'manual' || step === 'review' ? 'manual' : step === 'chat' ? 'chat' : 'hero'
+  })
+  const [shopReady, setShopReady] = useState(
+    location.pathname === '/new-shop' &&
+      new URLSearchParams(location.search).get('step') === 'ready',
+  )
   // Inventory is tagged with its shop so a switch never shows another shop's products.
   const [inventory, setInventory] = useState<{ bid: string | null; items: Product[] }>({
     bid: null,
@@ -163,7 +176,9 @@ export function WorkspaceProvider({
       .then((items) => {
         if (abort.signal.aborted) return
         setBusinesses(items)
-        setActiveId(items[0]?.id ?? null)
+        setActiveId((current) =>
+          items.some((item) => item.id === current) ? current : (items[0]?.id ?? null),
+        )
       })
       // A failed load must not look like an empty workspace (owners would recreate shops).
       .catch(() => {
@@ -285,6 +300,8 @@ export function WorkspaceProvider({
       },
       finishNewShop: async (businessId) => {
         await reload()
+        clearOnboardingDraft(scope)
+        saveOnboardingDraft(scope, 'ready', businessId)
         setActiveId(businessId)
         setCreatingShop(false)
         setShopReady(true)
@@ -352,6 +369,7 @@ export function WorkspaceProvider({
     }),
     [
       api,
+      scope,
       readOnlyMessage,
       onStartOwnShop,
       customerOrigin,

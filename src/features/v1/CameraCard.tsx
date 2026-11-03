@@ -19,6 +19,8 @@ import { useBackClose } from './backStack'
 import { useInChatCopy } from './inChatCopy'
 import { useOnboardingCopy } from './onboardingCopy'
 import { useVoiceModeCopy } from './voiceModeCopy'
+import { useIdentity } from '../../auth/useIdentity'
+import { clearOnboardingPhoto, loadOnboardingPhoto, saveOnboardingPhoto } from './onboardingDraft'
 
 export type Shot = 'board' | 'front'
 type Problem = 'blocked' | 'no-camera' | 'failed'
@@ -47,6 +49,7 @@ export function CameraCard({
   onActive?: () => void
 }) {
   const c = useInChatCopy()
+  const { scope } = useIdentity()
   const v = useVoiceModeCopy()
   const o = useOnboardingCopy()
   const roles = useTheme().material
@@ -60,6 +63,21 @@ export function CameraCard({
   const video = useRef<HTMLVideoElement>(null)
   const upload = useRef<HTMLInputElement>(null)
   const shutter = useRef<HTMLButtonElement>(null)
+  const retryFile = useRef<File | null>(null)
+  const restoring = useRef(true)
+  useEffect(() => {
+    let mounted = true
+    void loadOnboardingPhoto(scope, 'camera').then((file) => {
+      if (!mounted || !restoring.current || !file) return
+      const at = shots.findIndex((shot) => file.name === `${shot}.jpg`)
+      if (at >= 0) setIndex(at)
+      setPreview({ url: URL.createObjectURL(file), file })
+      setPhase('preview')
+    })
+    return () => {
+      mounted = false
+    }
+  }, [scope, shots])
   const shot = shots[index] ?? 'board'
 
   function stop() {
@@ -67,6 +85,8 @@ export function CameraCard({
     stream.current = null
   }
   async function start() {
+    restoring.current = false
+    clearOnboardingPhoto(scope, 'camera')
     onActive?.()
     setPhase('starting')
     if (!navigator.mediaDevices?.getUserMedia) {
@@ -121,9 +141,10 @@ export function CameraCard({
     canvas.getContext('2d')?.drawImage(node, 0, 0)
     setFlash((n) => n + 1)
     canvas.toBlob(
-      (blob) => {
+      async (blob) => {
         if (!blob) return
         const file = new File([blob], `${shot}.jpg`, { type: 'image/jpeg' })
+        await saveOnboardingPhoto(scope, file, 'camera')
         setPreview({ url: URL.createObjectURL(blob), file })
         setPhase('preview')
       },
@@ -132,6 +153,7 @@ export function CameraCard({
     )
   }
   function advance() {
+    clearOnboardingPhoto(scope, 'camera')
     setPreview(null)
     if (index + 1 < shots.length) {
       setIndex(index + 1)
@@ -142,8 +164,10 @@ export function CameraCard({
     }
   }
   async function send(file: File) {
+    retryFile.current = file
     setReadError(null)
     setPhase('sending')
+    await saveOnboardingPhoto(scope, file, 'camera')
     const error = await onPhoto(file)
     if (error) {
       stop()
@@ -155,11 +179,13 @@ export function CameraCard({
     advance()
   }
   function close(quiet: boolean) {
+    clearOnboardingPhoto(scope, 'camera')
     stop()
     onClose(quiet)
   }
   /** The full-screen camera closes; the owner is back at the card in the chat. */
   function leave() {
+    clearOnboardingPhoto(scope, 'camera')
     stop()
     setPreview(null)
     setPhase('ask')
@@ -222,7 +248,19 @@ export function CameraCard({
       {(phase === 'ask' || fullScreen) && (
         <Stack spacing={2}>
           {readError && (
-            <Alert severity="warning" data-testid="photo-read-error">
+            <Alert
+              severity="warning"
+              data-testid="photo-read-error"
+              action={
+                <Button
+                  color="inherit"
+                  onClick={() => retryFile.current && void send(retryFile.current)}
+                  sx={{ minHeight: 48 }}
+                >
+                  {v.tryAgain}
+                </Button>
+              }
+            >
               {readError}
             </Alert>
           )}
@@ -304,7 +342,7 @@ export function CameraCard({
           onUpload={() => upload.current?.click()}
           onRetake={() => {
             setPreview(null)
-            setPhase('live')
+            void start()
           }}
           onUse={() => preview && void send(preview.file)}
         />
