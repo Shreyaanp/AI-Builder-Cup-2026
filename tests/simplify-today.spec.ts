@@ -344,3 +344,42 @@ for (const language of ['en', 'hi'] as const) {
     expect(await fitsWidth(page)).toBe(true)
   })
 }
+
+for (const language of ['en', 'hi'] as const) {
+  for (const [hh, mm] of [
+    [8, 0],
+    [10, 0],
+    [14, 0],
+  ]) {
+    test(`Coach Today at ${hh}:${String(mm).padStart(2, '0')} on 360×800 in ${language}: one screenful, chips in view`, async ({
+      page,
+    }) => {
+      await page.addInitScript(
+        (lang) =>
+          localStorage.setItem('niva.starter.preferences', JSON.stringify({ language: lang })),
+        language,
+      )
+      await openDemo(page, hh!, mm, 360, 800)
+      const view = await todayView(page)
+      expect(view.overflow, 'Today scrolls past one screenful').toBeLessThanOrEqual(1)
+      const chips = page.getByTestId('today-chips').getByRole('button')
+      await expect(chips.last()).toBeInViewport({ ratio: 1 })
+      expect(await fitsWidth(page)).toBe(true)
+    })
+  }
+}
+
+test('Coach Today at 20:30 with no pulse numbers shows no empty card', async ({ page }) => {
+  await page.route(/\/businesses\/[^/]+\/today(\?|$)/, async (route) => {
+    const response = await route.fetch()
+    const body = await response.json()
+    await route.fulfill({ response, json: { ...body, yesterday: {}, today: null } })
+  })
+  await page.setViewportSize({ width: 360, height: 800 })
+  await page.clock.setFixedTime(shopTime(20, 30))
+  await page.goto('/demo')
+  await page.getByRole('dialog').getByRole('button').last().click({ timeout: 60_000 })
+  await expect(page.getByTestId('today-chips')).toBeVisible({ timeout: 30_000 })
+  await page.waitForTimeout(1500)
+  await expect(page.getByTestId('today-pulse')).toHaveCount(0)
+})

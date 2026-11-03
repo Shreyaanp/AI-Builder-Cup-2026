@@ -124,7 +124,7 @@ export function TodayView({
       sx={{
         display: 'flex',
         flexDirection: 'column',
-        gap: { xs: 3, sm: 5 },
+        gap: { xs: 2, sm: 5 },
         minHeight: '100%',
         pt: { xs: 0, sm: 6 },
         pb: { xs: 0, sm: 4 },
@@ -870,6 +870,7 @@ function PulseCard({ plan, actions }: { plan: TodayPlan; actions: TodayActions }
   }
   // The weather or festival line is a reason under the numbers, not a block of its own.
   if (coachLine) lines.push(coachLine)
+  if (lines.length === 0) return null
   return (
     <ButtonBase
       data-testid="today-pulse"
