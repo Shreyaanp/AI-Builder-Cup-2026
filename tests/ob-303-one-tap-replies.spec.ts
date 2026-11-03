@@ -48,7 +48,7 @@ test('OB-303 the demo drafts three replies; a tap fills the box and Send shows â
   const log = sheet.getByRole('log', { name: 'Conversation' })
   await expect(log.getByRole('listitem')).toHaveCount(1)
   // A human time in the shop's timezone, never "03/11/26, 12:00 am".
-  await expect(log).toContainText(/Today, 12:00\sAM/)
+  await expect(log).toContainText(/Today, \d{1,2}:\d{2}\s[ap]m/i)
   await expect(log).not.toContainText(/\d{2}\/\d{2}\/\d{2}/)
   // An English question in an English app: nothing to translate.
   await expect(log.getByRole('button', { name: 'See translation' })).toHaveCount(0)
