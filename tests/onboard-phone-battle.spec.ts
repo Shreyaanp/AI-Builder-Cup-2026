@@ -82,7 +82,7 @@ const journeys =
         persona: personas[persona]!,
       }))
 for (const { viewport, language, appearance, persona } of journeys)
-  test(`OB-300 OB-291 OB-292 OB-293 OB-294 OB-296 OB-298 OB-302 OB-303 OB-304 OB-306 matrix ${viewport.width} ${language} ${appearance} ${persona.id}`, async ({
+  test(`OB-300 OB-291 OB-292 OB-293 OB-294 OB-296 OB-298 OB-303 OB-304 OB-306 matrix ${viewport.width} ${language} ${appearance} ${persona.id}`, async ({
     page,
     context,
   }) => {
@@ -578,6 +578,9 @@ test('OB-295 captured preview survives reload before Use photo', async ({ page }
     await expect(failure.getByRole('button', { name: 'Try again', exact: true })).toBeVisible()
     // The full-screen camera has closed before the card is measured.
     await expect(page.getByTestId('camera-modal')).toHaveCount(0)
+    // The Use photo tap leaves the pointer over the composer's mute button: no hover tooltip.
+    await page.mouse.move(0, 0)
+    await expect(page.getByRole('tooltip')).toHaveCount(0)
   } finally {
     await capture(page, 'OB-295-photo-retry')
   }
