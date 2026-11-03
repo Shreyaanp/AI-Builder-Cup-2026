@@ -76,13 +76,26 @@ export async function shot(page: Page, story: number, step: string | number) {
   ).toBe(true)
 }
 
-export async function enter(page: Page) {
+export async function enter(
+  page: Page,
+  copy?: {
+    continuePreview: string
+    acceptTerms: string
+    acceptPrivacy: string
+    agree: string
+    coachGreeting: string
+  },
+) {
   await page.goto('/')
-  await page.getByRole('button', { name: 'Continue local preview' }).click()
-  await page.getByLabel('I agree to the Terms').check()
-  await page.getByLabel('I have read the Privacy Notice').check()
-  await page.getByRole('button', { name: 'Agree and continue' }).click()
-  await expect(page.getByRole('heading', { name: 'What shall we work on today?' })).toBeVisible()
+  await page
+    .getByRole('button', { name: copy?.continuePreview ?? 'Continue local preview' })
+    .click()
+  await page.getByLabel(copy?.acceptTerms ?? 'I agree to the Terms').check()
+  await page.getByLabel(copy?.acceptPrivacy ?? 'I have read the Privacy Notice').check()
+  await page.getByRole('button', { name: copy?.agree ?? 'Agree and continue' }).click()
+  await expect(
+    page.getByRole('heading', { name: copy?.coachGreeting ?? 'What shall we work on today?' }),
+  ).toBeVisible()
 }
 
 /** A chat photo is first sorted in one line; the owner picks Menu to open the menu review. */

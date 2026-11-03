@@ -58,7 +58,11 @@ for (const viewport of [
       await expect(
         page.getByRole('heading', { name: 'Congratulations, Lakshmi Tea Stall is live!' }),
       ).toBeVisible()
-      await expect(page.getByTestId('shop-link')).toContainText('/s/')
+      // OB-292: sharing is optional and opened on demand; the raw identifier stays in the href.
+      await page.locator('summary').filter({ hasText: 'Share' }).click()
+      await expect(
+        page.getByTestId('shop-link').getByRole('link', { name: 'Your shop link' }),
+      ).toHaveAttribute('href', /\/s\//)
       await expect(page.getByTestId('shop-qr').getByRole('img')).toBeVisible()
       await expect(page.getByRole('link', { name: 'Open my shop page' })).toBeVisible()
       await expect(page.getByRole('button', { name: 'Add your menu' })).toBeVisible()

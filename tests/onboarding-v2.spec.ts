@@ -4,7 +4,7 @@ import { ASKED, askedTopics, FIRST_QUESTION, nextQuestion, type Topic } from './
 
 // Onboarding v2 (owner decisions, 17 Oct), on a phone: ask only name, what they sell, where,
 // hours and a shop photo; one sentence fills many fields; the shop goes live by itself after
-// name + kind + place; one summary card, then the optional face check; "Review my shop" in any
+// name + kind + place; one summary card, with face/liveness deferred; "Review my shop" in any
 // state; thinking always ends; a reload resumes silently; Today asks for the menu first.
 test.use({ reducedMotion: 'reduce', viewport: { width: 390, height: 844 }, hasTouch: true })
 test.beforeEach(async ({ page }) => {
@@ -34,7 +34,7 @@ async function coachLines(page: Page) {
   return (await page.getByRole('log').locator('li').allInnerTexts()).join('\n')
 }
 
-test('one sentence puts the shop live; no menu question; summary, skip face, Today asks the menu first', async ({
+test('OB-304 one sentence puts the shop live; no menu question; summary, Today asks the menu first', async ({
   page,
 }) => {
   await enter(page)
@@ -57,7 +57,8 @@ test('one sentence puts the shop live; no menu question; summary, skip face, Tod
   await expect(summary).toBeVisible()
   await expect(summary).toContainText('Lakshmi Tea Stall')
   await expect(summary).toContainText('Add later from Today')
-  await expect(summary).toContainText('verify it’s you')
+  // OB-304: face/liveness is deferred; setup has one clear way to continue.
+  await expect(summary.getByRole('button', { name: 'Verify now' })).toHaveCount(0)
   const said = await coachLines(page)
   expect(said).not.toMatch(/menu|pay|delivery|halal|price/i)
   for (const question of Object.values(ASKED))
@@ -65,8 +66,8 @@ test('one sentence puts the shop live; no menu question; summary, skip face, Tod
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(
     true,
   )
-  // Face check skipped: the shop opens; Today asks for the menu first (photo or typed).
-  await summary.getByRole('button', { name: 'Skip for now' }).click()
+  // The shop opens directly; Today asks for the menu first (photo or typed).
+  await summary.getByRole('button', { name: 'Go to my shop' }).click()
   await expect(page.getByRole('heading', { name: /Congratulations, .* is live!/ })).toBeVisible()
   await page.getByRole('button', { name: 'Continue with my shop' }).click()
   const today = page.getByTestId('today-day-one')
@@ -199,12 +200,8 @@ test('a reload mid-onboarding resumes silently: the card, the next step, no new 
   expect(await answer(page, 'name: Lakshmi Tea Stall; category: chai')).toBe('place')
   await page.reload()
   await page.getByRole('button', { name: 'Continue local preview' }).click()
-  // The flow may come back open by itself (its hero) or from the header "+".
-  const start = page.getByRole('button', { name: 'Let’s begin' })
-  const add = page.getByRole('banner').getByRole('button', { name: 'Add shop details' })
-  await expect(start.or(add)).toBeVisible()
-  if (!(await start.isVisible())) await add.click()
-  await start.click()
+  // OB-291: reload resumes the conversation directly, without another welcome or start tap.
+  await expect(page).toHaveURL(/new-shop\?step=chat/)
   // The saved draft comes back, the map (the next step) is offered, and nothing is re-asked.
   await expect(page.getByTestId('shop-so-far')).toContainText('Lakshmi Tea Stall')
   await expect(page.getByTestId('map-card')).toBeVisible()

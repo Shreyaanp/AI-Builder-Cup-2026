@@ -7,8 +7,8 @@ import { enter, inChatFixtures, liveOnly, localOnly, phone, shot } from './suppo
 // in which the coach speaks first with one open question, asks only the basics still missing,
 // then at most two follow-ups that fit the shop (#112) and a shop photo (no menu), fills the shop
 // card silently, opens the map and the camera as cards inside the chat,
-// puts the shop live once name + kind + place are known, and ends in one summary card (the face
-// check optional), a ready moment and the Google Maps hand-off.
+// puts the shop live once name + kind + place are known, and ends in one summary card,
+// a ready moment and an optional Google Maps hand-off. Face/liveness is deferred (OB-304).
 test.use(phone)
 // Light and dark captures of every screen (phone and desktop) are in tests/new-shop.spec.ts,
 // tests/new-shop-voice.spec.ts and tests/new-shop-inchat.spec.ts.
@@ -144,11 +144,12 @@ test('OB-150 S10 · owner opens a new shop by talking to the coach', async ({ pa
     await shot(page, 10, '5-photo')
   })
 
-  await test.step('6 · one summary card, the optional face check, and the review sheet', async () => {
+  await test.step('6 · one summary card and the review sheet', async () => {
     const summary = page.getByTestId('shop-summary')
     await expect(summary).toContainText('Market Chai')
     await expect(summary).toContainText('Photo added')
-    await expect(summary.getByRole('button', { name: 'Verify now' })).toBeVisible()
+    await expect(summary.getByRole('button', { name: 'Verify now' })).toHaveCount(0) // OB-304
+    await expect(summary.getByRole('button', { name: 'Go to my shop' })).toBeVisible()
     await summary.scrollIntoViewIfNeeded()
     await shot(page, 10, '6-summary')
     await axe(page)
@@ -162,8 +163,9 @@ test('OB-150 S10 · owner opens a new shop by talking to the coach', async ({ pa
   })
 
   await test.step('7 · "Your shop is ready", and the Google Maps hand-off', async () => {
-    await page.getByTestId('shop-summary').getByRole('button', { name: 'Skip for now' }).click()
+    await page.getByTestId('shop-summary').getByRole('button', { name: 'Go to my shop' }).click()
     await expect(page.getByRole('heading', { name: /Congratulations, .* is live!/ })).toBeVisible()
+    await page.locator('summary').filter({ hasText: 'Share' }).click() // OB-292
     // OB-150: the QR poster is generated asynchronously; audit only after its action is usable.
     await expect(
       page.getByTestId('shop-qr').getByRole('button', { name: /Download PDF/ }),
@@ -262,7 +264,11 @@ test('S10 · type it in instead: one question per screen, then Edit details the 
     await expect(review).toContainText('within 25 m')
     await axe(page)
     await page.getByRole('button', { name: 'Open my shop' }).click()
-    await expect(page.getByRole('heading', { name: /Congratulations, .* is live!/ })).toBeVisible()
+    // OB-301: typed setup opens a private shop; it is ready, not yet live to customers.
+    await expect(
+      page.getByRole('heading', { name: 'Courtyard Chai · Your shop is ready' }),
+    ).toBeVisible()
+    await expect(page.getByTestId('shop-link')).toHaveCount(0)
     await page.getByRole('button', { name: 'Continue with my shop' }).click()
   })
 
