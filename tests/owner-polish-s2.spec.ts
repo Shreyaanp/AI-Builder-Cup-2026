@@ -63,15 +63,16 @@ test('O-10 and O-11: approving a reorder says it is sent; whole rupees have no .
   await page.locator('[data-tour="nav-grow"]').click()
   // OB-212 (#569): the demo week is the last 7 days of date-seeded sales, so the total moves
   // every day (₹44,552 was 25 Oct only). Assert a whole-rupee amount, never one day's figure.
-  // Your week sits in the My sales row (batch 4a).
+  // The week is the My sales row (simplify batch 4b): "This week ₹43,883 · -2%".
   await expect(
     await showInGrow(
       page,
-      page.getByRole('button', { name: /Your week\D*₹\d{1,3}(,\d{2,3})*(?![\d.,])/ }),
+      page.getByRole('button', { name: /My sales\D*₹\d{1,3}(,\d{2,3})*(?![\d.,])/ }),
     ),
   ).toBeVisible()
   await expect(page.getByText(/₹[\d,]+\.00/)).toHaveCount(0)
-  await (await growTool(page, /^Purchase orders/)).tap()
+  // Purchase orders are Buy stock → To do.
+  await (await growTool(page, /^Buy stock/)).tap()
   await page.getByRole('button', { name: 'Draft a reorder' }).tap()
   const order = page.getByRole('dialog').getByRole('article').first()
   await expect(order.getByText(/₹[\d,]+\.00/)).toHaveCount(0)

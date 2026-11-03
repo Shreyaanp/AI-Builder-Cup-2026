@@ -23,7 +23,6 @@ import { formatShopPrice } from '../v1/format'
 import { formatMoneyText } from '../inquiries/formatMoneyText'
 import { Sheet } from '../v1/Sheet'
 import { FindSupplier } from '../v1/TwoPaths'
-import { Supporting, Tile } from '../v1/ShopTiles'
 import { useWorkspace } from '../v1/workspaceContext'
 import { ConfirmUndo } from '../supply/ConfirmUndo'
 import { useOrderUnit } from '../supply/supplyData'
@@ -33,51 +32,9 @@ import { useOrdersLoadFailedCopy, useSourcingCopy } from './copy'
 import { deliveryLabel, useOrders, useReceiveOrder } from './orderData'
 import { DemoChip, StatusChip } from './SourcingCards'
 import type { Order } from './types'
-import { track } from '../../app/analytics'
+import type { Drill } from '../supply/Supply'
 
 const OPEN = new Set(['sent', 'needs_reply', 'confirmed'])
-
-/** My shop: the Orders tile, opening the Orders sheet. */
-export function OrdersTile() {
-  const s = useSourcingCopy()
-  const [open, setOpen] = useState(false)
-  const { orders, refresh } = useOrders(false)
-  const active = (orders ?? []).filter((order) => OPEN.has(order.status))
-  const unread = (orders ?? []).filter((order) => order.unread).length
-  const latest = orders?.[0]
-  return (
-    <>
-      <Tile
-        tour="orders"
-        icon={
-          <Badge badgeContent={unread} color="primary" aria-hidden="true">
-            <Truck size={20} />
-          </Badge>
-        }
-        label={s.orders}
-        value={orders === null ? '–' : s.ordersValue(active.length)}
-        onClick={() => {
-          track('purchase_orders_opened')
-          setOpen(true)
-        }}
-      >
-        {latest && (
-          <Supporting>
-            {latest.supplier.name} · {s.status[latest.status]}
-          </Supporting>
-        )}
-      </Tile>
-      <OrdersSheet
-        open={open}
-        onClose={() => {
-          setOpen(false)
-          void refresh()
-        }}
-        onChanged={() => void refresh()}
-      />
-    </>
-  )
-}
 
 /** The list of orders, or one supplier conversation when `orderId` is set. */
 export function OrdersSheet({
@@ -93,9 +50,6 @@ export function OrdersSheet({
   onChanged?: () => void
 }) {
   const s = useSourcingCopy()
-  const locale = useLocale()
-  const unit = useOrderUnit()
-  const roles = useTheme().material
   const { orders, refresh } = useOrders(open)
   const [picked, setPicked] = useState<string | null>(null)
   // Opening on one order (from the chat) shows its thread first.
@@ -158,7 +112,11 @@ export function OrdersSheet({
       }
     >
       {/* Always a screen way in, beside "tell the coach" (simplify batch 2). */}
-      {!selected && !loadingPicked && !loadFailed && <FindSupplier onStart={close} />}
+      {!selected && !loadingPicked && !loadFailed && (
+        <Box sx={{ mb: 4 }}>
+          <FindSupplier onStart={close} />
+        </Box>
+      )}
       {loadingPicked ? (
         <Stack spacing={2} aria-busy="true">
           <Skeleton variant="rounded" height={120} />
@@ -193,70 +151,130 @@ export function OrdersSheet({
           {s.ordersEmpty}
         </Typography>
       ) : (
-        <List disablePadding sx={{ display: 'grid', gap: 2 }}>
-          {(orders ?? []).map((order, index) => (
-            <ListItem key={order.id} disablePadding>
-              <ListItemButton
-                component="button"
-                onClick={() => setPicked(order.id)}
-                sx={{
-                  borderRadius: `${shape.lg}px`,
-                  bgcolor: roles.surfaceContainer,
-                  alignItems: 'flex-start',
-                  gap: 3,
-                  py: 3,
-                  width: '100%',
-                  textAlign: 'start',
-                  ...enterRise,
-                  animationDelay: `${index * 50}ms`,
-                }}
-              >
-                <Badge
-                  variant="dot"
-                  color="primary"
-                  invisible={!order.unread}
-                  sx={{ mt: 1 }}
-                  aria-hidden="true"
-                >
-                  <Truck size={20} color={roles.primary} />
-                </Badge>
-                <ListItemText
-                  primary={
-                    <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
-                      <Box
-                        component="span"
-                        sx={{ flex: 1, minWidth: 0, fontWeight: order.unread ? 700 : 500 }}
-                      >
-                        {order.supplier.name}
-                      </Box>
-                      <StatusChip status={order.status} />
-                    </Stack>
-                  }
-                  secondary={
-                    <>
-                      {order.lines
-                        .map(
-                          (line) =>
-                            `${line.quantity} ${unit(line.unit)} ${productName(line.name, locale)}`,
-                        )
-                        .join(', ')}
-                      <Box component="span" sx={{ display: 'block' }}>
-                        {formatShopPrice(order.total, order.currency, locale)} ·{' '}
-                        {deliveryLabel(order, locale)}
-                      </Box>
-                    </>
-                  }
-                  slotProps={{
-                    primary: { component: 'div' },
-                    secondary: { component: 'div' },
-                  }}
-                />
-              </ListItemButton>
-            </ListItem>
-          ))}
-        </List>
+        <OrderList orders={orders ?? []} onPick={setPicked} />
       )}
     </Sheet>
+  )
+}
+
+/** Orders to suppliers found in the chat, newest first: supplier, status, lines, total. */
+function OrderList({ orders, onPick }: { orders: Order[]; onPick: (id: string) => void }) {
+  const locale = useLocale()
+  const unit = useOrderUnit()
+  const roles = useTheme().material
+  return (
+    <List disablePadding sx={{ display: 'grid', gap: 2 }}>
+      {(orders ?? []).map((order, index) => (
+        <ListItem key={order.id} disablePadding>
+          <ListItemButton
+            component="button"
+            onClick={() => onPick(order.id)}
+            sx={{
+              borderRadius: `${shape.lg}px`,
+              bgcolor: roles.surfaceContainer,
+              alignItems: 'flex-start',
+              gap: 3,
+              py: 3,
+              width: '100%',
+              textAlign: 'start',
+              ...enterRise,
+              animationDelay: `${index * 50}ms`,
+            }}
+          >
+            <Badge
+              variant="dot"
+              color="primary"
+              invisible={!order.unread}
+              sx={{ mt: 1 }}
+              aria-hidden="true"
+            >
+              <Truck size={20} color={roles.primary} />
+            </Badge>
+            <ListItemText
+              primary={
+                <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
+                  <Box
+                    component="span"
+                    sx={{ flex: 1, minWidth: 0, fontWeight: order.unread ? 700 : 500 }}
+                  >
+                    {order.supplier.name}
+                  </Box>
+                  <StatusChip status={order.status} />
+                </Stack>
+              }
+              secondary={
+                <>
+                  {order.lines
+                    .map(
+                      (line) =>
+                        `${line.quantity} ${unit(line.unit)} ${productName(line.name, locale)}`,
+                    )
+                    .join(', ')}
+                  <Box component="span" sx={{ display: 'block' }}>
+                    {formatShopPrice(order.total, order.currency, locale)} ·{' '}
+                    {deliveryLabel(order, locale)}
+                  </Box>
+                </>
+              }
+              slotProps={{
+                primary: { component: 'div' },
+                secondary: { component: 'div' },
+              }}
+            />
+          </ListItemButton>
+        </ListItem>
+      ))}
+    </List>
+  )
+}
+
+/**
+ * Buy stock (simplify batch 4b): the orders to suppliers found in the chat (what was the Orders
+ * sheet). One conversation opens in place; `onDrill` tells the sheet, which shows the way back.
+ */
+export function SupplierOrders({
+  orders,
+  refresh,
+  onDrill,
+  onLeave,
+}: {
+  orders: Order[]
+  refresh: () => Promise<boolean>
+  onDrill: (drill: Drill) => void
+  /** The sheet closes (the stock review after "Mark as received" is its own dialog). */
+  onLeave: () => void
+}) {
+  const s = useSourcingCopy()
+  const [picked, setPicked] = useState<string | null>(null)
+  const selected = orders.find((order) => order.id === picked) ?? null
+  const name = selected?.supplier.name ?? ''
+  const reload = useCallback(async () => void (await refresh()), [refresh])
+  const receiveOrder = useReceiveOrder()
+  useEffect(() => {
+    onDrill(name ? { from: 'orders', title: name, back: () => setPicked(null) } : null)
+  }, [name, onDrill])
+  useEffect(() => () => onDrill(null), [onDrill])
+  if (selected)
+    return (
+      <Thread
+        key={selected.id}
+        order={selected}
+        onChange={reload}
+        onReceived={(order) => {
+          // The stock review is its own dialog; close this sheet first so modals never stack.
+          onLeave()
+          void receiveOrder(order).then(() => void refresh())
+        }}
+      />
+    )
+  if (!orders.length) return null
+  return (
+    <Stack component="section" aria-label={s.orders} spacing={2}>
+      <Typography variant="titleMedium" component="h3">
+        {s.orders}
+      </Typography>
+      <OrderList orders={orders} onPick={setPicked} />
+    </Stack>
   )
 }
 

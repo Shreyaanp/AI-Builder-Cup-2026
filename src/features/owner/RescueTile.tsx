@@ -22,6 +22,7 @@ import { Sheet } from '../v1/Sheet'
 import { Supporting, Tile } from '../v1/ShopTiles'
 import { useCopy } from '../v1/strings'
 import { useWorkspace } from '../v1/workspaceContext'
+import { useGrowCopy } from '../v1/growCopy'
 import { useTabsCopy } from '../v1/tabsCopy'
 import { useNextStepsCopy } from '../v1/nextStepsCopy'
 import { fill, useOwnerCopy } from './copy'
@@ -57,6 +58,7 @@ function useDeals(bid: string) {
 export function RescueTile({ label }: { label?: string } = {}) {
   const t = useOwnerCopy()
   const tabs = useTabsCopy()
+  const grow = useGrowCopy()
   const locale = useLocale()
   const theme = useTheme()
   const ws = useWorkspace()
@@ -80,6 +82,7 @@ export function RescueTile({ label }: { label?: string } = {}) {
             : t.rescueIdle
         }
         onClick={() => setOpen(true)}
+        badge={first ? grow.live : undefined}
       >
         <Supporting>{first ? fill(t.rescueLiveHint, { left, qty }) : t.rescueIdleHint}</Supporting>
       </Tile>

@@ -8,6 +8,7 @@ import { useSourcingCopy } from '../sourcing/copy'
 import type { Proposal } from './api'
 import { useCopy } from './strings'
 import { useTwoPathsCopy } from './twoPathsCopy'
+import { useGrowCopy } from './growCopy'
 import { useWorkspace } from './workspaceContext'
 
 /**
@@ -105,28 +106,35 @@ export function YourLanguage() {
   )
 }
 
-/** Orders: always a way to start a supplier search from the screen (the coach finds them). */
+/**
+ * Buy stock → Find a supplier: always a way to start a supplier search from the screen (the
+ * coach finds them and shows the vendor list). The amount is optional ("20 L").
+ */
 export function FindSupplier({ onStart }: { onStart: () => void }) {
   const c = useTwoPathsCopy()
   const s = useSourcingCopy()
+  const grow = useGrowCopy()
   const ws = useWorkspace()
   const [item, setItem] = useState('')
+  const [amount, setAmount] = useState('')
   const field = useRef<HTMLInputElement>(null)
   return (
     <Stack
       component="form"
       noValidate
-      spacing={2}
-      sx={{ mb: 4 }}
+      spacing={3}
       onSubmit={(event) => {
         event.preventDefault()
-        const name = item.trim()
+        const name = item.trim().toLowerCase()
         if (!name) {
           field.current?.focus()
           return
         }
+        const much = amount.trim()
         onStart()
-        ws.startCoachDraft(s.lowMessage(name.toLowerCase()), { send: true })
+        ws.startCoachDraft(much ? grow.needMessage(`${much} ${name}`) : s.lowMessage(name), {
+          send: true,
+        })
       }}
     >
       <TextField
@@ -137,9 +145,16 @@ export function FindSupplier({ onStart }: { onStart: () => void }) {
         onChange={(event) => setItem(event.target.value)}
         slotProps={{ htmlInput: { maxLength: 80 } }}
       />
+      <TextField
+        label={grow.quantity}
+        name="supply-amount"
+        value={amount}
+        onChange={(event) => setAmount(event.target.value)}
+        slotProps={{ htmlInput: { maxLength: 20 } }}
+      />
       <Button
         type="submit"
-        variant="outlined"
+        variant="contained"
         startIcon={<Search size={18} />}
         sx={{ alignSelf: 'flex-start', minHeight: 48 }}
       >

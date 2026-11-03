@@ -60,9 +60,8 @@ const en = {
     day: string,
     feminine?: boolean,
   ) => string,
-  choose: 'Choose',
   sendTo: (name: string) => `Send to ${name}`,
-  // Starts the owner's order in the composer; they add what and how much.
+  // The vendor list's Order: sent to the coach as the owner's turn.
   chooseDraft: (rank: number, item: string) => `Order from number ${rank}: ${item}`,
 }
 export type SourcingCopy = typeof en
@@ -576,7 +575,6 @@ const copies: Record<string, SourcingCopy> = {
     markReceived: 'मिल गया चिह्नित करें',
     runsOut: (item: string, day: string, feminine?: boolean) =>
       `${item} ${day} को खत्म ${feminine ? 'होगी' : 'होगा'}`,
-    choose: 'चुनें',
     sendTo: (name: string) => `${name} को भेजें`,
     // Starts the owner's order in the composer; they add what and how much.
     chooseDraft: (rank: number, item: string) => `नंबर ${rank} से ऑर्डर: ${item}`,
@@ -633,7 +631,6 @@ const copies: Record<string, SourcingCopy> = {
     sendFailed: 'পাঠানো যায়নি। আবার চেষ্টা করুন।',
     markReceived: 'পেয়েছেন চিহ্ন দিন',
     runsOut: (item: string, day: string) => `${item} ${day}-এ ফুরোবে`,
-    choose: 'বাছুন',
     sendTo: (name: string) => `${name}-কে পাঠান`,
     // Starts the owner's order in the composer; they add what and how much.
     chooseDraft: (rank: number, item: string) => `নম্বর ${rank} থেকে অর্ডার: ${item}`,
@@ -689,7 +686,6 @@ const copies: Record<string, SourcingCopy> = {
     sendFailed: 'పంపలేకపోయాం. మళ్లీ ప్రయత్నించండి.',
     markReceived: 'అందినట్లు గుర్తించండి',
     runsOut: (item: string, day: string) => `${item} ${day}న అయిపోతుంది`,
-    choose: 'ఎంచుకోండి',
     sendTo: (name: string) => `${name}కు పంపండి`,
     // Starts the owner's order in the composer; they add what and how much.
     chooseDraft: (rank: number, item: string) => `నంబర్ ${rank} నుంచి ఆర్డర్: ${item}`,
@@ -745,7 +741,6 @@ const copies: Record<string, SourcingCopy> = {
     sendFailed: 'पाठवता आले नाही. पुन्हा प्रयत्न करा.',
     markReceived: 'मिळाले म्हणून नोंदवा',
     runsOut: (item: string, day: string) => `${item} ${day} रोजी संपेल`,
-    choose: 'निवडा',
     sendTo: (name: string) => `${name} ला पाठवा`,
     // Starts the owner's order in the composer; they add what and how much.
     chooseDraft: (rank: number, item: string) => `क्रमांक ${rank} कडून ऑर्डर: ${item}`,
@@ -803,7 +798,6 @@ const copies: Record<string, SourcingCopy> = {
     sendFailed: 'ಕಳುಹಿಸಲಾಗಲಿಲ್ಲ. ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.',
     markReceived: 'ಸ್ವೀಕರಿಸಲಾಗಿದೆ ಎಂದು ಗುರುತಿಸಿ',
     runsOut: (item: string, day: string) => `${item} ${day} ಮುಗಿಯುತ್ತದೆ`,
-    choose: 'ಆಯ್ಕೆಮಾಡಿ',
     sendTo: (name: string) => `${name}ಗೆ ಕಳುಹಿಸಿ`,
     // Starts the owner's order in the composer; they add what and how much.
     chooseDraft: (rank: number, item: string) => `ಸಂಖ್ಯೆ ${rank}ರಿಂದ ಆರ್ಡರ್: ${item}`,

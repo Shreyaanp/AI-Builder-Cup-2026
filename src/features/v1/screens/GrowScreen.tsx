@@ -2,25 +2,13 @@ import { lazy, Suspense, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Box, Stack, Typography } from '@mui/material'
 import { visuallyHidden } from '@mui/utils'
-import {
-  BarChart3,
-  CalendarClock,
-  ChefHat,
-  Globe,
-  Stamp,
-  Sunrise,
-  Truck,
-  Wallet,
-} from 'lucide-react'
+import { Globe, Stamp, Sunrise, Wallet } from 'lucide-react'
 import { useIdentity } from '../../../auth/useIdentity'
 import { CloseDayTile } from '../../closeday/CloseDay'
+import { MySalesRow } from '../../sales/MySales'
+import type { StockTab } from '../../supply/BuyStock'
 import { openOwnerFeature } from '../../owner-tools/entry'
 import { useToolCopy } from '../../owner-tools/copy'
-import { useCopy as usePlanCopy } from '../../planning/strings'
-import { RecapTile } from '../../sales/ShopInsights'
-import { OrdersTile } from '../../sourcing/Orders'
-import { SupplyHubTile } from '../../supply/SupplyHub'
-import { WeekPulseTile } from '../../analytics/WeekPulse'
 import { growOrderOf } from '../playbook/growOrder'
 import { usePlaybook } from '../playbook/usePlaybook'
 import { readiness } from '../shopProgress'
@@ -40,15 +28,15 @@ import { RescueTile } from '../../owner/RescueTile'
 
 /**
  * Grow: a short list of rows, then the weekly tools as a More tools grid (simplify batch 4a).
- * Rows that hold more than one tool open on the same screen to each tool under its own name;
- * every tool keeps its own screen. The shop playbook decides which row leads.
+ * How much to make, Buy stock and My sales each open one sheet that holds what were separate
+ * tools (batch 4b), every one still under a visible name. The shop playbook decides which row
+ * leads.
  */
-// The prep plan and supply tiles pull in the forecast chart and purchase orders; load them after first paint.
-const PrepPlanTile = lazy(() =>
-  import('../../forecast/PrepPlan').then((m) => ({ default: m.PrepPlanTile })),
-)
-const SupplyTile = lazy(() =>
-  import('../../supply/Supply').then((m) => ({ default: m.SupplyTile })),
+// How much to make and Buy stock pull in the forecast and purchase orders; load them after first
+// paint.
+const MakeRow = lazy(() => import('../../forecast/PrepPlan').then((m) => ({ default: m.MakeRow })))
+const BuyStockRow = lazy(() =>
+  import('../../supply/BuyStock').then((m) => ({ default: m.BuyStockRow })),
 )
 
 export function GrowScreen() {
@@ -90,76 +78,49 @@ function byGrowOrder(grow: string[], rows: [string[], ReactNode][]): ReactNode[]
 function GrowTiles() {
   const t = useCopy()
   const tabs = useTabsCopy()
-  const plan = usePlanCopy()
   const tools = useToolCopy()
   const grow = useGrowCopy()
   const owner = useOwnerCopy()
   const { features } = useIdentity()
   const ws = useWorkspace()
   const { state: playbook } = usePlaybook()
-  const [planOpen, setPlanOpen] = useState(false)
   const [sheet, setSheet] = useState<ShopSheetKind | null>(null)
-  // The coach's "what are people nearby asking for?" opens Asked nearby here.
+  // The coach's "open" for a Grow screen opens it here: Asked nearby, How much to make with the
+  // numbers open ("plan tomorrow"), Buy stock ("purchase orders").
   const [radarOpen, setRadarOpen] = useState(() => wantsOpen('radar'))
-  useEffect(() => clearOpen('radar'), [])
+  const [make, setMake] = useState<'list' | 'numbers' | null>(() =>
+    wantsOpen('plan') ? 'numbers' : null,
+  )
+  const [stock, setStock] = useState<StockTab | null>(() => (wantsOpen('stock') ? 'todo' : null))
+  const [sales, setSales] = useState(false)
+  useEffect(() => {
+    clearOpen('radar')
+    clearOpen('plan')
+    clearOpen('stock')
+  }, [])
   const shop = ws.active
   if (!shop) return null
   const { done, total } = readiness(ws)
   const missing = total - done
   // Evenings lead with closing the day; the rest of the day with what to prepare.
   const evening = new Date().getHours() >= 17
-  const make: [string[], ReactNode] = [
+  const makeRow: [string[], ReactNode] = [
     ['prep', 'plan'],
-    <GrowGroup
-      key="make"
-      icon={<ChefHat size={20} />}
-      label={grow.make}
-      items={[
-        <Suspense key="prep" fallback={null}>
-          <PrepPlanTile show="plan" />
-        </Suspense>,
-        <Tile
-          key="plan"
-          icon={<CalendarClock size={20} />}
-          label={plan.title}
-          value={t.planHint}
-          onClick={() => setPlanOpen(true)}
-        />,
-      ]}
-    />,
+    <Suspense key="make" fallback={null}>
+      <MakeRow sheet={make} onSheet={setMake} />
+    </Suspense>,
   ]
   const close: [string[], ReactNode] = [['close_day'], <CloseDayTile key="close" />]
   // The shop's playbook decides which row comes first; without one, the usual order.
   const rows = byGrowOrder(growOrderOf(playbook), [
-    ...(evening ? [close, make] : [make, close]),
+    ...(evening ? [close, makeRow] : [makeRow, close]),
     [
       ['orders', 'supply', 'supply_io'],
-      <GrowGroup
-        key="stock"
-        icon={<Truck size={20} />}
-        label={grow.stock}
-        items={[
-          // "Tea dust runs out Thu · Find suppliers" leads: it is what needs buying now.
-          <Suspense key="runs-out" fallback={null}>
-            <PrepPlanTile show="runsOut" />
-          </Suspense>,
-          <OrdersTile key="orders" />,
-          <Suspense key="supply" fallback={null}>
-            <SupplyTile />
-          </Suspense>,
-          <SupplyHubTile key="supply_io" />,
-        ]}
-      />,
+      <Suspense key="stock" fallback={null}>
+        <BuyStockRow tab={stock} onTab={setStock} />
+      </Suspense>,
     ],
-    [
-      ['week', 'recap'],
-      <GrowGroup
-        key="sales"
-        icon={<BarChart3 size={20} />}
-        label={grow.sales}
-        items={[<WeekPulseTile key="week" />, <RecapTile key="recap" />]}
-      />,
-    ],
+    [['week', 'recap'], <MySalesRow key="sales" open={sales} onOpen={setSales} />],
     ...(features.google_guide
       ? [
           [
@@ -191,6 +152,7 @@ function GrowTiles() {
               embedded
               onSheet={setSheet}
               onRadar={() => setRadarOpen(true)}
+              onPlan={() => setMake('numbers')}
             />,
           ]}
         />
@@ -213,13 +175,7 @@ function GrowTiles() {
         />
       </MoreTools>
       <AskHint id="forecast" />
-      <ShopSheets
-        kind={sheet ?? (planOpen ? 'plan' : null)}
-        onClose={() => {
-          setSheet(null)
-          setPlanOpen(false)
-        }}
-      />
+      <ShopSheets kind={sheet} onClose={() => setSheet(null)} />
       <RadarSheet open={radarOpen} onClose={() => setRadarOpen(false)} />
     </Stack>
   )

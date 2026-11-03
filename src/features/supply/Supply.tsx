@@ -1,10 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   Box,
   Button,
   CircularProgress,
   FormControlLabel,
-  IconButton,
   List,
   ListItem,
   ListItemButton,
@@ -18,84 +17,57 @@ import {
   Typography,
   useTheme,
 } from '@mui/material'
-import { ArrowLeft, ChevronRight, FileText, Settings2, Sparkles } from 'lucide-react'
+import { ChevronRight, FileText, Settings2, Sparkles } from 'lucide-react'
 import { useLocale } from '../../state/hooks'
 import { productName } from '../../i18n/productNames'
 import { enterRise, shape } from '../../design/theme'
 import { formatShopPrice, toMajor, toMinor } from '../v1/format'
-import { Sheet } from '../v1/Sheet'
 import { LineAction } from '../v1/CollapsibleCard'
 import { useWorkspace } from '../v1/workspaceContext'
 import { useShowcaseCopy } from './showcaseCopy'
-import { Supporting, Tile } from '../v1/ShopTiles'
 import { useSupplyCopy } from './copy'
-import { orderLabel, orderSize, orderTotal, termsLabel } from './orderFormat'
+import { useIoCopy } from './ioCopy'
+import { orderLabel, orderSize, orderTotal, PO_TO_DO, termsLabel } from './orderFormat'
 import { PurchaseOrderCard } from './PurchaseOrderCard'
+import { DeliveryButton } from './SupplyHub'
+import type { Board } from './ioTypes'
 import { useDraftReorder, useOrderUnit, useRulesActions, useSupply } from './supplyData'
 import { useOrderChangeCopy } from './orderChangeCopy'
 import type { ItemRule, PurchaseOrder, Relationship, RuleSet, SystemFormat } from './types'
 
-const OPEN = new Set([
-  'draft',
-  'sent',
-  'changed',
-  'confirmed',
-  'dispatched',
-  'received',
-  'invoiced',
-])
-
-/** My shop: the Purchase orders tile, opening the sheet. */
-export function SupplyTile() {
-  const s = useSupplyCopy()
-  const locale = useLocale()
-  const [open, setOpen] = useState(false)
-  const { data, refresh, failed } = useSupply(true)
-  const orders = data?.orders ?? []
-  const active = orders.filter((order) => OPEN.has(order.status))
-  const latest = orders[0]
-  return (
-    <>
-      <Tile
-        tour="supply"
-        icon={<FileText size={20} />}
-        label={s.title}
-        value={data === null ? '–' : s.tileValue(active.length)}
-        onClick={() => setOpen(true)}
-      >
-        <Supporting>
-          {latest
-            ? `${orderLabel(latest, s.orderTitle, (item) => productName(item, locale))} · ${s.status[latest.status]}`
-            : data === null && failed
-              ? s.loadFailed
-              : s.tileEmpty}
-        </Supporting>
-      </Tile>
-      <SupplySheet
-        open={open}
-        onClose={() => {
-          setOpen(false)
-          void refresh()
-        }}
-      />
-    </>
-  )
-}
-
 type View = { kind: 'list' } | { kind: 'order'; id: string } | { kind: 'rules'; id: string }
 
-export function SupplySheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+/** A step into one order or one supplier's rules: Buy stock shows its name and a way back. */
+export type Drill = { from: string; title: string; back: () => void } | null
+
+/**
+ * Buy stock (simplify batch 4b): the purchase orders that wait for the owner, with Reorder
+ * ("todo"), the rest of them ("coming", On the way), or the suppliers and their rules
+ * ("suppliers", My suppliers). One order or one supplier's rules opens in place; `onDrill` tells
+ * the sheet, which shows the way back in its title. Orders in `hide` show elsewhere (the board's
+ * card for an order to the shop).
+ */
+export function PurchaseOrders({
+  part,
+  hide,
+  board,
+  onDrill,
+  onLeave,
+}: {
+  part: 'todo' | 'coming' | 'suppliers'
+  hide?: ReadonlySet<string>
+  /** The board's copy of the orders: an open one can be received there. */
+  board?: Board | null
+  onDrill: (drill: Drill) => void
+  /** The sheet closes (the supply demo opens on Coach). */
+  onLeave: () => void
+}) {
   const s = useSupplyCopy()
+  const io = useIoCopy()
   const demo = useShowcaseCopy()
   const ws = useWorkspace()
-  const roles = useTheme().material
   const locale = useLocale()
-  const unit = useOrderUnit()
-  const money = (order: PurchaseOrder) => {
-    const total = orderTotal(order)
-    return total == null ? '–' : formatShopPrice(total, order.currency, locale)
-  }
-  const { data, refresh } = useSupply(open)
+  const { data, refresh } = useSupply(true)
   const [view, setView] = useState<View>({ kind: 'list' })
   const [local, setLocal] = useState<Record<string, PurchaseOrder>>({})
   const [drafting, setDrafting] = useState(false)
@@ -110,206 +82,216 @@ export function SupplySheet({ open, onClose }: { open: boolean; onClose: () => v
   })
   const extra = Object.values(local).filter((order) => !orders.some((o) => o.id === order.id))
   const all = [...extra, ...orders]
+  const listed = all.filter(
+    (order) => PO_TO_DO.has(order.status) === (part === 'todo') && !hide?.has(order.id),
+  )
   const selected = view.kind === 'order' ? all.find((order) => order.id === view.id) : undefined
   const supplier =
     view.kind === 'rules' ? data?.suppliers.find((row) => row.supplier.id === view.id) : undefined
+  const drillTitle =
+    view.kind === 'order' && selected
+      ? orderLabel(selected, s.orderTitle, (item) => productName(item, locale))
+      : supplier
+        ? s.rulesFor(supplier.supplier.name)
+        : ''
+  useEffect(() => {
+    onDrill(
+      drillTitle
+        ? { from: `po-${part}`, title: drillTitle, back: () => setView({ kind: 'list' }) }
+        : null,
+    )
+  }, [drillTitle, onDrill, part])
+  // Leaving the tab (or the sheet) leaves the order too.
+  useEffect(() => () => onDrill(null), [onDrill])
+  const open = (id: string) => setView({ kind: 'order', id })
   function update(order: PurchaseOrder) {
     setLocal((known) => ({ ...known, [order.id]: order }))
     // "Order again" answers with the new draft: show it, ready to review and send.
     if (view.kind === 'order' && order.id !== view.id) setView({ kind: 'order', id: order.id })
   }
-  function close() {
-    setView({ kind: 'list' })
-    setNote('')
-    setAsk('')
-    onClose()
-  }
-  const back = (
-    <IconButton aria-label={s.title} onClick={() => setView({ kind: 'list' })} sx={{ ml: -2 }}>
-      <ArrowLeft size={20} />
-    </IconButton>
-  )
-  return (
-    <Sheet
-      open={open}
-      onClose={close}
-      titleId="supply-sheet-title"
-      ask="supply"
-      title={
-        view.kind === 'list' ? (
-          s.title
-        ) : (
-          <Stack direction="row" spacing={1} sx={{ alignItems: 'center', minWidth: 0 }}>
-            {back}
-            <Box component="span" sx={{ minWidth: 0, overflowWrap: 'anywhere' }}>
-              {view.kind === 'order' && selected
-                ? orderLabel(selected, s.orderTitle, (item) => productName(item, locale))
-                : supplier
-                  ? s.rulesFor(supplier.supplier.name)
-                  : s.title}
-            </Box>
-          </Stack>
-        )
-      }
-    >
-      {view.kind === 'order' && selected ? (
+  if (view.kind === 'order' && selected)
+    return (
+      <Stack spacing={3}>
         <PurchaseOrderCard order={selected} onChange={update} />
-      ) : view.kind === 'rules' && supplier ? (
-        <RulesEditor
-          key={`${supplier.supplier.id}-${supplier.version}`}
-          row={supplier}
-          onSaved={() => {
-            void refresh()
-            setView({ kind: 'list' })
-          }}
-        />
-      ) : (
-        <Stack spacing={4}>
-          {import.meta.env.DEV && (
-            <Button
-              disabled={drafting}
-              sx={{ minHeight: 48 }}
-              onClick={async () => {
-                setDrafting(true)
-                try {
-                  const result = await ws.api<{ business_id: string }>('/supply/demo', {
-                    method: 'POST',
-                  })
-                  await ws.reload()
-                  ws.select(result.business_id)
-                  ws.go('coach')
-                  close()
-                } catch {
-                  ws.notify(s.failed)
-                } finally {
-                  setDrafting(false)
-                }
+        <DeliveryButton order={board?.orders.find((order) => order.id === selected.id)} />
+      </Stack>
+    )
+  if (view.kind === 'rules' && supplier)
+    return (
+      <RulesEditor
+        key={`${supplier.supplier.id}-${supplier.version}`}
+        row={supplier}
+        onSaved={() => {
+          void refresh()
+          setView({ kind: 'list' })
+        }}
+      />
+    )
+  if (part === 'suppliers')
+    return data && data.suppliers.length === 0 ? (
+      // Why it is empty and what fills it (OB-227).
+      <Stack spacing={1}>
+        <Typography variant="bodyLarge">{io.noPartners}</Typography>
+        <Typography variant="bodyMedium" color="text.secondary">
+          {io.noPartnersHint}
+        </Typography>
+      </Stack>
+    ) : (
+      <List disablePadding sx={{ display: 'grid', gap: 1 }} aria-label={s.suppliersRules}>
+        {(data?.suppliers ?? []).map((row) => (
+          <ListItem key={row.supplier.id} disablePadding>
+            <ListItemButton
+              component="button"
+              onClick={() => setView({ kind: 'rules', id: row.supplier.id })}
+              sx={{
+                borderRadius: `${shape.md}px`,
+                width: '100%',
+                minHeight: 56,
+                textAlign: 'start',
+                gap: 3,
               }}
             >
-              {demo.demo}
-            </Button>
-          )}
-          <Button
-            variant="contained"
-            startIcon={
-              drafting ? <CircularProgress size={16} color="inherit" /> : <Sparkles size={18} />
-            }
-            disabled={drafting}
-            onClick={async () => {
-              setDrafting(true)
-              setNote('')
-              const { order, note, ask } = await draft()
+              <Settings2 size={18} aria-hidden="true" />
+              <ListItemText
+                primary={row.supplier.name}
+                secondary={[
+                  termsLabel(s.terms, row.rules.terms_days),
+                  s.system[row.rules.system_format],
+                  row.supplier.demo ? s.simulation : '',
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
+              />
+              <ChevronRight size={18} aria-hidden="true" />
+            </ListItemButton>
+          </ListItem>
+        ))}
+      </List>
+    )
+  if (part === 'coming')
+    return listed.length > 0 ? <OrderRows orders={listed} onOpen={open} /> : null
+  return (
+    <Stack spacing={4}>
+      {import.meta.env.DEV && (
+        <Button
+          disabled={drafting}
+          sx={{ minHeight: 48, alignSelf: 'flex-start' }}
+          onClick={async () => {
+            setDrafting(true)
+            try {
+              const result = await ws.api<{ business_id: string }>('/supply/demo', {
+                method: 'POST',
+              })
+              await ws.reload()
+              ws.select(result.business_id)
+              ws.go('coach')
+              onLeave()
+            } catch {
+              ws.notify(s.failed)
+            } finally {
               setDrafting(false)
-              setNote(note)
-              setAsk(ask ?? '')
-              if (order) {
-                update(order)
-                setView({ kind: 'order', id: order.id })
-              }
-            }}
-            sx={{ alignSelf: 'flex-start', minHeight: 48 }}
-          >
-            {drafting ? s.drafting : s.draftReorder}
-          </Button>
-          {/* Why nothing was drafted, in the sheet itself rather than a toast over it (OB-227). */}
-          {note && (
-            <Typography role="status" variant="bodyLarge">
-              {note}
-            </Typography>
-          )}
-          {ask && (
-            <Button
-              variant="outlined"
-              disabled={drafting}
-              sx={{ alignSelf: 'flex-start', minHeight: 48 }}
-              onClick={async () => {
-                setDrafting(true)
-                const { order, note } = await draft(ask, true)
-                setDrafting(false)
-                setAsk('')
-                setNote(note)
-                if (order) {
-                  update(order)
-                  setView({ kind: 'order', id: order.id })
-                }
-              }}
-            >
-              {change.orderMore}
-            </Button>
-          )}
-          {data && all.length === 0 && !note && (
-            <Typography variant="bodyLarge" color="text.secondary">
-              {s.noOrders}
-            </Typography>
-          )}
-          {all.length > 0 && (
-            <List disablePadding sx={{ display: 'grid', gap: 2 }} aria-label={s.title}>
-              {all.map((order, index) => (
-                <ListItem key={order.id} disablePadding>
-                  <ListItemButton
-                    component="button"
-                    onClick={() => setView({ kind: 'order', id: order.id })}
-                    sx={{
-                      borderRadius: `${shape.lg}px`,
-                      bgcolor: roles.surfaceContainer,
-                      width: '100%',
-                      textAlign: 'start',
-                      py: 3,
-                      gap: 3,
-                      ...enterRise,
-                      animationDelay: `${index * 50}ms`,
-                    }}
-                  >
-                    <FileText size={20} color={roles.primary} aria-hidden="true" />
-                    <ListItemText
-                      primary={orderLabel(order, s.orderTitle, (item) => productName(item, locale))}
-                      secondary={`${orderSize(order, locale, unit)} · ${s.status[order.status]} · ${money(order)}`}
-                    />
-                    <ChevronRight size={18} aria-hidden="true" />
-                  </ListItemButton>
-                </ListItem>
-              ))}
-            </List>
-          )}
-          {data && data.suppliers.length > 0 && (
-            <Box>
-              <Typography variant="titleSmall" component="h3" sx={{ mb: 2 }}>
-                {s.suppliersRules}
-              </Typography>
-              <List disablePadding sx={{ display: 'grid', gap: 1 }} aria-label={s.suppliersRules}>
-                {data.suppliers.map((row) => (
-                  <ListItem key={row.supplier.id} disablePadding>
-                    <ListItemButton
-                      component="button"
-                      onClick={() => setView({ kind: 'rules', id: row.supplier.id })}
-                      sx={{
-                        borderRadius: `${shape.md}px`,
-                        width: '100%',
-                        textAlign: 'start',
-                        gap: 3,
-                      }}
-                    >
-                      <Settings2 size={18} aria-hidden="true" />
-                      <ListItemText
-                        primary={row.supplier.name}
-                        secondary={[
-                          termsLabel(s.terms, row.rules.terms_days),
-                          s.system[row.rules.system_format],
-                          row.supplier.demo ? s.simulation : '',
-                        ]
-                          .filter(Boolean)
-                          .join(' · ')}
-                      />
-                      <ChevronRight size={18} aria-hidden="true" />
-                    </ListItemButton>
-                  </ListItem>
-                ))}
-              </List>
-            </Box>
-          )}
-        </Stack>
+            }
+          }}
+        >
+          {demo.demo}
+        </Button>
       )}
-    </Sheet>
+      <Button
+        variant="outlined"
+        startIcon={
+          drafting ? <CircularProgress size={16} color="inherit" /> : <Sparkles size={18} />
+        }
+        disabled={drafting}
+        onClick={async () => {
+          setDrafting(true)
+          setNote('')
+          const { order, note, ask } = await draft()
+          setDrafting(false)
+          setNote(note)
+          setAsk(ask ?? '')
+          if (order) {
+            update(order)
+            setView({ kind: 'order', id: order.id })
+          }
+        }}
+        sx={{ alignSelf: 'flex-start', minHeight: 48 }}
+      >
+        {drafting ? s.drafting : s.draftReorder}
+      </Button>
+      {/* Why nothing was drafted, in the sheet itself rather than a toast over it (OB-227). */}
+      {note && (
+        <Typography role="status" variant="bodyLarge">
+          {note}
+        </Typography>
+      )}
+      {ask && (
+        <Button
+          variant="outlined"
+          disabled={drafting}
+          sx={{ alignSelf: 'flex-start', minHeight: 48 }}
+          onClick={async () => {
+            setDrafting(true)
+            const { order, note } = await draft(ask, true)
+            setDrafting(false)
+            setAsk('')
+            setNote(note)
+            if (order) {
+              update(order)
+              setView({ kind: 'order', id: order.id })
+            }
+          }}
+        >
+          {change.orderMore}
+        </Button>
+      )}
+      {listed.length > 0 && <OrderRows orders={listed} onOpen={open} />}
+    </Stack>
+  )
+}
+
+/** Purchase orders as cards: item and supplier, size, status and total. */
+function OrderRows({ orders, onOpen }: { orders: PurchaseOrder[]; onOpen: (id: string) => void }) {
+  const s = useSupplyCopy()
+  const roles = useTheme().material
+  const locale = useLocale()
+  const unit = useOrderUnit()
+  const money = (order: PurchaseOrder) => {
+    const total = orderTotal(order)
+    return total == null ? '–' : formatShopPrice(total, order.currency, locale)
+  }
+  return (
+    <List
+      disablePadding
+      data-testid="po-list"
+      sx={{ display: 'grid', gap: 2 }}
+      aria-label={s.title}
+    >
+      {orders.map((order, index) => (
+        <ListItem key={order.id} disablePadding>
+          <ListItemButton
+            component="button"
+            onClick={() => onOpen(order.id)}
+            sx={{
+              borderRadius: `${shape.lg}px`,
+              bgcolor: roles.surfaceContainer,
+              width: '100%',
+              textAlign: 'start',
+              py: 3,
+              gap: 3,
+              ...enterRise,
+              animationDelay: `${index * 50}ms`,
+            }}
+          >
+            <FileText size={20} color={roles.primary} aria-hidden="true" />
+            <ListItemText
+              primary={orderLabel(order, s.orderTitle, (item) => productName(item, locale))}
+              secondary={`${orderSize(order, locale, unit)} · ${s.status[order.status]} · ${money(order)}`}
+            />
+            <ChevronRight size={18} aria-hidden="true" />
+          </ListItemButton>
+        </ListItem>
+      ))}
+    </List>
   )
 }
 

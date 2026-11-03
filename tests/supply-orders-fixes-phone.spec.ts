@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import { enter, localOnly, seedShop } from './stories/support.js'
-import { growTool, openGrowTool } from './support/grow.js'
+import { openBuyStock } from './support/grow.js'
+import { kirana } from './support/kirana.js'
 
 // Owner scenario walk, 30 Oct (OB-222 #593, OB-225 #596, OB-226 #597, OB-227 #598). Local only,
 // offline coach: the demo never calls a paid model.
@@ -21,63 +22,19 @@ async function noSideScroll(page: Page) {
   )
 }
 
-/** A kirana with onions (kg) and milk (l), 12 of each and four weeks of sales: both run out
- * within the week (#603: more than one need). */
-async function kirana(page: Page, size: { width: number; height: number }) {
-  await page.setViewportSize(size)
-  await localOnly(page)
-  await enter(page)
-  const name = 'Corner Store'
-  const prepared = await (
-    await page.request.post('/api/v1/proposals', {
-      data: {
-        kind: 'business',
-        revision: 0,
-        business: {
-          name,
-          category: 'Grocery',
-          location: 'Indiranagar, Bengaluru',
-          currency: 'INR',
-          timezone: 'Asia/Kolkata',
-          phone: '+919876543210',
-          weekly_hours: [{ day: 'thu', open: '07:00', close: '20:00', closed: false }],
-          stamps_needed: 8,
-          reward_text: 'Your tenth bag is free',
-        },
-        owner_location: { lat: 12.9716, lng: 77.6412, accuracy_m: 0, source: 'pin' },
-        products: [
-          { name: 'Onions', price: 4000, unit: 'kg', category: 'Veg', stock: 12 },
-          { name: 'Milk', price: 6000, unit: 'l', category: 'Dairy', stock: 12 },
-        ],
-      },
-    })
-  ).json()
-  const approved = await page.request.post(`/api/v1/proposals/${prepared.id}/approve`, {
-    data: { digest: prepared.digest },
-  })
-  const { business_id: id } = await approved.json()
-  const shopDay = (back: number) =>
-    new Date(Date.now() + 5.5 * 3600e3 - back * 86400e3).toISOString().slice(0, 10)
-  for (let back = 28; back >= 1; back--) {
-    const v = 3 + (back % 3)
-    const day = await page.request.post(`/api/v1/businesses/${id}/day/prepare`, {
-      data: {
-        date: shopDay(back),
-        sales: [
-          { item: 'Onions', quantity: v, amount: v * 40 },
-          { item: 'Milk', quantity: v, amount: v * 60 },
-        ],
-      },
-    })
-    const { sales } = await day.json()
-    await page.request.post(`/api/v1/businesses/${id}/import/${sales.import_id}/approve`, {
-      data: { digest: sales.digest },
-    })
-  }
-  await page.reload()
-  await page.getByRole('button', { name: 'Continue local preview' }).click()
-  await expect(page.getByRole('button', { name: `Choose shop: ${name}` })).toBeVisible()
-  await page.keyboard.press('Escape')
+/** Grow → Buy stock → To do: the runs-out card (what was Grow's own "runs out" tile, simplify
+ * batch 4b). The sheet stays open; `close` shuts it. */
+async function runsOut(page: Page, name: RegExp) {
+  await page.getByRole('button', { name: 'Grow', exact: true }).click()
+  const sheet = await openBuyStock(page)
+  const card = sheet.getByRole('button', { name })
+  await expect(card).toBeVisible({ timeout: 15_000 })
+  return card
+}
+
+async function close(page: Page) {
+  await page.getByRole('dialog').getByRole('button', { name: 'Close', exact: true }).last().click()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
 }
 
 async function startShop(page: Page, size: { width: number; height: number }) {
@@ -152,7 +109,7 @@ for (const size of WIDTHS) {
     test.setTimeout(150_000)
     await startShop(page, size)
     await page.getByRole('button', { name: 'Grow', exact: true }).click()
-    await openGrowTool(page, /^Purchase orders/)
+    await openBuyStock(page)
     await page.getByRole('button', { name: 'Try supply demo', exact: true }).click()
     const today = page.getByRole('region', { name: 'Supply chain' })
     await expect(today).toContainText(/Milk runs out/)
@@ -168,11 +125,11 @@ for (const size of WIDTHS) {
 
     // #597: with 24 l on its way, another reorder drafts nothing and says why.
     await expect(today).toContainText(/24 l on order/)
-    await page.getByRole('button', { name: 'Grow', exact: true }).click()
     // Grow agrees with Today: milk is covered, so no supplier search is offered for it.
-    const runsOut = await growTool(page, /^Milk runs out/)
-    await expect(runsOut).toContainText(/24 l on order, arriving/)
-    await expect(runsOut).not.toContainText('Find suppliers')
+    const covered = await runsOut(page, /^Milk runs out/)
+    await expect(covered).toContainText(/24 l on order, arriving/)
+    await expect(covered).not.toContainText('Find suppliers')
+    await close(page)
 
     // An uncovered item (nothing on order) still shows the need and offers suppliers.
     await page.route(/\/businesses\/[^/]+\/supply$/, async (route) => {
@@ -187,24 +144,24 @@ for (const size of WIDTHS) {
       await route.fulfill({ json: body })
     })
     await page.getByRole('button', { name: 'Coach', exact: true }).click()
-    await page.getByRole('button', { name: 'Grow', exact: true }).click()
-    await expect(await growTool(page, /^Milk runs out/)).toContainText('Find suppliers')
+    await expect(await runsOut(page, /^Milk runs out/)).toContainText('Find suppliers')
+    await close(page)
     await page.unroute(/\/businesses\/[^/]+\/supply$/)
-    await openGrowTool(page, /^Purchase orders/)
-    const sheet = page.getByRole('dialog', { name: 'Purchase orders', exact: true })
-    const list = sheet.getByRole('list', { name: 'Purchase orders' })
-    await expect(list.getByRole('listitem')).toHaveCount(2)
+    const sheet = await openBuyStock(page)
     await sheet.getByRole('button', { name: 'Draft a reorder' }).click()
     await expect(sheet.getByRole('status')).toContainText(
       /24 l Milk is already on order, arriving .+\. No new order needed\./,
     )
+    // The two sent orders are on their way, and no new one was drafted.
+    await sheet.getByRole('button', { name: /^On the way/ }).click()
+    const list = sheet.getByTestId('po-list')
     await expect(list.getByRole('listitem')).toHaveCount(2)
     await noSideScroll(page)
 
     // #596: cancel a sent purchase order, with a confirm and an undo window.
     await list.getByRole('button').first().click()
-    // The detail sheet is named after the order: "Purchase orders Milk from Fresh Dairy".
-    const detail = page.getByRole('dialog', { name: /^Purchase orders .+ from / })
+    // The order opens in the sheet, named after it: "Buy stock Milk from Fresh Dairy".
+    const detail = page.getByRole('dialog', { name: /^Buy stock .+ from / })
     await detail.getByRole('button', { name: 'Cancel order' }).click()
     await expect(detail).toContainText(
       'Cancel this order? Fresh Dairy (Demo) is a demo supplier: the app tells it.',
@@ -223,12 +180,12 @@ for (const size of WIDTHS) {
     test.setTimeout(90_000)
     await startShop(page, size)
     await page.getByRole('button', { name: 'Grow', exact: true }).click()
-    const tile = await growTool(page, /^Supply chain/)
-    await expect(tile).toContainText('No suppliers yet')
-    await expect(tile).toContainText('Suppliers show here after your first order')
-    await expect(tile).not.toContainText('all on time')
-    await openGrowTool(page, /^Purchase orders/)
-    const sheet = page.getByRole('dialog', { name: 'Purchase orders', exact: true })
+    // Buy stock → My suppliers (what the Supply chain tile said, simplify batch 4b).
+    const sheet = await openBuyStock(page, 'My suppliers')
+    await expect(sheet).toContainText('No suppliers yet')
+    await expect(sheet).toContainText('Suppliers show here after your first order')
+    await expect(sheet).not.toContainText('all on time')
+    await sheet.getByRole('button', { name: /^To do/ }).click()
     await sheet.getByRole('button', { name: 'Draft a reorder' }).click()
     // In the sheet, not a toast over it.
     await expect(sheet.getByRole('status')).toContainText(
@@ -266,14 +223,14 @@ for (const size of WIDTHS) {
 
     // Grow reads the same needs: the same item and day, with Find suppliers for it.
     const day = (await today.innerText()).match(new RegExp(`${other} runs out (.+)`))?.[1]
-    await page.getByRole('button', { name: 'Grow', exact: true }).click()
-    const tile = await growTool(page, new RegExp(`^${other} runs out`))
+    const tile = await runsOut(page, new RegExp(`^${other} runs out`))
     await expect(tile).toContainText('Find suppliers')
     await expect(tile).toContainText(day?.trim() ?? '')
     await expect(page.getByRole('button', { name: new RegExp(`^${first} runs out`) })).toHaveCount(
       0,
     )
     await noSideScroll(page)
+    await close(page)
 
     // Grow has no "runs out" rule of its own: when the needs say nothing runs out, it shows
     // nothing, whatever the forecast its prep plan reads.
@@ -283,8 +240,14 @@ for (const size of WIDTHS) {
     })
     await page.getByRole('button', { name: 'Coach', exact: true }).click()
     await page.getByRole('button', { name: 'Grow', exact: true }).click()
-    await expect(await growTool(page, /^Prep plan/)).toContainText(/Onions|Milk/)
+    await expect(page.getByRole('button', { name: /^How much to make/ })).toContainText(
+      /Onions|Milk/,
+    )
     await expect(page.getByRole('button', { name: /runs out|running low/ })).toHaveCount(0)
+    await openBuyStock(page)
+    await expect(page.getByRole('button', { name: /runs out|running low/ })).toHaveCount(0)
+    // Reads still on their way when the test ends must not fail it.
+    await page.unrouteAll({ behavior: 'ignoreErrors' })
   })
 
   test(`#603 at ${size.width}: the Grow tile follows its own Purchase orders sheet`, async ({
@@ -293,38 +256,35 @@ for (const size of WIDTHS) {
     test.setTimeout(150_000)
     await startShop(page, size)
     await page.getByRole('button', { name: 'Grow', exact: true }).click()
-    await openGrowTool(page, /^Purchase orders/)
+    await openBuyStock(page)
     await page.getByRole('button', { name: 'Try supply demo', exact: true }).click()
     await expect(page.getByRole('region', { name: 'Supply chain' })).toContainText(/Milk runs out/)
-    await page.getByRole('button', { name: 'Grow', exact: true }).click()
-    const tile = await growTool(page, /^Milk runs out/)
+    const tile = await runsOut(page, /^Milk runs out/)
     // 12 l on its way is short of the week's 25 l: still to order, with what is coming shown.
     await expect(tile).toContainText('Find suppliers')
     await expect(tile).toContainText(/12 l on order, arriving/)
 
-    // Draft and approve on Grow's own sheet, close it: the tile reads covered at once.
-    await openGrowTool(page, /^Purchase orders/)
-    const sheet = page.getByRole('dialog', { name: /^Purchase orders/ })
+    // Draft and approve in the same sheet, go back: the card reads covered at once.
+    const sheet = page.getByRole('dialog', { name: /^Buy stock/ })
     await sheet.getByRole('button', { name: 'Draft a reorder' }).click()
     const card = page.getByRole('article')
     await card.getByRole('button', { name: 'Approve and send', exact: true }).click()
     await expect(card).toContainText('Marked Sent')
-    await sheet.getByRole('button', { name: 'Close', exact: true }).click()
-    await expect(page.getByRole('dialog')).toHaveCount(0)
+    await sheet.getByRole('button', { name: 'Buy stock', exact: true }).click()
     await expect(tile).toContainText(/24 l on order, arriving/)
     await expect(tile).not.toContainText('Find suppliers')
 
-    // Cancel one sent order on the same sheet, close it: no stale "24 l on order".
-    await openGrowTool(page, /^Purchase orders/)
-    await sheet.getByRole('list', { name: 'Purchase orders' }).getByRole('button').first().click()
-    const detail = page.getByRole('dialog', { name: /^Purchase orders .+ from / })
+    // Cancel one sent order on the same sheet, go back: no stale "24 l on order".
+    await sheet.getByRole('button', { name: /^On the way/ }).click()
+    await sheet.getByTestId('po-list').getByRole('button').first().click()
+    const detail = page.getByRole('dialog', { name: /^Buy stock .+ from / })
     await detail.getByRole('button', { name: 'Cancel order' }).click()
     await detail.getByRole('button', { name: 'Cancel order' }).click()
     await expect(detail).toContainText('Cancelled. Fresh Dairy (Demo) was told.', {
       timeout: 15_000,
     })
-    await detail.getByRole('button', { name: 'Close', exact: true }).click()
-    await expect(page.getByRole('dialog')).toHaveCount(0)
+    await detail.getByRole('button', { name: 'Buy stock', exact: true }).click()
+    await sheet.getByRole('button', { name: /^To do/ }).click()
     await expect(tile).toContainText(/12 l on order, arriving/)
     await expect(tile).toContainText('Find suppliers')
     await noSideScroll(page)
@@ -336,18 +296,17 @@ for (const size of WIDTHS) {
     test.setTimeout(150_000)
     await startShop(page, size)
     await page.getByRole('button', { name: 'Grow', exact: true }).click()
-    await openGrowTool(page, /^Purchase orders/)
+    await openBuyStock(page)
     await page.getByRole('button', { name: 'Try supply demo', exact: true }).click()
     await expect(page.getByRole('region', { name: 'Supply chain' })).toContainText(/Milk runs out/)
-    await page.getByRole('button', { name: 'Grow', exact: true }).click()
-    const tile = await growTool(page, /^Milk runs out/)
+    const tile = await runsOut(page, /^Milk runs out/)
     await expect(tile).toContainText(/12 l on order, arriving/)
 
-    // Receive the whole order from the Supply chain sheet, close it: no stale "on order".
-    await openGrowTool(page, /^Supply chain/)
-    const hub = page.getByRole('dialog', { name: 'Supply chain' })
+    // Receive the whole order from Buy stock → On the way: no stale "on order".
+    const hub = page.getByRole('dialog', { name: /^Buy stock/ })
     await hub.getByRole('button', { name: /^On the way/ }).click()
-    await hub.getByRole('button', { name: /^Fresh Dairy \(Demo\)/ }).click()
+    await hub.getByRole('button', { name: /^Milk from Fresh Dairy \(Demo\)/ }).click()
+    await hub.getByRole('button', { name: 'Delivery from Fresh Dairy (Demo)', exact: true }).click()
     const dairy = page.getByRole('dialog', { name: 'Fresh Dairy (Demo)' })
     await dairy.getByRole('button', { name: 'Goods arrived', exact: true }).click()
     await dairy.getByRole('button', { name: 'All received', exact: true }).click()
@@ -357,6 +316,7 @@ for (const size of WIDTHS) {
     await dairy.getByRole('button', { name: 'Close', exact: true }).click()
     await hub.getByRole('button', { name: 'Close', exact: true }).click()
     await expect(page.getByRole('dialog')).toHaveCount(0)
+    await openBuyStock(page)
     await expect(page.getByText(/on order, arriving/)).toHaveCount(0)
     await noSideScroll(page)
   })
@@ -369,24 +329,21 @@ for (const size of WIDTHS) {
     test.setTimeout(150_000)
     await startShop(page, size)
     await page.getByRole('button', { name: 'Grow', exact: true }).click()
-    await openGrowTool(page, /^Purchase orders/)
+    await openBuyStock(page)
     await page.getByRole('button', { name: 'Try supply demo', exact: true }).click()
     await expect(page.getByRole('region', { name: 'Supply chain' })).toContainText(/Milk runs out/)
-    await page.getByRole('button', { name: 'Grow', exact: true }).click()
-    const tile = await growTool(page, /^Milk runs out/)
+    const tile = await runsOut(page, /^Milk runs out/)
     await expect(tile).toContainText(/12 l on order, arriving/)
 
     // The demo partner is a buyer: its order for 20 l Milk is one to ship, not stock coming in.
-    await openGrowTool(page, /^Supply chain/)
-    const hub = page.getByRole('dialog', { name: 'Supply chain' })
+    const hub = page.getByRole('dialog', { name: /^Buy stock/ })
     await hub.getByRole('button', { name: /^On the way/ }).click()
     const next = hub.getByRole('button', { name: 'Show next step (demo)' })
     await next.click()
     await expect(hub).toContainText(/Forecast · Expects 20 l Milk/)
     await next.click()
     await expect(hub).toContainText(/New order · Milk/)
-    await hub.getByRole('button', { name: 'Close', exact: true }).click()
-    await expect(page.getByRole('dialog')).toHaveCount(0)
+    await hub.getByRole('button', { name: /^To do/ }).click()
     await expect(tile).toContainText(/12 l on order, arriving/)
     await expect(tile).toContainText('Find suppliers')
     await expect(page.getByText(/32 l on order/)).toHaveCount(0)
@@ -401,7 +358,7 @@ for (const size of WIDTHS) {
     test.setTimeout(150_000)
     await startShop(page, size)
     await page.getByRole('button', { name: 'Grow', exact: true }).click()
-    await openGrowTool(page, /^Purchase orders/)
+    await openBuyStock(page)
     await page.getByRole('button', { name: 'Try supply demo', exact: true }).click()
     await expect(page.getByRole('region', { name: 'Supply chain' })).toContainText(/Milk runs out/)
 
@@ -425,8 +382,7 @@ for (const size of WIDTHS) {
     expect([po.status, !!po.received]).toEqual(['invoiced', false])
 
     await page.getByRole('button', { name: 'Coach', exact: true }).click()
-    await page.getByRole('button', { name: 'Grow', exact: true }).click()
-    const tile = await growTool(page, /^Milk runs out/)
+    const tile = await runsOut(page, /^Milk runs out/)
     await expect(tile).toContainText(/12 l on order, arriving/)
     await expect(tile).toContainText('Find suppliers')
     await noSideScroll(page)

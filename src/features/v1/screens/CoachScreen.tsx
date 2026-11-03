@@ -129,7 +129,7 @@ import {
   SalesImportSheet,
   SearchingSuppliers,
   ShopSheets,
-  SupplierCarousel,
+  VendorListCard,
   SupplyChatCard,
 } from './coachDeferred'
 import type { PaymentLink } from '../../owner-tools/links'
@@ -190,7 +190,6 @@ const SHEETS: Partial<Record<CoachAction['target'], ShopSheetKind>> = {
   icon: 'details',
   // The stamp card and its thank-you perks: Shop → More → Stamp card (simplify batch 3).
   stamps: 'stamps',
-  plan: 'plan',
   games: 'perks',
 }
 const DESTINATIONS: Partial<Record<CoachAction['target'], Destination>> = {
@@ -203,6 +202,8 @@ const DESTINATIONS: Partial<Record<CoachAction['target'], Destination>> = {
   close_day: 'grow',
   google: 'google',
   privacy: 'privacy',
+  // How much to make (numbers open) and Buy stock open over Grow (simplify batch 4b).
+  plan: 'grow',
   supply: 'grow',
   // The playbook sheet lives under Your data.
   playbook: 'privacy',
@@ -214,7 +215,8 @@ const DESTINATIONS: Partial<Record<CoachAction['target'], Destination>> = {
 }
 /** Screens that open over or inside the destination tab (simplify batch 2). */
 function openInside(target: CoachAction['target']) {
-  if (target === 'radar' || target === 'rider') requestOpen(target)
+  if (target === 'radar' || target === 'rider' || target === 'plan') requestOpen(target)
+  if (target === 'supply') requestOpen('stock')
   if (target === 'payments' || target === 'rider') openOwnerFeature('payments')
 }
 const REPLY_POLL_MS = 1500
@@ -1480,14 +1482,14 @@ function CoachScreen({
                       message,
                       <Store size={18} />,
                       <Suspense fallback={null}>
-                        <SupplierCarousel
+                        <VendorListCard
                           result={message.result}
                           onChoose={(card) => {
                             const amount = message.result.quantity
                               ? `${message.result.quantity} ${message.result.unit} `
                               : ''
-                            setNote(s.chooseDraft(card.rank, `${amount}${message.result.item}`))
-                            messageInput.current?.focus()
+                            // Order goes as a turn: the coach prepares the card with Send.
+                            void send(s.chooseDraft(card.rank, `${amount}${message.result.item}`))
                           }}
                         />
                       </Suspense>,

@@ -1,4 +1,7 @@
 import { useLocale } from '../../state/hooks'
+import { productName } from '../../i18n/productNames'
+import { useShopCopy } from '../shop/strings'
+import { unitLabel } from '../shop/units'
 import { formatShopPrice, shopCurrency } from '../v1/format'
 import { useWorkspace } from '../v1/workspaceContext'
 import { dayLabel } from './supplyData'
@@ -11,8 +14,12 @@ export function useIoFormat(currency = '') {
   // A task carries no currency of its own: a price change is in the shop's, never a crash.
   const shop = shopCurrency(useWorkspace().active)
   const number = new Intl.NumberFormat(locale, { maximumFractionDigits: 2 })
+  const shopCopy = useShopCopy()
   return {
     qty: (value: number | string | null | undefined) => number.format(Number(value ?? 0)),
+    /** An item and a unit in the owner's language ("चाय पत्ती", "किलो"), as Purchase orders say them. */
+    item: (name: string | null | undefined) => (name ? productName(name, locale) : ''),
+    unit: (unit: string | null | undefined) => (unit ? unitLabel(unit, shopCopy) : ''),
     day: (iso: string | null | undefined) => dayLabel(iso ?? '', locale),
     time: (at: number) =>
       new Intl.DateTimeFormat(locale, {
@@ -78,6 +85,20 @@ export function taskDetail(task: Task, c: IoCopy, f: IoFormat): string {
 export const ON_THE_WAY = new Set(['sent', 'changed', 'confirmed', 'dispatched', 'invoiced'])
 export const onTheWay = (o: IoOrder) =>
   o.direction === 'in' && !o.received && ON_THE_WAY.has(o.status)
+
+/**
+ * The board without the cards of orders shown elsewhere: Buy stock shows each purchase order once,
+ * as its own card (UX rules §5, §10). "Must send" rows stay, they are the only way to send them.
+ */
+export function withoutOrders(board: Board, skip: ReadonlySet<string>): Board {
+  if (skip.size === 0) return board
+  return {
+    ...board,
+    orders: board.orders.filter((o) => !skip.has(o.id)),
+    inbox: board.inbox.filter((e) => !skip.has(e.order_id)),
+    tasks: board.tasks.filter((t) => !t.order_id || !skip.has(t.order_id)),
+  }
+}
 
 /** How many items each of the four screens holds. */
 export function counts(board: Board | null): Record<View, number> {

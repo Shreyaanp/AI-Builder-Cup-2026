@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { confirm, enter, localOnly, reviewName, seedShop } from './stories/support.js'
 import { shopMore } from './support/shopMore.js'
-import { openGrowTool } from './support/grow.js'
+import { openMySales } from './support/grow.js'
 
 const posExport = fileURLToPath(
   new URL('../backend/tests/fixtures/connect/pos_menu.csv', import.meta.url),
@@ -150,8 +150,8 @@ test('owner confirms a POS sales export and sees it in Grow', async ({ page }) =
   await expect(today).toContainText('₹')
 
   await page.getByRole('button', { name: 'Grow', exact: true }).click()
-  await openGrowTool(page, /^Weekly recap/)
-  const recap = page.getByRole('dialog', { name: 'Weekly recap' })
+  // The week's summary is My sales → Week summary (simplify batch 4b).
+  const recap = await openMySales(page, true)
   await expect(recap).toContainText('Kopi')
   await expect(recap).toContainText('sales days saved')
 })

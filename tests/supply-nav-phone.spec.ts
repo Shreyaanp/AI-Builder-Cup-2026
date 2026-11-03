@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { enter, localOnly, seedShop } from './stories/support.js'
-import { openGrowTool } from './support/grow.js'
+import { openBuyStock } from './support/grow.js'
 
 // #118 #119 #120: on a phone the Shop tab scrolls clear of the fixed bottom bar, and a purchase
 // order that omits total/backorders lists cleanly ("Milk from Fresh Farms", never "PO PO-" or ₹NaN) and opens.
@@ -55,8 +55,9 @@ for (const width of [360, 390]) {
     expect(last!.y + last!.height).toBeLessThanOrEqual(nav!.y)
 
     await page.getByRole('button', { name: 'Grow', exact: true }).click()
-    await openGrowTool(page, /^Purchase orders/)
-    const row = page.getByRole('button', { name: /Fresh Farms/ })
+    // A confirmed order is Buy stock → On the way (simplify batch 4b).
+    await openBuyStock(page, 'On the way')
+    const row = page.getByTestId('po-list').getByRole('button', { name: /Fresh Farms/ })
     await expect(row).toContainText('Milk from Fresh Farms')
     await expect(row).not.toContainText('PO ')
     await expect(row).not.toContainText('NaN')

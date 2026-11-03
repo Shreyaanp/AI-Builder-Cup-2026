@@ -123,13 +123,13 @@ export function Card({
 function firstLine(order: IoOrder, f: IoFormat): string {
   const [first, ...rest] = order.lines
   if (!first) return ''
-  return `${f.qty(first.quantity)} ${first.unit}${rest.length ? ` +${rest.length}` : ''}`
+  return `${f.qty(first.quantity)} ${f.unit(first.unit)}${rest.length ? ` +${rest.length}` : ''}`
 }
 
 export function OrderCard({ order, onOpen }: { order: IoOrder; onOpen: () => void }) {
   const c = useIoCopy()
   const f = useIoFormat(order.currency)
-  const item = order.lines[0]?.item ?? ''
+  const item = f.item(order.lines[0]?.item)
   return (
     <Card
       title={order.partner.name}
@@ -153,10 +153,10 @@ export function EntryCard({ entry, onOpen }: { entry: InboxEntry; onOpen?: () =>
     <Card
       title={entry.partner?.name ?? entry.number}
       chip={chip}
-      amount={!what && line ? `${f.qty(line.quantity)} ${line.unit}` : undefined}
+      amount={!what && line ? `${f.qty(line.quantity)} ${f.unit(line.unit)}` : undefined}
       detail={[
         c.kind[entry.kind],
-        entry.problem ? problemText(entry.problem, c) : (what ?? line?.item),
+        entry.problem ? problemText(entry.problem, c) : (what ?? f.item(line?.item)),
       ]
         .filter(Boolean)
         .join(' · ')}

@@ -39,7 +39,7 @@ async function enterAndSeed(page: Page, language: string) {
   })
   expect(approved.ok()).toBe(true)
   const { business_id: id } = await approved.json()
-  // A few days of saved sales, so Your week has a chart to lay out.
+  // A few days of saved sales, so My sales has a chart to lay out.
   for (const back of [1, 2, 3]) {
     const date = new Date(Date.now() - back * 86_400_000).toISOString().slice(0, 10)
     const day = await page.request.post(`/api/v1/businesses/${id}/day/prepare`, {
@@ -166,9 +166,9 @@ for (const lang of LANGS) {
       await page.keyboard.press('Escape')
       await page.keyboard.press('Escape')
 
-      // Grow: carousel dots, Your week spacing and the Rescue discount chips.
+      // Grow: carousel dots, My sales spacing and the Rescue discount chips.
       await page.locator('[data-tour="nav-grow"]').click()
-      // Grow's rows open in place (batch 4a): the brief's slides and Your week show then.
+      // The Morning brief row opens in place (batch 4a): its slides show then.
       await openGrowRows(page)
       const slides = await page.locator('[aria-roledescription="slide"]').count()
       if (slides) {
@@ -186,9 +186,10 @@ for (const lang of LANGS) {
         for (const size of sizes) expect(size).toBeGreaterThanOrEqual(48)
       }
 
+      // The week is My sales (simplify batch 4b).
       await page
         .locator(
-          ['Your week', 'Week pulse', 'हफ़्ते', 'हफ़्ता']
+          ['My sales', 'मेरी बिक्री']
             .map((name) => `button:not([data-grow-group]):has-text("${name}")`)
             .join(', '),
         )

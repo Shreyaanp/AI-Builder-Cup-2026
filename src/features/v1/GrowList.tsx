@@ -22,6 +22,7 @@ export function ListTile({
   onClick,
   tour,
   alert = false,
+  badge,
   children,
 }: {
   layout: 'row' | 'tool'
@@ -33,6 +34,8 @@ export function ListTile({
   onClick: () => void
   tour?: string
   alert?: boolean
+  /** A short live state on a More tools icon ("Live" for a running leftover deal, OB-254). */
+  badge?: string
 }) {
   const roles = useTheme().material
   const inGroup = useContext(GroupContext) !== null
@@ -61,6 +64,7 @@ export function ListTile({
           sx={{
             display: 'grid',
             placeItems: 'center',
+            position: 'relative',
             width: 48,
             height: 48,
             borderRadius: `${shape.lg}px`,
@@ -69,6 +73,26 @@ export function ListTile({
           }}
         >
           {icon}
+          {badge && (
+            <Box
+              component="span"
+              data-testid="tool-badge"
+              sx={{
+                position: 'absolute',
+                top: -8,
+                insetInlineEnd: -12,
+                px: 1,
+                borderRadius: `${shape.full}px`,
+                bgcolor: roles.primary,
+                color: roles.onPrimary,
+                typography: 'labelMedium',
+                lineHeight: '20px',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {badge}
+            </Box>
+          )}
         </Box>
         <Typography component="span" variant="bodySmall" sx={{ overflowWrap: 'anywhere' }}>
           {label}
