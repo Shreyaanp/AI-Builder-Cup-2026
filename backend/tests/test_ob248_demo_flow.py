@@ -16,6 +16,8 @@ from tests.test_public_demo_no_paid_ai import live_parent_demo, no_paid_calls  #
 
 ROOT = Path(__file__).resolve().parents[2]
 
+HINDI_SCRIPT = re.compile(r"[ऀ-ॿ]")
+
 
 @pytest.fixture
 def instant(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -504,7 +506,10 @@ def test_OB_248_the_screens_own_phrase_does_the_work(
     events = {event["kind"]: event for event in _coach_events(response)}
     assert events["order"]["data"]["lines"][0]["name"] == "Milk"
     assert words in events["reply"]["text"]
-    assert "Grow → Buy stock → Find a supplier" in events["reply"]["text"]
+    # The path in the asker's language: no English screen names in a Hindi reply (OB-261).
+    where = "Grow → Buy stock → Find a supplier"
+    hindi = "बढ़ाएँ → माल मँगाएँ → सप्लायर ढूँढें"
+    assert (hindi if HINDI_SCRIPT.search(message) else where) in events["reply"]["text"]
 
 
 def test_simplify_4b_find_a_supplier_amount_then_order_from_the_vendor_list(

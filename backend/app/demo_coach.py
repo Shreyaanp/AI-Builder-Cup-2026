@@ -9,12 +9,23 @@ from typing import Any, cast
 from .app_guide import Feature, by_ask, next_line, next_line_hi
 from .contracts import StreamEvent
 from .demo_coach_hi import HINDI_UNITS, LOW_HI, hindi_reply
+from .demo_coach_words import (
+    FALLBACK_HI,
+    app_language,
+    close_day,
+    first_jobs,
+    owner_changes,
+    sales_today,
+    tomorrow_note,
+    unsure,
+)
 from .demo_food_words import FOOD_UNITS, NUMBER_WORDS, is_food, singular
 from .demo_item_names import hindi_item, item_named_in
 
+# When unsure: one short question, never a guessed card (S2-9); the examples are chips under it.
 FALLBACK = (
-    "I can help with these in the demo: change your hours, add an item, mark something sold "
-    "out, visits this week, best sellers or tomorrow’s prep. Tap one to try it."
+    "Sorry, I didn't catch that. What would you like to do: change a price, mark something "
+    "sold out, or something else?"
 )
 # Tappable examples under the fallback (O-2); each one has a deterministic demo answer.
 SUGGESTIONS = (
@@ -31,8 +42,11 @@ FIND_SUPPLIERS = re.compile(
     r"\b(?:find|need|search|looking\s+for)\b[^.?!]*\bsuppliers?\b|सप्लायर[^।?!]*(?:ढूँढ|ढूंढ|खोज)",
     re.I,
 )
+# Running low, not sold out: "समोसा खत्म हो गया" is an availability statement (OB-261), while
+# "दूध ख़त्म होने वाला है" and "आटा ख़त्म हो रहा है" are about to run out.
 LOW_ON = re.compile(
-    r"\b(?:running\s+low|low\s+on|run\s+out\s+of|restock)\b|कम\s+हो|ख़?त्म\s+हो", re.I
+    r"\b(?:running\s+low|low\s+on|run\s+out\s+of|restock)\b|कम\s+हो|ख़?त्म\s+हो(?:ने|\s+रह)",
+    re.I,
 )
 DRAFT_QUANTITY = 10
 # An amount the owner said ("I need 20 L milk", Buy stock → Find a supplier): the draft uses it.
@@ -635,6 +649,18 @@ async def public_demo_turn(ctx: Any, question: str) -> list[StreamEvent] | None:
         return None
     text = _plain(question)
     reply: str | None = None
+    # The owner's own words first: Hindi, Hinglish and two-in-one changes, "what first?", today's
+    # sales, closing the day, tomorrow's note and the app language (OB-261, 262, 264, S2-9).
+    found = (
+        app_language(question)
+        or tomorrow_note(ctx, question)
+        or await first_jobs(ctx, question)
+        or sales_today(ctx, question)
+        or close_day(ctx, question)
+        or owner_changes(ctx, question)
+    )
+    if found:
+        return found
     if not NEGATION.search(text):
         events = await _order_from(ctx, question) or await _find_suppliers(ctx, question)
         if events:
@@ -670,8 +696,8 @@ async def public_demo_turn(ctx: Any, question: str) -> list[StreamEvent] | None:
     reply = reply or public_demo_reply(ctx, question)
     if reply is None:
         return None
-    if reply == FALLBACK:
-        return [StreamEvent(kind="reply", text=reply, data={"suggestions": list(SUGGESTIONS)})]
+    if reply in {FALLBACK, FALLBACK_HI}:
+        return unsure(ctx, question)
     events = [StreamEvent(kind="reply", text=reply)]
     if reply.startswith("The demo forecast"):
         from .charts import forecast_card

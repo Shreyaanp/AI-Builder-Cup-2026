@@ -22,6 +22,7 @@ from app.app_guide import (
     explain_app,
     export,
     guide_reply,
+    where_hi,
 )
 from app.instant import SCREEN_RULES
 from app.voice_tools import SCREENS
@@ -157,7 +158,7 @@ def test_demo_answers_every_chat_phrase_on_topic_with_its_screen_path(app, featu
         app.state.v1_settings.public_demo_enabled = True
         message = feature.ask if lang == "en" else feature.ask_hi
         reply, events = _ask(client, app, message)
-    line = f"Next, open {feature.where}." if lang == "en" else f"अब {feature.where} खोलें।"
+    line = f"Next, open {feature.where}." if lang == "en" else f"अब {where_hi(feature.id)} खोलें।"
     assert reply.count(line) == 1, (message, reply)
     assert re.search(TOPICS[feature.id][lang], reply, re.I), (message, reply)
     actions = [e["data"]["target"] for e in events if e.get("kind") == "action"]
@@ -183,7 +184,7 @@ def test_demo_answers_every_chat_phrase_on_topic_with_its_screen_path(app, featu
             r"दूध के लिए पास के डेमो सप्लायर: 1\. Sri Lakshmi Provisions \(Demo\), [\d.]+ किमी, ₹54 "
             r"प्रति लीटर; 2\. FreshMart \(Demo\), [\d.]+ किमी, ₹29 प्रति पैक। Sri Lakshmi Provisions "
             r"\(Demo\) से 20 लीटर दूध का ऑर्डर नीचे तैयार है। आपके भेजे बिना कुछ नहीं जाता, और यह "
-            r"सिर्फ़ डेमो है। अब Grow → Buy stock → Find a supplier खोलें।",
+            r"सिर्फ़ डेमो है। अब बढ़ाएँ → माल मँगाएँ → सप्लायर ढूँढें खोलें।",
             None,
         ),
         # The PR's own "Owner looks at" phrases.

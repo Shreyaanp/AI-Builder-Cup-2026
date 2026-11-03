@@ -9,10 +9,12 @@ from datetime import date
 from typing import Any, cast
 
 from .app_guide import next_line_hi
+from .demo_coach_words import FALLBACK_HI
 from .demo_item_names import HINDI_UNITS, hindi_item, item_named_in
 
-# "मेरा दूध कम हो रहा है" or "मेरी चीनी कम हो रही है": the words between are the item.
-LOW_HI = re.compile(r"मेर[ाी]\s+(?P<item>[^।?]{1,40}?)\s+कम\s+हो\s+रह[ाी]")
+# "मेरा दूध कम हो रहा है", "मेरी चीनी कम हो रही है" or the tour's "मेरा आटा ख़त्म हो रहा है": the
+# words between are the item.
+LOW_HI = re.compile(r"मेर[ाी]\s+(?P<item>[^।?]{1,40}?)\s+(?:कम|ख़?त्म)\s+हो\s+रह[ाी]")
 HINDI_BEST_SELLERS = re.compile(r"सबसे\s+\S*यादा\s+(?:\S+\s+)?बिक|बेस्ट\s*सेलर|टॉप\s*सेलर")
 
 
@@ -76,7 +78,9 @@ def hindi_reply(
         rows = [row for row in history if row["date"] == today.isoformat()]
         sold = sum(row["quantity"] for row in rows)
         revenue = sum(row.get("revenue", row.get("amount", 0)) for row in rows)
-        return f"आज डेमो में {sold:g} चीज़ें बिकीं और बिक्री ₹{revenue:g} रही।"
+        # Saved in paise: ₹20, never ₹2000 (OB-264).
+        rupees = to_major(int(revenue), shop_currency(business))
+        return f"आज डेमो में {sold:g} चीज़ें बिकीं और बिक्री ₹{rupees:,.0f} रही।"
     if any(term in words for term in ("स्टॉक", "बचा", "उपलब्ध", "खत्म", "ख़त्म", "कम")):
         if said and not saved:
             return f"डेमो दुकान में {hindi_item(said)} का स्टॉक दर्ज नहीं है।"
@@ -112,4 +116,7 @@ def hindi_reply(
         return f"डेमो दुकान का समय {fields.get('hours', 'दिया नहीं गया')} है।"
     if any(term in words for term in ("ग्राहक", "सवाल", "जवाब", "संदेश")):
         return f"डेमो दुकान में {len(inquiries)} ग्राहक सवाल हैं।"
-    return "मैं आज की बिक्री, कल की तैयारी या स्टॉक के बारे में बता सकती हूँ।"
+    if "नमस्ते" in words:
+        return "नमस्ते! मैं आज की बिक्री, कल की तैयारी या स्टॉक के बारे में बता सकती हूँ। क्या जानना है?"
+    # Unsure: one short question in Hindi, with examples to tap (S2-9).
+    return FALLBACK_HI

@@ -12,7 +12,7 @@ import re
 from collections import OrderedDict
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 import anyio
 
@@ -24,6 +24,9 @@ from .discover import open_now
 from .region import shop_currency, shop_zone
 from .rescue import local_now
 from .voice_tools import SCREENS, get_customer_messages, open_screen, set_open_today
+
+if TYPE_CHECKING:
+    from .owner_promise import Promise
 
 Embedder = Callable[[str], list[float]]
 
@@ -331,20 +334,12 @@ def promise_words(lowered: str) -> str | None:
     return None
 
 
-def _promise(ctx: MerchantContext, what: str, hindi: bool = False) -> InstantResult:
-    """Write tomorrow's promise and say where it will be. The owner's words are kept as said;
-    "order milk" with a Milk item on the menu gets an Order button tomorrow morning."""
-    from .owner_promise import NewPromise, consent_current, set_promise
+def save_promise(ctx: MerchantContext, what: str) -> "Promise":
+    """Write tomorrow's promise, as said. "order milk" with a Milk item on the menu gets an
+    Order button tomorrow morning; the demo coach writes it the same way (S2-9)."""
+    from .owner_promise import NewPromise, set_promise
 
     fields, inventory = _shop(ctx)
-    # Like the close screen's route (428 there): nothing is written before the current terms.
-    if not fields.get("demo") and not consent_current(ctx.store, ctx.uid):
-        return InstantResult(
-            "promise",
-            "पहले नई शर्तें स्वीकार करें। फिर मैं इसे कल के लिए लिख लूँगा।"
-            if hindi
-            else "Please accept the updated terms first. Then I can write this down for tomorrow.",
-        )
     kind: Literal["order", "make", "note"] = "note"
     item: str | None = None
     for pattern, named in ((ORDER_WORDS, "order"), (MAKE_WORDS, "make")):
@@ -358,13 +353,30 @@ def _promise(ctx: MerchantContext, what: str, hindi: bool = False) -> InstantRes
             if item:
                 kind = "order" if named == "order" else "make"
             break
-    promise = set_promise(
+    return set_promise(
         ctx.store,
         ctx.business_id or "",
         fields,
         NewPromise(text=what, kind=kind, item=item),
         uid=ctx.uid,
     )
+
+
+def _promise(ctx: MerchantContext, what: str, hindi: bool = False) -> InstantResult:
+    """Write tomorrow's promise and say where it will be. The owner's words are kept as said;
+    "order milk" with a Milk item on the menu gets an Order button tomorrow morning."""
+    from .owner_promise import consent_current
+
+    fields, _ = _shop(ctx)
+    # Like the close screen's route (428 there): nothing is written before the current terms.
+    if not fields.get("demo") and not consent_current(ctx.store, ctx.uid):
+        return InstantResult(
+            "promise",
+            "पहले नई शर्तें स्वीकार करें। फिर मैं इसे कल के लिए लिख लूँगा।"
+            if hindi
+            else "Please accept the updated terms first. Then I can write this down for tomorrow.",
+        )
+    promise = save_promise(ctx, what)
     if hindi:
         return InstantResult(
             "promise",

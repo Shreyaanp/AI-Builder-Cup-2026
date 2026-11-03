@@ -244,7 +244,8 @@ def test_O_2_demo_coach_reads_hours_items_and_visits_as_meant(app, monkeypatch):
         app.state.rate_limiter.counters.clear()
 
 
-EXAMPLES = "I can help with these in the demo"
+# Unsure: one short question, never a guessed card, with the examples as chips under it (S2-9).
+EXAMPLES = "?"
 CLOSE_22 = {"line": "Closing time 21:00 → 22:00 on every open day", "close": "22:00"}
 NEW_PRICE = {
     "line": "Samosa: price ₹20 → ₹25 per piece",
@@ -387,7 +388,14 @@ DEMO_COACH_PHRASINGS: list[tuple[str, dict]] = [
     ("samosa sold out tomorrow", {"reply": EXAMPLES}),
     ("samosa sold out on Sunday", {"reply": EXAMPLES}),
     ("Kaya toast sold out", {"reply": EXAMPLES}),
-    ("Samosa sold out and masala chai price 25", {"reply": EXAMPLES}),
+    # Two changes in one message are one card (OB-262).
+    (
+        "Samosa sold out and masala chai price 25",
+        {
+            "line": "Samosa: sold out; Masala chai: price ₹20 → ₹25 per cup",
+            "products": [("Samosa", 2000, "piece", False), ("Masala chai", 2500, "cup", True)],
+        },
+    ),
     ("samosa back in stock", {"reply": "Samosa is already available on your demo menu"}),
     ("Is samosa sold out?", {"reply": "Demo stock shows Samosa: on sale"}),
     ("samosa is 25 years old", {"reply": "demo price for Samosa is ₹20."}),
@@ -517,18 +525,22 @@ def test_O_2_demo_coach_builds_a_card_only_for_an_exact_request(app):  # noqa: N
                     wrong.append((message, expected, got))
                 elif expected.get("absent", "\0") in text:
                     wrong.append((message, expected, got))
-                elif expected.get("reply") == EXAMPLES and offered != {
-                    "suggestions": list(SUGGESTIONS)
-                }:
+                elif expected.get("reply") == EXAMPLES and (
+                    text.count("?") != 1 or offered != {"suggestions": list(SUGGESTIONS)}
+                ):
                     wrong.append((message, expected, got))
                 continue
             if len(cards) != 1 or f"check: {expected['line']}." not in text:
                 wrong.append((message, expected, got))
                 continue
             card = cards[0]
-            if "product" in expected:
-                name, price, unit, available = expected["product"]
-                want = [{"name": name, "price": price, "unit": unit, "available": available}]
+            if "product" in expected or "products" in expected:
+                want = [
+                    {"name": name, "price": price, "unit": unit, "available": available}
+                    for name, price, unit, available in expected.get(
+                        "products", [expected.get("product")]
+                    )
+                ]
                 have = [
                     {key: p[key] for key in ("name", "price", "unit", "available")}
                     for p in card["products"]

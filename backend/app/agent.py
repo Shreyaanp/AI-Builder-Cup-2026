@@ -322,7 +322,13 @@ NUMBER_WORDS = {
         "fifteen sixteen seventeen eighteen nineteen twenty".split()
     )
 }
-SOLD_OUT = r"sold\s*out|finished|out of stock|not available|unavailable"
+# Also Hinglish ("samosa khatam ho gaya", "samosa nahi hai"); "khatam ho rahi" is running low
+# (find suppliers), never sold out (OB-262).
+SOLD_OUT = (
+    r"sold\s*out|finished|out of stock|not available|unavailable"
+    r"|(?:khatam|khatm|khattam|khalas|khallas)(?!\s+(?:ho\s+rah|hone))"
+    r"|nahin?\s+(?:hai|bacha)|bik\s+gay[aie]"
+)
 BACK = r"back(?:\s+in\s+stock)?|available again|in stock"
 # Spoken currency names and the shop currencies they can mean; a price in another currency is
 # never converted or guessed.
@@ -473,10 +479,14 @@ def upkeep_call(question: str, ctx: Any) -> types.Part | None:
         return None
     names = sorted({p["name"] for p in inventory}, key=len, reverse=True)
     items: dict[str, dict[str, object]] = {}
-    for clause in re.split(r"[,;.\n]|\band\b|\bbut\b", question, flags=re.I):
+    for clause in re.split(r"[,;.\n]|\band\b|\baur\b|\bbut\b", question, flags=re.I):
         lowered = clause.casefold()
         name = next((n for n in names if n.casefold() in lowered), None)
         if not name:
+            # "Chai is 20 rupees now, samosa sold out" with no item called Chai: a card for the
+            # rest would silently drop that change, so the coach model reads it (OB-262).
+            if re.search(rf"\d|\b(?:{SOLD_OUT})\b", lowered):
+                return None
             continue
         rest = lowered.split(name.casefold(), 1)[1]
         if re.search(rf"\b(?:{SOLD_OUT})\b", rest):
