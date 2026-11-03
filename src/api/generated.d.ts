@@ -2849,6 +2849,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/businesses/{business_id}/supply/orders/{order_id}/received/undo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Undo Received
+         * @description Undo "Goods arrived": the order is on its way again and the stock is as before.
+         */
+        post: operations["undo_received_api_v1_businesses__business_id__supply_orders__order_id__received_undo_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/businesses/{business_id}/supply/board": {
         parameters: {
             query?: never;
@@ -13172,6 +13192,44 @@ export interface operations {
         };
     };
     received_api_v1_businesses__business_id__supply_orders__order_id__received_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+                order_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Version"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    undo_received_api_v1_businesses__business_id__supply_orders__order_id__received_undo_post: {
         parameters: {
             query?: never;
             header?: never;
