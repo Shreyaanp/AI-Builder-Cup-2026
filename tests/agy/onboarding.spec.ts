@@ -83,7 +83,11 @@ test.describe('Onboarding end-to-end flows on phone (390px)', () => {
     await expect(
       page.getByRole('heading', { name: /Congratulations, Green Leaf Tea is live!/ }),
     ).toBeVisible({ timeout: 15_000 })
-    await expect(page.getByTestId('shop-link')).toContainText('/s/')
+    // OB-292: sharing opens on demand; the link keeps the shop's /s/ address.
+    await page.locator('summary').filter({ hasText: 'Share' }).click()
+    await expect(
+      page.getByTestId('shop-link').getByRole('link', { name: 'Your shop link' }),
+    ).toHaveAttribute('href', /\/s\//)
     await expect(page.getByTestId('shop-qr').getByRole('img')).toBeVisible()
     await expect(page.getByRole('link', { name: 'Open my shop page' })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Add your menu' })).toBeVisible()
@@ -116,6 +120,7 @@ test.describe('Onboarding end-to-end flows on phone (390px)', () => {
     await expect(
       page.getByRole('heading', { name: /Congratulations, Golden Bakes is live!/ }),
     ).toBeVisible({ timeout: 15_000 })
+    await page.locator('summary').filter({ hasText: 'Share' }).click() // OB-292
     await expect(page.getByTestId('shop-link')).toBeVisible()
     await expect(page.getByTestId('shop-qr')).toBeVisible()
   })

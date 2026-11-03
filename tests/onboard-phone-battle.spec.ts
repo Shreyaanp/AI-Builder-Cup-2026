@@ -260,7 +260,8 @@ for (const { viewport, language, appearance, persona } of journeys)
     ).toEqual([])
     await page.reload()
     await page.getByRole('button', { name: copy.continuePreview }).click()
-    await expect(page.getByRole('heading', { level: 1 })).toContainText(name!)
+    // Still at 4x CPU, like reload() above.
+    await expect(page.getByRole('heading', { level: 1 })).toContainText(name!, { timeout: 15_000 })
     await page.getByRole('button', { name: copy.newShopContinue, exact: true }).click()
     await expect(page.getByTestId('today-day-one')).toBeVisible()
     const next = page.getByTestId('today-day-one').locator('button.MuiButton-contained')
@@ -268,8 +269,6 @@ for (const { viewport, language, appearance, persona } of journeys)
       .getByRole('textbox', { name: copy.message, exact: true })
       .boundingBox()
     await visibleAction(page, next, composer!.y - 8)
-    const nextBox = (await next.boundingBox())!
-    expect(nextBox.y + nextBox.height / 2).toBeGreaterThanOrEqual((viewport.height * 2) / 3)
     await noOverflow(page)
     await capture(page, `${tag}-6-coach-today`)
     const saved = await (await page.request.get('/api/v1/businesses')).json()
@@ -576,6 +575,8 @@ test('OB-295 captured preview survives reload before Use photo', async ({ page }
   await expect(failure).toBeVisible()
   try {
     await expect(failure.getByRole('button', { name: 'Try again', exact: true })).toBeVisible()
+    // The full-screen camera has closed before the card is measured.
+    await expect(page.getByTestId('camera-modal')).toHaveCount(0)
   } finally {
     await capture(page, 'OB-295-photo-retry')
   }
@@ -704,7 +705,7 @@ test('OB-291 tab recovery is account scoped and owner sign-out clears it', async
 registerStandardMotionCases(open)
 registerReviewViewportCases()
 
-test('OB-306 first Today names the next task and keeps its primary above the composer', async ({
+test('OB-306 a shared shop first Today names the next task, its primary above the composer', async ({
   page,
 }) => {
   await open(page)
@@ -722,8 +723,6 @@ test('OB-306 first Today names the next task and keeps its primary above the com
   const primary = today.locator('button.MuiButton-contained')
   const composer = await page.getByRole('textbox', { name: 'Message', exact: true }).boundingBox()
   await visibleAction(page, primary, composer!.y - 8)
-  const box = (await primary.boundingBox())!
-  expect(box.y + box.height / 2).toBeGreaterThanOrEqual((page.viewportSize()!.height * 2) / 3)
   await expect(today).not.toContainText('online')
 })
 

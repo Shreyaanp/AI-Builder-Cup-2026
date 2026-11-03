@@ -112,7 +112,8 @@ for (const colorScheme of ['light', 'dark'] as const) {
           await open(page)
           await expect(page.getByRole('log')).toHaveCount(0)
           await expect(
-            page.getByRole('region', { name: 'Scan your menu or shop board' }),
+            // OB-302: the empty Coach leads with adding the shop.
+            page.getByRole('region', { name: 'Add my shop' }),
           ).toBeVisible()
           break
         case 'Review':

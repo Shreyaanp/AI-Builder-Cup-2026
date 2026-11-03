@@ -201,7 +201,7 @@ for (const language of LANGUAGES) {
   test.describe(`vendor onboarding · ${language.name}`, () => {
     test.use({ locale: language.locale })
 
-    test('one sentence puts the shop live; no menu or halal question; hours skip; photo Skip; summary; face skip; Today asks for the menu', async ({
+    test('one sentence puts the shop live; no menu or halal question; hours skip; photo Skip; summary; Today asks for the menu', async ({
       page,
     }) => {
       dependsOn('onboarding v2 (#91)', onboardingV2)
@@ -243,9 +243,13 @@ for (const language of LANGUAGES) {
       for (const question of Object.values(ASKED))
         expect(said.split(question).length - 1, question).toBeLessThanOrEqual(1)
       expect((await businesses(page))[0]!.fields.profile?.kind).toBe('service')
-      // The face check is offered and skippable; the shop opens; Today asks for the menu first.
-      await expect(summary).toContainText(copy.faceOffer!)
-      await summary.getByRole('button', { name: copy.skipForNow!, exact: true }).click()
+      // OB-304: face/liveness is deferred, so the summary has one way on: the shop opens; Today
+      // asks for the menu first.
+      await expect(summary).not.toContainText(copy.faceOffer!)
+      await expect(summary.getByRole('button', { name: copy.faceStart!, exact: true })).toHaveCount(
+        0,
+      )
+      await summary.getByRole('button', { name: copy.done!, exact: true }).click()
       await expect(page.getByRole('heading', { level: 1 })).toContainText('Clean Helmet Point')
       await page.getByRole('button', { name: copy.newShopContinue! }).click()
       const today = page.getByTestId('today-day-one')
@@ -364,11 +368,8 @@ for (const language of LANGUAGES) {
       await expect(page.getByTestId('shop-so-far')).toContainText('Lakshmi Tea Stall')
       await page.reload()
       await page.getByRole('button', { name: copy.continuePreview! }).click()
-      const start = page.getByRole('button', { name: copy.begin! })
-      const add = page.getByRole('banner').getByRole('button', { name: copy.addShop! })
-      await expect(start.or(add)).toBeVisible()
-      if (!(await start.isVisible())) await add.click()
-      await start.click()
+      // OB-291: the conversation comes straight back, without another welcome or start tap.
+      await expect(page).toHaveURL(/new-shop\?step=chat/)
       await expect(page.getByTestId('shop-so-far')).toContainText('Lakshmi Tea Stall')
       await expect(page.getByTestId('map-card')).toBeVisible()
       await page.waitForTimeout(1_500)
