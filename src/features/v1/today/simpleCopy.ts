@@ -26,7 +26,7 @@ export type SimpleCopy = {
 
 const copy: Record<Locale, SimpleCopy> = {
   en: {
-    askPlaceholder: 'Ask or say anything…',
+    askPlaceholder: 'Ask anything…',
     whatCanIAsk: 'What can I ask?',
     moreOptions: 'More options',
     startAgain: 'Start again',
@@ -40,7 +40,7 @@ const copy: Record<Locale, SimpleCopy> = {
     chipMenu: 'Change my menu',
   },
   'zh-Hans': {
-    askPlaceholder: '随便问或说点什么…',
+    askPlaceholder: '随便问…',
     whatCanIAsk: '我可以问什么？',
     moreOptions: '更多选项',
     startAgain: '重新开始',
@@ -54,7 +54,7 @@ const copy: Record<Locale, SimpleCopy> = {
     chipMenu: '改菜单',
   },
   ms: {
-    askPlaceholder: 'Tanya atau sebut apa saja…',
+    askPlaceholder: 'Tanya apa saja…',
     whatCanIAsk: 'Apa yang boleh saya tanya?',
     moreOptions: 'Lagi pilihan',
     startAgain: 'Mula semula',
@@ -68,7 +68,7 @@ const copy: Record<Locale, SimpleCopy> = {
     chipMenu: 'Tukar menu',
   },
   ta: {
-    askPlaceholder: 'எதையும் கேளுங்கள் அல்லது சொல்லுங்கள்…',
+    askPlaceholder: 'எதையும் கேளுங்கள்…',
     whatCanIAsk: 'நான் என்ன கேட்கலாம்?',
     moreOptions: 'மேலும் விருப்பங்கள்',
     startAgain: 'மீண்டும் தொடங்கு',
@@ -82,7 +82,7 @@ const copy: Record<Locale, SimpleCopy> = {
     chipMenu: 'மெனுவை மாற்று',
   },
   ja: {
-    askPlaceholder: '何でも聞いたり話したりできます…',
+    askPlaceholder: '何でも聞いてください…',
     whatCanIAsk: '何を聞けますか？',
     moreOptions: 'その他',
     startAgain: 'はじめからやり直す',
@@ -96,7 +96,7 @@ const copy: Record<Locale, SimpleCopy> = {
     chipMenu: 'メニューを変える',
   },
   ko: {
-    askPlaceholder: '무엇이든 묻거나 말해 보세요…',
+    askPlaceholder: '무엇이든 물어보세요…',
     whatCanIAsk: '무엇을 물어볼 수 있나요?',
     moreOptions: '더보기',
     startAgain: '다시 시작',
@@ -110,7 +110,7 @@ const copy: Record<Locale, SimpleCopy> = {
     chipMenu: '메뉴 바꾸기',
   },
   id: {
-    askPlaceholder: 'Tanya atau ucapkan apa saja…',
+    askPlaceholder: 'Tanya apa saja…',
     whatCanIAsk: 'Apa yang bisa saya tanyakan?',
     moreOptions: 'Opsi lain',
     startAgain: 'Mulai lagi',
@@ -124,7 +124,7 @@ const copy: Record<Locale, SimpleCopy> = {
     chipMenu: 'Ubah menu',
   },
   th: {
-    askPlaceholder: 'ถามหรือพูดอะไรก็ได้…',
+    askPlaceholder: 'ถามอะไรก็ได้…',
     whatCanIAsk: 'ถามอะไรได้บ้าง?',
     moreOptions: 'ตัวเลือกเพิ่มเติม',
     startAgain: 'เริ่มใหม่',
@@ -138,7 +138,7 @@ const copy: Record<Locale, SimpleCopy> = {
     chipMenu: 'แก้เมนู',
   },
   vi: {
-    askPlaceholder: 'Hỏi hoặc nói bất cứ điều gì…',
+    askPlaceholder: 'Hỏi bất cứ điều gì…',
     whatCanIAsk: 'Tôi có thể hỏi gì?',
     moreOptions: 'Tùy chọn khác',
     startAgain: 'Bắt đầu lại',
@@ -152,7 +152,7 @@ const copy: Record<Locale, SimpleCopy> = {
     chipMenu: 'Đổi thực đơn',
   },
   fil: {
-    askPlaceholder: 'Magtanong o magsabi ng kahit ano…',
+    askPlaceholder: 'Magtanong ng kahit ano…',
     whatCanIAsk: 'Ano ang puwede kong itanong?',
     moreOptions: 'Iba pang opsyon',
     startAgain: 'Magsimula ulit',
@@ -166,7 +166,7 @@ const copy: Record<Locale, SimpleCopy> = {
     chipMenu: 'Baguhin ang menu',
   },
   hi: {
-    askPlaceholder: 'कुछ भी पूछें या बोलें…',
+    askPlaceholder: 'कुछ भी पूछें…',
     whatCanIAsk: 'क्या-क्या पूछ सकते हैं?',
     moreOptions: 'और विकल्प',
     startAgain: 'फिर से शुरू करें',
@@ -180,7 +180,7 @@ const copy: Record<Locale, SimpleCopy> = {
     chipMenu: 'मेन्यू बदलें',
   },
   bn: {
-    askPlaceholder: 'যা খুশি জিজ্ঞেস করুন বা বলুন…',
+    askPlaceholder: 'যা খুশি জিজ্ঞেস করুন…',
     whatCanIAsk: 'কী কী জিজ্ঞেস করা যায়?',
     moreOptions: 'আরও বিকল্প',
     startAgain: 'আবার শুরু করুন',
@@ -194,7 +194,7 @@ const copy: Record<Locale, SimpleCopy> = {
     chipMenu: 'মেনু বদলান',
   },
   te: {
-    askPlaceholder: 'ఏదైనా అడగండి లేదా చెప్పండి…',
+    askPlaceholder: 'ఏదైనా అడగండి…',
     whatCanIAsk: 'ఏమేమి అడగవచ్చు?',
     moreOptions: 'మరిన్ని ఎంపికలు',
     startAgain: 'మళ్లీ మొదలుపెట్టండి',
@@ -208,7 +208,7 @@ const copy: Record<Locale, SimpleCopy> = {
     chipMenu: 'మెనూ మార్చండి',
   },
   mr: {
-    askPlaceholder: 'काहीही विचारा किंवा बोला…',
+    askPlaceholder: 'काहीही विचारा…',
     whatCanIAsk: 'काय काय विचारता येईल?',
     moreOptions: 'आणखी पर्याय',
     startAgain: 'पुन्हा सुरू करा',
@@ -222,7 +222,7 @@ const copy: Record<Locale, SimpleCopy> = {
     chipMenu: 'मेन्यू बदला',
   },
   kn: {
-    askPlaceholder: 'ಏನನ್ನಾದರೂ ಕೇಳಿ ಅಥವಾ ಹೇಳಿ…',
+    askPlaceholder: 'ಏನನ್ನಾದರೂ ಕೇಳಿ…',
     whatCanIAsk: 'ಏನೇನು ಕೇಳಬಹುದು?',
     moreOptions: 'ಇನ್ನಷ್ಟು ಆಯ್ಕೆಗಳು',
     startAgain: 'ಮತ್ತೆ ಪ್ರಾರಂಭಿಸಿ',

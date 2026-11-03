@@ -111,7 +111,7 @@ for (const [hh, mm] of [
     await expect(chips.getByRole('button', { name: 'What can I ask?' })).toBeVisible()
     await expect(page.getByRole('textbox', { name: 'Message', exact: true })).toHaveAttribute(
       'placeholder',
-      'Ask or say anything…',
+      'Ask anything…',
     )
     expect(await fitsWidth(page)).toBe(true)
     await page.screenshot({ path: test.info().outputPath(`today-${hh}${mm}-390.png`) })
@@ -126,7 +126,11 @@ for (const [width, height] of [
     test(`Coach Today at ${width} ${scheme}: one filled button, ≤ 12 taps, no sideways scroll`, async ({
       page,
     }) => {
-      await page.emulateMedia({ colorScheme: scheme })
+      await page.addInitScript(
+        (appearance) =>
+          localStorage.setItem('niva.starter.preferences', JSON.stringify({ appearance })),
+        scheme,
+      )
       await openDemo(page, 10, 0, width, height)
       const view = await todayView(page)
       expect(view.filled).toHaveLength(1)
@@ -283,7 +287,7 @@ test('Hindi: Today’s chips, placeholder and ⋯ are fully Hindi', async ({ pag
   await expect(chips.getByRole('button', { name: 'क्या-क्या पूछ सकते हैं?' })).toBeVisible()
   await expect(page.locator('#coach textarea:not([aria-hidden])')).toHaveAttribute(
     'placeholder',
-    'कुछ भी पूछें या बोलें…',
+    'कुछ भी पूछें…',
   )
   await expect(page.getByRole('button', { name: 'और विकल्प', exact: true })).toBeVisible()
   await expect(page.getByTestId('today')).not.toContainText(/[A-Za-z]{4,} [a-z]{3,} [a-z]{3,}/)
