@@ -4,6 +4,7 @@ import { Button, IconButton, Snackbar, useMediaQuery, useTheme } from '@mui/mate
 import { X } from 'lucide-react'
 import { canOfferInstall, offerInstall, rememberInstallDeclined } from '../../app/pwa'
 import { useCopy } from './strings'
+import { newlySoldOut, useSoldOutUndoCopy } from './soldOutUndo'
 import type { Api, Business, Me, Product, Proposal } from './api'
 import { WorkspaceContext } from './workspaceContext'
 import type { Destination, Editor, NewShopPhase, Workspace } from './workspaceContext'
@@ -106,6 +107,9 @@ export function WorkspaceProvider({
     return () => window.removeEventListener('popstate', restore)
   }, [])
   const [toast, setToast] = useState('')
+  // Items a confirmed change just marked sold out: the saved note offers Undo (OB-261).
+  const [undoSoldOut, setUndoSoldOut] = useState<string[]>([])
+  const undoCopy = useSoldOutUndoCopy()
   const [photoPending, setPhotoPending] = useState(false)
   const consumePhotoRequest = useCallback(() => setPhotoPending(false), [])
   // A chat starter from another screen (e.g. My shop's "Customers ask" card).
@@ -184,8 +188,8 @@ export function WorkspaceProvider({
   }, [activeId, api])
 
   const setAvailability = useCallback(
-    async (product: Product, available: boolean) => {
-      if (!activeId || !product.id) return
+    async (product: Product, available: boolean): Promise<boolean> => {
+      if (!activeId || !product.id) return false
       // Optimistic: the switch moves at once; a failure restores the saved state.
       setInventory((current) => ({
         ...current,
@@ -199,6 +203,7 @@ export function WorkspaceProvider({
           body: JSON.stringify({ available }),
         })
         await reload()
+        return true
       } catch {
         setInventory((current) => ({
           ...current,
@@ -207,6 +212,7 @@ export function WorkspaceProvider({
           ),
         }))
         setToast(t.actionFailed)
+        return false
       }
     },
     [activeId, api, reload, t.actionFailed],
@@ -387,6 +393,10 @@ export function WorkspaceProvider({
           onSaved={async (businessId) => {
             const isNew = !businesses.some((shop) => shop.id === businessId)
             const saved = proposal?.id
+            const soldOut = newlySoldOut(
+              proposal,
+              inventory.bid === businessId ? inventory.items : [],
+            )
             if (saved) setSavedProposals((ids) => [...ids, saved].slice(-40))
             setProposal(null)
             await reload()
@@ -394,7 +404,8 @@ export function WorkspaceProvider({
             if (isNew) setDestination('coach')
             await loadProducts(businessId).catch(() => undefined)
             // Offer installation only after useful progress, never up front.
-            if (!isNew && canOfferInstall()) setInstallOffer(true)
+            if (soldOut.length) setUndoSoldOut(soldOut)
+            else if (!isNew && canOfferInstall()) setInstallOffer(true)
             else setToast(t.saved)
           }}
         />
@@ -471,6 +482,33 @@ export function WorkspaceProvider({
           />
         </Suspense>
       )}
+      <Snackbar
+        open={undoSoldOut.length > 0}
+        message={undoCopy.soldOut(undoCopy.names(undoSoldOut))}
+        autoHideDuration={8000}
+        onClose={(_, reason) => {
+          if (reason !== 'clickaway') setUndoSoldOut([])
+        }}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        sx={{ bottom: { xs: 'calc(96px + env(safe-area-inset-bottom))', sm: 24 } }}
+        action={
+          <Button
+            color="inherit"
+            onClick={() => {
+              const names = undoSoldOut
+              setUndoSoldOut([])
+              const items = inventory.items.filter((item) => names.includes(item.name))
+              void Promise.all(items.map((item) => setAvailability(item, true))).then((done) => {
+                if (done.length && done.every(Boolean))
+                  setToast(undoCopy.back(undoCopy.names(names)))
+              })
+            }}
+            sx={{ color: theme.material.inversePrimary, minHeight: 48 }}
+          >
+            {undoCopy.undo}
+          </Button>
+        }
+      />
       <Snackbar
         open={Boolean(toast)}
         message={toast}

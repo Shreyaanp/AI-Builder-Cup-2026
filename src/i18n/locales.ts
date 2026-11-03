@@ -44,7 +44,7 @@ export const LOCALE_NAMES: Record<Locale, string> = {
 }
 
 /** Map a BCP 47 tag from the browser to a supported locale (undefined if unsupported). */
-function matchOne(tag: string): Locale | undefined {
+export function matchOne(tag: string): Locale | undefined {
   const lower = tag.toLowerCase()
   const base = lower.split('-')[0] ?? ''
   if (base === 'zh') return 'zh-Hans' // Traditional Chinese readers get Simplified until zh-Hant ships.

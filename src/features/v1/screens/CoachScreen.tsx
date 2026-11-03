@@ -78,6 +78,7 @@ import { RateLimitError, streamCoach, TooSlowError, TURN_IDLE_MS } from '../../.
 import type { CoachEvent } from '../../../api/stream'
 import { useIdentity } from '../../../auth/useIdentity'
 import { useLocale } from '../../../state/hooks'
+import { productName } from '../../../i18n/productNames'
 import { ApiError } from '../api'
 import type { Conversation, PhotoResult, Proposal } from '../api'
 import { defaultCurrency } from '../format'
@@ -441,9 +442,11 @@ function CoachScreen({
       if (event.kind === 'action') {
         const action = asCoachAction(event.data)
         if (action) {
-          setMessages((items) =>
-            [...items, { role: 'action' as const, action, key: crypto.randomUUID() }].slice(-40),
-          )
+          const chip = { role: 'action' as const, action, key: crypto.randomUUID() }
+          // An offered button belongs under the answer it comes with ("what first?", OB-264), so
+          // it waits for the end of the turn like the menu links.
+          if (action.offer) menuLinks.current.push(chip)
+          else setMessages((items) => [...items, chip].slice(-40))
           // Screens open at once (everything by voice); pickers and Send wait for a tap.
           if (!NEEDS_TAP.has(action.target) && !action.offer) {
             setShowToday(action.target === 'today')
@@ -1405,7 +1408,7 @@ function CoachScreen({
                     ws.savedProposals.includes(message.proposalId) && (
                       <MenuLinkChip
                         key={message.key}
-                        label={next.seeInMenu(message.item)}
+                        label={next.seeInMenu(productName(message.item, language))}
                         onOpen={() => {
                           setMenuFocus(message.item)
                           setShopSheet('menu')

@@ -16,11 +16,11 @@ import {
 import { LOCALE_NAMES, LOCALES } from '../../i18n/locales'
 import { BrandLogo } from '../../design/BrandLogo'
 import { LanguagePicker } from './LanguagePicker'
+import { useBusinessLink } from './businessLink'
 import { AppearanceToggle } from './AppearanceToggle'
 import { useDemoCopy, useFrontCopy, useStoryCopy } from './strings'
 import './landing.css'
 
-const businessUrl = 'https://business.chalkboard.shreyaan.work'
 const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches
 // The same semantic roles and appearance as the app, including a remembered dark theme.
 const brandVars = (roles: Theme['material'], mode: Theme['palette']['mode']) =>
@@ -209,6 +209,7 @@ function StoryScreen({ step }: { step: number }) {
 }
 
 export default function Marketing() {
+  const businessLink = useBusinessLink()
   const theme = useTheme()
   const t = useFrontCopy()
   const demo = useDemoCopy()
@@ -256,7 +257,7 @@ export default function Marketing() {
             <Button
               className="lp-nav-business"
               variant="outlined"
-              href={businessUrl}
+              href={businessLink()}
               endIcon={<ArrowUpRight size={16} />}
             >
               {t.business}
@@ -291,12 +292,12 @@ export default function Marketing() {
                   className="lp-cta-business"
                   variant="outlined"
                   size="large"
-                  href={businessUrl}
+                  href={businessLink()}
                   endIcon={<ArrowUpRight size={18} />}
                 >
                   {t.business}
                 </Button>
-                <Button variant="text" size="large" href={businessUrl + '/demo'}>
+                <Button variant="text" size="large" href={businessLink('/demo')}>
                   {demo.tryDemo}
                 </Button>
               </div>
@@ -505,7 +506,7 @@ export default function Marketing() {
               {t.ctaTitle}
             </Typography>
             <div className="lp-cta">
-              <Button variant="contained" size="large" href={businessUrl}>
+              <Button variant="contained" size="large" href={businessLink()}>
                 {t.business}
               </Button>
               <Button variant="outlined" size="large" href="/explore/">

@@ -59,7 +59,10 @@ for (const width of [360, 390, 412]) {
     const hero = page.locator('.l2-hero')
     const business = hero.getByRole('link', { name: t.businessShort })
     const find = hero.getByRole('link', { name: t.findShort })
-    await expect(business).toHaveAttribute('href', 'https://business.chalkboard.shreyaan.work')
+    await expect(business).toHaveAttribute(
+      'href',
+      'https://business.chalkboard.shreyaan.work?lang=en',
+    )
     await expect(find).toHaveAttribute('href', '/explore/')
     const [a, b] = [(await business.boundingBox())!, (await find.boundingBox())!]
     expect(Math.abs(a.y - b.y)).toBeLessThan(2)

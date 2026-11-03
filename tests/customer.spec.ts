@@ -164,6 +164,7 @@ test('Signed-in customer and owner have a live two-way conversation', async ({
     await expect(messages).toContainText('Thank you!', { timeout: 5_000 })
     await messages.getByRole('button', { name: 'See translation', exact: true }).last().click()
     await expect(messages).toContainText('Sample translation for the demo')
+    // OB-305: More options sits beside Dialog's Close button on desktop without being intercepted.
     await messages.getByRole('button', { name: 'More options', exact: true }).click()
     await page.getByRole('menuitem', { name: 'Close conversation', exact: true }).click()
     await expect(customer.getByText('This conversation is closed.')).toBeVisible({
@@ -292,6 +293,7 @@ test('Polling recovers when the live stream fails, and a blocked customer cannot
     await messages.getByLabel('Reply', { exact: true }).fill('Reply through polling')
     await messages.getByRole('button', { name: 'Send message', exact: true }).click()
     await expect(thread).toContainText('Reply through polling', { timeout: 12_000 })
+    // OB-305: More options is reachable on desktop and phone to block a customer.
     await messages.getByRole('button', { name: 'More options', exact: true }).click()
     await page.getByRole('menuitem', { name: 'Block customer', exact: true }).click()
     await messages

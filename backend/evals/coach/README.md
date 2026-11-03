@@ -1,8 +1,8 @@
 # Owner coach evals (OB-173, #532)
 
 Does the owner coach pick the right action with the right arguments, ask when it should, say
-honestly when it can't, and never act on a plain question? 37 cases from real owner chats and
-known failures (English, 5 Hinglish), each run through the production ADK agent
+honestly when it can't, and never act on a plain question? 43 cases from real owner chats and
+known failures (English, 7 Hinglish, 1 Hindi), each run through the production ADK agent
 (`app/agent.py`) and its real tools on a throwaway SQLite shop.
 
 | File                  | What it is                                                          |

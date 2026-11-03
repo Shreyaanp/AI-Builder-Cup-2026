@@ -24,7 +24,20 @@ const en = {
   openToday: 'Open again today, by your usual hours.',
 }
 type Copy = typeof en
-const COPY: Record<string, Copy> = { en }
+/** Hindi: the coach's buttons name Hindi screens, so no English breadcrumb (OB-261). */
+const hi: Copy = {
+  open: (label: string) => `${label} खोलें`,
+  customerAsked: 'ग्राहक ने पूछा',
+  yourReply: 'आपका जवाब',
+  send: 'भेजें',
+  sent: 'भेज दिया',
+  notNow: 'अभी नहीं',
+  hint: 'आपके भेजें दबाने से पहले कुछ नहीं जाता।',
+  failed: 'भेजा नहीं जा सका। फिर कोशिश करें।',
+  closedToday: (day: string) => `आज के लिए बंद (${day})। कल से सामान्य समय।`,
+  openToday: 'आज फिर से खुला, आपके सामान्य समय पर।',
+}
+const COPY: Record<string, Copy> = { en, hi }
 
 function useActionCopy(): Copy {
   const locale = useLocale()

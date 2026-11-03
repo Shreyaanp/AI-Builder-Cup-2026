@@ -80,7 +80,7 @@ for (const width of [360, 390, 412]) {
     await expect(customer).toHaveAttribute('src', '/how-it-works/customer-en.mp4')
     await expect(page.getByRole('link', { name: t.tryDemo })).toHaveAttribute(
       'href',
-      'https://business.chalkboard.shreyaan.work/demo',
+      'https://business.chalkboard.shreyaan.work/demo?lang=en',
     )
     await expect(page.getByRole('link', { name: t.findPlaces })).toHaveAttribute(
       'href',

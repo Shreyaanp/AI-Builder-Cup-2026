@@ -12,7 +12,9 @@ import { businessReducer, initialBusiness, preferencesReducer } from '../state/m
 import type { Preferences } from '../state/model'
 import { IdentityProvider } from '../auth/IdentityProvider'
 import { useIdentity } from '../auth/useIdentity'
-import { isLanguagePref, resolveLocale } from '../i18n/locales'
+import { isLanguagePref, matchOne, resolveLocale } from '../i18n/locales'
+import type { Locale } from '../i18n/locales'
+import { resolveApp } from './router'
 import { loadScriptFont } from '../i18n/fonts'
 import { configureAnalytics, watchRouteChanges } from './analytics'
 import { loadBootstrap } from '../api/appConfig'
@@ -47,7 +49,35 @@ function savedAppearance(saved: SavedPreferences): Preferences['appearance'] {
   return saved?.appearance === 'system' && saved.appearanceChosen === true ? 'system' : 'light'
 }
 
+/**
+ * OB-270: the public site links here with ?lang=xx (or hl). It counts as a manual choice, is
+ * saved at once (this runs twice under StrictMode) and leaves the address bar. Unsupported codes
+ * are dropped and the saved choice stays.
+ */
+function takeLanguageHandoff(): Locale | undefined {
+  const url = new URL(location.href)
+  if (resolveApp(url) !== 'business') return undefined
+  const given = url.searchParams.get('lang') ?? url.searchParams.get('hl')
+  if (given === null) return undefined
+  url.searchParams.delete('lang')
+  url.searchParams.delete('hl')
+  history.replaceState(history.state, '', url)
+  const language = given ? matchOne(given) : undefined
+  if (!language) return undefined
+  try {
+    localStorage.setItem(
+      preferencesKey(),
+      JSON.stringify({ ...JSON.parse(localStorage.getItem(preferencesKey()) ?? '{}'), language }),
+    )
+    localStorage.setItem(languageChosenKey(), '1')
+  } catch {
+    /* Storage may be disabled; the choice still applies to this visit. */
+  }
+  return language
+}
+
 function readPreferences(): Preferences {
+  const handed = takeLanguageHandoff()
   let saved: SavedPreferences = {}
   let chosen = false
   try {
@@ -58,7 +88,7 @@ function readPreferences(): Preferences {
   } catch {
     /* Storage may be disabled. */
   }
-  const language = isLanguagePref(saved?.language) ? saved.language : 'system'
+  const language = handed ?? (isLanguagePref(saved?.language) ? saved.language : 'system')
   return {
     language,
     languageChosen: chosen || language !== 'system',

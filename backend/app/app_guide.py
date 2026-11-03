@@ -682,9 +682,53 @@ def next_line(feature_id: str) -> str:
     return f"Next, open {BY_ID[feature_id].where}."
 
 
+# The Hindi app's own labels for each step of a path (tabsCopy, growCopy, v1/locales/hi and the
+# feature copy), so a Hindi reply never names an English screen (OB-261). Labels the Hindi app
+# still shows in English (Payments & rides, Send a rider) stay as they are.
+HINDI_LABELS = {
+    "Coach": "कोच",
+    "Shop": "दुकान",
+    "Grow": "बढ़ाएँ",
+    "You": "आप",
+    "Add product": "सामान जोड़ें",
+    "Asked nearby": "आसपास पूछा गया",
+    "Buy stock": "माल मँगाएँ",
+    "Close the day": "दिन बंद करें",
+    "Closed today": "आज बंद",
+    "Find a supplier": "सप्लायर ढूँढें",
+    "Get on Google": "Google पर आएँ",
+    "How much to make": "कितना बनाना है",
+    "Link your billing app": "बिक्री का हिसाब जोड़ें",
+    "Menu": "मेन्यू",
+    "Messages": "संदेश",
+    "More": "और भी",
+    "My sales": "मेरी बिक्री",
+    "On the way": "रास्ते में",
+    "Photos": "फ़ोटो",
+    "Privacy & your data": "गोपनीयता और आपका डेटा",
+    "Remind me": "याद दिलाएँ",
+    "Rescue deals": "बचे माल के ऑफ़र",
+    "Shop details": "दुकान की जानकारी",
+    "Sold out": "खत्म",
+    "Stamp card": "स्टैम्प कार्ड",
+    "To do": "करना है",
+    "Verify it’s you": "पुष्टि करें कि यह आप हैं",
+    "What can I ask?": "मैं क्या पूछूँ?",
+    "What the coach knows": "कोच क्या जानता है",
+    "Your language (app and coach)": "आपकी भाषा (ऐप और कोच)",
+    "Your shop page": "आपकी दुकान का पेज",
+    "Your shops": "आपकी दुकानें",
+}
+
+
+def where_hi(feature_id: str) -> str:
+    """The feature's screen path with the Hindi app's labels."""
+    return " → ".join(HINDI_LABELS.get(step, step) for step in BY_ID[feature_id].path)
+
+
 def next_line_hi(feature_id: str) -> str:
-    """next_line for a Hindi phrase; the path keeps the English labels from this map."""
-    return f"अब {BY_ID[feature_id].where} खोलें।"
+    """next_line for a Hindi phrase, with the labels the Hindi app shows."""
+    return f"अब {where_hi(feature_id)} खोलें।"
 
 
 def as_dict(feature: Feature) -> dict[str, str]:
@@ -705,6 +749,7 @@ def export() -> dict[str, object]:
                 "id": f.id,
                 "title": f.title,
                 "path": list(f.path),
+                "path_hi": [HINDI_LABELS.get(step, step) for step in f.path],
                 "ask": f.ask,
                 "ask_hi": f.ask_hi,
                 "screen": f.screen,
