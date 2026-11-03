@@ -53,7 +53,9 @@ function useStock(live: boolean) {
       n.send +
       chats.filter((order) => order.status === 'needs_reply').length,
     coming:
-      pos.filter((order) => ON_THE_WAY.has(order.status) && !order.received).length +
+      pos.filter(
+        (order) => !PO_TO_DO.has(order.status) && ON_THE_WAY.has(order.status) && !order.received,
+      ).length +
       n.coming +
       chats.filter((order) => order.status === 'sent' || order.status === 'confirmed').length,
   }

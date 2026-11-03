@@ -355,6 +355,28 @@ test('Buy stock (fresh shop): an approved and sent reorder is one card in On the
   await expect(sheet.getByRole('button', { name: /^On the way/ })).toHaveText(/^On the way\s*1$/)
 })
 
+test('Buy stock (fresh shop): an order with changes to check is one card in To do, none in On the way', async ({
+  page,
+}) => {
+  await kirana(page, { width: 390, height: 844 })
+  await page.locator('[data-tour="nav-grow"]').click()
+  const sheet = await openBuyStock(page)
+  await sheet.getByRole('button', { name: 'Draft a reorder' }).click()
+  const card = sheet.getByRole('article')
+  await expect(card).toBeVisible({ timeout: 15_000 })
+  const item = ((await card.getAttribute('aria-label')) ?? '').split(' from ')[0].trim()
+  await card.getByRole('button', { name: 'Approve and send', exact: true }).click()
+  await expect(card).toContainText('Marked Sent')
+  await card.getByRole('button', { name: 'Confirm part, back-order the rest' }).click()
+  await expect(card).toContainText('Changes to check', { timeout: 15_000 })
+  await sheet.getByRole('button', { name: 'Buy stock', exact: true }).click()
+  // Changes to check is a To do state: the order is counted there once, never on the way too.
+  await expect(sheet.getByRole('button', { name: /^On the way$/ })).toBeVisible()
+  await expect(sheet.getByRole('button', { name: new RegExp(item, 'i') })).toHaveCount(1)
+  await sheet.getByRole('button', { name: /^On the way/ }).click()
+  await expect(sheet.getByText('Nothing on the way yet.')).toBeVisible()
+})
+
 test('Buy stock → Find a supplier → milk 20 L → vendor list → Order → card with Send (demo, no paid AI)', async ({
   page,
 }) => {
