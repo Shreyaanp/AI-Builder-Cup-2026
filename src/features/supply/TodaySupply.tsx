@@ -84,7 +84,7 @@ export function TodaySupply({
     need && !coming
       ? onOrderText(need)
       : orderMore && need?.runs_out
-        ? c.stillRunsOut(dayLabel(need.runs_out, locale))
+        ? c.stillRunsOut(dayLabel(need.runs_out, locale), productFeminine(item, locale))
         : ''
   const reorder = Boolean(need && (!coming || orderMore))
   return (

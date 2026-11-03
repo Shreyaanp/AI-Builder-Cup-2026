@@ -68,7 +68,11 @@ const en = {
   // Ordered already: Today says it is coming, never a second Reorder (OB-263).
   arrivingLine: (quantity: string, unit: string, day: string) =>
     day ? `${quantity} ${unit} arriving ${day}\u00a0✓` : `${quantity} ${unit} on its way\u00a0✓`,
-  stillRunsOut: (day: string) => `Still runs out ${day}`,
+  // Hindi needs the item's gender (होगी / होगा); English does not.
+  stillRunsOut: ((day: string) => `Still runs out ${day}`) as (
+    day: string,
+    feminine: boolean,
+  ) => string,
   toppedUp: (item: string, stock: string) => `${item} stock topped up: ${stock}\u00a0✓`,
   // Goods arrived: what came and the stock now, with Undo; never a price (OB-263).
   receivedOne: (amount: string, item: string, stock: string) =>
@@ -131,7 +135,7 @@ const hi: OrderChangeCopy = {
     day
       ? `${quantity} ${unit} ${day} को आ रहा है\u00a0✓`
       : `${quantity} ${unit} रास्ते में है\u00a0✓`,
-  stillRunsOut: (day) => `फिर भी ${day} को ख़त्म होगा`,
+  stillRunsOut: (day, feminine) => `फिर भी ${day} को खत्म ${feminine ? 'होगी' : 'होगा'}`,
   toppedUp: (item, stock) => `${item} का स्टॉक भर गया: ${stock}\u00a0✓`,
   receivedOne: (amount, item, stock) => `${amount} ${item} आ गया। अब स्टॉक ${stock} है।`,
   receivedMany: (n) => `${n} चीज़ें आ गईं। स्टॉक अपडेट हो गया।`,

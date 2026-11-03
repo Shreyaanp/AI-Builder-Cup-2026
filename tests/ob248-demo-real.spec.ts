@@ -76,8 +76,11 @@ test('OB-248 a supplier order goes draft, reply, on the way, delivered, stock up
   await expect(talk).toContainText('Your order is on the way', { timeout: 20_000 })
 
   await card.getByRole('button', { name: 'Goods arrived', exact: true }).click()
-  const review = page.getByRole('dialog').filter({ hasText: 'Tea dust' }).last()
-  await review.getByRole('button', { name: 'Confirm and save', exact: true }).click()
+  // Saved at once, said plainly with Undo; no review sheet with a selling price (OB-263).
+  await expect(page.locator('.MuiSnackbar-root')).toContainText(
+    `${quantity} kg Tea dust received. Stock is now ${before + quantity} kg.`,
+    { timeout: 15_000 },
+  )
   await expect.poll(() => teaDustStock(page), { timeout: 15_000 }).toBe(before + quantity)
   await expect(talk).toContainText('The goods came, thank you')
   await expect(talk).toContainText('Here is the bill', { timeout: 20_000 })
@@ -89,11 +92,13 @@ test('OB-248 the supplier talks in the owner language', async ({ page }) => {
   )
   await openDemo(page, 'छोड़ें')
   await page.locator('[data-tour="nav-grow"]').click()
-  // The Morning brief's stock line carries the Hindi unit too.
-  // It opens in place from its Morning brief row (batch 4a).
-  await showInGrow(page, page.getByText(/^बाकी: \S+ किलो$/).filter({ visible: true }))
+  // माल मँगाएँ says the tea dust on its way in the Hindi unit too. (The Morning brief no longer
+  // lists it as running low: the order on its way counts, OB-263.)
+  const tile = await showInGrow(page, page.locator('[data-tour="supply"]'))
+  await expect(tile).toContainText(/चाय पत्ती: \d+ किलो/)
+  await expect(tile).not.toContainText(/\bkg\b/)
   // माल मँगाएँ → रास्ते में (Buy stock → On the way, simplify batch 4b).
-  await (await showInGrow(page, page.locator('[data-tour="supply"]'))).click()
+  await tile.click()
   const sheet = page.getByRole('dialog')
   await sheet.getByRole('button', { name: /^रास्ते में/ }).click()
   const orders = sheet.getByTestId('po-list')
@@ -223,9 +228,12 @@ test('OB-248 a failed orders read says so and tries again, never "–" as if emp
   // Grow → Buy stock: its line says the read failed, then what needs buying (batch 4b).
   const tile = await showInGrow(page, page.locator('[data-tour="supply"]'))
   await expect(tile).toContainText('Couldn’t load orders. Trying again…', { timeout: 15_000 })
-  await expect(tile).toContainText(/runs out|to do|on the way|Reorder or find a supplier/, {
-    timeout: 30_000,
-  })
+  await expect(tile).toContainText(
+    /runs out|arriving|to do|on the way|Reorder or find a supplier/,
+    {
+      timeout: 30_000,
+    },
+  )
   await expect(tile).not.toContainText('Couldn’t load orders')
 })
 
@@ -239,9 +247,15 @@ test('OB-248 three plain orders bring a yes, a short reply and a new price', asy
   async function delivered() {
     await expect(talk).toContainText('Your order is on the way', { timeout: 20_000 })
     await card.getByRole('button', { name: 'Goods arrived', exact: true }).click()
-    const review = page.getByRole('dialog').filter({ hasText: 'Tea dust' }).last()
-    await review.getByRole('button', { name: 'Confirm and save', exact: true }).click()
+    await expect(page.locator('.MuiSnackbar-root')).toContainText(
+      /\d+ kg Tea dust received\. Stock is now \d+ kg\./,
+      { timeout: 15_000 },
+    )
     await expect(talk).toContainText('Here is the bill', { timeout: 20_000 })
+    // The note (with Undo) hides by itself, unless a pointer rests on it; until then it sits
+    // over the sheet's lower buttons.
+    await page.mouse.move(0, 0)
+    await expect(page.locator('.MuiSnackbar-root')).toHaveCount(0, { timeout: 15_000 })
   }
 
   // 1: Draft a reorder, as the first walk-through does: a plain yes.
@@ -302,9 +316,15 @@ test('OB-248 Hindi: a short reply and a new price, each accepted, show the owner
   async function delivered() {
     await expect(talk).toContainText('आपका ऑर्डर निकल चुका है', { timeout: 20_000 })
     await card.getByRole('button', { name: 'माल आ गया', exact: true }).click()
-    const review = page.getByRole('dialog').filter({ hasText: 'चाय पत्ती' }).last()
-    await review.getByRole('button', { name: /^पुष्टि कर/ }).click()
+    await expect(page.locator('.MuiSnackbar-root')).toContainText(
+      /\d+ किलो चाय पत्ती आ गया। अब स्टॉक \d+ किलो है।/,
+      { timeout: 15_000 },
+    )
     await expect(talk).toContainText('यह रहा बिल', { timeout: 20_000 })
+    // The note (with Undo) hides by itself, unless a pointer rests on it; until then it sits
+    // over the sheet's lower buttons.
+    await page.mouse.move(0, 0)
+    await expect(page.locator('.MuiSnackbar-root')).toHaveCount(0, { timeout: 15_000 })
   }
 
   await sheet.getByRole('button', { name: 'फिर से सामान मँगाएँ' }).click()
@@ -358,8 +378,8 @@ test('OB-248 Hindi: Coach, Purchase orders, order card and supplier chat name ev
   // Coach (the first screen): its cards and rows.
   await expect(page.getByTestId('today')).toContainText('चाय पत्ती', { timeout: 15_000 })
   await check('Coach', await page.getByTestId('today').innerText())
-  // चाय पत्ती is feminine: it "खत्म होगी", never "खत्म होगा".
-  await expect(page.getByTestId('today')).toContainText(/चाय पत्ती [^।]* को खत्म होगी/)
+  // The 13 kg on its way is said in Hindi, with the Hindi unit (OB-263).
+  await expect(page.getByTestId('today')).toContainText(/चाय पत्ती: \d+ किलो \S+ को आ रहा है/)
   // Buy stock (simplify batch 4b): the row, To do, the orders on the way, then each order card
   // with its supplier chat.
   await page.locator('[data-tour="nav-grow"]').click()
@@ -395,6 +415,30 @@ test('OB-248 Hindi: Coach, Purchase orders, order card and supplier chat name ev
   await expect(page.getByTestId('today')).toContainText('चाय पत्ती', { timeout: 15_000 })
   await check('Coach again', await page.getByTestId('today').innerText())
   expect(seen).toEqual([])
+})
+
+// चाय पत्ती is feminine: it "खत्म होगी", never "खत्म होगा", where Today says its run-out day
+// (with nothing on order, so the run-out day shows: OB-263).
+test('OB-248 Hindi: tea dust runs out in the feminine on Today', async ({ page }) => {
+  await page.route(/\/businesses\/[^/]+\/supply$/, async (route) => {
+    const body = await (await route.fetch()).json()
+    for (const need of body.needs ?? []) {
+      need.runs_out = new Date(Date.now() + 2 * 86_400_000).toISOString().slice(0, 10)
+      need.on_order = 0
+      need.on_order_other = []
+      need.cover = 'none'
+      need.covered = false
+    }
+    await route.fulfill({ json: body })
+  })
+  await page.addInitScript(() =>
+    localStorage.setItem('niva.starter.preferences', JSON.stringify({ language: 'hi' })),
+  )
+  await openDemo(page, 'छोड़ें')
+  await expect(page.getByTestId('today')).toContainText(/चाय पत्ती [^।]* को खत्म होगी/, {
+    timeout: 15_000,
+  })
+  await expect(page.getByTestId('today')).not.toContainText(/चाय पत्ती [^।]* को खत्म होगा/)
 })
 
 test('OB-248 Hindi: morning brief, prep plan, the card after sending and chat answers have no English item or unit', async ({
@@ -468,7 +512,7 @@ test('OB-248 Hindi: Find suppliers through Send gets a Hindi supplier reply', as
   await expect(log).not.toContainText(/Confirmed|Paneer|Delivering/)
 })
 
-test('OB-248 Hindi: the Goods arrived check sheet shows the item, category and unit in Hindi', async ({
+test('OB-248 Hindi: Goods arrived says what came and the stock now in Hindi, with no price', async ({
   page,
 }) => {
   await page.addInitScript(() =>
@@ -482,11 +526,15 @@ test('OB-248 Hindi: the Goods arrived check sheet shows the item, category and u
   const card = sheet.locator('article')
   await card.getByRole('button', { name: 'मंज़ूर करके भेजें', exact: true }).click()
   await card.getByRole('button', { name: 'माल आ गया', exact: true }).click({ timeout: 30_000 })
-  const review = page.getByRole('dialog').filter({ hasText: 'चाय पत्ती' }).last()
-  await expect(review).toContainText(/स्टॉक: \d+ किलो/)
-  await expect(review).toContainText('श्रेणी: चाय की दुकान')
-  await expect(review).toContainText(/₹\d+ \/ किलो/)
-  await expect(review).not.toContainText(/Tea dust|Tea stall|\bkg\b/)
+  // OB-263: no review sheet with the selling price; one note, all Hindi, with Undo.
+  const note = page.locator('.MuiSnackbar-root')
+  await expect(note).toContainText(/\d+ किलो चाय पत्ती आ गया। अब स्टॉक \d+ किलो है।/, {
+    timeout: 15_000,
+  })
+  await expect(note).toContainText('वापस लें')
+  await expect(note).not.toContainText(/₹|Tea dust|\bkg\b/)
+  // No stock review sheet (its category and price rows) opens.
+  await expect(page.getByText(/श्रेणी: /)).toHaveCount(0)
 })
 
 test('OB-248 Get on Google: a visitor walks the whole practice, and it says nothing is sent', async ({
