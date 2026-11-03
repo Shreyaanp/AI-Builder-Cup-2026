@@ -224,7 +224,8 @@ export function NewShopFlow({
   )
 }
 
-/** Hero, conversation and review share one draft; leaving the flow discards it. */
+/** Hero, conversation and review share one draft. It stays in this tab (for this account) until
+ * the shop is finished or the owner signs out, so leaving and starting again picks it up. */
 function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | null) => void }) {
   const t = useCopy()
   const f = useNewShopCopy()
@@ -278,12 +279,12 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
   const busyRef = useRef(busy)
   const [note, setNoteState] = useState(recovery?.note || recovery?.pending || '')
   // The restored pending turn: sent again with its first id, so the server can tell.
-  const restoredTurn = useRef(
+  const [unacknowledged, setUnacknowledged] = useState(() =>
     recovery?.pending && recovery.pendingId
       ? { text: recovery.pending, id: recovery.pendingId }
       : null,
   )
-  const [unacknowledged, setUnacknowledged] = useState(restoredTurn.current)
+  const restoredTurn = useRef(unacknowledged)
   const lastTurnId = useRef<string | undefined>(undefined)
   const noteRef = useRef(note)
   const [error, setError] = useState('')
