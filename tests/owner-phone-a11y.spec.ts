@@ -146,13 +146,13 @@ for (const appearance of ['light', 'dark'] as const) {
       .getByLabel('Item', { exact: true })
       .fill('Filter coffee with extra decoction, jaggery and a second refill')
     await day.getByLabel('Quantity sold').fill('30')
-    await day.getByLabel(/^Amount/).fill('1200')
+    await day.getByLabel(/^Total for this item/).fill('1200')
     await day.getByRole('button', { name: 'Add line' }).click()
     await audit(page, 'close-day-typed')
     await day.getByRole('button', { name: /^Review \(1/ }).click()
     await expect(day.getByText('Today’s sales')).toBeVisible()
     await audit(page, 'close-day-review')
-    await day.getByRole('button', { name: 'Close', exact: true }).click()
+    await day.getByRole('button', { name: 'Not now', exact: true }).click()
     // A populated local fixture exercises order navigation without contacting a supplier.
     const order = {
       id: 'phone-po',

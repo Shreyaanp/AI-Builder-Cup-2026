@@ -5,7 +5,10 @@ import {
   Box,
   Button,
   Chip,
+  Checkbox,
+  CircularProgress,
   Dialog,
+  FormControlLabel,
   IconButton,
   Stack,
   TextField,
@@ -13,11 +16,12 @@ import {
   useMediaQuery,
   useTheme,
 } from '@mui/material'
-import { Camera, Check, ClipboardList, Keyboard, Moon, Plus, Receipt, Truck, X } from 'lucide-react'
+import { Camera, Check, ClipboardList, Keyboard, Moon, Plus, Truck, X } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useLocale } from '../../state/hooks'
 import {
   currencySymbol,
+  exponent,
   formatAmount,
   formatShopPrice,
   shopCurrency,
@@ -30,11 +34,15 @@ import { Tile, Supporting } from '../v1/ShopTiles'
 import { useWorkspace } from '../v1/workspaceContext'
 import { useIdentity } from '../../auth/useIdentity'
 import { dismissFreshness } from '../sales/freshnessDismissal'
-import { closeDayCopy } from './strings'
+import { closeDayCopy, closeDayCount } from './strings'
+import { closingMinutes, shopNow } from '../owner/time'
+import { moneyLocale, shopZone } from '../../region/region'
+import { useDaySales } from './useDaySales'
 import { comparisonKind } from './compare'
 import { AskHint } from '../v1/AskHint'
 import { TomorrowPromise } from './TomorrowPromise'
 import { countClosed } from '../v1/today/habitCount'
+import { parseCloseDayNumber } from './parseNumber'
 import type { components } from '../../api/generated'
 
 type CloseReward = components['schemas']['CloseReward']
@@ -115,10 +123,25 @@ export function CloseDay({
   const shop = ws.active
   const currency = shopCurrency(shop)
   const [shots, setShots] = useState<Shot[]>([])
-  const [phase, setPhase] = useState<'capture' | 'review' | 'saving' | 'done'>('capture')
+  const [stage, setPhase] = useState<'capture' | 'review' | 'confirm' | 'saving' | 'done'>(
+    'capture',
+  )
+  const [editing, setEditing] = useState(false)
+  const [wholeDay, setWholeDay] = useState(false)
+  const [complete, setComplete] = useState(false)
+  const saving = useRef(false)
+  const timezone = shopZone(shop?.fields)
+  const today = shopNow(timezone).date
+  const checked = useDaySales(today)
+  const existing = checked.rows ?? []
+  const phase = !checked.rows
+    ? 'loading'
+    : existing.length && !editing && stage === 'capture'
+      ? 'closed'
+      : stage
   const [failed, setFailed] = useState('')
   const [dropped, setDropped] = useState<Set<string>>(new Set())
-  const [saved, setSaved] = useState({ revenue: 0, stock: 0 })
+  const [saved, setSaved] = useState({ revenue: 0, stock: 0, items: 0 })
   const [reward, setReward] = useState<CloseReward | null>(null)
   const input = useRef<HTMLInputElement>(null)
   const pending = useRef<Kind>('sales')
@@ -132,12 +155,12 @@ export function CloseDay({
   const online = useOnline()
   const started = useRef(false)
   useEffect(() => {
-    if (!initial || !shop || started.current) return
+    if (phase !== 'capture' || !initial || !shop || started.current) return
     started.current = true
     void read(initial.kind, initial.file)
     // Read once, on open.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [phase])
   if (!shop) return null
 
   async function read(kind: Kind, file: File) {
@@ -197,9 +220,21 @@ export function CloseDay({
   const revenue = sales.reduce((sum, { line }) => sum + (line.amount ?? 0), 0)
   const fixture = done.some((s) => s.fixture)
   const day = done.find((s) => s.date)?.date ?? ''
+  const minutes = shopNow(timezone).minutes
+  const usualClose = closingMinutes(shop.fields, timezone)
+  const pastUsualClose = usualClose !== null && minutes >= usualClose
+  const looksComplete = wholeDay || pastUsualClose
+  const early = !pastUsualClose && minutes < 16 * 60
+
+  function requestSave() {
+    if (early) setPhase('confirm')
+    else void save()
+  }
 
   async function save() {
-    if (!shop) return
+    if (!shop || saving.current) return
+    saving.current = true
+    setComplete(looksComplete)
     setPhase('saving')
     setSaveStarted(true)
     setFailed('')
@@ -219,7 +254,7 @@ export function CloseDay({
           `${base}/day/prepare`,
           {
             method: 'POST',
-            body: JSON.stringify({ date: progress.current.date || day, stock: stockBody }),
+            body: JSON.stringify({ date: progress.current.date || day || today, stock: stockBody }),
           },
         )
         progress.current.date = prepared.date
@@ -238,7 +273,7 @@ export function CloseDay({
           date: string
         }>(`${base}/day/prepare`, {
           method: 'POST',
-          body: JSON.stringify({ date: progress.current.date || day, sales: salesBody }),
+          body: JSON.stringify({ date: progress.current.date || day || today, sales: salesBody }),
         })
         progress.current.date = prepared.date
         if (prepared.sales) {
@@ -250,7 +285,11 @@ export function CloseDay({
           progress.current.sales = 'saved'
         }
       }
-      setSaved({ revenue, stock: stockBody.length })
+      setSaved({
+        revenue,
+        stock: stockBody.length,
+        items: salesBody.reduce((sum, row) => sum + row.quantity, 0),
+      })
       const savedDay = progress.current.date || day
       const [facts] = await Promise.all([
         // What the day pays back, from the saved records; the screen still closes without it.
@@ -278,6 +317,8 @@ export function CloseDay({
         ].join(' '),
       )
       setPhase('review')
+    } finally {
+      saving.current = false
     }
   }
 
@@ -294,7 +335,16 @@ export function CloseDay({
   )
 
   const kinds: { kind: Kind; icon: ReactNode; title: string; hint: string }[] = [
-    { kind: 'sales', icon: <Receipt size={26} />, title: t.till, hint: t.tillHint },
+    {
+      kind: 'sales',
+      icon: (
+        <Typography aria-hidden="true" variant="headlineSmall">
+          {currencySymbol(currency)}
+        </Typography>
+      ),
+      title: t.till,
+      hint: t.tillHint,
+    },
     { kind: 'delivery', icon: <Truck size={26} />, title: t.delivery, hint: t.deliveryHint },
     { kind: 'stock_count', icon: <ClipboardList size={26} />, title: t.count, hint: t.countHint },
   ]
@@ -321,7 +371,7 @@ export function CloseDay({
         <Typography id="close-day-title" component="h2" variant="titleLarge" sx={{ flex: 1 }}>
           {t.title}
         </Typography>
-        {!(phone && phase === 'capture') && (
+        {!phone && phase !== 'confirm' && (
           <IconButton aria-label={t.close} onClick={onClose} disabled={phase === 'saving'}>
             <X size={22} />
           </IconButton>
@@ -329,6 +379,33 @@ export function CloseDay({
       </Stack>
 
       <Box sx={{ px: 4, pb: 4, flex: 1, overflowY: 'auto' }}>
+        {phase === 'loading' && (
+          <Stack spacing={2} role="status">
+            {checked.failed ? (
+              <Alert severity="error">{t.loadFailed}</Alert>
+            ) : (
+              <Typography>{t.loading}</Typography>
+            )}
+            {checked.failed && <Button onClick={checked.retry}>{t.retry}</Button>}
+          </Stack>
+        )}
+        {phase === 'closed' && (
+          <Typography variant="headlineSmall" sx={{ mt: 3 }}>
+            {t.alreadyClosed.replace(
+              '{sales}',
+              formatShopPrice(
+                existing.reduce((sum, row) => sum + (row.revenue ?? 0), 0),
+                currency,
+                locale,
+              ),
+            )}
+          </Typography>
+        )}
+        {phase === 'confirm' && (
+          <Typography variant="titleLarge" sx={{ mt: 3 }} role="status">
+            {t.early}
+          </Typography>
+        )}
         {phase === 'capture' && (
           <>
             <CloseDaySupply />
@@ -380,9 +457,11 @@ export function CloseDay({
                     </Box>
                     <Box sx={{ minWidth: 0 }}>
                       <Typography variant="titleMedium">{entry.title}</Typography>
-                      <Typography variant="bodySmall" color="text.secondary">
-                        {entry.hint}
-                      </Typography>
+                      {entry.hint !== entry.title && (
+                        <Typography variant="bodySmall" color="text.secondary">
+                          {entry.hint}
+                        </Typography>
+                      )}
                     </Box>
                     {count > 0 ? (
                       <Chip
@@ -456,7 +535,7 @@ export function CloseDay({
                         ? t.reading
                         : shot.state === 'failed'
                           ? t.readFailed
-                          : t.lines.replace('{n}', String(shot.lines.length))}
+                          : closeDayCount(locale, 'lines', shot.lines.length)}
                     </Box>
                   </Box>
                 ))}
@@ -486,6 +565,19 @@ export function CloseDay({
 
         {(phase === 'review' || phase === 'saving') && (
           <Box sx={{ animation: `cdRise 400ms ${EASE} both` }}>
+            {!pastUsualClose && (
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={wholeDay}
+                    onChange={(event) => setWholeDay(event.target.checked)}
+                    disabled={phase === 'saving'}
+                  />
+                }
+                label={t.wholeDay}
+                sx={{ minHeight: 48, mb: 2 }}
+              />
+            )}
             {fixture && (
               <Alert severity="info" sx={{ mb: 3 }}>
                 {t.fixture}
@@ -514,7 +606,7 @@ export function CloseDay({
                     key: k,
                     label: line.item,
                     sub: line.read_as !== line.item ? t.readAs.replace('{text}', line.read_as) : '',
-                    value: `${line.quantity} · ${formatShopPrice(toMinor(line.amount ?? 0, currency), currency)}`,
+                    value: `${new Intl.NumberFormat(locale).format(line.quantity ?? 0)} · ${formatShopPrice(toMinor(line.amount ?? 0, currency), currency, locale)}`,
                     warn: !line.matched,
                   }))}
                   onDrop={(k) => setDropped((all) => new Set(all).add(k))}
@@ -533,7 +625,7 @@ export function CloseDay({
                     key: k,
                     label: line.item,
                     sub: line.matched ? '' : t.notOnMenu,
-                    value: mode === 'delivery' ? `+${line.quantity}` : `= ${line.quantity}`,
+                    value: `${mode === 'delivery' ? '+' : '= '}${new Intl.NumberFormat(locale).format(line.quantity ?? 0)}`,
                     warn: !line.matched,
                   }))}
                   onDrop={(k) => setDropped((all) => new Set(all).add(k))}
@@ -576,15 +668,20 @@ export function CloseDay({
                 style={{ animation: `cdDraw 450ms ${EASE} 600ms forwards` }}
               />
             </Box>
+            {(reward || saved.items > 0) && (
+              <Typography variant="headlineSmall" sx={{ mt: 3 }}>
+                {closeDayCount(locale, 'soldItems', reward?.items ?? saved.items)}
+              </Typography>
+            )}
             <Typography
               variant="headlineSmall"
               sx={{ mt: 3, animation: `cdRise 400ms ${EASE} 700ms both` }}
             >
               {reward?.total != null
-                ? t.doneTotal.replace('{sales}', wholeMoney(reward.total, currency, locale))
+                ? t.doneTotal.replace('{sales}', formatShopPrice(reward.total, currency, locale))
                 : t.doneTitle}
             </Typography>
-            <CloseRewardLines reward={reward} />
+            {complete && <CloseRewardLines reward={reward} />}
             <Typography
               variant="bodyMedium"
               color="text.secondary"
@@ -620,7 +717,39 @@ export function CloseDay({
         }}
       >
         {/* On a phone the way out sits in the thumb zone; wider windows keep the corner X. */}
-        {phase === 'capture' && phone && <Button onClick={onClose}>{t.close}</Button>}
+        {phone && phase !== 'saving' && phase !== 'done' && phase !== 'confirm' && (
+          <Button onClick={onClose}>{t.close}</Button>
+        )}
+        {phase === 'closed' && (
+          <Button
+            variant="contained"
+            onClick={() => {
+              // Edit the saved figures; an incoming chat photo must not add them again.
+              started.current = true
+              setEditing(true)
+              setTyped(
+                existing.map((row) => ({
+                  item: row.item,
+                  read_as: row.item,
+                  quantity: row.quantity,
+                  amount: toMajor(row.revenue ?? 0, currency),
+                  matched: ws.products.some((product) => product.name === row.item),
+                })),
+              )
+              setPhase('capture')
+            }}
+          >
+            {t.edit}
+          </Button>
+        )}
+        {phase === 'confirm' && (
+          <>
+            <Button onClick={() => setPhase('review')}>{t.close}</Button>
+            <Button variant="contained" onClick={() => void save()}>
+              {t.anyway}
+            </Button>
+          </>
+        )}
         {phase === 'capture' && (
           <Button
             variant="contained"
@@ -629,7 +758,7 @@ export function CloseDay({
             onClick={() => setPhase('review')}
             sx={{ flex: 1 }}
           >
-            {t.review.replace('{n}', String(lineCount))}
+            {closeDayCount(locale, 'review', lineCount)}
           </Button>
         )}
         {(phase === 'review' || phase === 'saving') && (
@@ -640,13 +769,19 @@ export function CloseDay({
             <Button
               variant="contained"
               size="large"
-              startIcon={<Check size={18} />}
+              startIcon={
+                phase === 'saving' ? (
+                  <CircularProgress size={18} color="inherit" />
+                ) : (
+                  <Check size={18} />
+                )
+              }
               disabled={
                 phase === 'saving' || (sales.length === 0 && !stock.some((s) => s.line.matched))
               }
-              onClick={() => void save()}
+              onClick={requestSave}
             >
-              {phase === 'saving' ? t.saving : t.save}
+              {t.save}
             </Button>
           </>
         )}
@@ -804,19 +939,23 @@ function TypedSales({
   onAdd: (line: Line) => void
 }) {
   const next = useNextStepsCopy()
+  const locale = useLocale()
+  const numberLocale = moneyLocale(currency, locale) ?? locale
   const [item, setItem] = useState('')
   const [qty, setQty] = useState('')
   const [amount, setAmount] = useState('')
   const [invalid, setInvalid] = useState(false)
-  const number = (text: string) => {
-    const value = Number(text.trim().replace(',', '.'))
-    return text.trim() && Number.isFinite(value) && value >= 0 ? value : null
-  }
-  function add() {
-    const quantity = number(qty)
-    const total = number(amount)
+  const quantity = parseCloseDayNumber(qty, numberLocale, currency)
+  const total = parseCloseDayNumber(amount, numberLocale, currency)
+  const numberError = closeDayCopy(locale).numberInvalid.replace(
+    '{example}',
+    new Intl.NumberFormat(numberLocale).format(exponent(currency) === 0 ? 1000 : 1000.5),
+  )
+  function add(form: HTMLFormElement) {
     if (!item.trim() || quantity === null || total === null) {
       setInvalid(true)
+      const name = !item.trim() ? 'item' : quantity === null ? 'quantity' : 'amount'
+      ;(form.elements.namedItem(name) as HTMLInputElement | null)?.focus()
       return
     }
     const known = products.find((name) => name.toLowerCase() === item.trim().toLowerCase())
@@ -840,7 +979,7 @@ function TypedSales({
       data-testid="close-day-typed"
       onSubmit={(event) => {
         event.preventDefault()
-        add()
+        add(event.currentTarget)
       }}
       sx={{ mt: 4, animation: `cdRise 320ms ${EASE} both` }}
     >
@@ -853,6 +992,8 @@ function TypedSales({
           name="item"
           label={next.manualItem}
           value={item}
+          error={invalid && !item.trim()}
+          helperText={invalid && !item.trim() ? next.manualInvalid : undefined}
           onChange={(event) => setItem(event.target.value.slice(0, 180))}
           slotProps={{ htmlInput: { list: 'close-day-items', autoComplete: 'off' } }}
         />
@@ -861,25 +1002,34 @@ function TypedSales({
             <option key={name} value={name} />
           ))}
         </datalist>
-        <Stack direction="row" sx={{ gap: 2 }}>
+        <Stack direction={{ xs: 'column', sm: 'row' }} sx={{ gap: 2 }}>
           <TextField
             name="quantity"
             label={next.manualQty}
             value={qty}
+            error={invalid && quantity === null}
+            helperText={invalid && quantity === null ? numberError : undefined}
             onChange={(event) => setQty(event.target.value)}
-            slotProps={{ htmlInput: { inputMode: 'decimal', autoComplete: 'off' } }}
+            slotProps={{
+              htmlInput: { inputMode: 'decimal', autoComplete: 'off' },
+              formHelperText: { 'aria-live': 'polite' },
+            }}
             sx={{ flex: 1, minWidth: 0 }}
           />
           <TextField
             name="amount"
             label={`${next.manualAmount} (${currencySymbol(currency)})`}
             value={amount}
+            error={invalid && total === null}
+            helperText={invalid && total === null ? numberError : undefined}
             onChange={(event) => setAmount(event.target.value)}
-            slotProps={{ htmlInput: { inputMode: 'decimal', autoComplete: 'off' } }}
+            slotProps={{
+              htmlInput: { inputMode: 'decimal', autoComplete: 'off' },
+              formHelperText: { 'aria-live': 'polite' },
+            }}
             sx={{ flex: 1, minWidth: 0 }}
           />
         </Stack>
-        {invalid && <Alert severity="error">{next.manualInvalid}</Alert>}
         <Button
           type="submit"
           variant="outlined"
