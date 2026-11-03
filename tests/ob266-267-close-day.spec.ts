@@ -99,10 +99,9 @@ for (const [hour, close, early] of [
     await addLine(page)
     await dialog.getByRole('button', { name: 'Close the day', exact: true }).click()
     if (early) {
-      await expect(
-        dialog.getByText("It's still early. Close anyway?", { exact: true }),
-      ).toBeVisible()
-      await dialog.getByRole('button', { name: 'Not now', exact: true }).click()
+      const sheet = page.getByRole('dialog', { name: 'It’s still early. Close anyway?' })
+      await expect(sheet).toBeVisible()
+      await sheet.getByRole('button', { name: 'Not now', exact: true }).click()
       await expect(dialog.getByRole('button', { name: 'Close the day', exact: true })).toBeVisible()
     } else {
       await expect(dialog.getByText('Day closed: ₹200', { exact: true })).toBeVisible()
@@ -291,9 +290,11 @@ test('OB-266 OB-267 OB-275 OB-279 F13: Hindi dismiss, job and line total are cle
   await dialog.getByRole('button', { name: 'लाइन जोड़ें', exact: true }).click()
   await dialog.getByRole('button', { name: 'जाँचें (1 पंक्ति)', exact: true }).click()
   await dialog.getByRole('button', { name: 'दिन बंद करें', exact: true }).click()
-  await expect(dialog.getByText('अभी समय है। फिर भी दिन बंद करें?', { exact: true })).toBeVisible()
-  await expect(dialog.getByRole('button', { name: 'फिर भी बंद करें', exact: true })).toBeVisible()
-  await dialog.getByRole('button', { name: 'अभी नहीं', exact: true }).click()
+  const sheet = page.getByRole('dialog', { name: 'अभी जल्दी है। फिर भी दिन बंद करें?' })
+  await expect(sheet).toBeVisible()
+  await expect(sheet.getByText('आप आज के आँकड़े बाद में बदल सकते हैं।')).toBeVisible()
+  await expect(sheet.getByRole('button', { name: 'फिर भी बंद करें', exact: true })).toBeVisible()
+  await sheet.getByRole('button', { name: 'अभी नहीं', exact: true }).click()
   await expect(dialog.getByRole('button', { name: 'दिन बंद करें', exact: true })).toBeVisible()
 })
 
@@ -319,15 +320,21 @@ test('OB-267: early close asks, reopening edits the saved day without double sav
     if (request.url().endsWith('/day/prepare')) prepares++
   })
   await dialog.getByRole('button', { name: 'Close the day', exact: true }).click()
-  await expect(dialog.getByText("It's still early. Close anyway?", { exact: true })).toBeVisible()
+  const sheet = page.getByRole('dialog', { name: 'It’s still early. Close anyway?' })
+  await expect(sheet).toBeVisible()
+  await expect(sheet.getByText('You can edit today’s numbers later.')).toBeVisible()
   expect(prepares).toBe(0)
-  await dialog.getByRole('button', { name: 'Not now', exact: true }).click()
+  await sheet.getByRole('button', { name: 'Not now', exact: true }).click()
   await expect(dialog.getByText('Today’s sales', { exact: true })).toBeVisible()
   await dialog.getByRole('button', { name: 'Close the day', exact: true }).click()
-  await dialog.getByRole('button', { name: 'Close anyway', exact: true }).click()
+  await page
+    .getByRole('dialog', { name: 'It’s still early. Close anyway?' })
+    .getByRole('button', { name: 'Close anyway', exact: true })
+    .click()
   await expect(dialog.getByText('Day closed: ₹200', { exact: true })).toBeVisible()
-  await expect(dialog.getByText('You sold 10 items.', { exact: true })).toBeVisible()
-  await expect(dialog).not.toContainText(/less than|more than|Forecast said/)
+  await expect(dialog.getByText('You sold 10 Kopi.', { exact: true })).toBeVisible()
+  await expect(dialog.getByText('Thank you for today. Rest well.')).toBeVisible()
+  await expect(dialog).not.toContainText(/quieter|more than|Forecast said/)
   expect(prepares).toBe(1)
   await dialog.getByRole('button', { name: 'Done', exact: true }).click()
   await page.locator('[data-tour="closeday"]').click()
@@ -337,7 +344,10 @@ test('OB-267: early close asks, reopening edits the saved day without double sav
   await dialog.getByRole('button', { name: 'Edit', exact: true }).click()
   await dialog.getByRole('button', { name: 'Review (1 line)', exact: true }).click()
   await dialog.getByRole('button', { name: 'Close the day', exact: true }).click()
-  await dialog.getByRole('button', { name: 'Close anyway', exact: true }).click()
+  await page
+    .getByRole('dialog', { name: 'It’s still early. Close anyway?' })
+    .getByRole('button', { name: 'Close anyway', exact: true })
+    .click()
   await expect(dialog.getByText('Day closed: ₹200', { exact: true })).toBeVisible()
   const shops = await (await page.request.get('/api/v1/businesses')).json()
   const rows = await (await page.request.get(`/api/v1/businesses/${shops[0].id}/sales`)).json()
@@ -376,11 +386,18 @@ for (const scenario of ['usual closing time', 'whole day confirmed'] as const) {
     }
     await dialog.getByRole('button', { name: 'Close the day', exact: true }).click()
     if (scenario === 'whole day confirmed')
-      await dialog.getByRole('button', { name: 'Close anyway', exact: true }).dblclick()
-    await expect(dialog.getByText(`₹300 less than last ${weekday}`, { exact: true })).toBeVisible()
+      await page
+        .getByRole('dialog', { name: 'It’s still early. Close anyway?' })
+        .getByRole('button', { name: 'Close anyway', exact: true })
+        .dblclick()
+    await expect(
+      dialog.getByText(`A quieter day than last ${weekday}. Tomorrow is a fresh start.`, {
+        exact: true,
+      }),
+    ).toBeVisible()
     const text = await dialog.innerText()
-    expect(text.indexOf('You sold 10 items.')).toBeLessThan(text.indexOf('Day closed: ₹200'))
-    expect(text.indexOf('Day closed: ₹200')).toBeLessThan(text.indexOf('₹300 less than'))
+    expect(text.indexOf('You sold 10 Kopi.')).toBeLessThan(text.indexOf('Day closed: ₹200'))
+    expect(text.indexOf('Day closed: ₹200')).toBeLessThan(text.indexOf('A quieter day than'))
     expect(prepares).toBe(1)
   })
 }
@@ -401,7 +418,10 @@ test('OB-267 OB-278: editing a closed day does not append an incoming chat photo
   const dialog = await open(page)
   await addLine(page)
   await dialog.getByRole('button', { name: 'Close the day', exact: true }).click()
-  await dialog.getByRole('button', { name: 'Close anyway', exact: true }).click()
+  await page
+    .getByRole('dialog', { name: 'It’s still early. Close anyway?' })
+    .getByRole('button', { name: 'Close anyway', exact: true })
+    .click()
   await expect(dialog.getByText('Day closed: ₹200', { exact: true })).toBeVisible()
   await dialog.getByRole('button', { name: 'Done', exact: true }).click()
   await page.getByRole('button', { name: 'Coach', exact: true }).click()
@@ -488,4 +508,46 @@ test('OB-266 OB-267 OB-279: Chinese close-day states remain localized', async ({
   await dialog.getByRole('button', { name: '添加一行', exact: true }).click()
   await expect(dialog.getByText('数字不清楚，请按 1,000.5 的格式填写。')).toBeVisible()
   await page.screenshot({ path: info.outputPath('chinese.png'), animations: 'disabled' })
+})
+
+test('OB-290: a typed line counts for Review, the 360 footer stays on one line, and Grow shows the closed day', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 360, height: 800 })
+  const dialog = await open(page, 21)
+  await dialog.getByRole('button', { name: 'Type the numbers instead' }).click()
+  await dialog.getByLabel('Item', { exact: true }).fill('Kopi')
+  await dialog.getByLabel('Quantity sold', { exact: true }).fill('10')
+  await dialog.getByLabel('Total for this item (₹)', { exact: true }).fill('1,00,000')
+  // Filled but not added: Review counts it and adds it.
+  await dialog.getByRole('button', { name: 'Review (1 line)', exact: true }).click()
+  await expect(dialog.getByText('Kopi')).toBeVisible()
+  for (const name of ['Not now', 'Add more', 'Close the day']) {
+    const box = await dialog.getByRole('button', { name, exact: true }).boundingBox()
+    expect(box!.height, `${name} stays on one line`).toBeLessThan(60)
+  }
+  await dialog.getByRole('button', { name: 'Close the day', exact: true }).click()
+  await expect(dialog.getByText('Day closed: ₹1,00,000', { exact: true })).toBeVisible()
+  await expect(dialog.getByText('You sold 10 Kopi.', { exact: true })).toBeVisible()
+  await dialog.getByRole('button', { name: 'Done', exact: true }).click()
+  const card = page.locator('[data-tour="closeday"]')
+  await expect(card).toContainText('Day closed: ₹1,00,000')
+  await expect(card).toContainText('Edit')
+  await expect(card).not.toContainText('Ready to close today?')
+})
+
+test('OB-290: home shows the exact day total, paise included', async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 800 })
+  const dialog = await open(page, 21)
+  await dialog.getByRole('button', { name: 'Type the numbers instead' }).click()
+  await dialog.getByLabel('Item', { exact: true }).fill('Kopi')
+  await dialog.getByLabel('Quantity sold', { exact: true }).fill('10')
+  await dialog.getByLabel('Total for this item (₹)', { exact: true }).fill('1.01')
+  await dialog.getByRole('button', { name: 'Review (1 line)', exact: true }).click()
+  await dialog.getByRole('button', { name: 'Close the day', exact: true }).click()
+  await expect(dialog.getByText('Day closed: ₹1.01', { exact: true })).toBeVisible()
+  await dialog.getByRole('button', { name: 'Done', exact: true }).click()
+  const pulse = page.getByTestId('today-pulse')
+  await expect(pulse).toContainText('Today so far')
+  await expect(pulse).toContainText('₹1.01')
 })

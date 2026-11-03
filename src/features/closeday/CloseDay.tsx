@@ -8,6 +8,9 @@ import {
   Checkbox,
   CircularProgress,
   Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   FormControlLabel,
   IconButton,
   Stack,
@@ -18,6 +21,7 @@ import {
 } from '@mui/material'
 import { Camera, Check, ClipboardList, Keyboard, Moon, Plus, Truck, X } from 'lucide-react'
 import type { ReactNode } from 'react'
+import { productName } from '../../i18n/productNames'
 import { useLocale } from '../../state/hooks'
 import {
   currencySymbol,
@@ -87,8 +91,13 @@ const motion = {
 /** The My shop entry point; it glows a little in the evening, when days are closed. */
 export function CloseDayTile() {
   const t = closeDayCopy(useLocale())
+  const locale = useLocale()
+  const ws = useWorkspace()
   const [open, setOpen] = useState(false)
   const evening = new Date().getHours() >= 17
+  const currency = shopCurrency(ws.active)
+  const checked = useDaySales(shopNow(shopZone(ws.active?.fields)).date)
+  const closedRows = checked.rows?.length ? checked.rows : null
   return (
     <>
       <Tile
@@ -96,12 +105,32 @@ export function CloseDayTile() {
         tour="closeday"
         icon={<Moon size={20} />}
         label={t.title}
-        value={evening ? t.tileEvening : t.tileValue}
+        value={
+          closedRows
+            ? `${t.doneTotal.replace(
+                '{sales}',
+                formatShopPrice(
+                  closedRows.reduce((sum, row) => sum + (row.revenue ?? 0), 0),
+                  currency,
+                  locale,
+                ),
+              )} · ${t.edit}`
+            : evening
+              ? t.tileEvening
+              : t.tileValue
+        }
         onClick={() => setOpen(true)}
       >
         <Supporting>{t.tileHint}</Supporting>
       </Tile>
-      {open && <CloseDay onClose={() => setOpen(false)} />}
+      {open && (
+        <CloseDay
+          onClose={() => {
+            setOpen(false)
+            checked.refresh()
+          }}
+        />
+      )}
     </>
   )
 }
@@ -151,6 +180,8 @@ export function CloseDay({
   // Typed sales lines: the way forward when a photo can't be read (or there's no connection).
   const [typed, setTyped] = useState<Line[]>([])
   const [typing, setTyping] = useState(false)
+  // A typed line that is filled in but not added yet still counts, and is added on Review.
+  const [draft, setDraft] = useState<Line | null>(null)
   const next = useNextStepsCopy()
   const online = useOnline()
   const started = useRef(false)
@@ -322,7 +353,7 @@ export function CloseDay({
     }
   }
 
-  const lineCount = done.reduce((n, s) => n + s.lines.length, 0) + typed.length
+  const lineCount = done.reduce((n, s) => n + s.lines.length, 0) + typed.length + (draft ? 1 : 0)
   const trouble = !online || shots.some((s) => s.state === 'failed')
   const typeButton = (
     <Button
@@ -333,6 +364,26 @@ export function CloseDay({
       {next.typeNumbers}
     </Button>
   )
+
+  // What went well leads: the units sold, named when it was one item, and the best seller.
+  const soldCount = reward?.items ?? saved.items
+  const byItem = new Map<string, number>()
+  for (const { line } of sales)
+    byItem.set(line.item, (byItem.get(line.item) ?? 0) + (line.quantity ?? 0))
+  const ranked = [...byItem].sort((x, y) => y[1] - x[1])
+  const number = new Intl.NumberFormat(locale)
+  const soldLine =
+    ranked.length === 1 && t.soldOf
+      ? t.soldOf
+          .replace('{n}', number.format(soldCount))
+          .replace('{item}', productName(ranked[0]![0], locale))
+      : closeDayCount(locale, 'soldItems', soldCount)
+  const bestLine =
+    ranked.length > 1 && t.bestSeller
+      ? t.bestSeller
+          .replace('{item}', productName(ranked[0]![0], locale))
+          .replace('{n}', number.format(ranked[0]![1]))
+      : ''
 
   const kinds: { kind: Kind; icon: ReactNode; title: string; hint: string }[] = [
     {
@@ -399,11 +450,6 @@ export function CloseDay({
                 locale,
               ),
             )}
-          </Typography>
-        )}
-        {phase === 'confirm' && (
-          <Typography variant="titleLarge" sx={{ mt: 3 }} role="status">
-            {t.early}
           </Typography>
         )}
         {phase === 'capture' && (
@@ -557,13 +603,14 @@ export function CloseDay({
                 products={[...new Set(ws.products.map((p) => p.name))]}
                 currency={currency}
                 onAdd={(line) => setTyped((all) => [...all, line])}
+                onDraft={setDraft}
               />
             )}
             <AskHint id="close_day" />
           </>
         )}
 
-        {(phase === 'review' || phase === 'saving') && (
+        {(phase === 'review' || phase === 'saving' || phase === 'confirm') && (
           <Box sx={{ animation: `cdRise 400ms ${EASE} both` }}>
             {!pastUsualClose && (
               <FormControlLabel
@@ -670,7 +717,7 @@ export function CloseDay({
             </Box>
             {(reward || saved.items > 0) && (
               <Typography variant="headlineSmall" sx={{ mt: 3 }}>
-                {closeDayCount(locale, 'soldItems', reward?.items ?? saved.items)}
+                {soldLine}
               </Typography>
             )}
             <Typography
@@ -681,6 +728,16 @@ export function CloseDay({
                 ? t.doneTotal.replace('{sales}', formatShopPrice(reward.total, currency, locale))
                 : t.doneTitle}
             </Typography>
+            {bestLine && (
+              <Typography variant="bodyLarge" sx={{ mt: 2, overflowWrap: 'anywhere' }}>
+                {bestLine}
+              </Typography>
+            )}
+            {t.thanks && (
+              <Typography variant="bodyLarge" sx={{ mt: 1 }}>
+                {t.thanks}
+              </Typography>
+            )}
             {complete && <CloseRewardLines reward={reward} />}
             <Typography
               variant="bodyMedium"
@@ -714,11 +771,14 @@ export function CloseDay({
           display: 'flex',
           gap: 2,
           justifyContent: 'flex-end',
+          flexWrap: 'wrap',
         }}
       >
         {/* On a phone the way out sits in the thumb zone; wider windows keep the corner X. */}
         {phone && phase !== 'saving' && phase !== 'done' && phase !== 'confirm' && (
-          <Button onClick={onClose}>{t.close}</Button>
+          <Button onClick={onClose} sx={{ flex: 1, whiteSpace: 'nowrap' }}>
+            {t.close}
+          </Button>
         )}
         {phase === 'closed' && (
           <Button
@@ -742,28 +802,30 @@ export function CloseDay({
             {t.edit}
           </Button>
         )}
-        {phase === 'confirm' && (
-          <>
-            <Button onClick={() => setPhase('review')}>{t.close}</Button>
-            <Button variant="contained" onClick={() => void save()}>
-              {t.anyway}
-            </Button>
-          </>
-        )}
         {phase === 'capture' && (
           <Button
             variant="contained"
             size="large"
             disabled={lineCount === 0 || shots.some((s) => s.state === 'reading')}
-            onClick={() => setPhase('review')}
+            onClick={() => {
+              if (draft) {
+                setTyped((all) => [...all, draft])
+                setDraft(null)
+              }
+              setPhase('review')
+            }}
             sx={{ flex: 1 }}
           >
             {closeDayCount(locale, 'review', lineCount)}
           </Button>
         )}
-        {(phase === 'review' || phase === 'saving') && (
+        {(phase === 'review' || phase === 'saving' || phase === 'confirm') && (
           <>
-            <Button onClick={() => setPhase('capture')} disabled={saveStarted}>
+            <Button
+              onClick={() => setPhase('capture')}
+              disabled={saveStarted || phase === 'confirm'}
+              sx={{ flex: phone ? 1 : undefined, whiteSpace: 'nowrap' }}
+            >
               {t.back}
             </Button>
             <Button
@@ -777,9 +839,11 @@ export function CloseDay({
                 )
               }
               disabled={
-                phase === 'saving' || (sales.length === 0 && !stock.some((s) => s.line.matched))
+                phase !== 'review' || (sales.length === 0 && !stock.some((s) => s.line.matched))
               }
               onClick={requestSave}
+              // On a phone the main action takes the first full-width line, so no label wraps.
+              sx={phone ? { flex: '1 1 100%', order: -1, whiteSpace: 'nowrap' } : undefined}
             >
               {t.save}
             </Button>
@@ -791,6 +855,32 @@ export function CloseDay({
           </Button>
         )}
       </Box>
+      {phase === 'confirm' && (
+        <Dialog
+          open
+          maxWidth="xs"
+          fullWidth
+          onClose={() => setPhase('review')}
+          aria-labelledby="close-day-early-title"
+        >
+          <DialogTitle id="close-day-early-title" component="h3" sx={{ typography: 'titleLarge' }}>
+            {t.early}
+          </DialogTitle>
+          {t.earlyWhy && (
+            <DialogContent>
+              <Typography color="text.secondary">{t.earlyWhy}</Typography>
+            </DialogContent>
+          )}
+          <DialogActions sx={{ px: 3, pb: 2 }}>
+            <Button onClick={() => setPhase('review')} sx={{ minHeight: 48 }}>
+              {t.close}
+            </Button>
+            <Button variant="contained" onClick={() => void save()} sx={{ minHeight: 48 }}>
+              {t.anyway}
+            </Button>
+          </DialogActions>
+        </Dialog>
+      )}
       <input
         ref={input}
         type="file"
@@ -841,12 +931,13 @@ function CloseRewardLines({ reward }: { reward: CloseReward | null }) {
         .replace('{when}', when),
     )
   }
-  if (reward.forecast) {
+  // Only a forecast the day met is shown; falling short of one is not news worth a screen.
+  if (reward.forecast && reward.forecast.sold >= reward.forecast.forecast) {
     const number = new Intl.NumberFormat(locale, { maximumFractionDigits: 1 })
     lines.push(
       t.forecastSold
         .replace('{forecast}', number.format(reward.forecast.forecast))
-        .replace('{item}', reward.forecast.item)
+        .replace('{item}', productName(reward.forecast.item, locale))
         .replace('{sold}', number.format(reward.forecast.sold)),
     )
   }
@@ -932,11 +1023,13 @@ function TypedSales({
   products,
   currency,
   onAdd,
+  onDraft,
 }: {
   lines: Line[]
   products: string[]
   currency: string
   onAdd: (line: Line) => void
+  onDraft: (line: Line | null) => void
 }) {
   const next = useNextStepsCopy()
   const locale = useLocale()
@@ -951,6 +1044,24 @@ function TypedSales({
     '{example}',
     new Intl.NumberFormat(numberLocale).format(exponent(currency) === 0 ? 1000 : 1000.5),
   )
+  const known = products.find((name) => name.toLowerCase() === item.trim().toLowerCase())
+  const filled: Line | null =
+    item.trim() && quantity !== null && total !== null
+      ? {
+          item: known ?? item.trim(),
+          read_as: known ?? item.trim(),
+          quantity,
+          amount: total,
+          matched: Boolean(known),
+        }
+      : null
+  const filledKey = filled && JSON.stringify(filled)
+  useEffect(() => {
+    onDraft(filled)
+    return () => onDraft(null)
+    // The line is rebuilt each render; its content is the dependency.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filledKey])
   function add(form: HTMLFormElement) {
     if (!item.trim() || quantity === null || total === null) {
       setInvalid(true)
@@ -958,14 +1069,7 @@ function TypedSales({
       ;(form.elements.namedItem(name) as HTMLInputElement | null)?.focus()
       return
     }
-    const known = products.find((name) => name.toLowerCase() === item.trim().toLowerCase())
-    onAdd({
-      item: known ?? item.trim(),
-      read_as: known ?? item.trim(),
-      quantity,
-      amount: total,
-      matched: Boolean(known),
-    })
+    if (filled) onAdd(filled)
     setItem('')
     setQty('')
     setAmount('')

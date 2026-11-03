@@ -6,9 +6,11 @@ import { openOwnerFeature } from './entry'
 import { useWorkspace } from '../v1/workspaceContext'
 import { SeeAgain } from '../first-run/FirstRun'
 import { useToday } from '../v1/today/useToday'
+import { useLocale } from '../../state/hooks'
+import { productName } from '../../i18n/productNames'
 
 /** Shared by the help screen and empty coach. Saved item names stay in the owner's words. */
-function guideExamples(t: ToolCopy, shop: Business | null, products: Product[]) {
+function guideExamples(t: ToolCopy, shop: Business | null, products: Product[], locale: string) {
   const category = shop?.fields.category ?? ''
   const services = /salon|barber|tailor|repair|tuition|service|beauty|laundry|clinic|spa/i.test(
     category,
@@ -19,7 +21,7 @@ function guideExamples(t: ToolCopy, shop: Business | null, products: Product[]) 
   const rows = [
     ['menu', t.menuJob, t.menuPrompt.replace('{items}', items)],
     ['close', t.closeJob, t.closePrompt],
-    ['forecast', t.forecastJob, t.forecastPrompt.replace('{item}', item)],
+    ['forecast', t.forecastJob, t.forecastPrompt.replace('{item}', productName(item, locale))],
     ['source', t.sourceJob, t.sourcePrompt.replace('{supply}', supply)],
     ['rescue', t.rescueJob, t.rescuePrompt],
     ['answer', t.answerJob, t.answerPrompt],
@@ -40,10 +42,11 @@ export function GuideChips({
   onSend: (sentence: string) => void
 }) {
   const t = useToolCopy()
+  const locale = useLocale()
   const ws = useWorkspace()
   const facts = useToday()
   const closed = facts?.today && (facts.today.sales != null || facts.today.items != null)
-  const examples = guideExamples(t, ws.active, ws.products).filter(
+  const examples = guideExamples(t, ws.active, ws.products, locale).filter(
     (example) => example.id !== 'close' || (!closed && (!ws.active || facts !== null)),
   )
   return (

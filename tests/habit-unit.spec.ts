@@ -40,8 +40,10 @@ test('every locale with a translated close screen has all the reward lines, no E
     const line = (key: string) =>
       block.match(new RegExp(`^ {4}${key}: ?\\r?\\n? *'(.+)',`, 'm'))![1]
     expect(line('doneTotal')).toContain('{sales}')
-    for (const key of ['moreThan', 'lessThan'])
-      expect(line(key), `${locale}.${key}`).toMatch(/(?=.*\{amount\})(?=.*\{when\})/)
+    expect(line('moreThan'), `${locale}.moreThan`).toMatch(/(?=.*\{amount\})(?=.*\{when\})/)
+    // A slower day is said kindly, without the amount (OB-290).
+    expect(line('lessThan'), `${locale}.lessThan`).toContain('{when}')
+    expect(line('lessThan'), `${locale}.lessThan`).not.toContain('{amount}')
     expect(line('sameAs')).toContain('{when}')
     expect(line('lastWeekday')).toContain('{weekday}')
     expect(line('forecastSold')).toMatch(/(?=.*\{forecast\})(?=.*\{item\})(?=.*\{sold\})/)
