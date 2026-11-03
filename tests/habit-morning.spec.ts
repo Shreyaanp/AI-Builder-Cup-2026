@@ -1,6 +1,6 @@
 import { expect, test, type Page, type Request } from '@playwright/test'
 import { enter, localOnly } from './stories/support.js'
-import { showInGrow } from './support/grow.js'
+import { growTool, openBuyStock } from './support/grow.js'
 
 // HABIT slice 2, the morning loop on a phone. At 08:00 Coach opens with one lead action (one
 // filled button) and one stock surface (the supply row with its run-out day, low items and supply
@@ -169,9 +169,13 @@ test('08:00: one lead action, one stock surface, one run-out day on Today, brief
   const low = page.locator('[aria-roledescription="slide"]').filter({ hasText: 'Running low' })
   await expect(low).toContainText('Milk')
   await expect(low).toContainText(`Runs out ${day}`)
-  // The supply tile sits under its Grow row (simplify batch 4a).
-  await showInGrow(page, page.getByText(`Milk runs out ${day}`).filter({ visible: true }))
-  await expect(page.getByText(`Milk runs out ${day}`).filter({ visible: true })).toHaveCount(1)
+  // The Buy stock row says the weekday (OB-254); its runs-out card, under To do (simplify batch
+  // 4b), names the same day in the same words, once.
+  await expect(await growTool(page, /^Buy stock/)).toContainText(
+    `Milk runs out ${day.split(',')[0]}`,
+  )
+  const sheet = await openBuyStock(page)
+  await expect(sheet.getByText(`Milk runs out ${day}`).filter({ visible: true })).toHaveCount(1)
 })
 
 test('a promise set at close leads next morning; "Not today" clears it and it never returns', async ({
