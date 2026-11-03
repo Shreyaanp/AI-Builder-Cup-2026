@@ -128,14 +128,14 @@ for (const width of [360, 390, 412] as const)
               | undefined
             >
           }
-          const simple = (await import('/src/features/v1/today/simpleCopy.ts' as string)) as {
-            simpleCopyFor: (l: string) => { typeName: string }
+          const simple = (await import('/src/features/v1/today/firstRunCopy.ts' as string)) as {
+            firstRunCopyFor: (l: string) => { typeName: string }
           }
           const { continuePreview, send } =
             language === 'en' ? app.en : (await locales.loaders[language]?.())!
           const { begin, review } = flow.newShopCopyFor(language)
           // First run: the start card's typed way in (simplify batch 5: no top-bar "+").
-          const addShop = simple.simpleCopyFor(language).typeName
+          const addShop = simple.firstRunCopyFor(language).typeName
           return { addShop, continuePreview, send, begin, review }
         }, language)
         await page.evaluate(

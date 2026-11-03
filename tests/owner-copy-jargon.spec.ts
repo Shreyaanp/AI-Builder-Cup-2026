@@ -49,6 +49,7 @@ const FILES = [
   'v1/today/todayCopy.ts',
   'v1/today/promiseCopy.ts',
   'v1/today/simpleCopy.ts',
+  'v1/today/firstRunCopy.ts',
   'v1/twoPathsCopy.ts',
   'v1/growCopy.ts',
   'v1/voiceModeCopy.ts',

@@ -433,12 +433,12 @@ for (const locale of LOCALES) {
           (() => Promise<{ addShop: string; continuePreview: string }>) | undefined
         >
       }
-      const simple = (await import('/src/features/v1/today/simpleCopy.ts' as string)) as {
-        simpleCopyFor: (l: string) => { typeName: string }
+      const simple = (await import('/src/features/v1/today/firstRunCopy.ts' as string)) as {
+        firstRunCopyFor: (l: string) => { typeName: string }
       }
       const { continuePreview } = locale === 'en' ? app.en : (await locales.loaders[locale]?.())!
       // First run: the start card's typed way in (simplify batch 5: no top-bar "+").
-      const addShop = simple.simpleCopyFor(locale).typeName
+      const addShop = simple.firstRunCopyFor(locale).typeName
       return {
         ...voice.voiceModeCopyFor(locale),
         begin: flow.newShopCopyFor(locale).begin,

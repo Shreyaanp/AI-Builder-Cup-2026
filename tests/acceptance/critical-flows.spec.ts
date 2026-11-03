@@ -142,8 +142,8 @@ async function copyFor(page: Page, code: string): Promise<Copy> {
     const inChat = (await import('/src/features/v1/inChatCopy.ts' as string)) as {
       inChatCopyFor: (l: string) => Record<string, string>
     }
-    const simple = (await import('/src/features/v1/today/simpleCopy.ts' as string)) as {
-      simpleCopyFor: (l: string) => Record<string, string>
+    const simple = (await import('/src/features/v1/today/firstRunCopy.ts' as string)) as {
+      firstRunCopyFor: (l: string) => Record<string, string>
     }
     const localized = language === 'en' ? {} : await locales.loaders[language]?.()
     return {
@@ -154,7 +154,7 @@ async function copyFor(page: Page, code: string): Promise<Copy> {
       ...onboarding.onboardingCopyFor(language),
       confirmPin: inChat.inChatCopyFor(language).confirmPin!,
       // First run: the start card's typed way in (simplify batch 5: no top-bar "+").
-      typeName: simple.simpleCopyFor(language).typeName!,
+      typeName: simple.firstRunCopyFor(language).typeName!,
     } as Record<string, string>
   }, code)
 }
