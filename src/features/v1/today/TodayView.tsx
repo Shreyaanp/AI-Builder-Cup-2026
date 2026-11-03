@@ -35,7 +35,7 @@ import { HAND_FONT, enterRise, motion, shape } from '../../../design/theme'
 import { productFeminine, productName } from '../../../i18n/productNames'
 import { useLocale } from '../../../state/hooks'
 import { closeDayCopy } from '../../closeday/strings'
-import { formatAmount, shopCurrency, toMajor } from '../format'
+import { formatShopPrice, shopCurrency } from '../format'
 import { useCopy } from '../strings'
 import { isServiceShop } from '../tabsCopy'
 import { useWorkspace } from '../workspaceContext'
@@ -790,8 +790,8 @@ function PulseCard({ plan, actions }: { plan: TodayPlan; actions: TodayActions }
     const values = plan.pulse.values.map(({ metric, value }) => {
       const n = number.format(value)
       if (metric === 'sales')
-        // A day's takings read best whole, in the shop's grouping: ₹1,01,000.
-        return formatAmount(Math.round(toMajor(value, currency)), currency, locale)
+        // Exact, in the shop's grouping: whole rupees stay whole (₹1,01,000), paise show when present (₹1.01).
+        return formatShopPrice(value, currency, locale)
       if (metric === 'items') return tt.sold(n)
       if (metric === 'views') return tt.views(n)
       if (metric === 'questions') return tt.asked(n)
