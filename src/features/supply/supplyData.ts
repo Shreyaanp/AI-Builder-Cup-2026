@@ -210,11 +210,13 @@ export function usePoActions(onChange: (order: PurchaseOrder) => void) {
         )
         const next = 'order' in result ? result.order : result
         onChange(next)
-        supplyChanged()
         if ('proposal' in result && result.proposal) {
           if (saved) await saved(result.proposal, next)
           else review(result.proposal)
         }
+        // After the stock is saved: Today never reads the order received with the stock not yet
+        // in, which would drop its row (and the open sheet) for a moment (OB-263).
+        supplyChanged()
         return next
       } catch (cause) {
         notify(explain(cause))

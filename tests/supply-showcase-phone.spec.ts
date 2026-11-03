@@ -14,12 +14,13 @@ test('Today → forecast reorder → SAP → replies → reviewed stock → Toda
   await openBuyStock(page)
   await page.getByRole('button', { name: 'Try supply demo', exact: true }).click()
   const today = page.getByRole('region', { name: 'Supply chain' })
-  await expect(today).toContainText(/Milk runs out/)
+  // The demo's earlier 12 l is on its way and counted (OB-263): Order more, not a second Reorder.
+  await expect(today).toContainText(/Milk: 12 l arriving .+✓/)
   const overflow = async () =>
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
   await overflow()
   await page.screenshot({ path: 'output/playwright/supply-today.png' })
-  await today.getByRole('button', { name: 'Reorder', exact: true }).click()
+  await today.getByRole('button', { name: 'Order more', exact: true }).click()
   const card = page.getByRole('article')
   await expect(card).toContainText('Drafted for you')
   await expect(card).toContainText('Minimum order: 12 l')
@@ -47,16 +48,17 @@ test('Today → forecast reorder → SAP → replies → reviewed stock → Toda
       .violations,
   ).toEqual([])
   await card.getByRole('button', { name: 'Goods arrived', exact: true }).click()
-  const review = page.getByRole('dialog', { name: 'Check before saving' })
-  await expect(review).toContainText('Milk')
-  await review.getByRole('button', { name: 'Confirm and save', exact: true }).click()
-  await expect(review).toHaveCount(0)
+  // Saved at once with a plain note and Undo; no review sheet (OB-263).
+  await expect(page.locator('.MuiSnackbar-root')).toContainText(
+    /\d+ l Milk received\. Stock is now 27 l\./,
+  )
+  await expect(page.getByRole('dialog', { name: 'Check before saving' })).toHaveCount(0)
   const orders = page.getByRole('dialog', { name: 'Purchase orders', exact: true })
   await expect(orders).toContainText('Received')
   await orders.getByRole('button', { name: 'Close', exact: true }).click()
   await expect(orders).toHaveCount(0)
-  await expect(today).toContainText('Milk restocked')
-  await expect(today.getByRole('button', { name: 'Reorder', exact: true })).toHaveCount(0)
+  await expect(today).toContainText('Milk stock topped up: 27 l')
+  await expect(today.getByRole('button')).toHaveCount(0)
   const businesses = await (await page.request.get('/api/v1/businesses')).json()
   const shop = businesses.find(
     (b: { fields: { name: string } }) => b.fields.name === 'Milk shop (Supply demo)',
@@ -69,7 +71,11 @@ test('Today → forecast reorder → SAP → replies → reviewed stock → Toda
   await page.getByRole('button', { name: 'Grow', exact: true }).click()
   await openBuyStock(page)
   await page.getByRole('button', { name: 'Try supply demo', exact: true }).click()
-  await expect(page.getByRole('region', { name: 'Supply chain' })).toContainText('Milk restocked')
+  // Said once: after the reload Today no longer repeats it, and asks for no reorder.
+  const again = page.getByRole('region', { name: 'Supply chain' })
+  await expect(page.getByTestId('today-needs')).toBeVisible()
+  await expect(page.getByText('Milk stock topped up')).toHaveCount(0)
+  await expect(again.getByRole('button', { name: 'Reorder', exact: true })).toHaveCount(0)
   await overflow()
   await page.screenshot({ path: 'output/playwright/supply-restocked.png' })
 })
