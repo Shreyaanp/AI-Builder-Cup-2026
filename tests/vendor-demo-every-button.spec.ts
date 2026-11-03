@@ -74,7 +74,8 @@ test('tabs stay tappable after load, also after a reload', async ({ page }) => {
 
 test('Coach: Reorder opens the purchase order draft', async ({ page }) => {
   await openDemo(page)
-  await opensSheet(page, /^Reorder$/, /Purchase orders/)
+  // With 13 kg already on its way the demo offers Order more, the same draft (OB-263).
+  await opensSheet(page, /^(Reorder|Order more)$/, /Purchase orders/)
   await expect(
     page
       .getByRole('dialog')
@@ -234,18 +235,20 @@ test('prep numbers and dates are identical on every reload', async ({ page }) =>
     await openDemo(page)
     const today = await page.getByTestId('today').innerText()
     const runsOut = /runs out ([A-Za-z]{3}, [A-Za-z]{3} \d+)/.exec(today)?.[1]
+    // Or, with its order on the way counted (OB-263), what is coming instead of a day.
+    const coming = /Tea dust: (\d+ kg arriving \w+)/.exec(today)?.[1]
     await tab(page, 'grow')
     // The brief opens in place from its Morning brief row (batch 4a).
     const brief = page.getByRole('region', { name: 'Morning brief' })
     await showInGrow(page, brief)
     const prep = (await brief.innerText()).replace(/\s+/g, ' ')
     const low = /Tea dust Left: [\d.]+ kg Runs out ([A-Za-z]{3}, [A-Za-z]{3} \d+)/.exec(prep)?.[1]
-    // One source of truth: Today and the Grow brief name the same run-out day.
-    expect(runsOut, 'Today names a run-out day').toBeTruthy()
+    // One source of truth: Today and the Grow brief name the same run-out day, or both none.
+    expect(runsOut ?? coming, 'Today names a run-out day or what is coming').toBeTruthy()
     expect(low, 'The Grow brief names the same run-out day').toBe(runsOut)
     const numbers = /Prep today.*?Weather/.exec(prep)?.[0]
     expect(numbers).toMatch(/Masala chai \d+ cup/)
-    seen.push(JSON.stringify({ numbers, runsOut, low }))
+    seen.push(JSON.stringify({ numbers, runsOut, coming, low }))
   }
   expect(new Set(seen).size, seen.join('\n')).toBe(1)
 })

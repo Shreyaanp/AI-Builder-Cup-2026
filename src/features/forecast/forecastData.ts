@@ -109,7 +109,10 @@ export function useRunsOut() {
           ),
     /** The same in a few words for Grow's Buy stock row: "Tea dust runs out Thu" (OB-254). */
     short: arriving
-      ? arriving
+      ? c.arrivingShort(
+          productName(need!.item, locale),
+          weekdayLabel(need!.arrives || need!.on_order_other?.[0]?.arrives || '', locale),
+        )
       : need
         ? s.runsOut(
             productName(need.item, locale),

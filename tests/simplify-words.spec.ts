@@ -119,7 +119,8 @@ test('the order card speaks of the supplier and the item, not an order number', 
 }) => {
   await openDemo(page)
   await page
-    .getByRole('button', { name: /^Reorder$/ })
+    // Order more when some is on its way already (OB-263): the same draft.
+    .getByRole('button', { name: /^(Reorder|Order more)$/ })
     .first()
     .click({ timeout: 10_000 })
   const dialog = page.getByRole('dialog')

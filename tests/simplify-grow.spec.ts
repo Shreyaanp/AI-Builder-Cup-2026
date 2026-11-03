@@ -137,7 +137,7 @@ test('Grow: a short list and a More tools grid, calm at 390 and about one screen
   for (const name of OLD_ENTRIES) expect(text, `"${name}" on Grow`).not.toContain(name)
   // OB-254: the Buy stock row says what needs buying, not the names of tools.
   const stock = grow(page).getByRole('button', { name: /^Buy stock/ })
-  await expect(stock).toContainText(/runs out|to do|on the way|Reorder or find a supplier/)
+  await expect(stock).toContainText(/runs out|arriving|to do|on the way|Reorder or find a supplier/)
   await expect(stock).not.toContainText(/Orders|Purchase orders|Supply chain/)
   // How much to make shows tomorrow's numbers; My sales this week's.
   await expect(grow(page).getByRole('button', { name: /^How much to make/ })).toContainText(/\d/)
@@ -186,9 +186,10 @@ const FORMER: {
     shows: (page) => page.getByRole('dialog').getByRole('button', { name: 'Draft a reorder' }),
   },
   {
+    // Its order on the way counted, it says what is arriving instead (OB-263).
     was: 'Tea dust runs out · Find suppliers',
     path: ['Buy stock'],
-    shows: (page) => page.getByRole('dialog').getByRole('button', { name: /runs out/ }),
+    shows: (page) => page.getByRole('dialog').getByRole('button', { name: /runs out|arriving/ }),
   },
   {
     was: 'Supply chain (needs me now, must send)',

@@ -69,6 +69,9 @@ const en = {
   arrivingLine: (quantity: string, unit: string, day: string) =>
     day ? `${quantity} ${unit} arriving ${day}\u00a0✓` : `${quantity} ${unit} on its way\u00a0✓`,
   // Hindi needs the item's gender (होगी / होगा); English does not.
+  // Grow's one-line Buy stock status (OB-263).
+  arrivingShort: (item: string, day: string) =>
+    day ? `${item} arriving ${day}\u00a0✓` : `${item} on its way\u00a0✓`,
   stillRunsOut: ((day: string) => `Still runs out ${day}`) as (
     day: string,
     feminine: boolean,
@@ -135,6 +138,8 @@ const hi: OrderChangeCopy = {
     day
       ? `${quantity} ${unit} ${day} को आ रहा है\u00a0✓`
       : `${quantity} ${unit} रास्ते में है\u00a0✓`,
+  arrivingShort: (item, day) =>
+    day ? `${item} रास्ते में, ${day}\u00a0✓` : `${item} रास्ते में\u00a0✓`,
   stillRunsOut: (day, feminine) => `फिर भी ${day} को खत्म ${feminine ? 'होगी' : 'होगा'}`,
   toppedUp: (item, stock) => `${item} का स्टॉक भर गया: ${stock}\u00a0✓`,
   receivedOne: (amount, item, stock) => `${amount} ${item} आ गया। अब स्टॉक ${stock} है।`,

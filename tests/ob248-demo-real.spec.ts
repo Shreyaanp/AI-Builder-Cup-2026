@@ -92,10 +92,10 @@ test('OB-248 the supplier talks in the owner language', async ({ page }) => {
   )
   await openDemo(page, 'छोड़ें')
   await page.locator('[data-tour="nav-grow"]').click()
-  // माल मँगाएँ says the tea dust on its way in the Hindi unit too. (The Morning brief no longer
-  // lists it as running low: the order on its way counts, OB-263.)
+  // माल मँगाएँ says the tea dust is on its way, in Hindi. (The Morning brief no longer lists it
+  // as running low: the order on its way counts, OB-263.)
   const tile = await showInGrow(page, page.locator('[data-tour="supply"]'))
-  await expect(tile).toContainText(/चाय पत्ती: \d+ किलो/)
+  await expect(tile).toContainText('चाय पत्ती रास्ते में')
   await expect(tile).not.toContainText(/\bkg\b/)
   // माल मँगाएँ → रास्ते में (Buy stock → On the way, simplify batch 4b).
   await tile.click()
