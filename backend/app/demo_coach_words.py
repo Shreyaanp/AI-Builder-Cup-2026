@@ -679,6 +679,76 @@ def app_language(question: str) -> list[StreamEvent] | None:
     ]
 
 
+# --- "Reply to Priya: yes we have samosa" (OB-303) ----------------------------------------------
+
+REPLY_TO = re.compile(
+    r"^(?:please\s+)?(?:reply|answer|tell|message|write)\s+(?:back\s+)?(?:to\s+)?(?P<name>[a-z]+)"
+    r"\s*(?:[:,\-]\s*|\s+that\s+|\s+)(?P<text>.+)$"
+)
+REPLY_TO_HI = re.compile(
+    r"^(?P<name>\S+)\s+(?:को|ko)\s+(?:जवाब|जवाब\s+में|reply|jawab|bolo|batao|likho|बोलो|बताओ|लिखो)"
+    r"(?:\s+(?:दो|दें|दीजिए|करो|do|de|karo|kar\s+do))?\s*(?:[:,\-]\s*|\s+(?:कि|ki)\s+|\s+)"
+    r"(?P<text>.+)$"
+)
+DONT = re.compile(r"^(?:mat|nahi|nahin|na|don't|dont|not)(?!\w)|^(?:मत|नहीं|ना)(?!\S)")
+
+
+def customer_reply(ctx: Any, question: str) -> list[StreamEvent] | None:
+    """A reply the owner dictates to a waiting customer, prepared as the same reply card the real
+    coach's prepare_customer_reply makes: it is sent only when the owner taps Send."""
+    text = " ".join(question.replace("’", "'").split())
+    found = REPLY_TO.fullmatch(text.casefold()) or REPLY_TO_HI.fullmatch(text.casefold())
+    if not found or not ctx.business_id:
+        return None
+    words = text[found.start("text") :].strip()
+    if DONT.search(words.casefold()) or not words:
+        return None
+    hindi = speaks_hindi(question)
+    said = found.group("name")
+    threads = [
+        t for t in ctx.store.inquiries(ctx.uid, ctx.business_id) if not t.done and not t.blocked
+    ]
+    named = [t for t in threads if (t.name or "").split(" ")[0].casefold() == said]
+    if not named and HINDI.search(said):
+        # A name said in Devanagari ("प्रिया"): the one customer waiting for a reply.
+        waiting = [t for t in threads if t.messages and t.messages[-1].author == "customer"]
+        named = waiting if len(waiting) == 1 else []
+    if len(named) != 1:
+        return None
+    thread = named[0]
+    first = (thread.name or "customer").split(" ")[0][:30]
+    reply = words[0].upper() + words[1:]
+    if not re.search(r"[.!?।]$", reply):
+        reply += "।" if HINDI.search(reply) else "."
+    last = thread.messages[-1].text if thread.messages else thread.message
+    card = StreamEvent(
+        kind="action",
+        data={
+            "target": "reply",
+            "label": f"Reply to {first}",
+            "business_id": ctx.business_id,
+            "thread_id": thread.id,
+            "question": last[:200],
+            "text": reply[:500],
+        },
+    )
+    if hindi:
+        return [
+            card,
+            _reply(
+                f"{first} के लिए जवाब तैयार है। जाँच लें, बदलना हो तो बदलें, फिर भेजें दबाएँ। "
+                "यह अपने-आप नहीं जाता। " + next_line_hi("messages")
+            ),
+        ]
+    return [
+        card,
+        _reply(
+            f"Your reply to {first} is ready. Check it, change it if you like, then tap Send. "
+            "Nothing goes until you do. " + next_line("messages")
+        ),
+    ]
+
+
 # --- One short question when unsure -------------------------------------------------------------
 
 
