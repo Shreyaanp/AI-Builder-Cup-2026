@@ -1,3 +1,4 @@
+import { saveCloseDay } from './closeDaySupport.js'
 import { createShop } from './stories/support.js'
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test } from '@playwright/test'
@@ -32,7 +33,7 @@ test('Close the day: till photo, one review, saved', async ({ page }) => {
   await dialog
     .locator('input[type=file]')
     .setInputFiles({ name: 'till.jpg', mimeType: 'image/jpeg', buffer: PHOTO })
-  await expect(dialog.getByText(/\d+ lines$/)).toBeVisible({ timeout: 20_000 })
+  await expect(dialog.getByText(/\d+ lines?$/)).toBeVisible({ timeout: 20_000 })
   await page.screenshot({ path: 'docs/stories/S2-close-2-read.png' })
   await dialog.getByRole('button', { name: /^Review/ }).tap()
   await expect(dialog.getByText('Today’s sales')).toBeVisible()
@@ -42,7 +43,7 @@ test('Close the day: till photo, one review, saved', async ({ page }) => {
   expect(
     (await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze()).violations,
   ).toEqual([])
-  await dialog.getByRole('button', { name: 'Save day' }).tap()
+  await saveCloseDay(dialog)
   await expect(dialog.getByText('Day closed')).toBeVisible({ timeout: 20_000 })
   await page.waitForTimeout(1300)
   await page.screenshot({ path: 'docs/stories/S2-close-4-done.png' })

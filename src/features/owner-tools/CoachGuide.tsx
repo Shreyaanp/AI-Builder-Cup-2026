@@ -5,6 +5,7 @@ import { useToolCopy } from './copy'
 import { openOwnerFeature } from './entry'
 import { useWorkspace } from '../v1/workspaceContext'
 import { SeeAgain } from '../first-run/FirstRun'
+import { useToday } from '../v1/today/useToday'
 
 /** Shared by the help screen and empty coach. Saved item names stay in the owner's words. */
 function guideExamples(t: ToolCopy, shop: Business | null, products: Product[]) {
@@ -40,7 +41,11 @@ export function GuideChips({
 }) {
   const t = useToolCopy()
   const ws = useWorkspace()
-  const examples = guideExamples(t, ws.active, ws.products)
+  const facts = useToday()
+  const closed = facts?.today && (facts.today.sales != null || facts.today.items != null)
+  const examples = guideExamples(t, ws.active, ws.products).filter(
+    (example) => example.id !== 'close' || (!closed && (!ws.active || facts !== null)),
+  )
   return (
     <Stack spacing={2}>
       <Typography component={compact ? 'h2' : 'p'} variant={compact ? 'titleMedium' : 'bodyLarge'}>

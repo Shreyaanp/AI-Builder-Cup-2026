@@ -438,10 +438,26 @@ ROLES: list[dict[str, Any]] = [
 SPREAD = [(1.4, 35.0), (4.6, 150.0), (2.9, 260.0), (2.2, 320.0)]
 
 
-def demo_supplier_id(lat: float, lng: float, index: int) -> str:
-    """One set per ~2 km cell, so neighbouring shops share (and reuse) the same suppliers."""
-    cell = f"{round(lat * 50) / 50:.2f},{round(lng * 50) / 50:.2f}"
-    return f"demo-sup-{hashlib.sha256(cell.encode()).hexdigest()[:10]}-{index}"
+DEMO_SUPPLIER = "demo-sup-"
+# A shop's own demo suppliers stop growing here (Firestore reads 500 items per shop).
+DEMO_CATALOGUE_MAX = 200
+
+
+def demo_supplier_id(buyer: str, index: int) -> str:
+    """One set per buying shop (OB-260): what one owner or demo visitor searches for never
+    changes the suppliers, items or prices another shop sees."""
+    return f"{DEMO_SUPPLIER}{demo_prefix(buyer)}-{index}"
+
+
+def demo_prefix(buyer: str) -> str:
+    return hashlib.sha256(f"buyer:{buyer}".encode()).hexdigest()[:10]
+
+
+def someone_elses_demo(shop_id: str, buyer: str) -> bool:
+    """A generated demo supplier made for another shop (or an old shared per-area one)."""
+    return shop_id.startswith(DEMO_SUPPLIER) and not shop_id.startswith(
+        f"{DEMO_SUPPLIER}{demo_prefix(buyer)}-"
+    )
 
 
 def fixture_suppliers(item: str, unit: str, currency: str) -> DemoSuppliers:
@@ -561,6 +577,7 @@ def demo_records(
     lng: float,
     currency: str,
     timezone: str,
+    buyer: str,
 ) -> list[tuple[str, BusinessFields, list[ProductFields]]]:
     records = []
     for index, supplier in enumerate(generated.suppliers[: len(SPREAD)]):
@@ -611,8 +628,38 @@ def demo_records(
                 ),
             ],
         )
-        records.append((demo_supplier_id(lat, lng, index), fields, products))
+        records.append((demo_supplier_id(buyer, index), fields, products))
     return records
+
+
+def seed_own_demo_supplier(
+    store: MerchantRepository,
+    owner: str,
+    sid: str,
+    fields: BusinessFields,
+    products: list[ProductFields],
+) -> bool:
+    """Create the shop's own demo supplier, or only add what it lacks: a later search never
+    renames it, drops an item or changes a price the owner already saw (OB-260)."""
+    try:
+        stored = store.owned_business(owner, sid)["fields"]
+        kept = store.inventory(owner, sid)
+    except HTTPException as error:
+        if error.status_code != 404:
+            raise
+        return store.seed_demo_shop(owner, sid, fields, products)
+    rows = [
+        ProductFields.model_validate(
+            {k: v for k, v in row.items() if k in ProductFields.model_fields}
+        )
+        for row in kept
+    ]
+    known = {(row.name.casefold(), row.unit) for row in rows}
+    added = [p for p in products if (p.name.casefold(), p.unit) not in known]
+    if not added or len(rows) >= DEMO_CATALOGUE_MAX:
+        return False
+    rows += added[: DEMO_CATALOGUE_MAX - len(rows)]
+    return store.seed_demo_shop(owner, sid, BusinessFields.model_validate(stored), rows)
 
 
 # ---------------------------------------------------------------------------------------------
@@ -668,6 +715,9 @@ def candidates(
     found = []
     for shop in shops:
         if shop["id"] == own_id or shop.get("lat") is None or shop.get("lng") is None:
+            continue
+        if someone_elses_demo(shop["id"], own_id):
+            # Generated for another shop's search: never shown here (OB-260).
             continue
         if (shop_currency(shop)) != pin.currency:
             continue
@@ -793,11 +843,11 @@ async def find(
         demo, source = await generator.generate(
             item, unit, pin.currency, pin.location, pin.category
         )
-        records = demo_records(demo, pin.lat, pin.lng, pin.currency, pin.timezone)
+        records = demo_records(demo, pin.lat, pin.lng, pin.currency, pin.timezone, bid)
         for sid, fields, products in records:
             try:
                 await anyio.to_thread.run_sync(
-                    store.seed_demo_shop, demo_owner, sid, fields, products
+                    seed_own_demo_supplier, store, demo_owner, sid, fields, products
                 )
             except HTTPException:
                 # A demo ID owned by someone else is never taken over; skip that one.

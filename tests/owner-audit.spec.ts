@@ -1,3 +1,4 @@
+import { saveCloseDay } from './closeDaySupport.js'
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Locator, type Page } from '@playwright/test'
 import { readFileSync } from 'node:fs'
@@ -238,7 +239,7 @@ test('#4 a phone sheet closes from the thumb zone; desktop keeps the corner X', 
   await page.getByRole('button', { name: 'Grow', exact: true }).click()
   await page.getByRole('button', { name: /^Close the day/ }).click()
   const day = page.getByRole('dialog', { name: 'Close the day' })
-  const dayClose = day.getByRole('button', { name: 'Close', exact: true })
+  const dayClose = day.getByRole('button', { name: 'Not now', exact: true })
   await expect(dayClose).toHaveCount(1)
   const dayBox = (await dayClose.boundingBox())!
   if (isMobile) expect(dayBox.y).toBeGreaterThan(height * 0.8)
@@ -273,9 +274,9 @@ test('#5 #7 #9 a till photo that fails offers typed numbers; the review fits 360
     ['Masala Dosa', '12', '720'],
     ['Filter coffee with extra decoction, jaggery and a second refill', '30', '1200'],
   ] as const) {
-    await typed.getByLabel('Item').fill(item)
+    await typed.getByLabel('Item', { exact: true }).fill(item)
     await typed.getByLabel('Quantity sold').fill(qty)
-    await typed.getByLabel(/^Amount/).fill(amount)
+    await typed.getByLabel(/^Total for this item/).fill(amount)
     await typed.getByRole('button', { name: 'Add line' }).click()
   }
   await expect(typed.getByRole('listitem')).toHaveCount(2)
@@ -290,7 +291,7 @@ test('#5 #7 #9 a till photo that fails offers typed numbers; the review fits 360
     expect(box.x + box.width).toBeLessThanOrEqual(width - 12)
   }
   await axe(page)
-  await day.getByRole('button', { name: 'Save day' }).click()
+  await saveCloseDay(day)
   await expect(day.getByText('Day closed')).toBeVisible({ timeout: 20_000 })
 })
 

@@ -1,3 +1,4 @@
+import { saveCloseDay } from './closeDaySupport.js'
 import { expect, test, type Page, type Request } from '@playwright/test'
 import { enter, localOnly } from './stories/support.js'
 
@@ -70,7 +71,8 @@ async function closeWith(page: Page, item: string, quantity: string, amount: str
   await dialog.locator('input[name=amount]').fill(amount)
   await dialog.locator('form button[type=submit]').click()
   await dialog.getByRole('button', { name: /^Review/ }).click()
-  await dialog.getByRole('button', { name: 'Save day' }).click()
+  await dialog.getByLabel('This is the whole day', { exact: true }).check()
+  await saveCloseDay(dialog)
   return dialog
 }
 
@@ -244,6 +246,7 @@ test('Hindi: the close screen says the same-weekday line in Hindi', async ({ pag
   await dialog.locator('input[name=amount]').fill('2490')
   await dialog.locator('form button[type=submit]').click()
   await dialog.locator('button.MuiButton-sizeLarge').click()
+  await dialog.getByLabel('यह पूरे दिन का हिसाब है', { exact: true }).check()
   await dialog.locator('button.MuiButton-sizeLarge').click()
   await expect(dialog.getByRole('heading', { name: 'दिन बंद हुआ: ₹2,490' })).toBeVisible({
     timeout: 20_000,

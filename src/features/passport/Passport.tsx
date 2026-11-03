@@ -96,7 +96,9 @@ export function Passport({ initialLocation }: { initialLocation?: CustomerLocati
       ? { lat: initialLocation.gps[0], lng: initialLocation.gps[1] }
       : (initialLocation?.place ?? lastPlace()),
   )
-  const { view, status, refresh, signedIn } = usePassport(place)
+  const { view: held, status, stale, refresh, signedIn } = usePassport(place)
+  // A Passport drawn before the latest scan is not shown as current while the new one loads.
+  const view = stale && status !== 'error' ? null : held
   const online = useOnline()
   const offline = useOfflineCopy()
   const [signIn, setSignIn] = useState(false)

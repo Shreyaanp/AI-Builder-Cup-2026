@@ -226,6 +226,7 @@ def with_order(status: str) -> Callable[[MerchantStore, str], str]:
             77.5946,
             "INR",
             "Asia/Kolkata",
+            bid,
         )
         for sid, fields, products in records:
             store.seed_demo_shop("eval-demo-owner", sid, fields, products)
