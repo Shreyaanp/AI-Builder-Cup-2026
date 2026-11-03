@@ -102,7 +102,11 @@ def test_OB_263_demo_reorder_then_arrival_then_undo(live_parent_demo, instant) -
     ).json()
     proposal = came["proposal"]
     owner(
-        client, session, f"proposals/{proposal['id']}/approve", "POST", json={"digest": proposal["digest"]}
+        client,
+        session,
+        f"proposals/{proposal['id']}/approve",
+        "POST",
+        json={"digest": proposal["digest"]},
     )
     added = round(sent["lines"][0]["quantity"])
     assert stock_of(client, session, bid, "Tea dust") == before + added

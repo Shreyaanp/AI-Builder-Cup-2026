@@ -159,9 +159,7 @@ async def overview(business_id: str, request: Request) -> dict[str, Any]:
         need["cover"] = supply_coming.cover(need, coming)
         need["covered"] = need["cover"] in {"full", "units"}
     # Then what a linked supplier can bring first: chai runs out because tea dust does.
-    needs.sort(
-        key=lambda need: (need["covered"], not need["supplied"], need["runs_out"] or "9999")
-    )
+    needs.sort(key=lambda need: (need["covered"], not need["supplied"], need["runs_out"] or "9999"))
     return {"suppliers": rows, "orders": orders, "needs": needs}
 
 
