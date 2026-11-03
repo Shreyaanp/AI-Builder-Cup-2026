@@ -7,7 +7,6 @@ import { LEGAL_VERSION } from './legal'
 import { Landing } from './Landing'
 import { AccountError, ConsentScreen, Splash } from './Onboarding'
 import { Box } from '@mui/material'
-import { LanguagePicker } from '../frontdoors/LanguagePicker'
 import { TrustStrip } from './TrustStrip'
 
 import { LanguageStep } from '../language/LanguageStep'
@@ -38,7 +37,6 @@ export default function V1App() {
             <TrustStrip />
           </Box>
         )}
-        <LanguagePicker plainName sx={{ right: 'calc(env(safe-area-inset-right, 0px) + 16px)' }} />
         <Landing onPreview={() => setPreview(true)} />
       </>
     )

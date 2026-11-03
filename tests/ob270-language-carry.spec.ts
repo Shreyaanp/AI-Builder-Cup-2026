@@ -6,7 +6,6 @@ import { localOnly } from './stories/support.js'
 // OB-270: 127.0.0.1 is the business app; only the local fixture backend is used.
 const introHi = 'बोलें। आपकी दुकान लाइव हो जाए।'
 const skipHi = 'छोड़ें'
-const welcomeEn = 'Your shop, online in one conversation'
 const welcomeHi = 'एक बातचीत में आपकी दुकान ऑनलाइन'
 
 test.use({ locale: 'en-GB', storageState: { cookies: [], origins: [] }, reducedMotion: 'reduce' })
@@ -29,19 +28,11 @@ for (const parameter of ['lang', 'hl'])
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(welcomeHi)
   })
 
-test('the sign-in picker switches language and a manual choice beats an English phone', async ({
-  page,
-}) => {
-  await skipIntro(page)
-  await page.goto('/?app=business')
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText(welcomeEn)
-  const picker = page.getByRole('button', { name: 'Language', exact: true })
-  const box = (await picker.boundingBox())!
-  expect(box.width).toBeGreaterThanOrEqual(48)
-  expect(box.height).toBeGreaterThanOrEqual(48)
-  await picker.click()
-  await page.getByRole('menuitem', { name: LOCALE_NAMES.hi, exact: true }).click()
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText(welcomeHi)
+test('a manual choice beats an English phone on the sign-in page', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('chalkboard.explainer.owner.v1', '1')
+    localStorage.setItem('niva.starter.preferences', JSON.stringify({ language: 'hi' }))
+  })
   await page.goto('/?app=business')
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(welcomeHi)
   expect(await page.evaluate(() => navigator.language)).toBe('en-GB')
@@ -75,6 +66,25 @@ test('the public business links carry the chosen language', async ({ page }) => 
     const url = new URL((await link.getAttribute('href'))!)
     expect(url.searchParams.get('lang')).toBe('hi')
     expect(['/', '/demo']).toContain(url.pathname)
+  }
+})
+
+test('the live public home links carry the chosen language, bare when none', async ({ page }) => {
+  await page.goto('/landing-preview')
+  const links = page.locator('a[href^="https://business.chalkboard.shreyaan.work"]')
+  await expect(links.first()).toBeVisible({ timeout: 50_000 })
+  for (const link of await links.all())
+    expect(await link.getAttribute('href')).toMatch(
+      /^https:\/\/business\.chalkboard\.shreyaan\.work(\/demo)?$/,
+    )
+  await page
+    .getByRole('button', { name: /^Language:/ })
+    .first()
+    .click()
+  await page.getByRole('menuitem', { name: LOCALE_NAMES.hi, exact: true }).click()
+  for (const link of await links.all()) {
+    const url = new URL((await link.getAttribute('href'))!)
+    expect(url.searchParams.get('lang')).toBe('hi')
   }
 })
 

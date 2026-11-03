@@ -9,5 +9,6 @@ const businessOrigin = 'https://business.chalkboard.shreyaan.work'
  */
 export function useBusinessLink(): (path?: string) => string {
   const { language } = usePreferences()
-  return (path = '') => `${businessOrigin}${path}${language === 'system' ? '' : `?lang=${language}`}`
+  return (path = '') =>
+    `${businessOrigin}${path}${language === 'system' ? '' : `?lang=${language}`}`
 }
