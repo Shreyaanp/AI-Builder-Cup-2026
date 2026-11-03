@@ -300,6 +300,7 @@ test('tour: 7 steps, prep on Grow’s How much to make, ends on You’re ready w
   await page.getByRole('button', { name: 'Next', exact: true }).click()
   await expect(page.locator('#tour-title')).toHaveText('You’re ready')
   await expect(page.getByTestId('tour-tip')).toHaveText('Tip: you can also just ask the coach.')
+  await page.waitForTimeout(800) // the card settles before the picture
   await page.screenshot({ path: test.info().outputPath('tour-end-390.png') })
 })
 
