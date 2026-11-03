@@ -5,6 +5,7 @@ import { FIRST_QUESTION } from './newShopTopics.js'
 import { LOCALES } from '../src/i18n/locales.js'
 import { formatPrice } from '../src/features/v1/format.js'
 import { formatMoneyText } from '../src/features/inquiries/formatMoneyText.js'
+import { startNewShop } from './support/newShop.js'
 
 test.use({ reducedMotion: 'reduce' })
 test.setTimeout(120_000)
@@ -53,7 +54,7 @@ for (const appearance of ['light', 'dark'] as const) {
 
     test(`onboarding action row stays reachable (${appearance})`, async ({ page }, info) => {
       await enter(page)
-      await page.getByRole('banner').getByRole('button', { name: 'Add shop details' }).click()
+      await startNewShop(page)
       await page.getByRole('button', { name: 'Let’s begin' }).click()
       await expect(page.getByRole('log')).toContainText(FIRST_QUESTION)
       const card = page.getByTestId('shop-so-far')

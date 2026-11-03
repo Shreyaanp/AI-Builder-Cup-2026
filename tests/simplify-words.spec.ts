@@ -4,6 +4,7 @@ import { enter, localOnly } from './stories/support.js'
 import { growTool, openGrowRows } from './support/grow.js'
 import { noJargon, textSizes } from './support/simplicity.js'
 import { shopMore } from './support/shopMore.js'
+import { startNewShop } from './support/newShop.js'
 
 // Simplify batch 1 (owner app, words only): the owner never reads a developer word, body text is
 // 16px, and the new-shop chat does not call a hidden page "live". Plan: SIMPLIFY-owner.md §5, §7.
@@ -130,7 +131,7 @@ test('new shop: after the first answer the chat says saved, not live, while the 
 }) => {
   await localOnly(page)
   await enter(page)
-  await page.getByRole('banner').getByRole('button', { name: 'Add shop details' }).click()
+  await startNewShop(page)
   await page.getByRole('button', { name: 'Let’s begin' }).click()
   await expect(page.getByRole('log')).toContainText(FIRST_QUESTION)
   await page

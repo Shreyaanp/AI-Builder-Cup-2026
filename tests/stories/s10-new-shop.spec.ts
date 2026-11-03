@@ -2,6 +2,7 @@ import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
 import { FIRST_QUESTION, FOLLOW_UPS, nextQuestion } from '../newShopTopics.js'
 import { enter, inChatFixtures, liveOnly, localOnly, phone, shot } from './support.js'
+import { startNewShop } from '../support/newShop.js'
 
 // S10 · Opening a new shop (owner answers, 15–17 Oct): big hero, then a full-screen conversation
 // in which the coach speaks first with one open question, asks only the basics still missing,
@@ -48,7 +49,7 @@ test('OB-150 S10 · owner opens a new shop by talking to the coach', async ({ pa
   await enter(page)
 
   await test.step('1 · "+" opens the hero (no dialog)', async () => {
-    await page.getByRole('banner').getByRole('button', { name: 'Add shop details' }).click()
+    await startNewShop(page)
     await expect(page.getByRole('heading', { name: 'Let’s open your shop' })).toBeVisible()
     await expect(page.getByRole('navigation', { name: 'Main' })).toHaveCount(0)
     // Let the chalk drawing finish before the evidence shot.
@@ -197,7 +198,7 @@ test('S10 · type it in instead: one question per screen, then Edit details the 
   await context.grantPermissions(['geolocation', 'microphone'])
   await context.setGeolocation({ latitude: 12.9718234, longitude: 77.6412345, accuracy: 25 })
   await enter(page)
-  await page.getByRole('banner').getByRole('button', { name: 'Add shop details' }).click()
+  await startNewShop(page)
   await page.getByRole('button', { name: 'Let’s begin' }).click()
   await expect(page.getByRole('log')).toContainText(FIRST_QUESTION)
 

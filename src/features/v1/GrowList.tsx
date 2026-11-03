@@ -148,11 +148,14 @@ export function GrowGroup({
   label,
   hint,
   items,
+  tour,
 }: {
   icon: ReactNode
   label: string
   hint?: string
   items: ReactNode[]
+  /** Guided-tour anchor (data-tour) on the row. */
+  tour?: string
 }) {
   const roles = useTheme().material
   const [open, setOpen] = useState(false)
@@ -183,6 +186,7 @@ export function GrowGroup({
     <Box hidden={shown.length === 0}>
       <ButtonBase
         data-grow-group
+        data-tour={tour}
         aria-expanded={open}
         aria-controls={region}
         onClick={() => setOpen((value) => !value)}

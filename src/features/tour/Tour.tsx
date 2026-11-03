@@ -15,6 +15,7 @@ import { useLocale } from '../../state/hooks'
 import { useWorkspace } from '../v1/workspaceContext'
 import type { Destination } from '../v1/workspaceContext'
 import { tourCopy } from './strings'
+import { simpleCopyFor } from '../v1/today/simpleCopy'
 import { tour, useTourRunning } from './tourStore'
 import { narrationQueue } from './narrationQueue'
 import { narrationVoice } from './narrationVoice'
@@ -52,8 +53,9 @@ const STEPS: Step[] = [
   spot(0, 'today', 'coach'),
   story(0, 'today-supply'),
   story(1, 'reorder'),
-  spot(2, 'forecast', 'coach'),
+  // Simplify batch 5: prep points at Grow's "How much to make" row, beside Close the day.
   spot(1, 'menu', 'shop'),
+  spot(2, 'prep', 'grow'),
   spot(3, 'closeday', 'grow'),
   spot(5, 'composer', 'coach'),
 ]
@@ -113,6 +115,7 @@ export function TourHost() {
   const ws = useWorkspace()
   const language = useLocale()
   const t = tourCopy(language)
+  const simple = simpleCopyFor(language)
   const tale = useChainStory(running)
   const chain = chainCopy(language)
   const roles = useTheme().material
@@ -362,6 +365,10 @@ export function TourHost() {
                   {t.doneTitle}
                 </Typography>
                 <Typography color="text.secondary">{t.doneBody}</Typography>
+                {/* Both paths, taught once more: every screen can also just be asked for. */}
+                <Typography data-testid="tour-tip" color="text.secondary">
+                  {simple.tourTip}
+                </Typography>
                 <Stack
                   direction="row"
                   sx={{ gap: 2, flexWrap: 'wrap', pt: 1, '& button': { minHeight: 48 } }}

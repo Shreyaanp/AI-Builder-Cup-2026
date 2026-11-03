@@ -3,6 +3,7 @@ import { enter, image, localOnly } from './stories/support.js'
 import { FIRST_QUESTION } from './newShopTopics.js'
 import { AxeBuilder } from '@axe-core/playwright'
 import { measure } from './ux/measure.js'
+import { startNewShop } from './support/newShop.js'
 
 test.use({ reducedMotion: 'reduce' })
 
@@ -65,7 +66,7 @@ for (const [width, height] of [
         await route.fulfill({ contentType: 'image/png', body: preview.buffer })
       })
       await enter(page)
-      await page.getByRole('banner').getByRole('button', { name: 'Add shop details' }).click()
+      await startNewShop(page)
       await page.getByRole('button', { name: 'Let’s begin' }).click()
       const log = page.getByRole('log')
       await expect(log).toContainText(FIRST_QUESTION)

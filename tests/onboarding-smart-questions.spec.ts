@@ -7,6 +7,7 @@ import {
   nextQuestion,
   type Topic,
 } from './newShopTopics.js'
+import { startNewShop } from './support/newShop.js'
 
 // #112 (owner, 17 Oct): the coach opens with "tell me about your shop", takes everything from
 // that one answer, never asks again what the owner said, and then asks at most two follow-ups
@@ -17,7 +18,7 @@ test.beforeEach(async ({ page }) => {
 })
 
 async function begin(page: Page) {
-  await page.getByRole('banner').getByRole('button', { name: 'Add shop details' }).click()
+  await startNewShop(page)
   await page.getByRole('button', { name: 'Let’s begin' }).click()
   await expect(page.getByRole('log')).toContainText(FIRST_QUESTION)
 }

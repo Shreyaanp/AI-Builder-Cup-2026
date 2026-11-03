@@ -112,6 +112,7 @@ function GrowTiles() {
     ['prep', 'plan'],
     <GrowGroup
       key="make"
+      tour="prep"
       icon={<ChefHat size={20} />}
       label={grow.make}
       items={[

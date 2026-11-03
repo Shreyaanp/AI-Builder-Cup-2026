@@ -1,6 +1,7 @@
 import { FIRST_QUESTION } from './newShopTopics.js'
 import { expect, test, type Page, type WebSocketRoute } from '@playwright/test'
 import { SpeechTimeline, snapToSentence, snapToWord } from '../src/features/v1/speechReveal.js'
+import { startNewShop } from './support/newShop.js'
 
 // Voice and visuals in step: the coach's words appear as they are spoken, the cards a reply
 // refers to appear when the voice reaches them, and a barge-in stops the voice and the words
@@ -352,7 +353,7 @@ test('onboarding: the camera opens when the coach says "photo", not when the tex
   await page.getByLabel('I agree to the Terms').check()
   await page.getByLabel('I have read the Privacy Notice').check()
   await page.getByRole('button', { name: 'Agree and continue' }).click()
-  await page.getByRole('banner').getByRole('button', { name: 'Add shop details' }).click()
+  await startNewShop(page)
   await page.getByRole('button', { name: 'Let’s begin' }).click()
   await expect(page.getByRole('log')).toContainText(FIRST_QUESTION)
 

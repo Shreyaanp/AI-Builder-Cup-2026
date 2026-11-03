@@ -4,6 +4,7 @@ import { FIRST_QUESTION } from '../newShopTopics.js'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import zlib from 'node:zlib'
+import { startNewShop } from '../support/newShop.js'
 
 export const gpsBoard = new URL('./fixtures/bengaluru-board.jpg', import.meta.url)
 export const gpsBoardPath = fileURLToPath(gpsBoard)
@@ -82,7 +83,7 @@ export async function enter(page: Page) {
   await page.getByLabel('I agree to the Terms').check()
   await page.getByLabel('I have read the Privacy Notice').check()
   await page.getByRole('button', { name: 'Agree and continue' }).click()
-  await expect(page.getByRole('heading', { name: 'What shall we work on today?' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Let’s put your shop online' })).toBeVisible()
 }
 
 /** A chat photo is first sorted in one line; the owner picks Menu to open the menu review. */
@@ -109,8 +110,7 @@ export async function openNewShopReview(
 ) {
   await suggestShopPin(page, point)
   const begin = page.getByRole('button', { name: 'Let’s begin' })
-  if (!(await begin.isVisible()))
-    await page.getByRole('banner').getByRole('button', { name: 'Add shop details' }).click()
+  if (!(await begin.isVisible())) await startNewShop(page)
   await begin.click()
   await expect(page.getByRole('log')).toContainText(FIRST_QUESTION)
   await page.getByLabel('Message', { exact: true }).fill(details)

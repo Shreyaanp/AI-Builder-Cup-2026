@@ -16,7 +16,9 @@ test('OB-30: owner tour opens the public demo, then the order story, spotlights 
   await page.getByLabel('I agree to the Terms').check()
   await page.getByLabel('I have read the Privacy Notice').check()
   await page.getByRole('button', { name: 'Agree and continue' }).tap()
-  await expect(page.getByText('See it working first')).toBeVisible()
+  // Simplify batch 5: the demo is a quiet link under the one start card.
+  const seeDemo = page.getByRole('button', { name: 'Or see a demo shop first' })
+  await expect(seeDemo).toBeVisible()
   const privateWorkspacePosts: string[] = []
   page.on('request', (request) => {
     const url = new URL(request.url())
@@ -35,7 +37,7 @@ test('OB-30: owner tour opens the public demo, then the order story, spotlights 
       url.searchParams.get('tour') === '1'
     )
   })
-  await page.getByRole('button', { name: 'Take the tour' }).tap()
+  await seeDemo.tap()
   await demoNavigation
   const tour = page.locator('#tour-title').locator('..')
   await expect(tour).toContainText('Your shop at a glance', { timeout: 30_000 })
@@ -49,8 +51,8 @@ test('OB-30: owner tour opens the public demo, then the order story, spotlights 
   const titles = [
     /runs out/,
     'The AI drafts the order',
-    'Tomorrow’s prep plan',
     'Your menu, by category',
+    'Tomorrow’s prep plan',
     'Close the day in a minute',
     'Just talk or type',
   ]
@@ -65,6 +67,7 @@ test('OB-30: owner tour opens the public demo, then the order story, spotlights 
   }
   await tour.getByRole('button', { name: 'Next', exact: true }).tap()
   await expect(page.locator('#tour-title')).toContainText('You’re ready')
+  await expect(page.getByTestId('tour-tip')).toHaveText('Tip: you can also just ask the coach.')
   await tour.getByRole('button', { name: 'Keep exploring' }).tap()
   await expect(page.locator('#tour-title')).toHaveCount(0)
   expect(privateWorkspacePosts).toEqual([])

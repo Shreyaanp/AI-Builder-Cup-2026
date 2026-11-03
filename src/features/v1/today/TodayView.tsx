@@ -1,5 +1,4 @@
 import { useEffect, useId, useState } from 'react'
-import { AiInfo } from '../AiInfo'
 import type { ReactNode } from 'react'
 import {
   Box,
@@ -26,7 +25,6 @@ import {
   NotebookPen,
   PackageMinus,
   PencilLine,
-  Sparkles,
   ZapOff,
   ShieldCheck,
 } from 'lucide-react'
@@ -70,14 +68,14 @@ const LEAVE_MS = 320
 /** The first view of the Coach tab: how the shop is doing and what to do now. */
 export function TodayView({
   actions,
-  showAiInfo = true,
+  chips,
 }: {
   actions: TodayActions
-  showAiInfo?: boolean
+  /** The chat path under the numbers: chips that fit the hour. */
+  chips?: (evening: boolean) => ReactNode
 }) {
   const ws = useWorkspace()
   const tt = useTodayCopy()
-  const roles = useTheme().material
   const { name } = useIdentity()
   const { plan, answerMenu, answerPromise, firstCustomers } = useTodayPlan(actions.unread)
   const shop = ws.active
@@ -106,88 +104,76 @@ export function TodayView({
       </Stack>
     )
   }
+  // In the evening the card sits low, in the thumb zone: "Close the day" stays its first row and
+  // its one filled button (SIMPLIFY Batch 5; PHONE-UX rule 1).
+  const evening = plan.needs[0]?.kind === 'closeDay'
+  const needs = (
+    <NeedsCard
+      key={shop.id}
+      plan={plan}
+      actions={actions}
+      answerMenu={answerMenu}
+      answerPromise={answerPromise}
+      footer={<TodaySupplyNeeds inCard={plan.needs.length > 0} />}
+    />
+  )
   return (
-    <Stack spacing={{ xs: 4, sm: 5 }} sx={{ pt: { xs: 1, sm: 6 }, pb: 4 }} data-testid="today">
+    <Box
+      data-testid="today"
+      data-layout={evening ? 'evening' : undefined}
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: { xs: 3, sm: 5 },
+        minHeight: '100%',
+        pt: { xs: 0, sm: 6 },
+        pb: { xs: 0, sm: 4 },
+      }}
+    >
       <Box data-tour="today">
         <Typography component="h1" variant="headlineSmall" sx={{ overflowWrap: 'anywhere' }}>
           {tt.greet(plan.part, name ?? '')}
         </Typography>
-        {plan.line && <LineText line={plan.line} />}
       </Box>
-      {plan.progress && (
-        <Box data-testid="today-progress">
-          <Stack direction="row" sx={{ justifyContent: 'space-between', mb: 1 }}>
-            <Typography variant="labelMedium" color="text.secondary">
-              {tt.setup}
-            </Typography>
-            <Typography
-              variant="labelMedium"
-              sx={{ fontVariantNumeric: 'tabular-nums', color: roles.onSurfaceVariant }}
-            >
-              {plan.progress.done}/{plan.progress.total}
-            </Typography>
-          </Stack>
-          <LinearProgress
-            variant="determinate"
-            value={(plan.progress.done / plan.progress.total) * 100}
-            aria-label={`${tt.setup}: ${plan.progress.done}/${plan.progress.total}`}
-            sx={{ height: 4, borderRadius: 2, bgcolor: roles.surfaceContainerHighest }}
-          />
-        </Box>
+      {plan.dayOne && (
+        <DayOne
+          step={plan.dayOne.step}
+          food={plan.food}
+          actions={actions}
+          progress={plan.progress}
+        />
       )}
-      {plan.dayOne && <DayOne step={plan.dayOne.step} food={plan.food} actions={actions} />}
       {/* One card, one filled button: the first row is the lead action, and stock (the supply
-          row with its run-out day, low items and supply exceptions) lives only here. */}
-      <NeedsCard
-        key={shop.id}
-        plan={plan}
-        actions={actions}
-        answerMenu={answerMenu}
-        answerPromise={answerPromise}
-        footer={<TodaySupplyNeeds inCard={plan.needs.length > 0} />}
-      />
+          row with its run-out day, low items and supply exceptions) lives only here. Setup steps
+          left are rows in it too, so the setup bar is not a third progress element. */}
+      {!evening && needs}
       {firstCustomers && ws.shareUrl && (
         <FirstCustomers url={ws.shareUrl} name={shop.fields.name} />
       )}
-      {(plan.pulse || plan.forecast) && (
-        <Box>
-          <PulseCard plan={plan} actions={actions} />
-          {plan.forecast && showAiInfo && <AiInfo feature="forecast" />}
-        </Box>
-      )}
-    </Stack>
+      {(plan.pulse || plan.forecast || plan.line) && <PulseCard plan={plan} actions={actions} />}
+      {chips?.(plan.part === 'evening')}
+      {evening && <Box sx={{ mt: 'auto' }}>{needs}</Box>}
+    </Box>
   )
 }
 
-function LineText({ line }: { line: CoachLine }) {
+/** The coach's one line (weather, festival, busiest day) in the owner's words. */
+function useLineText(line: CoachLine | null): string {
   const tt = useTodayCopy()
   const locale = useLocale()
-  const roles = useTheme().material
+  if (!line) return ''
   const number = new Intl.NumberFormat(locale)
-  let text = ''
   if (line.kind === 'festival' && line.festival && line.days != null)
-    text = tt.festival(tt.festivals[line.festival as Festival] ?? line.festival, line.days)
-  else if (line.kind === 'rain' && line.rain != null) text = tt.rain(line.rain)
-  else if (line.kind === 'busiest_day' && line.weekday != null && line.item && line.count) {
+    return tt.festival(tt.festivals[line.festival as Festival] ?? line.festival, line.days)
+  if (line.kind === 'rain' && line.rain != null) return tt.rain(line.rain)
+  if (line.kind === 'busiest_day' && line.weekday != null && line.item && line.count) {
     // 5 Jan 2026 was a Monday: weekday 0 → Monday in the owner's language.
     const weekday = new Intl.DateTimeFormat(locale, { weekday: 'long', timeZone: 'UTC' }).format(
       new Date(Date.UTC(2026, 0, 5 + line.weekday)),
     )
-    text = tt.busiest(weekday, number.format(line.count), productName(line.item, locale))
+    return tt.busiest(weekday, number.format(line.count), productName(line.item, locale))
   }
-  if (!text) return null
-  return (
-    <Stack
-      direction="row"
-      data-testid="today-line"
-      sx={{ gap: 2, mt: 2, alignItems: 'flex-start', color: roles.onSurfaceVariant }}
-    >
-      <Box aria-hidden="true" sx={{ display: 'flex', color: roles.primary, pt: 0.5 }}>
-        <Sparkles size={18} />
-      </Box>
-      <Typography variant="bodyLarge">{text}</Typography>
-    </Stack>
-  )
+  return ''
 }
 
 function stepText(
@@ -242,7 +228,17 @@ function useStepAction(step: StepId): StepAction {
 }
 
 /** A brand-new shop: one warm line, the next step and the mic. */
-function DayOne({ step, food, actions }: { step: StepId; food: boolean; actions: TodayActions }) {
+function DayOne({
+  step,
+  food,
+  actions,
+  progress,
+}: {
+  step: StepId
+  food: boolean
+  actions: TodayActions
+  progress: TodayPlan['progress']
+}) {
   const ws = useWorkspace()
   const tt = useTodayCopy()
   const o = useOnboardingCopy()
@@ -276,6 +272,28 @@ function DayOne({ step, food, actions }: { step: StepId; food: boolean; actions:
       <Typography variant="bodyLarge" color="text.secondary" sx={{ mt: 1 }}>
         {stepText(step, food, tt, o)}
       </Typography>
+      {/* Setup progress lives in the one card that sets the shop up, not as its own bar. */}
+      {progress && (
+        <Box data-testid="today-progress" sx={{ mt: 3 }}>
+          <Stack direction="row" sx={{ justifyContent: 'space-between', mb: 1 }}>
+            <Typography variant="labelLarge" color="text.secondary">
+              {tt.setup}
+            </Typography>
+            <Typography
+              variant="labelLarge"
+              sx={{ fontVariantNumeric: 'tabular-nums', color: roles.onSurfaceVariant }}
+            >
+              {progress.done}/{progress.total}
+            </Typography>
+          </Stack>
+          <LinearProgress
+            variant="determinate"
+            value={(progress.done / progress.total) * 100}
+            aria-label={`${tt.setup}: ${progress.done}/${progress.total}`}
+            sx={{ height: 4, borderRadius: 2, bgcolor: roles.surfaceContainerHighest }}
+          />
+        </Box>
+      )}
       <Stack direction="row" sx={{ mt: 4, gap: 2, flexWrap: 'wrap' }}>
         <Button
           variant="contained"
@@ -414,6 +432,24 @@ export function NeedsCard({
         {footer}
       </>
     )
+  const more = moreRows.length > 0 && (
+    <Button
+      variant="text"
+      aria-expanded={open}
+      aria-controls={open ? moreId : undefined}
+      onClick={() => setOpen((was) => !was)}
+      endIcon={
+        <ChevronDown
+          size={18}
+          aria-hidden="true"
+          style={{ transform: open ? 'rotate(180deg)' : undefined }}
+        />
+      }
+      sx={{ minHeight: 48, px: 1 }}
+    >
+      {open ? tt.hide : tt.more(plan.more.length)}
+    </Button>
+  )
   return (
     <Box
       component="section"
@@ -422,61 +458,44 @@ export function NeedsCard({
       data-testid="today-needs"
       sx={{
         p: compact ? 2 : { xs: 3, sm: 4 },
+        pt: compact ? 2 : { xs: 1, sm: 2 },
         borderRadius: `${shape.lgIncreased}px`,
         bgcolor: roles.surfaceContainerHigh,
         ...(compact ? {} : enterRise),
       }}
     >
+      {/* The rest stay one tap away in the same card, with text buttons only: one filled
+          button on the card, and nothing drops off Coach (SIMPLIFY Batch 5). On Today the
+          "N more things" sits beside the title, so the card ends with its last row. */}
       {!compact && (
-        <Typography
-          id="today-needs"
-          component="h2"
-          variant="headlineSmall"
-          sx={{
-            fontFamily: HAND_FONT,
-            fontWeight: 700,
-            lineHeight: 1.2,
-            px: 1,
-            mb: 1,
-          }}
+        <Stack
+          direction="row"
+          sx={{ alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1 }}
         >
-          {tt.needsTitle}
-        </Typography>
+          <Typography
+            id="today-needs"
+            component="h2"
+            variant="headlineSmall"
+            sx={{ fontFamily: HAND_FONT, fontWeight: 700, lineHeight: 1.2, px: 1 }}
+          >
+            {tt.needsTitle}
+          </Typography>
+          {more}
+        </Stack>
       )}
       <Stack component="ul" sx={list}>
         {rows.map((each) => row(each, each === lead && !plan.dayOne && !compact))}
       </Stack>
-      {/* The rest stay one tap away in the same card, with text buttons only: one filled
-          button on the card, and nothing drops off Coach (SIMPLIFY Batch 5). */}
-      {moreRows.length > 0 && (
-        <>
-          <Button
-            variant="text"
-            aria-expanded={open}
-            aria-controls={open ? moreId : undefined}
-            onClick={() => setOpen((was) => !was)}
-            endIcon={
-              <ChevronDown
-                size={18}
-                aria-hidden="true"
-                style={{ transform: open ? 'rotate(180deg)' : undefined }}
-              />
-            }
-            sx={{ minHeight: 48, mt: 1, px: 1 }}
-          >
-            {open ? tt.hide : tt.more(plan.more.length)}
-          </Button>
-          {open && (
-            <Stack
-              component="ul"
-              id={moreId}
-              data-testid="today-more"
-              sx={{ ...list, borderTop: `1px solid ${roles.outlineVariant}` }}
-            >
-              {moreRows.map((each) => row(each, false))}
-            </Stack>
-          )}
-        </>
+      {compact && more}
+      {open && moreRows.length > 0 && (
+        <Stack
+          component="ul"
+          id={moreId}
+          data-testid="today-more"
+          sx={{ ...list, borderTop: `1px solid ${roles.outlineVariant}` }}
+        >
+          {moreRows.map((each) => row(each, false))}
+        </Stack>
       )}
       {footer}
     </Box>
@@ -745,7 +764,7 @@ function NeedRow({
         columnGap: 3,
         rowGap: 1,
         px: 1,
-        py: 2,
+        py: 1.5,
         minHeight: 56,
         ...(leaving
           ? {
@@ -785,9 +804,11 @@ function PulseCard({ plan, actions }: { plan: TodayPlan; actions: TodayActions }
   const currency = shopCurrency(ws.active)
   // Once the day is closed the pulse is today's, and so is the question it asks (HABIT change 3).
   const ask = plan.pulse?.when === 'today' ? tt.howToday : tt.howYesterday
+  const coachLine = useLineText(plan.line)
   const lines: string[] = []
   if (plan.pulse) {
-    const values = plan.pulse.values.map(({ metric, value }) => {
+    // One short row: the two numbers that matter most (the rest are one tap away in the chat).
+    const values = plan.pulse.values.slice(0, 2).map(({ metric, value }) => {
       const n = number.format(value)
       if (metric === 'sales')
         // A day's takings read best whole: ₹4,200, not ₹4,200.00.
@@ -825,6 +846,9 @@ function PulseCard({ plan, actions }: { plan: TodayPlan; actions: TodayActions }
     }
     lines.push(text)
   }
+  // The weather or festival line is a reason under the numbers, not a block of its own; with
+  // both numbers shown it stays on Grow › Morning brief, so the row keeps to two lines.
+  if (coachLine && lines.length < 2) lines.push(coachLine)
   return (
     <ButtonBase
       data-testid="today-pulse"
@@ -836,7 +860,7 @@ function PulseCard({ plan, actions }: { plan: TodayPlan; actions: TodayActions }
         justifyContent: 'flex-start',
         gap: 3,
         px: { xs: 3, sm: 4 },
-        py: 3,
+        py: 2,
         minHeight: 56,
         textAlign: 'start',
         borderRadius: `${shape.lg}px`,
@@ -849,6 +873,7 @@ function PulseCard({ plan, actions }: { plan: TodayPlan; actions: TodayActions }
           <Typography
             key={index}
             component="span"
+            data-testid={line === coachLine ? 'today-line' : undefined}
             variant={index === 0 ? 'bodyLarge' : 'bodyMedium'}
             sx={{
               display: 'block',

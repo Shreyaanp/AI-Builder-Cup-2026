@@ -2,6 +2,7 @@ import { expect, test, type Page } from '@playwright/test'
 import { enter, localOnly } from './stories/support.js'
 import { FIRST_QUESTION } from './newShopTopics.js'
 import { missingForListing } from '../src/features/v1/goLive.js'
+import { startNewShop } from './support/newShop.js'
 
 // Issue #180: finishing the conversation leads to Review my shop → List my shop → the
 // congratulations page with the shop link and QR. Phone first.
@@ -38,7 +39,7 @@ for (const viewport of [
     })
 
     async function begin(page: Page) {
-      await page.getByRole('banner').getByRole('button', { name: 'Add shop details' }).click()
+      await startNewShop(page)
       await page.getByRole('button', { name: 'Let’s begin' }).click()
       await expect(page.getByRole('log')).toContainText(FIRST_QUESTION)
     }
@@ -92,7 +93,7 @@ test.describe('ready moment at 1280', () => {
   test('OB-112 the title lines have room between them', async ({ page }) => {
     await localOnly(page)
     await enter(page)
-    await page.getByRole('banner').getByRole('button', { name: 'Add shop details' }).click()
+    await startNewShop(page)
     await page.getByRole('button', { name: 'Let’s begin' }).click()
     await expect(page.getByRole('log')).toContainText(FIRST_QUESTION)
     await page

@@ -16,8 +16,8 @@ test('demo tour keeps the page visible behind every spotlight', async ({ page })
     'today',
     'today-supply',
     'reorder',
-    'forecast',
     'menu',
+    'prep',
     'closeday',
     'composer',
   ]

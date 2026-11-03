@@ -1,4 +1,5 @@
-﻿import { expect, test } from '@playwright/test'
+import { startNewShop } from './support/newShop.js'
+import { expect, test } from '@playwright/test'
 import { AxeBuilder } from '@axe-core/playwright'
 import { enter, image, localOnly } from './stories/support.js'
 import { FIRST_QUESTION } from './newShopTopics.js'
@@ -24,7 +25,7 @@ test('OB-156 / OB-192 conversation and photo recovery keep three type sizes and 
     }
   })
   await enter(page)
-  await page.getByRole('banner').getByRole('button', { name: 'Add shop details' }).click()
+  await startNewShop(page)
   await page.getByRole('button', { name: 'Let’s begin' }).click()
   await expect(page.getByRole('log')).toContainText(FIRST_QUESTION)
   // OB-156: grid-aligned controls must still leave room on a short phone with mic recovery.

@@ -220,7 +220,7 @@ export default function DemoApp() {
         sx={{
           minHeight: '100dvh',
           pb: 'env(safe-area-inset-bottom)',
-          '--app-viewport': 'calc(100dvh - 48px - env(safe-area-inset-top))',
+          '--app-viewport': 'calc(100dvh - 40px - env(safe-area-inset-top))',
         }}
       >
         <DemoBanner
