@@ -40,7 +40,7 @@ import { useShopCopy } from '../shop/strings'
 import { unitLabel } from '../shop/units'
 import { ShopLocation } from './CurrentLocation'
 import { useLocale } from '../../state/hooks'
-import { useSimpleCopy } from './today/simpleCopy'
+import { useFirstRunCopy } from './today/firstRunCopy'
 import { productName } from '../../i18n/productNames'
 
 /**
@@ -49,7 +49,7 @@ import { productName } from '../../i18n/productNames'
  */
 export function StartCard() {
   const t = useCopy()
-  const s = useSimpleCopy()
+  const s = useFirstRunCopy()
   const ws = useWorkspace()
   const roles = useTheme().material
   if (ws.loading) return null

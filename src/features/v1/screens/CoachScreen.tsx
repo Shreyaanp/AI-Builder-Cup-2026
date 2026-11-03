@@ -87,8 +87,6 @@ import { Sheet } from '../Sheet'
 import { useBackClose } from '../backStack'
 import { useConnectCopy } from '../../connect/strings'
 import { DOCUMENT_ACCEPT, useImport, type SalesImport } from '../useImport'
-import { StartCard } from '../ShopCard'
-import { TourOffer } from '../../tour/TourEntry'
 import { NeedsPill, TodayView, type TodayActions } from '../today/TodayView'
 import type { ShopSheetKind } from '../ShopTiles'
 import { useUnread } from '../useUnread'
@@ -123,6 +121,7 @@ import { OnceOpened } from '../../../app/OnceOpened'
 import {
   CloseDay,
   ConnectSheet,
+  FirstRun,
   OrderCard,
   OrdersSheet,
   PaymentCard,
@@ -1371,18 +1370,9 @@ function CoachScreen({
               )}
             />
           ) : (
-            <Stack spacing={{ xs: 3, sm: 5 }} sx={{ pt: { xs: 2, sm: 10 }, pb: 4 }}>
-              {/* Before a shop exists: one heading, one card, and the demo one tap away. */}
-              <Typography component="h1" variant="headlineSmall">
-                {simple.firstTitle}
-              </Typography>
-              <StartCard />
-              {/* First visit: see the product working on a filled demo shop. */}
-              {ws.businesses.length === 0 && <TourOffer />}
-              <Typography variant="bodyMedium" color="text.secondary">
-                {simple.justSay}
-              </Typography>
-            </Stack>
+            <Suspense fallback={null}>
+              <FirstRun />
+            </Suspense>
           )
         ) : (
           <>

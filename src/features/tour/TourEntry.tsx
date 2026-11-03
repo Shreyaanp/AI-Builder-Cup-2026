@@ -5,7 +5,7 @@ import { useLocale } from '../../state/hooks'
 import { useWorkspace } from '../v1/workspaceContext'
 import { tourCopy } from './strings'
 import { startDemoTour } from './tourActions'
-import { useSimpleCopy } from '../v1/today/simpleCopy'
+import { useFirstRunCopy } from '../v1/today/firstRunCopy'
 
 // The tour's entry points live apart from the walkthrough itself (Tour.tsx), so the owner's first
 // screen can offer the tour without loading it (OB-165).
@@ -15,7 +15,7 @@ import { useSimpleCopy } from '../v1/today/simpleCopy'
 export function TourOffer() {
   const ws = useWorkspace()
   const t = tourCopy(useLocale())
-  const s = useSimpleCopy()
+  const s = useFirstRunCopy()
   const [busy, setBusy] = useState(false)
   const [failed, setFailed] = useState(false)
   return (

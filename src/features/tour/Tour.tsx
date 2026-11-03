@@ -15,7 +15,7 @@ import { useLocale } from '../../state/hooks'
 import { useWorkspace } from '../v1/workspaceContext'
 import type { Destination } from '../v1/workspaceContext'
 import { tourCopy } from './strings'
-import { simpleCopyFor } from '../v1/today/simpleCopy'
+import { firstRunCopyFor } from '../v1/today/firstRunCopy'
 import { tour, useTourRunning } from './tourStore'
 import { narrationQueue } from './narrationQueue'
 import { narrationVoice } from './narrationVoice'
@@ -115,7 +115,7 @@ export function TourHost() {
   const ws = useWorkspace()
   const language = useLocale()
   const t = tourCopy(language)
-  const simple = simpleCopyFor(language)
+  const simple = firstRunCopyFor(language)
   const tale = useChainStory(running)
   const chain = chainCopy(language)
   const roles = useTheme().material
