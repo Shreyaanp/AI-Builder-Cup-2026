@@ -148,11 +148,11 @@
     {
       "id": "reply_language",
       "title": "Your language",
-      "path": ["Shop", "Messages", "Your language (app and coach)"],
-      "path_hi": ["दुकान", "संदेश", "आपकी भाषा (ऐप और कोच)"],
+      "path": ["You", "Language"],
+      "path_hi": ["आप", "भाषा"],
       "ask": "Reply in Hindi",
       "ask_hi": "हिंदी में जवाब दो",
-      "screen": "messages"
+      "screen": "you"
     },
     {
       "id": "close_day",

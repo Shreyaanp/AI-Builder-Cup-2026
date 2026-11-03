@@ -208,12 +208,11 @@ def test_demo_typed_supply_and_week_questions_stay_on_topic(app, message, topic,
 
 def test_language_control_says_it_is_the_owners_own_language():
     """In Messages, "Reply language" read as the language replies to customers go out in, but it
-    switches the whole app (review of #633): it is named for what it does, in every locale."""
+    switches the whole app (review of #633). OB-303 moved it out of the Messages sheet, beside the
+    conversation, to You → Language; the coach points there."""
     feature = next(f for f in OWNER if f.id == "reply_language")
-    assert feature.path == ("Shop", "Messages", "Your language (app and coach)")
-    assert INNER_LABELS[("Shop", "Messages")] == frozenset({"Your language (app and coach)"})
+    assert feature.path == ("You", "Language") and feature.screen == "you"
+    assert ("Shop", "Messages") not in INNER_LABELS
     copy = (ROOT / "src/features/v1/twoPathsCopy.ts").read_text(encoding="utf-8")
-    labels = re.findall(r"yourLanguage: '([^']+)'", copy)
-    assert len(labels) == len(re.findall(r"closedToday: '", copy)) == 15
-    assert "Your language (app and coach)" in labels and "आपकी भाषा (ऐप और कोच)" in labels
+    assert "yourLanguage" not in copy
     assert "Reply language" not in copy and "जवाब की भाषा" not in copy
