@@ -428,6 +428,16 @@ def test_OB_262_live_instant_path_keeps_two_changes_together(shop):  # noqa: N80
     assert run("Chai is 20 rupees now, samosa sold out", shop) is None
     # Running low is not sold out.
     assert run("samosa khatam ho rahi hai", shop) is None
+    # An item that is not on the menu: the model reads it, so no card drops it.
+    for message in ("kachori nahi hai, samosa khatam", "kachori nahi bacha aur samosa khatam"):
+        assert run(message, shop) is None, message
+
+
+def test_OB_262_order_karo_asks_which_item(demo):  # noqa: N802
+    for message in ("order karo", "order kar do", "order please"):
+        reply = reply_of(demo(message, "en")).casefold()
+        assert "which item" in reply and "for karo" not in reply, (message, reply)
+    assert "कौन सी चीज़" in reply_of(demo("ऑर्डर करो", "hi"))
 
 
 def test_OB_262_live_instant_path_never_reads_a_dont_as_sold_out(shop):  # noqa: N802, F811
@@ -461,6 +471,7 @@ def test_OB_262_live_instant_path_keeps_both_items_of_one_verb(shop):  # noqa: N
     [
         "milk khatam ho raha hai, order karo",
         "milk khatam hone wala hai",
+        "doodh khatam hone wala hai, order karo",
         "दूध ख़त्म हो रहा है, ऑर्डर करो",
     ],
 )

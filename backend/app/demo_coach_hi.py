@@ -92,6 +92,12 @@ def hindi_reply(
         rupees = to_major(cast(int, priced.get("price", 0)), shop_currency(business))
         return f"डेमो में {hindi_item(str(priced['name']))} की कीमत ₹{rupees:g} है।"
     if any(term in words for term in ("ऑर्डर", "सप्लायर", "मंगाऊँ", "खरीद")):
+        if (
+            not said
+            and not saved
+            and re.fullmatch(r"\s*ऑर्डर\s*(?:करो|कीजिए|कर\s+दो)?\s*[।?!]?\s*", words)
+        ):
+            return "कौन सी चीज़ का ऑर्डर करना है? उसका नाम बताइए, जैसे “दूध का ऑर्डर”।"
         if said and not saved:
             return f"डेमो दुकान में {hindi_item(said)} का स्टॉक दर्ज नहीं है।"
         orders = supply_chain.orders(store, uid, bid)

@@ -49,6 +49,8 @@ LOW_ON = re.compile(
     r"|\bkha?t+a?m\s+(?:ho\s+rah[aie]|hone\s+wal[aie])\b|कम\s+हो|ख़?त्म\s+हो(?:ने|\s+रह)",
     re.I,
 )
+# Words that ask for the order but are not the item ("order karo", "order please").
+ORDER_FILLER = re.compile(r"\b(?:karo|kar\s+do|kijiye|karna|please|mangao|manga\s+do)\b")
 DRAFT_QUANTITY = 10
 # An amount the owner said ("I need 20 L milk", Buy stock → Find a supplier): the draft uses it.
 AMOUNT = re.compile(
@@ -488,6 +490,8 @@ async def _find_suppliers(ctx: Any, question: str) -> list[StreamEvent] | None:
         for line in order.get("lines") or []
     ]
     said = item_named_in(question)
+    if not said and re.search(r"\bdoodh\b", words):
+        said = "Milk"  # Hinglish for दूध
     named = [
         item
         for item in [*inventory, *supplies]
@@ -788,6 +792,13 @@ def public_demo_reply(ctx: Any, question: str) -> str | None:
             )
         # "Reorder milk" names no menu item: never another item's stock.
         wanted = re.search(r"\b(?:reorder|order|buy\s+more)\s+(?P<item>[a-z][a-z ]{0,30})$", words)
+        if wanted:
+            # "order karo" / "order please" asks for an order but names no item.
+            left = ORDER_FILLER.sub(" ", wanted["item"]).strip()
+            if not left and not named:
+                ask = "Which item should I order? Say its name, for example “order milk”. "
+                return ask + next_line("supply")
+            wanted = re.fullmatch(r"(?P<item>.+)", left) if left else None
         if not named and wanted:
             return (
                 f"Demo supply records show {supplier}. In your real shop, this would draft an "

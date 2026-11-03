@@ -493,7 +493,7 @@ def upkeep_call(question: str, ctx: Any) -> types.Part | None:
         if not name:
             # "Chai is 20 rupees now, samosa sold out" with no item called Chai: a card for the
             # rest would silently drop that change, so the coach model reads it (OB-262).
-            if re.search(rf"\d|\b(?:{SOLD_OUT})\b", lowered):
+            if re.search(rf"\d|\b(?:{SOLD_OUT}|{BACK})\b|\bnahin?\s+(?:hai|bacha)\b", lowered):
                 return None
             continue
         rest = lowered.split(name.casefold(), 1)[1]
