@@ -109,7 +109,7 @@ ALLOWED: tuple[tuple[str, re.Pattern[str]], ...] = tuple(
         (
             "POST",
             rf"{_BIZ}/supply/orders/{_ID}/"
-            r"(?:accept|again|approve|asn|cancel|change|fix|inbound|receipt|received|send|simulate|talk)",
+            r"(?:accept|again|approve|asn|cancel|change|fix|inbound|receipt|received(?:/undo)?|send|simulate|talk)",
         ),
         ("POST", rf"{_BIZ}/supply/orders/{_ID}/flags/{_ID}"),
         ("POST", rf"{_BIZ}/supply/suppliers/{_ID}/rules/confirm"),

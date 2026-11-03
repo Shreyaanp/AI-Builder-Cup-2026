@@ -1,17 +1,24 @@
 import { useState } from 'react'
 import { Box, Button, Stack, Typography, useTheme } from '@mui/material'
-import { CircleCheck } from 'lucide-react'
+import { CircleCheck, ClipboardList, TriangleAlert } from 'lucide-react'
 import { shape } from '../../design/theme'
 import { useIoCopy } from './ioCopy'
 import { useBoard, useIoActions, useUndoableSend } from './ioData'
 import type { IoOrder, View } from './ioTypes'
-import { OrderCard, TaskCard } from './IoParts'
+import { OrderCard } from './IoParts'
 import { OnceOpened } from '../../app/OnceOpened'
 import { OrderSheet, SupplyHub } from './supplyDeferred'
 
+/** The shop's own date, as the board's ISO days are. */
+function localDay(): string {
+  return new Date().toLocaleDateString('en-CA')
+}
+
 /**
  * Today: exceptions float up (shortages, changes, late, unsent); on-time documents stay quiet.
- * Inside "Needs you now" (`inCard`) it is part of Today's one stock surface (HABIT change 2).
+ * Inside "Needs you now" (`inCard`) they are rows of the one list, in plain words: no second
+ * "N things need you now" block and no order numbers (those stay behind Open). A delivery
+ * waits quietly until its day (OB-263).
  */
 export function TodaySupplyNeeds({ inCard = false }: { inCard?: boolean }) {
   const c = useIoCopy()
@@ -19,39 +26,69 @@ export function TodaySupplyNeeds({ inCard = false }: { inCard?: boolean }) {
   const { board } = useBoard(true)
   const [open, setOpen] = useState(false)
   const [orderId, setOrderId] = useState<string | null>(null)
-  const tasks = board?.tasks ?? []
+  const today = localDay()
+  const tasks = (board?.tasks ?? []).filter((task) => {
+    if (task.code !== 'receive') return true
+    const delivery = board?.orders.find((o) => o.id === task.order_id)?.delivery ?? ''
+    return !delivery || delivery <= today
+  })
   if (!tasks.length) return null
   const order = board?.orders.find((o) => o.id === orderId) ?? null
   return (
     <>
-      <Stack
-        component="section"
+      <Box
+        component="ul"
         aria-label={c.question.needs}
-        spacing={2}
         data-testid="today-supply-needs"
-        sx={
-          inCard
-            ? { px: 1, pt: 3, pb: 1, borderTop: `1px solid ${roles.outlineVariant}` }
-            : { p: 4, borderRadius: `${shape.lg}px`, bgcolor: roles.surfaceContainerLow }
-        }
+        sx={{
+          m: 0,
+          p: 0,
+          listStyle: 'none',
+          '& > li + li': { borderTop: `1px solid ${roles.outlineVariant}` },
+          ...(inCard
+            ? { borderTop: `1px solid ${roles.outlineVariant}` }
+            : { px: 3, borderRadius: `${shape.lg}px`, bgcolor: roles.surfaceContainerLow }),
+        }}
       >
-        <Typography variant="titleMedium" component="h2">
-          {c.needsNow(tasks.length)}
-        </Typography>
-        <Box component="ul" sx={{ m: 0, p: 0, listStyle: 'none', display: 'grid', gap: 2 }}>
-          {tasks.slice(0, 3).map((task, i) => (
-            <li key={`${task.code}-${task.order_id ?? task.entry_id}-${i}`}>
-              <TaskCard
-                task={task}
-                onOpen={() => (task.order_id ? setOrderId(task.order_id) : setOpen(true))}
-              />
-            </li>
-          ))}
-        </Box>
-        <Button onClick={() => setOpen(true)} sx={{ alignSelf: 'flex-start', minHeight: 48 }}>
-          {c.action.open}: {c.title}
-        </Button>
-      </Stack>
+        {tasks.slice(0, 2).map((task, i) => (
+          <Box
+            component="li"
+            data-need="supply-task"
+            key={`${task.code}-${task.order_id ?? task.entry_id}-${i}`}
+            sx={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              alignItems: 'center',
+              columnGap: 3,
+              rowGap: 1,
+              px: 1,
+              py: 1,
+              minHeight: 56,
+            }}
+          >
+            <Box aria-hidden="true" sx={{ display: 'flex', color: roles.primary, flexShrink: 0 }}>
+              {task.status === 'problem' ? (
+                <TriangleAlert size={20} />
+              ) : (
+                <ClipboardList size={20} />
+              )}
+            </Box>
+            <Typography
+              variant="bodyLarge"
+              sx={{ flex: '1 1 160px', minWidth: 0, overflowWrap: 'anywhere' }}
+            >
+              {c.task[task.code](task.partner || c.title)}
+            </Typography>
+            <Button
+              variant="text"
+              sx={{ minHeight: 48, flexShrink: 0, ml: 'auto' }}
+              onClick={() => (task.order_id ? setOrderId(task.order_id) : setOpen(true))}
+            >
+              {c.action.open}
+            </Button>
+          </Box>
+        ))}
+      </Box>
       <OnceOpened open={open} onClose={() => setOpen(false)}>
         <SupplyHub open={open} onClose={() => setOpen(false)} />
       </OnceOpened>

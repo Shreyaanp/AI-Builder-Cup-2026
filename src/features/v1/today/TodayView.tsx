@@ -827,6 +827,8 @@ function PulseCard({ plan, actions }: { plan: TodayPlan; actions: TodayActions }
   // gives its line back, so Today fits a 360 phone (a festival is news and stays).
   const rainInForecast = plan.forecast && plan.line?.kind === 'rain'
   const coachLine = useLineText(quiet || rainInForecast ? null : plan.line)
+  // …as a compact cue on that row, so a rainy morning still says so within the 360 fit (OB-301).
+  const rain = rainInForecast && !quiet && plan.line?.rain != null ? plan.line.rain : null
   const lines: string[] = []
   if (plan.pulse) {
     // One short row: the two numbers that matter most (the rest are one tap away in the chat).
@@ -853,7 +855,8 @@ function PulseCard({ plan, actions }: { plan: TodayPlan; actions: TodayActions }
     )
     // The busiest hours are the owner's own setting; a coach line (rain, a festival) is news, so
     // it takes that place and the row stays short.
-    if (plan.forecast.busy && !plan.line) {
+    if (rain != null) text += ` · ☔ ${number.format(rain)}%`
+    else if (plan.forecast.busy && !coachLine) {
       const [start, end] = plan.forecast.busy.map(
         (minutes) => new Date(Date.UTC(2026, 0, 1, Math.floor(minutes / 60), minutes % 60)),
       )
@@ -869,7 +872,7 @@ function PulseCard({ plan, actions }: { plan: TodayPlan; actions: TodayActions }
     <ButtonBase
       data-testid="today-pulse"
       data-tour="forecast"
-      aria-label={`${lines.join('. ')}. ${ask}`}
+      aria-label={`${lines.join('. ')}${rain != null ? `. ${tt.rain(rain)}` : ''}. ${ask}`}
       onClick={() => actions.ask(ask)}
       sx={{
         width: '100%',

@@ -2,7 +2,7 @@
 
 import json
 import time
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from unittest.mock import AsyncMock, Mock
 from zoneinfo import ZoneInfo
 
@@ -112,7 +112,11 @@ def test_OB_62_bengaluru_public_demo_forecast_matches_both_surfaces_across_loads
         step = tour["today"]
         assert need["stock"] >= 3 and need["daily"] >= 1.5
         today = datetime.now(ZoneInfo("Asia/Kolkata")).date()
-        assert 1 <= (date.fromisoformat(need["runs_out"]) - today).days <= 4
+        # The shelf alone lasts 1 to 4 days; the seeded order arriving tomorrow counts from then
+        # on, so Today shows a later day or none (OB-263).
+        assert 1 <= need["stock"] / need["daily"] <= 4
+        assert need["on_order"] and need["arrives"] <= (today + timedelta(days=1)).isoformat()
+        assert not need["runs_out"] or (date.fromisoformat(need["runs_out"]) - today).days > 4
         assert (need["stock"], need["daily"], need["runs_out"]) == (
             step["stock"],
             step["daily"],
