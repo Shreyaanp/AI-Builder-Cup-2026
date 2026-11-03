@@ -134,6 +134,7 @@ export function TodayView({
         <Typography component="h1" variant="headlineSmall" sx={{ overflowWrap: 'anywhere' }}>
           {tt.greet(plan.part, name ?? '')}
         </Typography>
+        {!plan.pulse && !plan.forecast && <LineText line={plan.line} />}
       </Box>
       {plan.dayOne && (
         <DayOne
@@ -150,10 +151,26 @@ export function TodayView({
       {firstCustomers && ws.shareUrl && (
         <FirstCustomers url={ws.shareUrl} name={shop.fields.name} />
       )}
-      {(plan.pulse || plan.forecast || plan.line) && <PulseCard plan={plan} actions={actions} />}
+      {(plan.pulse || plan.forecast) && <PulseCard plan={plan} actions={actions} />}
       {chips?.(plan.part === 'evening')}
       {evening && <Box sx={{ mt: 'auto' }}>{needs}</Box>}
     </Box>
+  )
+}
+
+/** No numbers yet: the coach's line stands alone under the greeting. */
+function LineText({ line }: { line: CoachLine | null }) {
+  const text = useLineText(line)
+  const roles = useTheme().material
+  if (!text) return null
+  return (
+    <Typography
+      variant="bodyLarge"
+      data-testid="today-line"
+      sx={{ color: roles.onSurfaceVariant, mt: 2 }}
+    >
+      {text}
+    </Typography>
   )
 }
 
@@ -833,7 +850,9 @@ function PulseCard({ plan, actions }: { plan: TodayPlan; actions: TodayActions }
       number.format(plan.forecast.quantity),
       productName(plan.forecast.item, locale),
     )
-    if (plan.forecast.busy) {
+    // The busiest hours are the owner's own setting; a coach line (rain, a festival) is news, so
+    // it takes that place and the row stays short.
+    if (plan.forecast.busy && !coachLine) {
       const [start, end] = plan.forecast.busy.map(
         (minutes) => new Date(Date.UTC(2026, 0, 1, Math.floor(minutes / 60), minutes % 60)),
       )
@@ -846,9 +865,8 @@ function PulseCard({ plan, actions }: { plan: TodayPlan; actions: TodayActions }
     }
     lines.push(text)
   }
-  // The weather or festival line is a reason under the numbers, not a block of its own; with
-  // both numbers shown it stays on Grow › Morning brief, so the row keeps to two lines.
-  if (coachLine && lines.length < 2) lines.push(coachLine)
+  // The weather or festival line is a reason under the numbers, not a block of its own.
+  if (coachLine) lines.push(coachLine)
   return (
     <ButtonBase
       data-testid="today-pulse"
