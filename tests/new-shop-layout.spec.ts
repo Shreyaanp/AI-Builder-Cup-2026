@@ -128,9 +128,14 @@ for (const width of [360, 390, 412] as const)
               | undefined
             >
           }
-          const { addShop, continuePreview, send } =
+          const simple = (await import('/src/features/v1/today/simpleCopy.ts' as string)) as {
+            simpleCopyFor: (l: string) => { typeName: string }
+          }
+          const { continuePreview, send } =
             language === 'en' ? app.en : (await locales.loaders[language]?.())!
           const { begin, review } = flow.newShopCopyFor(language)
+          // First run: the start card's typed way in (simplify batch 5: no top-bar "+").
+          const addShop = simple.simpleCopyFor(language).typeName
           return { addShop, continuePreview, send, begin, review }
         }, language)
         await page.evaluate(
@@ -143,7 +148,7 @@ for (const width of [360, 390, 412] as const)
         )
         await page.reload()
         await page.getByRole('button', { name: copy.continuePreview }).click()
-        await page.getByRole('banner').getByRole('button', { name: copy.addShop }).click()
+        await page.getByRole('button', { name: copy.addShop }).click()
         const shot = (step: string) =>
           page.screenshot({
             path: info.outputPath(`${width}-${language}-${appearance}-${step}.png`),

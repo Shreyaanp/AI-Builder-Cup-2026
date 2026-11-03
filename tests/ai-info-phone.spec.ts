@@ -143,7 +143,7 @@ test('360px: Hindi help uses Hindi copy and closes with Escape', async ({ page }
   )
   await page.reload()
   await page.getByRole('button', { name: 'स्थानीय प्रीव्यू जारी रखें' }).click()
-  await page.getByRole('banner').getByRole('button', { name: 'दुकान की जानकारी जोड़ें' }).click()
+  await page.getByRole('button', { name: 'दुकान का नाम लिखें' }).click()
   const info = page.getByTestId('ai-info')
   await fits(page)
   await info.getByRole('button', { name: 'यह कैसे काम करता है' }).click()

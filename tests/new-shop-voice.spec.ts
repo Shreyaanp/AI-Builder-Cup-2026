@@ -433,8 +433,12 @@ for (const locale of LOCALES) {
           (() => Promise<{ addShop: string; continuePreview: string }>) | undefined
         >
       }
-      const { addShop, continuePreview } =
-        locale === 'en' ? app.en : (await locales.loaders[locale]?.())!
+      const simple = (await import('/src/features/v1/today/simpleCopy.ts' as string)) as {
+        simpleCopyFor: (l: string) => { typeName: string }
+      }
+      const { continuePreview } = locale === 'en' ? app.en : (await locales.loaders[locale]?.())!
+      // First run: the start card's typed way in (simplify batch 5: no top-bar "+").
+      const addShop = simple.simpleCopyFor(locale).typeName
       return {
         ...voice.voiceModeCopyFor(locale),
         begin: flow.newShopCopyFor(locale).begin,
@@ -447,7 +451,7 @@ for (const locale of LOCALES) {
     }, locale)
     await page.reload()
     await page.getByRole('button', { name: copy.continuePreview! }).click()
-    await page.getByRole('banner').getByRole('button', { name: copy.addShop! }).click()
+    await page.getByRole('button', { name: copy.addShop! }).click()
     await page.getByRole('button', { name: copy.begin! }).click()
     const alert = page.getByTestId('voice-alert')
     await expect(alert).toContainText(copy.micBlockedTitle!)
