@@ -9,6 +9,8 @@ export default defineConfig({
   // The QA machine has its own servers and config: npm run test:qa
   testIgnore: ['qa/**', 'heatmap/**', 'ux/**'],
   timeout: 30_000,
+  // The first page load compiles the whole app; tests start once it has (OB-258).
+  globalSetup: './tests/warm-dev-server.ts',
   // Shard individual isolated tests, so large story files cannot dominate one shard.
   fullyParallel: true,
   // Each test gets its own browser context and workspace, so files run in parallel.
