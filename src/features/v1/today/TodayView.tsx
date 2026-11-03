@@ -823,7 +823,10 @@ function PulseCard({ plan, actions }: { plan: TodayPlan; actions: TodayActions }
   const ask = plan.pulse?.when === 'today' ? tt.howToday : tt.howYesterday
   // In the evening the card below owns the screen: the weather line would push Reply out of view.
   const quiet = plan.part === 'evening'
-  const coachLine = useLineText(quiet ? null : plan.line)
+  // Rain only changes how much to make, and the forecast row already says that: with a forecast it
+  // gives its line back, so Today fits a 360 phone (a festival is news and stays).
+  const rainInForecast = plan.forecast && plan.line?.kind === 'rain'
+  const coachLine = useLineText(quiet || rainInForecast ? null : plan.line)
   const lines: string[] = []
   if (plan.pulse) {
     // One short row: the two numbers that matter most (the rest are one tap away in the chat).

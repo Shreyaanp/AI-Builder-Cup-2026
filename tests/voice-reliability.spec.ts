@@ -92,15 +92,15 @@ async function hindiFlow(page: Page): Promise<Copy> {
     const onboarding = (await import('/src/features/v1/onboardingCopy.ts' as string)) as {
       onboardingCopyFor: (l: string) => Record<string, string>
     }
-    const simple = (await import('/src/features/v1/today/simpleCopy.ts' as string)) as {
-      simpleCopyFor: (l: string) => Record<string, string>
+    const simple = (await import('/src/features/v1/today/firstRunCopy.ts' as string)) as {
+      firstRunCopyFor: (l: string) => Record<string, string>
     }
     return {
       ...(await locales.loaders.hi?.()),
       begin: flow.newShopCopyFor('hi').begin,
       ...voice.voiceModeCopyFor('hi'),
       ...onboarding.onboardingCopyFor('hi'),
-      typeName: simple.simpleCopyFor('hi').typeName!,
+      typeName: simple.firstRunCopyFor('hi').typeName!,
     } as Record<string, string>
   })
   await page.evaluate(() =>
