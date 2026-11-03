@@ -60,6 +60,7 @@ const en = {
   loading: 'Checking today’s sales…',
   loadFailed: 'Couldn’t check today’s sales. Please try again.',
   retry: 'Try again',
+  numberInvalid: 'Number not clear. Try {example}.',
 }
 
 type Copy = typeof en
@@ -69,8 +70,26 @@ const translations: Partial<Record<Locale, Partial<Copy>>> = {
   ...closeDayApac,
 }
 
+const numberErrors: Record<Locale, string> = {
+  en: en.numberInvalid,
+  'zh-Hans': '数字不清楚，请按 {example} 的格式填写。',
+  ms: 'Nombor tidak jelas. Cuba {example}.',
+  ta: 'எண் தெளிவாக இல்லை. {example} போல எழுதவும்.',
+  ja: '数値を確認し、{example} のように入力してください。',
+  ko: '숫자를 확인하고 {example}처럼 입력해 주세요.',
+  id: 'Angka tidak jelas. Coba {example}.',
+  th: 'ตัวเลขไม่ชัดเจน ลองกรอกแบบ {example}',
+  vi: 'Số chưa rõ. Hãy nhập như {example}.',
+  fil: 'Hindi malinaw ang numero. Subukan ang {example}.',
+  hi: 'संख्या साफ़ नहीं है। {example} की तरह लिखें।',
+  bn: 'সংখ্যা স্পষ্ট নয়। {example} এর মতো লিখুন।',
+  te: 'సంఖ్య స్పష్టంగా లేదు. {example} లాగా రాయండి.',
+  mr: 'संख्या स्पष्ट नाही. {example} प्रमाणे लिहा.',
+  kn: 'ಸಂಖ್ಯೆ ಸ್ಪಷ್ಟವಾಗಿಲ್ಲ. {example} ಹಾಗೆ ಬರೆಯಿರಿ.',
+}
+
 export function closeDayCopy(locale: Locale): Copy {
-  return { ...en, ...(translations[locale] ?? {}) }
+  return { ...en, ...(translations[locale] ?? {}), numberInvalid: numberErrors[locale] }
 }
 
 export function closeDayCount(locale: Locale, key: 'review' | 'lines' | 'soldItems', n: number) {

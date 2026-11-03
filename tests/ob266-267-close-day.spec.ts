@@ -46,15 +46,76 @@ async function open(page: Page, hour = 10) {
   return page.getByRole('dialog', { name: 'Close the day' })
 }
 
-async function addLine(page: Page) {
+async function addLine(page: Page, amount = '200', quantity = '10') {
   const dialog = page.getByRole('dialog', { name: 'Close the day' })
   await dialog.getByRole('button', { name: 'Type the numbers instead' }).click()
   await dialog.getByLabel('Item', { exact: true }).fill('Kopi')
-  await dialog.getByLabel('Quantity sold', { exact: true }).fill('10')
-  await dialog.getByLabel('Total for this item (₹)', { exact: true }).fill('200')
+  await dialog.getByLabel('Quantity sold', { exact: true }).fill(quantity)
+  await dialog.getByLabel('Total for this item (₹)', { exact: true }).fill(amount)
   await dialog.getByRole('button', { name: 'Add line', exact: true }).click()
   await dialog.getByRole('button', { name: 'Review (1 line)', exact: true }).click()
 }
+
+test('OB-279: grouped amounts and quantities keep their value in review and saved totals', async ({
+  page,
+}) => {
+  const dialog = await open(page, 22)
+  await addLine(page, '1,000', '1,000')
+  await expect(dialog.getByText('₹1,000', { exact: true })).toBeVisible()
+  await expect(dialog.getByText('1,000 · ₹1,000', { exact: true })).toBeVisible()
+  await dialog.getByRole('button', { name: 'Close the day', exact: true }).click()
+  await expect(dialog.getByText('Day closed: ₹1,000', { exact: true })).toBeVisible()
+  const [shop] = await (await page.request.get('/api/v1/businesses')).json()
+  const rows = await (await page.request.get(`/api/v1/businesses/${shop.id}/sales`)).json()
+  expect(rows.filter((row: { date: string }) => row.date === day)).toEqual([
+    { date: day, item: 'Kopi', quantity: 1000, revenue: 100000 },
+  ])
+  await dialog.getByRole('button', { name: 'Done', exact: true }).click()
+  await page.locator('[data-tour="closeday"]').click()
+  await expect(dialog.getByText('Already closed today: ₹1,000', { exact: true })).toBeVisible()
+})
+
+test('OB-279: unclear numbers show linked inline errors and preserve the entry', async ({
+  page,
+}, info) => {
+  const dialog = await open(page)
+  await dialog.getByRole('button', { name: 'Type the numbers instead' }).click()
+  await dialog.getByLabel('Item', { exact: true }).fill('Kopi')
+  const quantity = dialog.getByLabel('Quantity sold', { exact: true })
+  const amount = dialog.getByLabel('Total for this item (₹)', { exact: true })
+  await quantity.fill('1,00')
+  await amount.fill('1.000,50')
+  await dialog.getByRole('button', { name: 'Add line', exact: true }).click()
+  for (const field of [quantity, amount]) {
+    await expect(field).toHaveAttribute('aria-invalid', 'true')
+    const helper = page.locator(`[id="${await field.getAttribute('aria-describedby')}"]`)
+    await expect(helper).toHaveText('Number not clear. Try 1,000.5.')
+    await expect(helper).toHaveAttribute('aria-live', 'polite')
+  }
+  await expect(quantity).toBeFocused()
+  await expect(amount).toHaveValue('1.000,50')
+  await expect(dialog.getByRole('button', { name: 'Review (0 lines)', exact: true })).toBeDisabled()
+  await page.screenshot({
+    path: info.outputPath('ob279-inline-errors.png'),
+    animations: 'disabled',
+  })
+  expect(
+    (
+      await new AxeBuilder({ page })
+        .include('[role="dialog"]')
+        .withTags(['wcag2a', 'wcag2aa'])
+        .analyze()
+    ).violations,
+  ).toEqual([])
+  await quantity.fill('1000')
+  await dialog.getByRole('button', { name: 'Add line', exact: true }).click()
+  await expect(amount).toBeFocused()
+  await expect(quantity).toHaveAttribute('aria-invalid', 'false')
+  await amount.fill('1000.50')
+  await dialog.getByRole('button', { name: 'Add line', exact: true }).click()
+  await dialog.getByRole('button', { name: 'Review (1 line)', exact: true }).click()
+  await expect(dialog.getByText('₹1,000.50', { exact: true })).toBeVisible()
+})
 
 test('OB-266: EN dismiss is Not now and the primary job has one name', async ({ page }) => {
   const dialog = await open(page)
@@ -65,7 +126,7 @@ test('OB-266: EN dismiss is Not now and the primary job has one name', async ({ 
   await expect(dialog).toHaveCount(0)
 })
 
-test('OB-266 OB-267 OB-275 F13: Hindi dismiss, job and line total are clear', async ({
+test('OB-266 OB-267 OB-275 OB-279 F13: Hindi dismiss, job and line total are clear', async ({
   page,
 }, info) => {
   await open(page)
@@ -81,9 +142,12 @@ test('OB-266 OB-267 OB-275 F13: Hindi dismiss, job and line total are clear', as
   await dialog.getByRole('button', { name: 'संख्याएँ खुद लिखें' }).click()
   await expect(dialog.getByLabel('इस सामान की कुल रकम (₹)', { exact: true })).toBeVisible()
   await expect(dialog).not.toContainText(/Z रिपोर्ट|Nothing to save|Review/)
-  await page.screenshot({ path: info.outputPath('hindi-item-total.png'), animations: 'disabled' })
   await dialog.locator('input[name=item]').fill('चाय')
   await dialog.locator('input[name=quantity]').fill('10')
+  await dialog.locator('input[name=amount]').fill('1,00')
+  await dialog.getByRole('button', { name: 'लाइन जोड़ें', exact: true }).click()
+  await expect(dialog.getByText('संख्या साफ़ नहीं है। 1,000.5 की तरह लिखें।')).toBeVisible()
+  await page.screenshot({ path: info.outputPath('hindi-item-total.png'), animations: 'disabled' })
   await dialog.locator('input[name=amount]').fill('200')
   await dialog.getByRole('button', { name: 'लाइन जोड़ें', exact: true }).click()
   await dialog.getByRole('button', { name: 'जाँचें (1 पंक्ति)', exact: true }).click()
@@ -229,7 +293,7 @@ test('OB-267 OB-278: editing a closed day does not append an incoming chat photo
 
 for (const size of ['phone', 'desktop'] as const) {
   for (const appearance of ['light', 'dark'] as const) {
-    test(`OB-266 OB-267 OB-275: ${size} ${appearance} labels and accessibility`, async ({
+    test(`OB-266 OB-267 OB-275 OB-279: ${size} ${appearance} labels and accessibility`, async ({
       page,
     }, info) => {
       await page.setViewportSize(
@@ -245,6 +309,11 @@ for (const size of ['phone', 'desktop'] as const) {
       await expect(dialog.getByRole('button', { name: 'Not now', exact: true })).toBeVisible()
       await dialog.getByRole('button', { name: 'Type the numbers instead' }).click()
       await expect(dialog.getByLabel('Total for this item (₹)', { exact: true })).toBeVisible()
+      await dialog.locator('input[name=item]').fill('Kopi')
+      await dialog.locator('input[name=quantity]').fill('10')
+      await dialog.locator('input[name=amount]').fill('1,00')
+      await dialog.getByRole('button', { name: 'Add line', exact: true }).click()
+      await expect(dialog.getByText('Number not clear. Try 1,000.5.')).toBeVisible()
       await page.screenshot({ path: info.outputPath('item-total.png'), animations: 'disabled' })
       expect(
         (
@@ -261,7 +330,7 @@ for (const size of ['phone', 'desktop'] as const) {
   }
 }
 
-test('OB-266 OB-267: Chinese close-day states remain localized', async ({ page }, info) => {
+test('OB-266 OB-267 OB-279: Chinese close-day states remain localized', async ({ page }, info) => {
   await open(page)
   await page.keyboard.press('Escape')
   await page.getByRole('button', { name: 'You', exact: true }).click()
@@ -273,5 +342,11 @@ test('OB-266 OB-267: Chinese close-day states remain localized', async ({ page }
   await expect(dialog.getByRole('button', { name: '暂时不用', exact: true })).toBeVisible()
   await expect(dialog.getByText('销售小票或记录本', { exact: true })).toHaveCount(1)
   await expect(dialog).not.toContainText(/Review|Not now|Z 报表/)
+  await dialog.getByRole('button', { name: '改为手动输入数字' }).click()
+  await dialog.locator('input[name=item]').fill('茶')
+  await dialog.locator('input[name=quantity]').fill('10')
+  await dialog.locator('input[name=amount]').fill('1,00')
+  await dialog.getByRole('button', { name: '添加一行', exact: true }).click()
+  await expect(dialog.getByText('数字不清楚，请按 1,000.5 的格式填写。')).toBeVisible()
   await page.screenshot({ path: info.outputPath('chinese.png'), animations: 'disabled' })
 })

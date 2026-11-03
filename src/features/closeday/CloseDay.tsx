@@ -35,12 +35,13 @@ import { useIdentity } from '../../auth/useIdentity'
 import { dismissFreshness } from '../sales/freshnessDismissal'
 import { closeDayCopy, closeDayCount } from './strings'
 import { closingMinutes, shopNow } from '../owner/time'
-import { shopZone } from '../../region/region'
+import { moneyLocale, shopZone } from '../../region/region'
 import { useDaySales } from './useDaySales'
 import { comparisonKind } from './compare'
 import { AskHint } from '../v1/AskHint'
 import { TomorrowPromise } from './TomorrowPromise'
 import { countClosed } from '../v1/today/habitCount'
+import { parseCloseDayNumber } from './parseNumber'
 import type { components } from '../../api/generated'
 
 type CloseReward = components['schemas']['CloseReward']
@@ -604,7 +605,7 @@ export function CloseDay({
                     key: k,
                     label: line.item,
                     sub: line.read_as !== line.item ? t.readAs.replace('{text}', line.read_as) : '',
-                    value: `${line.quantity} · ${formatShopPrice(toMinor(line.amount ?? 0, currency), currency)}`,
+                    value: `${new Intl.NumberFormat(locale).format(line.quantity ?? 0)} · ${formatShopPrice(toMinor(line.amount ?? 0, currency), currency, locale)}`,
                     warn: !line.matched,
                   }))}
                   onDrop={(k) => setDropped((all) => new Set(all).add(k))}
@@ -623,7 +624,7 @@ export function CloseDay({
                     key: k,
                     label: line.item,
                     sub: line.matched ? '' : t.notOnMenu,
-                    value: mode === 'delivery' ? `+${line.quantity}` : `= ${line.quantity}`,
+                    value: `${mode === 'delivery' ? '+' : '= '}${new Intl.NumberFormat(locale).format(line.quantity ?? 0)}`,
                     warn: !line.matched,
                   }))}
                   onDrop={(k) => setDropped((all) => new Set(all).add(k))}
@@ -937,19 +938,23 @@ function TypedSales({
   onAdd: (line: Line) => void
 }) {
   const next = useNextStepsCopy()
+  const locale = useLocale()
+  const numberLocale = moneyLocale(currency, locale) ?? locale
   const [item, setItem] = useState('')
   const [qty, setQty] = useState('')
   const [amount, setAmount] = useState('')
   const [invalid, setInvalid] = useState(false)
-  const number = (text: string) => {
-    const value = Number(text.trim().replace(',', '.'))
-    return text.trim() && Number.isFinite(value) && value >= 0 ? value : null
-  }
-  function add() {
-    const quantity = number(qty)
-    const total = number(amount)
+  const quantity = parseCloseDayNumber(qty, numberLocale)
+  const total = parseCloseDayNumber(amount, numberLocale)
+  const numberError = closeDayCopy(locale).numberInvalid.replace(
+    '{example}',
+    new Intl.NumberFormat(numberLocale).format(1000.5),
+  )
+  function add(form: HTMLFormElement) {
     if (!item.trim() || quantity === null || total === null) {
       setInvalid(true)
+      const name = !item.trim() ? 'item' : quantity === null ? 'quantity' : 'amount'
+      ;(form.elements.namedItem(name) as HTMLInputElement | null)?.focus()
       return
     }
     const known = products.find((name) => name.toLowerCase() === item.trim().toLowerCase())
@@ -973,7 +978,7 @@ function TypedSales({
       data-testid="close-day-typed"
       onSubmit={(event) => {
         event.preventDefault()
-        add()
+        add(event.currentTarget)
       }}
       sx={{ mt: 4, animation: `cdRise 320ms ${EASE} both` }}
     >
@@ -986,6 +991,8 @@ function TypedSales({
           name="item"
           label={next.manualItem}
           value={item}
+          error={invalid && !item.trim()}
+          helperText={invalid && !item.trim() ? next.manualInvalid : undefined}
           onChange={(event) => setItem(event.target.value.slice(0, 180))}
           slotProps={{ htmlInput: { list: 'close-day-items', autoComplete: 'off' } }}
         />
@@ -999,20 +1006,29 @@ function TypedSales({
             name="quantity"
             label={next.manualQty}
             value={qty}
+            error={invalid && quantity === null}
+            helperText={invalid && quantity === null ? numberError : undefined}
             onChange={(event) => setQty(event.target.value)}
-            slotProps={{ htmlInput: { inputMode: 'decimal', autoComplete: 'off' } }}
+            slotProps={{
+              htmlInput: { inputMode: 'decimal', autoComplete: 'off' },
+              formHelperText: { 'aria-live': 'polite' },
+            }}
             sx={{ flex: 1, minWidth: 0 }}
           />
           <TextField
             name="amount"
             label={`${next.manualAmount} (${currencySymbol(currency)})`}
             value={amount}
+            error={invalid && total === null}
+            helperText={invalid && total === null ? numberError : undefined}
             onChange={(event) => setAmount(event.target.value)}
-            slotProps={{ htmlInput: { inputMode: 'decimal', autoComplete: 'off' } }}
+            slotProps={{
+              htmlInput: { inputMode: 'decimal', autoComplete: 'off' },
+              formHelperText: { 'aria-live': 'polite' },
+            }}
             sx={{ flex: 1, minWidth: 0 }}
           />
         </Stack>
-        {invalid && <Alert severity="error">{next.manualInvalid}</Alert>}
         <Button
           type="submit"
           variant="outlined"
