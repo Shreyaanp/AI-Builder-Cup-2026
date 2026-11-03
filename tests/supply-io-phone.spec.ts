@@ -53,8 +53,11 @@ test('Supply on a phone: forecast in → order → change → goods arrive → r
   await cafe.getByRole('button', { name: 'Close', exact: true }).click()
 
   // OUTBOUND 1: goods arrive. Pre-filled from the order; the owner fixes only the difference.
+  // The order is one card, its purchase order; its delivery opens from inside it.
   await hub.getByRole('button', { name: /^On the way/ }).click()
-  await hub.getByRole('button', { name: /^Fresh Dairy \(Demo\)/ }).click()
+  await expect(hub.getByRole('button', { name: /Fresh Dairy \(Demo\)/ })).toHaveCount(1)
+  await hub.getByRole('button', { name: /^Milk from Fresh Dairy \(Demo\)/ }).click()
+  await hub.getByRole('button', { name: 'Delivery from Fresh Dairy (Demo)', exact: true }).click()
   const dairy = page.getByRole('dialog', { name: 'Fresh Dairy (Demo)' })
   await dairy.getByRole('button', { name: 'Goods arrived', exact: true }).click()
   await expect(dairy.getByRole('button', { name: 'All received', exact: true })).toBeVisible()
@@ -81,6 +84,7 @@ test('Supply on a phone: forecast in → order → change → goods arrive → r
   await page.keyboard.press('Escape')
   await expect(sap).toHaveCount(0)
   await dairy.getByRole('button', { name: 'Close', exact: true }).click()
+  await hub.getByRole('button', { name: 'Buy stock', exact: true }).click()
 
   // OUTBOUND 2: the café gets WhatsApp text; not SAP.
   await hub.getByRole('button', { name: /New order/ }).click()

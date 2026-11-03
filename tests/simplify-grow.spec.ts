@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import { enter, localOnly, seedShop } from './stories/support.js'
 import { openBuyStock } from './support/grow.js'
+import { kirana } from './support/kirana.js'
 
 // Simplify batch 4 (owner app, SIMPLIFY-owner.md §3.11, §3.12, §7). 4a: Grow opens on a short
 // list of rows and a More tools grid of named tools. 4b: How much to make, Buy stock and My sales
@@ -300,6 +301,58 @@ test('Buy stock: reorder from the Grow tab in 3 taps, to an order ready to send'
   await expect(card.getByRole('button', { name: 'Approve and send', exact: true })).toBeVisible()
   expect(taps, 'taps from Coach to an order to send').toBeLessThanOrEqual(3)
   await expect(sheet).not.toContainText(/\bPO \d/)
+})
+
+// One purchase order is one card with one status, counted once (SUPPLY-CHAIN-UX-RULES §5, §10):
+// the Supply chain board and the purchase orders are the same records, never shown twice.
+test('Buy stock: a drafted reorder is one card in To do and "1 to do" on the row (demo)', async ({
+  page,
+}) => {
+  await openDemo(page)
+  await page.locator('[data-tour="nav-grow"]').click()
+  const sheet = await openBuyStock(page)
+  await sheet.getByRole('button', { name: 'Draft a reorder' }).click()
+  await expect(sheet.getByRole('article')).toBeVisible({ timeout: 15_000 })
+  await sheet.getByRole('button', { name: 'Buy stock', exact: true }).click()
+  await expect(sheet.getByRole('article')).toHaveCount(0)
+  await expect(sheet.getByRole('button', { name: /Sri Lakshmi/ })).toHaveCount(1)
+  // The runs-out card and the draft: two cards, and the tab says 2.
+  await expect(sheet.getByRole('button', { name: /^To do/ })).toHaveText(/^To do\s*2$/)
+  await sheet.getByRole('button', { name: 'Close', exact: true }).last().click()
+  await expect(page.getByRole('dialog')).toHaveCount(0, { timeout: 10_000 })
+  await expect(grow(page).getByRole('button', { name: /^Buy stock/ })).toContainText(
+    /(^|· )1 to do$/,
+  )
+})
+
+test('Buy stock: the seeded tea dust order shows once in On the way (demo)', async ({ page }) => {
+  await openDemo(page)
+  await page.locator('[data-tour="nav-grow"]').click()
+  const sheet = await openBuyStock(page, 'On the way')
+  await expect(sheet.getByRole('button', { name: /13 kg/ }).first()).toBeVisible({
+    timeout: 15_000,
+  })
+  await expect(sheet.getByRole('button', { name: /13 kg/ })).toHaveCount(1)
+})
+
+test('Buy stock (fresh shop): an approved and sent reorder is one card in On the way', async ({
+  page,
+}) => {
+  await kirana(page, { width: 390, height: 844 })
+  await page.locator('[data-tour="nav-grow"]').click()
+  const sheet = await openBuyStock(page)
+  await sheet.getByRole('button', { name: 'Draft a reorder' }).click()
+  const card = sheet.getByRole('article')
+  await expect(card).toBeVisible({ timeout: 15_000 })
+  const item = ((await card.getAttribute('aria-label')) ?? '').split(' from ')[0].trim()
+  await card.getByRole('button', { name: 'Approve and send', exact: true }).click()
+  await expect(card).toContainText('Marked Sent')
+  await sheet.getByRole('button', { name: 'Buy stock', exact: true }).click()
+  await sheet.getByRole('button', { name: /^On the way/ }).click()
+  const order = sheet.getByRole('button', { name: new RegExp(item, 'i') })
+  await expect(order.first()).toBeVisible({ timeout: 15_000 })
+  await expect(order).toHaveCount(1)
+  await expect(sheet.getByRole('button', { name: /^On the way/ })).toHaveText(/^On the way\s*1$/)
 })
 
 test('Buy stock → Find a supplier → milk 20 L → vendor list → Order → card with Send (demo, no paid AI)', async ({

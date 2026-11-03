@@ -14,6 +14,8 @@ import {
   useTheme,
 } from '@mui/material'
 import { useWorkspace } from '../v1/workspaceContext'
+import { useLocale } from '../../state/hooks'
+import { productName } from '../../i18n/productNames'
 import { shape } from '../../design/theme'
 import { useCopy } from './strings'
 import { useCopy as useShopCopy } from '../v1/strings'
@@ -62,6 +64,7 @@ export function PlanTomorrow({ title }: { title?: string } = {}) {
   const ws = useWorkspace()
   const t = useCopy()
   const units = useUnitCopy()
+  const locale = useLocale()
   const [selected, setSelected] = useState('')
   const product = ws.products.find((p) => p.id === selected) ?? ws.products[0]
   if (!ws.active || !product?.id) return null
@@ -75,7 +78,7 @@ export function PlanTomorrow({ title }: { title?: string } = {}) {
       >
         {ws.products.map((p) => (
           <MenuItem key={p.id} value={p.id}>
-            {p.name} ({unitLabel(p.unit, units)})
+            {productName(p.name, locale)} ({unitLabel(p.unit, units)})
           </MenuItem>
         ))}
       </TextField>
@@ -83,7 +86,7 @@ export function PlanTomorrow({ title }: { title?: string } = {}) {
         key={`${ws.active.id}/${product.id}`}
         businessId={ws.active.id}
         productId={product.id}
-        name={product.name}
+        name={productName(product.name, locale)}
         unit={unitLabel(product.unit, units)}
         title={title ?? t.title}
       />
@@ -179,7 +182,6 @@ function PlanningCard({
         <Typography variant="bodyMedium">
           {name} / {unit}
         </Typography>
-        <Typography variant="bodyMedium">{t.private}</Typography>
         {error && (
           <Alert severity="error">
             {t.error}

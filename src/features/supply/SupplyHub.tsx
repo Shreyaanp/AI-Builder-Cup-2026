@@ -6,7 +6,7 @@ import { useIoCopy } from './ioCopy'
 import { useBoard, useIoActions, useUndoableSend } from './ioData'
 import type { Board, IoOrder, Unsent, View } from './ioTypes'
 import { Card, EntryCard, OrderCard, Section, TaskCard } from './IoParts'
-import { counts, onTheWay, useIoFormat } from './ioFormat'
+import { counts, onTheWay, useIoFormat, withoutOrders } from './ioFormat'
 import { OrderSheet } from './OrderSheet'
 
 const VIEWS: View[] = ['needs', 'coming', 'received', 'send']
@@ -108,13 +108,23 @@ export function SupplyHub({
  * Buy stock (simplify batch 4b): some of the Supply chain screens on one tab, each under its own
  * question, empty ones left out. To do holds "needs me now" and "must send" (with Send all),
  * On the way holds "coming in" and "received". An order opens in its own sheet, as in the hub.
+ * Orders in `skip` (the purchase orders Buy stock shows as their own cards) get no card here.
  */
-export function SupplyBoard({ board, views }: { board: Board; views: View[] }) {
+export function SupplyBoard({
+  board,
+  views,
+  skip,
+}: {
+  board: Board
+  views: View[]
+  skip: ReadonlySet<string>
+}) {
   const c = useIoCopy()
   const [orderId, setOrderId] = useState<string | null>(null)
   const sendAll = useUndoableSend()
   const actions = useIoActions()
-  const n = counts(board)
+  const rest = withoutOrders(board, skip)
+  const n = counts(rest)
   const order = board.orders.find((o) => o.id === orderId) ?? null
   // "Coming in" keeps its demo step even with nothing on the way yet.
   const shown = views.filter(
@@ -127,7 +137,7 @@ export function SupplyBoard({ board, views }: { board: Board; views: View[] }) {
           <Typography variant="titleMedium" component="h3">
             {c.question[v]}
           </Typography>
-          <Screen board={board} view={v} open={setOrderId} quiet />
+          <Screen board={rest} view={v} open={setOrderId} quiet />
           {v === 'send' &&
             (sendAll.left !== null ? (
               <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
@@ -150,6 +160,38 @@ export function SupplyBoard({ board, views }: { board: Board; views: View[] }) {
         </Stack>
       ))}
       <OrderSheet order={order} open={order !== null} onClose={() => setOrderId(null)} />
+    </>
+  )
+}
+
+/** Orders the board receives line by line that the purchase order card has no Goods arrived for. */
+const AWAITED = new Set(['sent', 'confirmed'])
+
+/**
+ * Buy stock: inside one open purchase order, "Delivery from <supplier>" opens the board's sheet to
+ * receive it line by line, send the goods receipt and see the supplier's copy. The order has no
+ * card of its own on the board there, so this is its only way in.
+ */
+export function DeliveryButton({ order }: { order: IoOrder | undefined }) {
+  const c = useIoCopy()
+  const [open, setOpen] = useState(false)
+  const awaited =
+    order?.direction === 'in' &&
+    !order.received &&
+    AWAITED.has(order.status) &&
+    !order.documents.some((d) => d.direction === 'out' && d.kind === 'RECEIPT')
+  // Once open the sheet stays, through the receipt it sends.
+  if (!order || (!open && !awaited)) return null
+  return (
+    <>
+      <Button
+        variant="outlined"
+        onClick={() => setOpen(true)}
+        sx={{ alignSelf: 'flex-start', minHeight: 48 }}
+      >
+        {c.task.receive(order.partner.name)}
+      </Button>
+      <OrderSheet order={order} open={open} onClose={() => setOpen(false)} />
     </>
   )
 }

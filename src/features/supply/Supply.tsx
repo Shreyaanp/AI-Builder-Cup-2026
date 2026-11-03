@@ -29,6 +29,8 @@ import { useSupplyCopy } from './copy'
 import { useIoCopy } from './ioCopy'
 import { orderLabel, orderSize, orderTotal, PO_TO_DO, termsLabel } from './orderFormat'
 import { PurchaseOrderCard } from './PurchaseOrderCard'
+import { DeliveryButton } from './SupplyHub'
+import type { Board } from './ioTypes'
 import { useDraftReorder, useOrderUnit, useRulesActions, useSupply } from './supplyData'
 import { useOrderChangeCopy } from './orderChangeCopy'
 import type { ItemRule, PurchaseOrder, Relationship, RuleSet, SystemFormat } from './types'
@@ -42,14 +44,20 @@ export type Drill = { from: string; title: string; back: () => void } | null
  * Buy stock (simplify batch 4b): the purchase orders that wait for the owner, with Reorder
  * ("todo"), the rest of them ("coming", On the way), or the suppliers and their rules
  * ("suppliers", My suppliers). One order or one supplier's rules opens in place; `onDrill` tells
- * the sheet, which shows the way back in its title.
+ * the sheet, which shows the way back in its title. Orders in `hide` show elsewhere (the board's
+ * card for an order to the shop).
  */
 export function PurchaseOrders({
   part,
+  hide,
+  board,
   onDrill,
   onLeave,
 }: {
   part: 'todo' | 'coming' | 'suppliers'
+  hide?: ReadonlySet<string>
+  /** The board's copy of the orders: an open one can be received there. */
+  board?: Board | null
   onDrill: (drill: Drill) => void
   /** The sheet closes (the supply demo opens on Coach). */
   onLeave: () => void
@@ -74,7 +82,9 @@ export function PurchaseOrders({
   })
   const extra = Object.values(local).filter((order) => !orders.some((o) => o.id === order.id))
   const all = [...extra, ...orders]
-  const listed = all.filter((order) => PO_TO_DO.has(order.status) === (part === 'todo'))
+  const listed = all.filter(
+    (order) => PO_TO_DO.has(order.status) === (part === 'todo') && !hide?.has(order.id),
+  )
   const selected = view.kind === 'order' ? all.find((order) => order.id === view.id) : undefined
   const supplier =
     view.kind === 'rules' ? data?.suppliers.find((row) => row.supplier.id === view.id) : undefined
@@ -100,7 +110,12 @@ export function PurchaseOrders({
     if (view.kind === 'order' && order.id !== view.id) setView({ kind: 'order', id: order.id })
   }
   if (view.kind === 'order' && selected)
-    return <PurchaseOrderCard order={selected} onChange={update} />
+    return (
+      <Stack spacing={3}>
+        <PurchaseOrderCard order={selected} onChange={update} />
+        <DeliveryButton order={board?.orders.find((order) => order.id === selected.id)} />
+      </Stack>
+    )
   if (view.kind === 'rules' && supplier)
     return (
       <RulesEditor

@@ -86,6 +86,20 @@ export const ON_THE_WAY = new Set(['sent', 'changed', 'confirmed', 'dispatched',
 export const onTheWay = (o: IoOrder) =>
   o.direction === 'in' && !o.received && ON_THE_WAY.has(o.status)
 
+/**
+ * The board without the cards of orders shown elsewhere: Buy stock shows each purchase order once,
+ * as its own card (UX rules §5, §10). "Must send" rows stay, they are the only way to send them.
+ */
+export function withoutOrders(board: Board, skip: ReadonlySet<string>): Board {
+  if (skip.size === 0) return board
+  return {
+    ...board,
+    orders: board.orders.filter((o) => !skip.has(o.id)),
+    inbox: board.inbox.filter((e) => !skip.has(e.order_id)),
+    tasks: board.tasks.filter((t) => !t.order_id || !skip.has(t.order_id)),
+  }
+}
+
 /** How many items each of the four screens holds. */
 export function counts(board: Board | null): Record<View, number> {
   return {

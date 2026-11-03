@@ -14,7 +14,7 @@ import { FindSupplier } from '../v1/TwoPaths'
 import { useTwoPathsCopy } from '../v1/twoPathsCopy'
 import { useCopy } from '../v1/strings'
 import { useBoard } from './ioData'
-import { counts } from './ioFormat'
+import { counts, ON_THE_WAY, withoutOrders } from './ioFormat'
 import { PO_TO_DO } from './orderFormat'
 import { PurchaseOrders, type Drill } from './Supply'
 import { SupplyBoard, ViewButton } from './SupplyHub'
@@ -29,11 +29,17 @@ function useStock(live: boolean) {
   const { data: supply, failed: supplyFailed } = useSupply(true)
   const { board, failed, refresh: refreshBoard } = useBoard(true)
   const { orders, refresh: refreshOrders } = useOrders(live)
-  const n = counts(board)
-  const pos = supply?.orders ?? []
+  // One card per order (UX rules §5, §10): the shop's own orders show as purchase orders, an
+  // order to the shop (it ships, it sends the notice) as the board's card.
+  const theirs = new Set(board?.orders.filter((o) => o.direction === 'out').map((o) => o.id))
+  const pos = (supply?.orders ?? []).filter((order) => !theirs.has(order.id))
+  const skip = new Set(pos.map((order) => order.id))
+  const n = counts(board && withoutOrders(board, skip))
   const chats = orders ?? []
   return {
     board,
+    skip,
+    theirs,
     failed,
     refreshBoard,
     orders: chats,
@@ -47,6 +53,7 @@ function useStock(live: boolean) {
       n.send +
       chats.filter((order) => order.status === 'needs_reply').length,
     coming:
+      pos.filter((order) => ON_THE_WAY.has(order.status) && !order.received).length +
       n.coming +
       chats.filter((order) => order.status === 'sent' || order.status === 'confirmed').length,
   }
@@ -186,7 +193,13 @@ function BuyStockSheet({
                 </Typography>
               )}
               <Box sx={{ display: away('po-todo') }}>
-                <PurchaseOrders part="todo" onDrill={setDrill} onLeave={close} />
+                <PurchaseOrders
+                  part="todo"
+                  hide={stock.theirs}
+                  board={board}
+                  onDrill={setDrill}
+                  onLeave={close}
+                />
               </Box>
               <Box sx={{ display: away('orders') }}>
                 <SupplierOrders
@@ -197,7 +210,10 @@ function BuyStockSheet({
                 />
               </Box>
               {!drill &&
-                (loading ?? (board && <SupplyBoard board={board} views={['needs', 'send']} />))}
+                (loading ??
+                  (board && (
+                    <SupplyBoard board={board} views={['needs', 'send']} skip={stock.skip} />
+                  )))}
             </>
           )}
           {tab === 'coming' && (
@@ -209,7 +225,9 @@ function BuyStockSheet({
               )}
               {!drill &&
                 (loading ??
-                  (board && <SupplyBoard board={board} views={['coming', 'received']} />))}
+                  (board && (
+                    <SupplyBoard board={board} views={['coming', 'received']} skip={stock.skip} />
+                  )))}
               <Box sx={{ display: away('orders') }}>
                 <SupplierOrders
                   orders={stock.orders.filter((order) => order.status !== 'needs_reply')}
@@ -219,7 +237,13 @@ function BuyStockSheet({
                 />
               </Box>
               <Box sx={{ display: away('po-coming') }}>
-                <PurchaseOrders part="coming" onDrill={setDrill} onLeave={close} />
+                <PurchaseOrders
+                  part="coming"
+                  hide={stock.theirs}
+                  board={board}
+                  onDrill={setDrill}
+                  onLeave={close}
+                />
               </Box>
             </>
           )}
