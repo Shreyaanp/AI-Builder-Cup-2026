@@ -124,14 +124,15 @@ test('S11 · forecast → PO → ORDRSP (partial) → ASN → invoice, translate
   const same = page.getByRole('button', { name: 'Yes, all good' })
   if (process.env.S11_SAME && (await same.count())) await same.click()
 
+  // The demo suppliers nearby are shared by every shop in the area, so which one is cheapest
+  // depends on what other shops asked for: the story follows whichever one drafted the order.
+  let drafted = ''
   await test.step('1 · the coach drafts the PO from the forecast and the rules', async () => {
     await page.getByRole('textbox', { name: 'Message', exact: true }).fill('Reorder atta')
     await page.getByRole('button', { name: 'Send', exact: true }).click()
-    const card = page.getByRole('article', {
-      name: 'Atta (wheat flour) from Kaveri Fresh & Dairy Supply',
-      exact: true,
-    })
+    const card = page.getByRole('article', { name: /^Atta \(wheat flour\) from / })
     await expect(card).toBeVisible()
+    drafted = (await card.getAttribute('aria-label')) ?? ''
     // The authored kirana sells Atta; the older supplier fixture calls it Wheat flour.
     await expect(card).toContainText(/kg (?:Wheat flour|Atta) · deliver/)
     await expect(card).toContainText('6 kg left, runs out')
@@ -157,10 +158,7 @@ test('S11 · forecast → PO → ORDRSP (partial) → ASN → invoice, translate
     await expect(card).not.toContainText('<MESTYP>')
   })
 
-  const card = page.getByRole('article', {
-    name: 'Atta (wheat flour) from Kaveri Fresh & Dairy Supply',
-    exact: true,
-  })
+  const card = page.getByRole('article', { name: drafted, exact: true })
   await test.step('2 · ORDRSP: part now, the rest back-ordered', async () => {
     await card.getByRole('button', { name: 'Confirm part, back-order the rest' }).click()
     await status(card, 'Changes to check')
@@ -219,7 +217,7 @@ test('S11 · forecast → PO → ORDRSP (partial) → ASN → invoice, translate
     // Buy stock (simplify batch 4b): the finished order is under On the way, the rules under
     // My suppliers.
     const sheet = await openBuyStock(page, 'On the way')
-    await expect(sheet).toContainText('Atta (wheat flour) from Kaveri Fresh & Dairy Supply')
+    await expect(sheet).toContainText(drafted)
     await sheet.getByRole('button', { name: /^My suppliers/ }).click()
     await sheet
       .getByRole('list', { name: 'Suppliers and rules' })
