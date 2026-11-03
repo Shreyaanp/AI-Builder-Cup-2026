@@ -390,6 +390,16 @@ for (const [language, width] of [
   ['kn', 360],
   ['te', 360],
   ['fil', 360],
+  // Simplify batch 5: with a shop the hint is "Ask anything…" in every language; check them all.
+  ['zh-Hans', 360],
+  ['ms', 360],
+  ['ja', 360],
+  ['ko', 360],
+  ['id', 360],
+  ['th', 360],
+  ['vi', 360],
+  ['bn', 360],
+  ['mr', 360],
 ] as const) {
   test(`#451 the Coach hint fits its box · ${language} ${width}`, async ({ browser }) => {
     const context = await browser.newContext({

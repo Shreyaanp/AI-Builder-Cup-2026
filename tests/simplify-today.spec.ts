@@ -296,7 +296,7 @@ test('tour: 7 steps, prep on Grow’s How much to make, ends on You’re ready w
     if (step === 5) {
       await expect(page.locator('#tour-title')).toHaveText('Tomorrow’s prep plan')
       await expect(page.locator('[data-tour="nav-grow"]')).toHaveAttribute('aria-current', 'page')
-      await expect(page.locator('[data-tour="prep"]').filter({ visible: true })).toContainText(
+      await expect(page.locator('[data-tour="make"]').filter({ visible: true })).toContainText(
         'How much to make',
       )
     }

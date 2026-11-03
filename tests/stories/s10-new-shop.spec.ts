@@ -300,7 +300,8 @@ test('S10 · entries: tour end and an empty My shop open the same flow', async (
     await page.getByRole('button', { name: 'Cancel', exact: true }).click()
   })
   await test.step('end of the tour: "Start my own shop"', async () => {
-    await page.getByRole('button', { name: 'Take the tour' }).click()
+    // Simplify batch 5: first run offers the demo as a link under the start card.
+    await page.getByRole('button', { name: 'Or see a demo shop first' }).click()
     const tour = page.getByRole('dialog', { name: 'Your shop at a glance' })
     await expect(tour).toBeVisible()
     // Every step, including the feature steps added after the spotlights ("1 of 14").
