@@ -52,6 +52,9 @@ test('360px: AI help stays contextual across setup, Today, chat and imports', as
   await explain(page, 'voice', 'Gemini Live')
   await page.getByRole('button', { name: 'Cancel', exact: true }).click()
 
+  // The evening Today drops the forecast line, so pin the clock to mid-morning in the browser's zone.
+  const day = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Singapore' }).format(new Date())
+  await page.clock.setFixedTime(new Date(`${day}T10:00:00+08:00`))
   await page.route('**/api/v1/businesses/*/today', async (route) => {
     const response = await route.fetch()
     await route.fulfill({
