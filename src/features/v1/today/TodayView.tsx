@@ -258,9 +258,6 @@ function DayOne({ step, food, actions }: { step: StepId; food: boolean; actions:
       data-testid="today-day-one"
       sx={{
         p: { xs: 4, sm: 5 },
-        minHeight: { xs: 'min(54dvh, 520px)', sm: 'auto' },
-        display: 'flex',
-        flexDirection: 'column',
         borderRadius: `${shape.xl}px`,
         bgcolor: roles.surfaceContainer,
         ...enterRise,
@@ -285,7 +282,15 @@ function DayOne({ step, food, actions }: { step: StepId; food: boolean; actions:
       >
         {shared ? name : stepText(step, food, tt, o)}
       </Typography>
-      <Stack direction="row" sx={{ mt: 'auto', pt: 3, gap: 2, flexWrap: 'wrap' }}>
+      <Stack direction="row" sx={{ mt: 4, gap: 2, flexWrap: 'wrap' }}>
+        <Button
+          variant="contained"
+          startIcon={action.icon}
+          onClick={action.run}
+          sx={{ minHeight: 48 }}
+        >
+          {action.label}
+        </Button>
         {action.second && (
           <Button
             variant="outlined"
@@ -303,15 +308,6 @@ function DayOne({ step, food, actions }: { step: StepId; food: boolean; actions:
           sx={{ minHeight: 48 }}
         >
           {tt.talk}
-        </Button>
-        <Button
-          fullWidth
-          variant="contained"
-          startIcon={action.icon}
-          onClick={action.run}
-          sx={{ minHeight: 48 }}
-        >
-          {action.label}
         </Button>
       </Stack>
     </Box>
