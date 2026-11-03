@@ -11,7 +11,7 @@ const en = {
   intro:
     'Take a photo of each. Chalkboard reads them; you check everything once before it’s saved.',
   till: 'Sales slip or notebook',
-  tillHint: 'Z report, sales slip or your sales notebook page',
+  tillHint: 'Till slip or your sales notebook page',
   delivery: 'Deliveries received',
   deliveryHint: 'Supplier receipts or delivery notes: adds to your stock',
   count: 'Stock count',
@@ -19,7 +19,9 @@ const en = {
   reading: 'Reading…',
   readFailed: 'Couldn’t read',
   lines: '{n} lines',
+  linesOne: '{n} line',
   review: 'Review ({n} lines)',
+  reviewOne: 'Review ({n} line)',
   salesTitle: 'Today’s sales',
   stockTitle: 'Stock changes',
   readAs: 'Read as “{text}”',
@@ -29,7 +31,7 @@ const en = {
   back: 'Add more',
   reviewEmpty:
     'Nothing to save yet: we could not read items with quantities. Add a clearer, flat photo of the report.',
-  save: 'Save day',
+  save: 'Close the day',
   saving: 'Saving…',
   saveFailed: 'Couldn’t finish saving. Please try again.',
   savedState: 'Saved',
@@ -47,7 +49,17 @@ const en = {
   lastWeekday: 'last {weekday}',
   forecastSold: 'Forecast said about {forecast} {item}. You sold {sold}.',
   finish: 'Done',
-  close: 'Close',
+  close: 'Not now',
+  early: "It's still early. Close anyway?",
+  anyway: 'Close anyway',
+  wholeDay: 'This is the whole day',
+  alreadyClosed: 'Already closed today: {sales}',
+  edit: 'Edit',
+  soldItems: 'You sold {n} items.',
+  soldItemsOne: 'You sold {n} item.',
+  loading: 'Checking today’s sales…',
+  loadFailed: 'Couldn’t check today’s sales. Please try again.',
+  retry: 'Try again',
 }
 
 type Copy = typeof en
@@ -59,4 +71,10 @@ const translations: Partial<Record<Locale, Partial<Copy>>> = {
 
 export function closeDayCopy(locale: Locale): Copy {
   return { ...en, ...(translations[locale] ?? {}) }
+}
+
+export function closeDayCount(locale: Locale, key: 'review' | 'lines' | 'soldItems', n: number) {
+  const t = closeDayCopy(locale)
+  const pattern = new Intl.PluralRules(locale).select(n) === 'one' ? t[`${key}One`] : t[key]
+  return pattern.replace('{n}', new Intl.NumberFormat(locale).format(n))
 }

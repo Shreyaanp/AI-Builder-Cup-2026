@@ -1,3 +1,4 @@
+import { saveCloseDay } from './closeDaySupport.js'
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Locator, type Page } from '@playwright/test'
 import { enter, image, localOnly, seedShop } from './stories/support.js'
@@ -289,7 +290,7 @@ for (const appearance of ['light', 'dark'] as const) {
       await dialog.getByRole('button', { name: /Sales slip or notebook/ }).click()
       await dialog.locator('input[type=file]').setInputFiles(await image(page))
       await expect(dialog.getByTestId('close-day-trouble')).toBeVisible()
-      const close = dialog.getByRole('button', { name: 'Close', exact: true })
+      const close = dialog.getByRole('button', { name: 'Not now', exact: true })
       await withinViewport(page, close)
       await page.screenshot({ path: info.outputPath('close-day-failed-photo.png') })
       await close.click()
@@ -317,11 +318,11 @@ for (const appearance of ['light', 'dark'] as const) {
       const dialog = page.getByRole('dialog', { name: 'Close the day' })
       await dialog.getByRole('button', { name: /Sales slip or notebook/ }).click()
       await dialog.locator('input[type=file]').setInputFiles(await image(page))
-      await dialog.getByRole('button', { name: 'Review (1 lines)', exact: true }).click()
+      await dialog.getByRole('button', { name: 'Review (1 line)', exact: true }).click()
       await expect(dialog).toContainText(/(?:INR\s*|₹)10(?![.\d])/)
       await expect(dialog).not.toContainText('$')
       await page.screenshot({ path: info.outputPath('close-day-inr.png') })
-      await dialog.getByRole('button', { name: 'Save day', exact: true }).click()
+      await saveCloseDay(dialog)
       await expect(dialog).toContainText('Day closed')
       await expect(dialog).toContainText(/(?:INR\s*|₹)10(?![.\d])/)
       await dialog.getByRole('button', { name: 'Done', exact: true }).click()

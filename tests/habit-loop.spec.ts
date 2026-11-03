@@ -1,3 +1,4 @@
+import { saveCloseDay } from './closeDaySupport.js'
 import { expect, test, type Page } from '@playwright/test'
 import { enter, localOnly } from './stories/support.js'
 
@@ -106,7 +107,7 @@ test('OB-235 + OB-237: at 20:30 Close the day leads Today; once closed the pulse
   await dialog.locator('input[name=amount]').fill('2490')
   await dialog.locator('form button[type=submit]').click()
   await dialog.getByRole('button', { name: /^Review/ }).click()
-  await dialog.getByRole('button', { name: 'Save day' }).click()
+  await saveCloseDay(dialog)
   await expect(dialog.getByText('Day closed')).toBeVisible({ timeout: 20_000 })
   await dialog.getByRole('button', { name: 'Done' }).click()
   await expect(dialog).toHaveCount(0)
