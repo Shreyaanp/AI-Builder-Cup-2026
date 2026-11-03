@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test'
+import { fileURLToPath } from 'node:url'
 
 // Per-worktree ports (see vite.config.ts): set WEB_PORT/API_PORT to run beside another checkout.
 const web = Number(process.env.WEB_PORT ?? 3200)
@@ -9,8 +10,9 @@ export default defineConfig({
   // The QA machine has its own servers and config: npm run test:qa
   testIgnore: ['qa/**', 'heatmap/**', 'ux/**'],
   timeout: 30_000,
-  // The first page load compiles the whole app; tests start once it has (OB-258).
-  globalSetup: './tests/warm-dev-server.ts',
+  // The first page load compiles the whole app; tests start once it has (OB-258). Absolute, as the
+  // ux and heatmap configs spread this one from their own folders.
+  globalSetup: fileURLToPath(new URL('./tests/warm-dev-server.ts', import.meta.url)),
   // Shard individual isolated tests, so large story files cannot dominate one shard.
   fullyParallel: true,
   // Each test gets its own browser context and workspace, so files run in parallel.
