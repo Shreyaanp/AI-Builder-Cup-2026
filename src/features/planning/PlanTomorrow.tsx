@@ -14,6 +14,8 @@ import {
   useTheme,
 } from '@mui/material'
 import { useWorkspace } from '../v1/workspaceContext'
+import { useLocale } from '../../state/hooks'
+import { productName } from '../../i18n/productNames'
 import { shape } from '../../design/theme'
 import { useCopy } from './strings'
 import { useCopy as useShopCopy } from '../v1/strings'
@@ -57,10 +59,12 @@ interface History {
   pending?: { digest: string; snapshot: { observations?: Observation[]; plan?: Plan } }
 }
 
-export function PlanTomorrow() {
+/** The owner's own numbers for one item; `title` names it where it sits (How much to make). */
+export function PlanTomorrow({ title }: { title?: string } = {}) {
   const ws = useWorkspace()
   const t = useCopy()
   const units = useUnitCopy()
+  const locale = useLocale()
   const [selected, setSelected] = useState('')
   const product = ws.products.find((p) => p.id === selected) ?? ws.products[0]
   if (!ws.active || !product?.id) return null
@@ -74,7 +78,7 @@ export function PlanTomorrow() {
       >
         {ws.products.map((p) => (
           <MenuItem key={p.id} value={p.id}>
-            {p.name} ({unitLabel(p.unit, units)})
+            {productName(p.name, locale)} ({unitLabel(p.unit, units)})
           </MenuItem>
         ))}
       </TextField>
@@ -82,8 +86,9 @@ export function PlanTomorrow() {
         key={`${ws.active.id}/${product.id}`}
         businessId={ws.active.id}
         productId={product.id}
-        name={product.name}
+        name={productName(product.name, locale)}
         unit={unitLabel(product.unit, units)}
+        title={title ?? t.title}
       />
     </Stack>
   )
@@ -94,11 +99,13 @@ function PlanningCard({
   productId,
   name,
   unit,
+  title,
 }: {
   businessId: string
   productId: string
   name: string
   unit: string
+  title: string
 }) {
   const { api } = useWorkspace()
   const t = useCopy()
@@ -158,7 +165,7 @@ function PlanningCard({
   return (
     <Box
       component="section"
-      aria-label={t.title}
+      aria-label={title}
       aria-busy={busy}
       sx={{
         bgcolor: roles.surfaceContainerLow,
@@ -169,13 +176,12 @@ function PlanningCard({
       }}
     >
       <Stack spacing={2}>
-        <Typography id="plan-title" component="h2" variant="titleLarge">
-          {t.title}
+        <Typography id="plan-title" component="h3" variant="titleMedium">
+          {title}
         </Typography>
         <Typography variant="bodyMedium">
           {name} / {unit}
         </Typography>
-        <Typography variant="bodyMedium">{t.private}</Typography>
         {error && (
           <Alert severity="error">
             {t.error}

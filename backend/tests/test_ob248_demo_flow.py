@@ -498,13 +498,49 @@ def test_OB_248_the_screens_own_phrase_does_the_work(
     message: str,
     words: str,
 ) -> None:
-    """Grow → Buy stock → Orders sends this phrase, in English or Hindi."""
+    """Grow → Buy stock → Find a supplier sends this phrase, in English or Hindi."""
     client, _app, session, _bid = live_parent_demo
     response = client.post(f"/api/v1/demo/sessions/{session}/coach", json={"message": message})
     events = {event["kind"]: event for event in _coach_events(response)}
     assert events["order"]["data"]["lines"][0]["name"] == "Milk"
     assert words in events["reply"]["text"]
-    assert "Grow → Buy stock → Orders" in events["reply"]["text"]
+    assert "Grow → Buy stock → Find a supplier" in events["reply"]["text"]
+
+
+def test_simplify_4b_find_a_supplier_amount_then_order_from_the_vendor_list(
+    live_parent_demo,  # noqa: F811
+) -> None:
+    """Buy stock → Find a supplier → milk, 20 L → vendor list → Order → the card with Send:
+    the draft uses the owner's amount, and Order drafts to the supplier picked. No paid model
+    (the fixture fails on any)."""
+    client, _app, session, _bid = live_parent_demo
+    asked = client.post(
+        f"/api/v1/demo/sessions/{session}/coach",
+        json={"message": "I need 20 L milk. Find suppliers."},
+    )
+    events = {event["kind"]: event for event in _coach_events(asked)}
+    suppliers = events["suppliers"]["data"]["suppliers"]
+    assert len(suppliers) >= 2 and all(row["demo"] for row in suppliers)
+    first = events["order"]["data"]["lines"][0]
+    assert (first["name"], first["quantity"], first["unit"]) == ("Milk", 20, "litre")
+    assert "I drafted 20 litre" in events["reply"]["text"]
+
+    # The vendor list's Order on each row (sourcing/copy.ts chooseDraft): that supplier, the
+    # owner's 20 litre where it sells by volume, else its usual amount in its own unit.
+    for rank, row in enumerate(suppliers, 1):
+        ordered = client.post(
+            f"/api/v1/demo/sessions/{session}/coach",
+            json={"message": f"Order from number {rank}: 20 litre milk"},
+        )
+        events = {event["kind"]: event for event in _coach_events(ordered)}
+        order = events["order"]["data"]
+        assert order["status"] == "draft"
+        assert order["supplier"]["id"] == row["id"]
+        line = order["lines"][0]
+        assert line["unit"] == row["item"]["unit"]
+        assert line["quantity"] == (20 if row["item"]["unit"] == "litre" else 10)
+        assert "only when you tap Send" in events["reply"]["text"]
+        assert "suppliers" not in events
 
 
 def test_OB_248_find_suppliers_for_an_item_the_shop_does_not_stock(
@@ -528,7 +564,7 @@ def test_OB_248_supply_question_names_a_tile_that_exists_with_the_unit(
         f"/api/v1/demo/sessions/{session}/coach", json={"message": "how do I order tea dust?"}
     )
     assert "Tea dust has 6 kg in stock" in response.text
-    assert "Grow → Buy stock → Purchase orders" in response.text
+    assert "Grow → Buy stock → To do" in response.text
     assert "Supplies" not in response.text
 
 

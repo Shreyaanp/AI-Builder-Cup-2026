@@ -135,6 +135,7 @@ for (const width of widths) {
 
         // Supply orders and purchase orders
         await page.locator('[data-tour="nav-grow"]').click()
+        // Grow → Buy stock (simplify batch 4b) holds the purchase orders.
         await (await showInGrow(page, page.locator('[data-tour="supply"]'))).click()
         await page.getByRole('button', { name: /Try supply demo|डेमो/ }).click()
         await assertPhoneLayout(page, 'Supply orders')

@@ -57,20 +57,19 @@ for (const scheme of ['light', 'dark'] as const) {
     await axe(page)
     await capture(page, 'shop', isMobile, scheme)
 
-    // Grow: each tool by its name, in a row or one tap into its row (batch 4a); Get on Google
-    // opens the guided flow.
+    // Grow: each row and More tools icon by its name (batch 4a); How much to make holds the
+    // prep plan and its numbers, Buy stock the orders (batch 4b). Get on Google opens the
+    // guided flow.
     await page.getByRole('button', { name: 'Grow', exact: true }).click()
     for (const card of [
-      /^Prep plan/,
+      /^How much to make/,
       /^Close the day/,
-      /^Orders/,
-      /^Plan tomorrow/,
+      /^Buy stock/,
       /^Rescue deals/,
       /^Get on Google/,
       /^Stamps & perks/,
-      // Release 2: payment links and rides, purchase orders.
+      // Release 2: payment links and rides.
       /^Payments & rides/,
-      /^Purchase orders/,
     ])
       await expect(await growTool(page, card)).toBeVisible()
     // Connecting a POS lives on Shop, not Grow.

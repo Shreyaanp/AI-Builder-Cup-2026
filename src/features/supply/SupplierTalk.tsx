@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Box, Button, Stack, TextField, Typography, useTheme } from '@mui/material'
 import { useLocale } from '../../state/hooks'
 import { shape } from '../../design/theme'
@@ -58,11 +58,20 @@ export function SupplierTalk({
   const locale = useLocale()
   const roles = useTheme().material
   const waiting = waitingForDemoSupplier(order)
+  // The latest order and refresh, so a parent re-render never restarts the 2 s check (in Buy
+  // stock the sheet re-renders often enough that a restarted timer never fired).
+  const latest = useRef({ order, refresh })
+  useEffect(() => {
+    latest.current = { order, refresh }
+  })
   useEffect(() => {
     if (!waiting) return
-    const timer = window.setInterval(() => void refresh(order), POLL_MS)
+    const timer = window.setInterval(
+      () => void latest.current.refresh(latest.current.order),
+      POLL_MS,
+    )
     return () => window.clearInterval(timer)
-  }, [waiting, order, refresh])
+  }, [waiting, order.id])
 
   const number = new Intl.NumberFormat(locale, { maximumFractionDigits: 2 })
   const money = (minor: number | null | undefined) =>

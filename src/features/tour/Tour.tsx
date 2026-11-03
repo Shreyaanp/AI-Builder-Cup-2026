@@ -55,7 +55,7 @@ const STEPS: Step[] = [
   story(1, 'reorder'),
   // Simplify batch 5: prep points at Grow's "How much to make" row, beside Close the day.
   spot(1, 'menu', 'shop'),
-  spot(2, 'make', 'grow'),
+  spot(2, 'prep', 'grow'),
   spot(3, 'closeday', 'grow'),
   spot(5, 'composer', 'coach'),
 ]

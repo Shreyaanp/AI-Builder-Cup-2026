@@ -1,7 +1,7 @@
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Locator, type Page } from '@playwright/test'
 import { confirm, enter, liveOnly, localOnly } from './support.js'
-import { openGrowTool } from '../support/grow.js'
+import { openBuyStock } from '../support/grow.js'
 
 /**
  * S11 · Supply chain: the forecast drafts a purchase order to a (simulated) SAP supplier, the
@@ -124,13 +124,13 @@ test('S11 · forecast → PO → ORDRSP (partial) → ASN → invoice, translate
   const same = page.getByRole('button', { name: 'Yes, all good' })
   if (process.env.S11_SAME && (await same.count())) await same.click()
 
+  // OB-260: the kirana gets demo suppliers of its own, so the cheapest is always Kaveri,
+  // whatever other shops nearby searched for before this one.
+  const drafted = 'Atta (wheat flour) from Kaveri Fresh & Dairy Supply'
   await test.step('1 · the coach drafts the PO from the forecast and the rules', async () => {
     await page.getByRole('textbox', { name: 'Message', exact: true }).fill('Reorder atta')
     await page.getByRole('button', { name: 'Send', exact: true }).click()
-    const card = page.getByRole('article', {
-      name: 'Atta (wheat flour) from Kaveri Fresh & Dairy Supply',
-      exact: true,
-    })
+    const card = page.getByRole('article', { name: drafted, exact: true })
     await expect(card).toBeVisible()
     // The authored kirana sells Atta; the older supplier fixture calls it Wheat flour.
     await expect(card).toContainText(/kg (?:Wheat flour|Atta) · deliver/)
@@ -157,10 +157,7 @@ test('S11 · forecast → PO → ORDRSP (partial) → ASN → invoice, translate
     await expect(card).not.toContainText('<MESTYP>')
   })
 
-  const card = page.getByRole('article', {
-    name: 'Atta (wheat flour) from Kaveri Fresh & Dairy Supply',
-    exact: true,
-  })
+  const card = page.getByRole('article', { name: drafted, exact: true })
   await test.step('2 · ORDRSP: part now, the rest back-ordered', async () => {
     await card.getByRole('button', { name: 'Confirm part, back-order the rest' }).click()
     await status(card, 'Changes to check')
@@ -216,9 +213,11 @@ test('S11 · forecast → PO → ORDRSP (partial) → ASN → invoice, translate
 
   await test.step('5 · rules screen on Grow', async () => {
     await page.getByRole('button', { name: 'Grow', exact: true }).click()
-    await openGrowTool(page, /^Purchase orders/)
-    const sheet = page.getByRole('dialog', { name: 'Purchase orders' })
-    await expect(sheet).toContainText('Atta (wheat flour) from Kaveri Fresh & Dairy Supply')
+    // Buy stock (simplify batch 4b): the finished order is under On the way, the rules under
+    // My suppliers.
+    const sheet = await openBuyStock(page, 'On the way')
+    await expect(sheet).toContainText(drafted)
+    await sheet.getByRole('button', { name: /^My suppliers/ }).click()
     await sheet
       .getByRole('list', { name: 'Suppliers and rules' })
       .getByRole('button')

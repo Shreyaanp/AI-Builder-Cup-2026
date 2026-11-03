@@ -483,7 +483,7 @@ test('GAP 8: Close the day appears in evening needs you now and opens modal, Gro
   await expect(dialog).toBeVisible()
   await expect(dialog.getByText('Sales slip or notebook')).toBeVisible()
 
-  await dialog.getByRole('button', { name: 'Close' }).click()
+  await dialog.getByRole('button', { name: 'Not now' }).click()
   await expect(dialog).toHaveCount(0)
 
   // 3. Grow tab still has Close the day tile intact and functional

@@ -1,7 +1,7 @@
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
 import { enter, localOnly, seedShop } from './stories/support.js'
-import { openGrowTool } from './support/grow.js'
+import { openBuyStock } from './support/grow.js'
 
 const noSideScroll = async (page: Page) =>
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
@@ -17,14 +17,13 @@ test('Supply on a phone: forecast in → order → change → goods arrive → r
   await page.keyboard.press('Escape')
   // The private local demo: a milk shop with a purchase order sent to a simulated SAP dairy.
   await page.getByRole('button', { name: 'Grow', exact: true }).click()
-  await openGrowTool(page, /^Purchase orders/)
+  await openBuyStock(page)
   await page.getByRole('button', { name: 'Try supply demo', exact: true }).click()
   await expect(page.getByRole('region', { name: 'Supply chain' })).toBeVisible()
 
   await page.getByRole('button', { name: 'Grow', exact: true }).click()
-  await openGrowTool(page, /^Supply chain/)
-  const hub = page.getByRole('dialog', { name: 'Supply chain' })
-  await hub.getByRole('button', { name: /^On the way/ }).click()
+  // What was the Supply chain hub is Buy stock's To do and On the way tabs (batch 4b).
+  const hub = await openBuyStock(page, 'On the way')
   await expect(hub.getByRole('heading', { name: 'What’s coming in?' })).toBeVisible()
 
   // INBOUND: the local demo buyer sends text in the small shop's WhatsApp channel.
@@ -41,7 +40,7 @@ test('Supply on a phone: forecast in → order → change → goods arrive → r
   await page.screenshot({ path: 'output/playwright/supply-io-coming.png' })
 
   // The change needs the owner: what changed comes first, the action sits at the bottom.
-  await hub.getByRole('button', { name: /^Needs me now/ }).click()
+  await hub.getByRole('button', { name: /^To do/ }).click()
   await hub.getByRole('button', { name: /Harbour Café \(Demo\) changed an order/ }).click()
   const cafe = page.getByRole('dialog', { name: 'Harbour Café (Demo)' })
   await expect(cafe.getByRole('status')).toContainText('Milk: 20 → 15 l')
@@ -54,8 +53,11 @@ test('Supply on a phone: forecast in → order → change → goods arrive → r
   await cafe.getByRole('button', { name: 'Close', exact: true }).click()
 
   // OUTBOUND 1: goods arrive. Pre-filled from the order; the owner fixes only the difference.
+  // The order is one card, its purchase order; its delivery opens from inside it.
   await hub.getByRole('button', { name: /^On the way/ }).click()
-  await hub.getByRole('button', { name: /^Fresh Dairy \(Demo\)/ }).click()
+  await expect(hub.getByRole('button', { name: /Fresh Dairy \(Demo\)/ })).toHaveCount(1)
+  await hub.getByRole('button', { name: /^Milk from Fresh Dairy \(Demo\)/ }).click()
+  await hub.getByRole('button', { name: 'Delivery from Fresh Dairy (Demo)', exact: true }).click()
   const dairy = page.getByRole('dialog', { name: 'Fresh Dairy (Demo)' })
   await dairy.getByRole('button', { name: 'Goods arrived', exact: true }).click()
   await expect(dairy.getByRole('button', { name: 'All received', exact: true })).toBeVisible()
@@ -82,6 +84,7 @@ test('Supply on a phone: forecast in → order → change → goods arrive → r
   await page.keyboard.press('Escape')
   await expect(sap).toHaveCount(0)
   await dairy.getByRole('button', { name: 'Close', exact: true }).click()
+  await hub.getByRole('button', { name: 'Buy stock', exact: true }).click()
 
   // OUTBOUND 2: the café gets WhatsApp text; not SAP.
   await hub.getByRole('button', { name: /New order/ }).click()
@@ -90,8 +93,10 @@ test('Supply on a phone: forecast in → order → change → goods arrive → r
   await expect(cafe).toContainText('15 l Milk')
   await noSideScroll(page)
   await cafe.getByRole('button', { name: 'Close', exact: true }).click()
-  await hub.getByRole('button', { name: /^To send/ }).click()
-  await expect(hub).toContainText('Shipping notice')
+  await hub.getByRole('button', { name: /^To do/ }).click()
+  await expect(hub.getByRole('region', { name: 'What must I send?' })).toContainText(
+    'Shipping notice',
+  )
   expect(
     (await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze())
       .violations,

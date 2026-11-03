@@ -1,9 +1,10 @@
 /**
  * A screen the coach asked to open inside the tab it switches to (open_screen "radar" opens
- * Asked nearby on Grow, "rider" opens Send a rider on Payments). The tab reads it when it
- * mounts and clears it once shown, so Back and later visits open the plain tab.
+ * Asked nearby on Grow, "rider" opens Send a rider on Payments, "plan" opens How much to make
+ * with the numbers open, "supply" opens Buy stock). The tab reads it when it mounts and clears
+ * it once shown, so Back and later visits open the plain tab.
  */
-export type OpenRequest = 'radar' | 'rider'
+export type OpenRequest = 'radar' | 'rider' | 'plan' | 'stock'
 let pending: OpenRequest | null = null
 
 export function requestOpen(target: OpenRequest) {

@@ -27,7 +27,6 @@ import {
   Images,
   MessageSquare,
   Pencil,
-  Plus,
   Share2,
   Stamp,
   Store,
@@ -51,8 +50,6 @@ import { RowGroup, ShopRow } from './ShopRow'
 import { ShopLocation } from './CurrentLocation'
 import { useWorkspace } from './workspaceContext'
 import { Messages } from '../inquiries/Messages'
-import { PlanTomorrow } from '../planning/PlanTomorrow'
-import { useCopy as usePlanCopy } from '../planning/strings'
 import { enterRise, shape } from '../../design/theme'
 import { useRewardCopy } from '../rewards/strings'
 import { HoursList } from '../shop/Hours'
@@ -79,7 +76,6 @@ export type ShopSheetKind =
   | 'soldOut'
   | 'customer'
   | 'messages'
-  | 'plan'
   | 'readiness'
   | 'photos'
   | 'stamps'
@@ -98,6 +94,7 @@ export function Tile({
   compact = false,
   tour,
   alert = false,
+  badge,
 }: {
   icon: ReactNode
   label: string
@@ -113,6 +110,8 @@ export function Tile({
   tour?: string
   /** Something to act on now, not a tool: in a Grow group it is not one of the row's names. */
   alert?: boolean
+  /** A short live state on the More tools icon (Grow only). */
+  badge?: string
 }) {
   const roles = useTheme().material
   const columns = span ?? (wide ? 2 : 1)
@@ -128,6 +127,7 @@ export function Tile({
         onClick={onClick}
         tour={tour}
         alert={alert}
+        badge={badge}
       >
         {children}
       </ListTile>
@@ -476,7 +476,6 @@ export function ShopSheets({
   const t = useCopy()
   const locale = useLocale()
   const rewards = useRewardCopy()
-  const plan = usePlanCopy()
   const tabs = useTabsCopy()
   const ws = useWorkspace()
   const roles = useTheme().material
@@ -502,15 +501,6 @@ export function ShopSheets({
       onClick={then(() => ws.openEditor({ kind: 'business', fields: shop.fields }))}
     >
       {t.editDetails}
-    </Button>
-  )
-  const addProduct = (
-    <Button
-      variant="contained"
-      startIcon={<Plus size={18} />}
-      onClick={then(() => ws.openEditor({ kind: 'product', product: null }))}
-    >
-      {t.addProduct}
     </Button>
   )
   const common = { open: kind !== null, onClose }
@@ -715,27 +705,6 @@ export function ShopSheets({
         <Sheet {...common} titleId="messages-title" ask="messages">
           <Messages key={`messages-${shop.id}`} businessId={shop.id} />
           <YourLanguage />
-        </Sheet>
-      )
-    case 'plan':
-      // Planning brings its own "Plan tomorrow" heading; it needs a saved product first.
-      return ws.products.some((product) => product.id) ? (
-        <Sheet {...common} titleId="plan-title" ask="forecast">
-          <Box sx={{ pt: 2 }}>
-            <PlanTomorrow key={`plan-${shop.id}`} />
-          </Box>
-        </Sheet>
-      ) : (
-        <Sheet
-          {...common}
-          titleId="plan-sheet-title"
-          ask="forecast"
-          title={plan.title}
-          actions={addProduct}
-        >
-          <Typography variant="bodyMedium" color="text.secondary">
-            {t.productsEmpty}
-          </Typography>
         </Sheet>
       )
     case 'readiness': {

@@ -1,3 +1,4 @@
+import { saveCloseDay } from '../closeDaySupport.js'
 import { test, expect, owner, image, audit, evidence, tamil } from './support.js'
 
 async function open(page: import('@playwright/test').Page) {
@@ -15,14 +16,14 @@ test('Close the day requires a photo, supports back, discloses fixture and saves
   await expect(dialog.getByRole('button', { name: /^Review/ })).toBeDisabled()
   await dialog.getByRole('button', { name: /Sales slip or notebook/ }).click()
   await dialog.locator('input[type=file]').setInputFiles(await image(page))
-  await expect(dialog.getByText(/\d+ lines$/)).toBeVisible()
+  await expect(dialog.getByText(/\d+ lines?$/)).toBeVisible()
   await dialog.getByRole('button', { name: /^Review/ }).click()
   await expect(dialog).toContainText(/samples from your own items/)
   expect(await (await page.request.get(`/api/v1/businesses/${id}/sales`)).json()).toEqual([])
   await dialog.getByRole('button', { name: 'Add more', exact: true }).click()
   await dialog.getByRole('button', { name: /^Review/ }).click()
   await audit(page)
-  await dialog.getByRole('button', { name: 'Save day' }).click()
+  await saveCloseDay(dialog)
   await expect(dialog.getByText('Day closed')).toBeVisible()
   await dialog.getByRole('button', { name: 'Done', exact: true }).click()
   expect(
@@ -50,13 +51,13 @@ test('retry after sales failure must not count the same delivery twice', async (
     await dialog.getByRole('button', { name }).click()
     await dialog.locator('input[type=file]').setInputFiles(await image(page))
   }
-  await expect(dialog.getByText(/\d+ lines$/)).toHaveCount(2)
+  await expect(dialog.getByText(/\d+ lines?$/)).toHaveCount(2)
   await dialog.getByRole('button', { name: /^Review/ }).click()
   await page.route('**/day/prepare', (r) => {
     const body = r.request().postDataJSON()
     return body.sales ? r.fulfill({ status: 503, json: {} }) : r.fallback()
   })
-  await dialog.getByRole('button', { name: 'Save day' }).click()
+  await saveCloseDay(dialog)
   await expect(dialog.getByRole('alert').filter({ hasText: /try again/i })).toBeVisible()
   const failure = dialog.getByRole('alert').filter({ hasText: /try again/i })
   await expect(failure).toContainText('Stock changes: Saved')
@@ -67,7 +68,7 @@ test('retry after sales failure must not count the same delivery twice', async (
     await (await page.request.get(`/api/v1/businesses/${id}/inventory`)).json()
   ).map((p: { stock: number }) => p.stock)
   await page.unroute('**/day/prepare')
-  await dialog.getByRole('button', { name: 'Save day' }).click()
+  await saveCloseDay(dialog)
   await expect(dialog.getByText('Day closed')).toBeVisible()
   const stockAfterRetry = (
     await (await page.request.get(`/api/v1/businesses/${id}/inventory`)).json()
@@ -83,20 +84,20 @@ test('lost stock approval response can be retried without adding the delivery ag
   const dialog = page.getByRole('dialog', { name: 'Close the day' })
   await dialog.getByRole('button', { name: /Deliveries received/ }).click()
   await dialog.locator('input[type=file]').setInputFiles(await image(page))
-  await expect(dialog.getByText(/\d+ lines$/)).toBeVisible()
+  await expect(dialog.getByText(/\d+ lines?$/)).toBeVisible()
   await dialog.getByRole('button', { name: /^Review/ }).click()
   await page.route('**/proposals/*/approve', async (route) => {
     const saved = await route.fetch()
     expect(saved.ok()).toBe(true)
     await route.fulfill({ status: 503, json: {} })
   })
-  await dialog.getByRole('button', { name: 'Save day' }).click()
+  await saveCloseDay(dialog)
   await expect(dialog.getByRole('alert').filter({ hasText: /try again/i })).toContainText(
     'Stock changes: Save not confirmed; retry safely',
   )
   const stock = await (await page.request.get(`/api/v1/businesses/${id}/inventory`)).json()
   await page.unroute('**/proposals/*/approve')
-  await dialog.getByRole('button', { name: 'Save day' }).click()
+  await saveCloseDay(dialog)
   await expect(dialog.getByText('Day closed')).toBeVisible()
   expect(await (await page.request.get(`/api/v1/businesses/${id}/inventory`)).json()).toEqual(stock)
 })

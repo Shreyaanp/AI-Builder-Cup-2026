@@ -44,7 +44,7 @@
     {
       "id": "supply",
       "title": "Purchase orders",
-      "path": ["Grow", "Buy stock", "Purchase orders"],
+      "path": ["Grow", "Buy stock", "To do"],
       "ask": "Reorder tea dust",
       "ask_hi": "चायपत्ती फिर से मँगाओ",
       "screen": "supply"
@@ -52,7 +52,7 @@
     {
       "id": "deliveries",
       "title": "Deliveries on the way",
-      "path": ["Grow", "Buy stock", "Supply chain"],
+      "path": ["Grow", "Buy stock", "On the way"],
       "ask": "What's coming today?",
       "ask_hi": "आज क्या आने वाला है?",
       "screen": "supply"
@@ -172,7 +172,7 @@
     {
       "id": "forecast",
       "title": "How much to prepare",
-      "path": ["Grow", "How much to make", "Prep plan"],
+      "path": ["Grow", "How much to make"],
       "ask": "How much chai tomorrow?",
       "ask_hi": "कल कितनी चाय बनाऊँ?",
       "screen": "plan"
@@ -180,7 +180,7 @@
     {
       "id": "insights",
       "title": "How business is going",
-      "path": ["Grow", "My sales", "Your week"],
+      "path": ["Grow", "My sales"],
       "ask": "How was business this week?",
       "ask_hi": "इस हफ़्ते बिक्री कैसी रही?",
       "screen": "grow"
@@ -188,7 +188,7 @@
     {
       "id": "suppliers",
       "title": "Order supplies",
-      "path": ["Grow", "Buy stock", "Orders"],
+      "path": ["Grow", "Buy stock", "Find a supplier"],
       "ask": "My milk is running low",
       "ask_hi": "दूध ख़त्म होने वाला है",
       "screen": "grow"

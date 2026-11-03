@@ -821,7 +821,9 @@ function PulseCard({ plan, actions }: { plan: TodayPlan; actions: TodayActions }
   const currency = shopCurrency(ws.active)
   // Once the day is closed the pulse is today's, and so is the question it asks (HABIT change 3).
   const ask = plan.pulse?.when === 'today' ? tt.howToday : tt.howYesterday
-  const coachLine = useLineText(plan.line)
+  // In the evening the card below owns the screen: the weather line would push Reply out of view.
+  const quiet = plan.part === 'evening'
+  const coachLine = useLineText(quiet ? null : plan.line)
   const lines: string[] = []
   if (plan.pulse) {
     // One short row: the two numbers that matter most (the rest are one tap away in the chat).
@@ -852,7 +854,7 @@ function PulseCard({ plan, actions }: { plan: TodayPlan; actions: TodayActions }
     )
     // The busiest hours are the owner's own setting; a coach line (rain, a festival) is news, so
     // it takes that place and the row stays short.
-    if (plan.forecast.busy && !coachLine) {
+    if (plan.forecast.busy && !coachLine && !quiet) {
       const [start, end] = plan.forecast.busy.map(
         (minutes) => new Date(Date.UTC(2026, 0, 1, Math.floor(minutes / 60), minutes % 60)),
       )

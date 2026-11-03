@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 import { showInGrow } from './support/grow.js'
 
 for (const width of [360, 412]) {
-  test(`${width}px: slim demo banner; Prep plan opens the real forecast`, async ({
+  test(`${width}px: slim demo banner; How much to make opens the real forecast`, async ({
     page,
   }, info) => {
     test.setTimeout(120_000)
@@ -23,13 +23,13 @@ for (const width of [360, 412]) {
     expect(box!.y).toBeLessThan(40)
     await page.getByRole('dialog').getByRole('button', { name: 'Skip', exact: true }).click()
     await page.locator('[data-tour="nav-grow"]').click()
-    // Prep plan sits in its How much to make row (batch 4a).
-    const prep = page.getByRole('button', { name: /^Prep plan/ })
+    // How much to make (simplify batch 4b) opens the prep list on Grow.
+    const prep = page.getByRole('button', { name: /^How much to make/ })
     await (await showInGrow(page, prep, 60_000)).click()
-    // OB-13 (#344): in the demo, Prep plan opens its own sheet; Coach there asks the real forecast.
-    const sheet = page.getByRole('dialog', { name: 'Prep plan' })
+    // OB-13 (#344): the sheet's Ask the coach asks the real (demo) forecast.
+    const sheet = page.getByRole('dialog', { name: 'How much to make' })
     await expect(sheet).toContainText('Tomorrow')
-    await sheet.getByRole('button', { name: 'Coach', exact: true }).click()
+    await sheet.getByRole('button', { name: 'Ask the coach', exact: true }).click()
     await expect(page.getByRole('textbox', { name: 'Message', exact: true })).not.toHaveValue('')
     await page.getByRole('button', { name: 'Send', exact: true }).click()
     await expect(page.getByRole('log')).toContainText(/weekday average/i, { timeout: 30_000 })

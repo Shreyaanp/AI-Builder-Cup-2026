@@ -1,46 +1,16 @@
 import { useState, type ReactNode } from 'react'
 import { Box, Button, ButtonBase, Skeleton, Stack, Typography, useTheme } from '@mui/material'
-import { Truck } from 'lucide-react'
 import { shape } from '../../design/theme'
 import { Sheet } from '../v1/Sheet'
-import { Supporting, Tile } from '../v1/ShopTiles'
 import { useIoCopy } from './ioCopy'
 import { useBoard, useIoActions, useUndoableSend } from './ioData'
 import type { Board, IoOrder, Unsent, View } from './ioTypes'
 import { Card, EntryCard, OrderCard, Section, TaskCard } from './IoParts'
-import { counts, onTheWay, useIoFormat } from './ioFormat'
+import { counts, onTheWay, useIoFormat, withoutOrders } from './ioFormat'
 import { OrderSheet } from './OrderSheet'
 
 const VIEWS: View[] = ['needs', 'coming', 'received', 'send']
 const SHOWN = 5
-
-/** Grow: the Supply chain tile (what needs the owner, in one number). */
-export function SupplyHubTile() {
-  const c = useIoCopy()
-  const [open, setOpen] = useState(false)
-  const { board } = useBoard(true)
-  const n = counts(board)
-  // Partners come from orders and documents: with none, "all on time" would be a claim about
-  // nobody (OB-227).
-  const none = board !== null && board.orders.length === 0 && board.inbox.length === 0
-  return (
-    <>
-      <Tile
-        icon={<Truck size={20} />}
-        label={c.title}
-        value={
-          board === null ? '–' : n.needs ? c.needsNow(n.needs) : none ? c.noPartners : c.allQuiet
-        }
-        onClick={() => setOpen(true)}
-      >
-        <Supporting>
-          {n.send ? c.notSent(n.send) : none ? c.noPartnersHint : c.empty.send}
-        </Supporting>
-      </Tile>
-      <SupplyHub open={open} onClose={() => setOpen(false)} />
-    </>
-  )
-}
 
 /** Four screens, one owner question each: needs me now, coming in, received, must send. */
 export function SupplyHub({
@@ -100,7 +70,7 @@ export function SupplyHub({
             {VIEWS.map((v) => (
               <ViewButton
                 key={v}
-                view={v}
+                label={c.tabs[v]}
                 count={n[v]}
                 active={v === view}
                 onClick={() => setView(v)}
@@ -134,19 +104,111 @@ export function SupplyHub({
   )
 }
 
-function ViewButton({
-  view,
+/**
+ * Buy stock (simplify batch 4b): some of the Supply chain screens on one tab, each under its own
+ * question, empty ones left out. To do holds "needs me now" and "must send" (with Send all),
+ * On the way holds "coming in" and "received". An order opens in its own sheet, as in the hub.
+ * Orders in `skip` (the purchase orders Buy stock shows as their own cards) get no card here.
+ */
+export function SupplyBoard({
+  board,
+  views,
+  skip,
+}: {
+  board: Board
+  views: View[]
+  skip: ReadonlySet<string>
+}) {
+  const c = useIoCopy()
+  const [orderId, setOrderId] = useState<string | null>(null)
+  const sendAll = useUndoableSend()
+  const actions = useIoActions()
+  const rest = withoutOrders(board, skip)
+  const n = counts(rest)
+  const order = board.orders.find((o) => o.id === orderId) ?? null
+  // "Coming in" keeps its demo step even with nothing on the way yet.
+  const shown = views.filter(
+    (v) => n[v] > 0 || (v === 'coming' && (board.demo || import.meta.env.DEV)),
+  )
+  return (
+    <>
+      {shown.map((v) => (
+        <Stack key={v} component="section" aria-label={c.question[v]} spacing={2}>
+          <Typography variant="titleMedium" component="h3">
+            {c.question[v]}
+          </Typography>
+          <Screen board={rest} view={v} open={setOrderId} quiet />
+          {v === 'send' &&
+            (sendAll.left !== null ? (
+              <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
+                <Typography variant="bodyMedium" aria-live="polite">
+                  {c.sendingIn(sendAll.left)}
+                </Typography>
+                <Button variant="contained" onClick={sendAll.undo} sx={{ minHeight: 48 }}>
+                  {c.action.undo}
+                </Button>
+              </Stack>
+            ) : (
+              <Button
+                variant="contained"
+                onClick={() => sendAll.start(() => actions.sendAll())}
+                sx={{ alignSelf: 'flex-start', minHeight: 48 }}
+              >
+                {c.action.sendAll(n.send)}
+              </Button>
+            ))}
+        </Stack>
+      ))}
+      <OrderSheet order={order} open={order !== null} onClose={() => setOrderId(null)} />
+    </>
+  )
+}
+
+/** Orders the board receives line by line that the purchase order card has no Goods arrived for. */
+const AWAITED = new Set(['sent', 'confirmed'])
+
+/**
+ * Buy stock: inside one open purchase order, "Delivery from <supplier>" opens the board's sheet to
+ * receive it line by line, send the goods receipt and see the supplier's copy. The order has no
+ * card of its own on the board there, so this is its only way in.
+ */
+export function DeliveryButton({ order }: { order: IoOrder | undefined }) {
+  const c = useIoCopy()
+  const [open, setOpen] = useState(false)
+  const awaited =
+    order?.direction === 'in' &&
+    !order.received &&
+    AWAITED.has(order.status) &&
+    !order.documents.some((d) => d.direction === 'out' && d.kind === 'RECEIPT')
+  // Once open the sheet stays, through the receipt it sends.
+  if (!order || (!open && !awaited)) return null
+  return (
+    <>
+      <Button
+        variant="outlined"
+        onClick={() => setOpen(true)}
+        sx={{ alignSelf: 'flex-start', minHeight: 48 }}
+      >
+        {c.task.receive(order.partner.name)}
+      </Button>
+      <OrderSheet order={order} open={open} onClose={() => setOpen(false)} />
+    </>
+  )
+}
+
+/** One of a sheet's screens, as a 48 px toggle with its count (Supply chain, Buy stock). */
+export function ViewButton({
+  label,
   count,
   active,
   onClick,
 }: {
-  view: View
+  label: string
   count: number
   active: boolean
   onClick: () => void
 }) {
   const roles = useTheme().material
-  const c = useIoCopy()
   return (
     <ButtonBase
       aria-pressed={active}
@@ -166,7 +228,7 @@ function ViewButton({
         '&:focus-visible': { outline: `2px solid ${roles.primary}`, outlineOffset: 2 },
       }}
     >
-      <span>{c.tabs[view]}</span>
+      <span>{label}</span>
       {count > 0 && (
         <Box component="span" sx={{ fontVariantNumeric: 'tabular-nums' }}>
           {count}
@@ -178,7 +240,18 @@ function ViewButton({
 
 type Item = { key: string; node: ReactNode }
 
-function Screen({ board, view, open }: { board: Board; view: View; open: (id: string) => void }) {
+function Screen({
+  board,
+  view,
+  open,
+  quiet = false,
+}: {
+  board: Board
+  view: View
+  open: (id: string) => void
+  /** Inside Buy stock: an empty screen says nothing (the sheet says it once for the tab). */
+  quiet?: boolean
+}) {
   const c = useIoCopy()
   const f = useIoFormat()
   const actions = useIoActions()
@@ -241,10 +314,12 @@ function Screen({ board, view, open }: { board: Board; view: View; open: (id: st
                       chip={row.short.length ? 'problem' : 'needs_you'}
                       amount={
                         row.lines[0]
-                          ? `${f.qty(row.lines[0].quantity)} ${row.lines[0].unit}`
+                          ? `${f.qty(row.lines[0].quantity)} ${f.unit(row.lines[0].unit)}`
                           : undefined
                       }
-                      detail={[c.kind[row.kind], row.lines[0]?.item].filter(Boolean).join(' · ')}
+                      detail={[c.kind[row.kind], f.item(row.lines[0]?.item)]
+                        .filter(Boolean)
+                        .join(' · ')}
                       onOpen={() => open(row.order_id)}
                     />
                   ),
@@ -254,7 +329,7 @@ function Screen({ board, view, open }: { board: Board; view: View; open: (id: st
   const filled = groups.filter((group) => group.items.length)
   return (
     <Stack spacing={4}>
-      {filled.length === 0 && (
+      {filled.length === 0 && !quiet && (
         <Typography color="text.secondary">
           {board.orders.length === 0 && board.inbox.length === 0 ? c.noPartnersHint : c.empty[view]}
         </Typography>

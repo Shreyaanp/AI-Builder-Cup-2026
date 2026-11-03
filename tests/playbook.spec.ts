@@ -93,7 +93,7 @@ for (const scheme of ['light', 'dark'] as const) {
         .poll(() =>
           tiles.evaluate((grid) => {
             const prep = grid.querySelector('[data-tour="prep"]')
-            // Prep plan sits in its How much to make row (batch 4a); the row order is the test.
+            // How much to make (the prep plan, batch 4b) leads Close the day: the row order.
             const close = grid.querySelector('[data-tour="closeday"]')
             return Boolean(
               prep &&

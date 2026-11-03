@@ -11,8 +11,8 @@ const SIZES = {
 }
 
 // The anchor each step lights, in order.
-// Simplify batch 5: the prep step lights Grow's "How much to make" row (data-tour="make").
-const TARGETS = ['today', 'today-supply', 'reorder', 'menu', 'make', 'closeday', 'composer']
+// Simplify batch 5: the prep step lights Grow's "How much to make" row (data-tour="prep").
+const TARGETS = ['today', 'today-supply', 'reorder', 'menu', 'prep', 'closeday', 'composer']
 
 interface Rect {
   top: number

@@ -62,3 +62,6 @@ export function orderSize(
     `${quantity.format(agreedQuantity(order, first) ?? 0)} ${unit(first.unit ?? '')}`.trim()
   return rest.length ? `${size} +${rest.length}` : size
 }
+
+/** Purchase orders that wait for the owner: a draft to OK, or a change to check. */
+export const PO_TO_DO = new Set<PurchaseOrder['status']>(['draft', 'changed'])

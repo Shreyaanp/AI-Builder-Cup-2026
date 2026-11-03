@@ -296,7 +296,7 @@ test('tour: 7 steps, prep on Grow’s How much to make, ends on You’re ready w
     if (step === 5) {
       await expect(page.locator('#tour-title')).toHaveText('Tomorrow’s prep plan')
       await expect(page.locator('[data-tour="nav-grow"]')).toHaveAttribute('aria-current', 'page')
-      await expect(page.locator('[data-tour="make"]').filter({ visible: true })).toContainText(
+      await expect(page.locator('[data-tour="prep"]').filter({ visible: true })).toContainText(
         'How much to make',
       )
     }
@@ -329,3 +329,20 @@ test('Hindi: Today’s chips, placeholder and ⋯ are fully Hindi', async ({ pag
   await expect(page.getByTestId('today')).not.toContainText(/[A-Za-z]{4,} [a-z]{3,} [a-z]{3,}/)
   await page.screenshot({ path: test.info().outputPath('today-hi-390.png') })
 })
+
+for (const language of ['en', 'hi'] as const) {
+  test(`Coach Today at 20:30 on 360×800 in ${language}: one screenful, Reply in view`, async ({
+    page,
+  }) => {
+    await page.addInitScript(
+      (lang) =>
+        localStorage.setItem('niva.starter.preferences', JSON.stringify({ language: lang })),
+      language,
+    )
+    await openDemo(page, 20, 30, 360, 800)
+    const view = await todayView(page)
+    expect(view.overflow, 'Today scrolls past one screenful').toBeLessThanOrEqual(1)
+    await expect(page.locator('[data-need="reply"]').getByRole('button').first()).toBeInViewport()
+    expect(await fitsWidth(page)).toBe(true)
+  })
+}

@@ -119,11 +119,13 @@ test('Grow: Rescue deals opens the rescue screen', async ({ page }) => {
   await opensSheet(page, /Rescue deals/, /rescue/i)
 })
 
-test('Grow: Prep plan opens its own screen', async ({ page }) => {
+test('Grow: How much to make opens its own screen', async ({ page }) => {
   await openDemo(page)
   await tab(page, 'grow')
-  await openGrowTool(page, /^Prep plan/)
-  await expect(page.getByRole('dialog').getByRole('heading', { name: 'Prep plan' })).toBeVisible()
+  await openGrowTool(page, /^How much to make/)
+  await expect(
+    page.getByRole('dialog').getByRole('heading', { name: 'How much to make' }),
+  ).toBeVisible()
   await expect(
     page
       .getByRole('dialog')

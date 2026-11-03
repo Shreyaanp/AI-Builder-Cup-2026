@@ -8,6 +8,7 @@ import { useWorkspace } from '../v1/workspaceContext'
 import { SeeAgain } from '../first-run/FirstRun'
 import { useSimpleCopy } from '../v1/today/simpleCopy'
 import { useTodayCopy } from '../v1/today/todayCopy'
+import { useToday } from '../v1/today/useToday'
 
 /** Shared by the help screen and empty coach. Saved item names stay in the owner's words. */
 function guideExamples(t: ToolCopy, shop: Business | null, products: Product[]) {
@@ -35,7 +36,11 @@ function guideExamples(t: ToolCopy, shop: Business | null, products: Product[]) 
 export function GuideChips({ onSend }: { onSend: (sentence: string) => void }) {
   const t = useToolCopy()
   const ws = useWorkspace()
-  const examples = guideExamples(t, ws.active, ws.products)
+  const facts = useToday()
+  const closed = facts?.today && (facts.today.sales != null || facts.today.items != null)
+  const examples = guideExamples(t, ws.active, ws.products).filter(
+    (example) => example.id !== 'close' || (!closed && (!ws.active || facts !== null)),
+  )
   return (
     <Stack spacing={2}>
       <Typography component="p" variant="bodyLarge">
@@ -91,7 +96,7 @@ export function TodayChips({
   const chips = evening ? [{ label: tt.howToday, sentence: tt.howToday }, make] : [make, menu]
   return (
     <Box component="section" aria-label={t.guideTitle} data-testid="today-chips">
-      <Stack direction="row" sx={{ gap: 2, flexWrap: 'wrap' }}>
+      <Stack direction="row" sx={{ gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
         {chips.map(({ label, sentence }) => (
           <Chip
             key={label}
@@ -107,14 +112,14 @@ export function TodayChips({
             }}
           />
         ))}
+        <Button
+          onClick={() => openOwnerFeature('guide')}
+          endIcon={<ChevronRight size={18} aria-hidden="true" />}
+          sx={{ minHeight: 48, px: 1 }}
+        >
+          {s.whatCanIAsk}
+        </Button>
       </Stack>
-      <Button
-        onClick={() => openOwnerFeature('guide')}
-        endIcon={<ChevronRight size={18} aria-hidden="true" />}
-        sx={{ minHeight: 48, px: 1 }}
-      >
-        {s.whatCanIAsk}
-      </Button>
     </Box>
   )
 }
