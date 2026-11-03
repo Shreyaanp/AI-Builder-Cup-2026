@@ -142,6 +142,9 @@ async function copyFor(page: Page, code: string): Promise<Copy> {
     const inChat = (await import('/src/features/v1/inChatCopy.ts' as string)) as {
       inChatCopyFor: (l: string) => Record<string, string>
     }
+    const simple = (await import('/src/features/v1/today/firstRunCopy.ts' as string)) as {
+      firstRunCopyFor: (l: string) => Record<string, string>
+    }
     const localized = language === 'en' ? {} : await locales.loaders[language]?.()
     return {
       ...strings.en,
@@ -150,6 +153,8 @@ async function copyFor(page: Page, code: string): Promise<Copy> {
       ready: flow.newShopCopyFor(language).ready,
       ...onboarding.onboardingCopyFor(language),
       confirmPin: inChat.inChatCopyFor(language).confirmPin!,
+      // First run: the start card's typed way in (simplify batch 5: no top-bar "+").
+      typeName: simple.firstRunCopyFor(language).typeName!,
     } as Record<string, string>
   }, code)
 }
@@ -177,7 +182,7 @@ async function openFlow(page: Page, language: Language) {
     await page.getByLabel(copy.acceptPrivacy!).check()
     await page.getByRole('button', { name: copy.agree! }).click()
   }
-  await page.getByRole('banner').getByRole('button', { name: copy.addShop! }).click()
+  await page.getByRole('button', { name: copy.typeName! }).click()
   await page.getByRole('button', { name: copy.begin! }).click()
   await expect(page.getByRole('log')).toContainText(ASKED.open, { timeout: 20_000 })
   return copy

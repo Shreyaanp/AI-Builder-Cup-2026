@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test'
 import { exifGps, fitSize } from '../src/features/v1/photoPrep.js'
 import { enter, localOnly } from './stories/support.js'
+import { startNewShop } from './support/newShop.js'
 
 // Unit checks (pure functions, no browser) and one phone check that a big camera photo is shrunk
 // on the device before it is uploaded.
@@ -103,7 +104,7 @@ test('a big camera photo is shrunk on the phone before it uploads', async ({ pag
       },
     })
   })
-  await page.getByRole('banner').getByRole('button', { name: 'Add shop details' }).click()
+  await startNewShop(page)
   await page.getByRole('button', { name: 'Let’s begin' }).click()
   await page.getByRole('button', { name: 'Shop photo' }).click()
   const chooser = page.waitForEvent('filechooser')

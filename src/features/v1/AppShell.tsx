@@ -1,6 +1,6 @@
 import { AppHeader } from '../../design/AppHeader'
 import { lazy, Suspense, useEffect, useState } from 'react'
-import type { ReactNode } from 'react'
+import type { MouseEvent, ReactNode } from 'react'
 import {
   Box,
   Button,
@@ -20,6 +20,8 @@ import {
   Check,
   ChevronDown,
   CircleUserRound,
+  Compass,
+  Ellipsis,
   MessageCircle,
   Plus,
   Sparkles,
@@ -48,6 +50,9 @@ import { BrandSplash } from '../frontdoors/Splash'
 import { coachDeferred } from './screens/coachDeferred'
 import { supplyDeferred } from '../supply/supplyDeferred'
 import { workspaceDeferred } from './workspaceDeferred'
+import { useSimpleCopy } from './today/simpleCopy'
+import { useDemoCopy } from '../frontdoors/strings'
+import { customerNavigate } from '../frontdoors/navigation'
 
 // OB-165: the coach is the first screen; the new-shop flow, the tour, payments and the large-
 // window shop tiles load apart from it, fetched while the phone is idle so a tap never waits.
@@ -393,6 +398,8 @@ function NavItem({
 
 function TopBar() {
   const t = useCopy()
+  const simple = useSimpleCopy()
+  const demoText = useDemoCopy()
   const tourText = tourCopy(useLocale())
   const ws = useWorkspace()
   const roles = useTheme().material
@@ -400,7 +407,6 @@ function TopBar() {
   const [tourBusy, setTourBusy] = useState(false)
   const [tourFailed, setTourFailed] = useState(false)
   useBackClose(Boolean(shopMenu), () => setShopMenu(null))
-  // Settings live on the You tab now; the top bar keeps the shop switcher, new chat and "+".
   return (
     <AppHeader sx={{ gap: 1, justifyContent: 'flex-start' }}>
       <BrandLogo wordmark="wide" href="/" large={ws.destination === 'coach'} />
@@ -429,27 +435,19 @@ function TopBar() {
         </Typography>
       </Button>
       <Box sx={{ flex: 1 }} />
-      {ws.destination === 'coach' && (
-        <Tooltip title={t.newChat}>
+      {/* Outside Coach the bar is the logo and the shop switcher; Coach adds one ⋯ menu (start
+          again, past chats, how it works). Adding a shop lives in the switcher (SIMPLIFY §3.7). */}
+      {ws.destination === 'coach' && ws.active && (
+        <Tooltip title={simple.moreOptions}>
           <IconButton
-            aria-label={t.newChat}
+            aria-label={simple.moreOptions}
             aria-haspopup="dialog"
             onClick={() => ws.setCoachActions(true)}
           >
-            <MessageCircle size={22} />
+            <Ellipsis size={22} />
           </IconButton>
         </Tooltip>
       )}
-      {/* "+" opens the full-screen new-shop flow (never a form dialog). */}
-      <Tooltip title={t.addShop}>
-        <IconButton
-          aria-label={t.addShop}
-          onPointerDown={() => void NewShopFlow.preload().catch(() => {})}
-          onClick={ws.startNewShop}
-        >
-          <Plus size={22} />
-        </IconButton>
-      </Tooltip>
       <Menu anchorEl={shopMenu} open={Boolean(shopMenu)} onClose={() => setShopMenu(null)}>
         {ws.businesses.length === 0 && (
           <MenuItem disabled>
@@ -490,7 +488,26 @@ function TopBar() {
             {tourText.failed}
           </Typography>
         )}
+        {/* The demo's other side (shops as customers see them) sits here, not in the banner. */}
+        {ws.demo && (
+          <MenuItem
+            component="a"
+            href="/explore/demo"
+            onClick={(event: MouseEvent<HTMLElement>) => {
+              setShopMenu(null)
+              customerNavigate(event)
+            }}
+            sx={{ minHeight: 48 }}
+          >
+            <ListItemIcon>
+              <Compass size={18} />
+            </ListItemIcon>
+            <ListItemText primary={demoText.customer} />
+          </MenuItem>
+        )}
         <MenuItem
+          sx={{ minHeight: 48 }}
+          onPointerDown={() => void NewShopFlow.preload().catch(() => {})}
           onClick={() => {
             setShopMenu(null)
             ws.startNewShop()

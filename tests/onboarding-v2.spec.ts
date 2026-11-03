@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import { enter, image, localOnly, seedShop } from './stories/support.js'
 import { ASKED, askedTopics, FIRST_QUESTION, nextQuestion, type Topic } from './newShopTopics.js'
+import { startNewShop } from './support/newShop.js'
 
 // Onboarding v2 (owner decisions, 17 Oct), on a phone: ask only name, what they sell, where,
 // hours and a shop photo; one sentence fills many fields; the shop goes live by itself after
@@ -12,7 +13,7 @@ test.beforeEach(async ({ page }) => {
 })
 
 async function begin(page: Page) {
-  await page.getByRole('banner').getByRole('button', { name: 'Add shop details' }).click()
+  await startNewShop(page)
   await page.getByRole('button', { name: 'Let’s begin' }).click()
   await expect(page.getByRole('log')).toContainText(FIRST_QUESTION)
 }

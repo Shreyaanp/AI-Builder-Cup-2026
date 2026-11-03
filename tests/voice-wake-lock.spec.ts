@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { enter, localOnly } from './stories/support.js'
+import { startNewShop } from './support/newShop.js'
 
 // The phone stays awake while voice is on: a screen wake lock from start to stop, taken again
 // after the browser dropped it (the page was hidden). Offline backend; the Wake Lock API is a
@@ -67,7 +68,7 @@ test('voice keeps the screen awake, takes the lock again after a hide, and lets 
   await fakeWakeLock(page)
   await quietMicrophone(page)
   await enter(page)
-  await page.getByRole('banner').getByRole('button', { name: 'Add shop details' }).click()
+  await startNewShop(page)
   // Nothing is held before voice starts.
   expect(await wake(page)).toEqual({ requests: 0, active: 0 })
   await page.getByRole('button', { name: 'Let’s begin' }).click()
@@ -95,7 +96,7 @@ test('voice works where the Wake Lock API is missing', async ({ page }) => {
   })
   await quietMicrophone(page)
   await enter(page)
-  await page.getByRole('banner').getByRole('button', { name: 'Add shop details' }).click()
+  await startNewShop(page)
   await page.getByRole('button', { name: 'Let’s begin' }).click()
   await expect(page.getByTestId('voice-orb').first()).toHaveAttribute('data-phase', 'listening')
   expect(await page.evaluate(() => 'wakeLock' in navigator)).toBe(false)

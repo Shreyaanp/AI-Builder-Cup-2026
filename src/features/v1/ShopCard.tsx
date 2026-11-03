@@ -19,6 +19,7 @@ import {
   Camera,
   ChevronRight,
   Clock,
+  Keyboard,
   MapPin,
   Package,
   Pencil,
@@ -39,11 +40,16 @@ import { useShopCopy } from '../shop/strings'
 import { unitLabel } from '../shop/units'
 import { ShopLocation } from './CurrentLocation'
 import { useLocale } from '../../state/hooks'
+import { useFirstRunCopy } from './today/firstRunCopy'
 import { productName } from '../../i18n/productNames'
 
-/** Before any shop exists: one start card, nothing else. */
+/**
+ * Before any shop exists: one card with one filled button (take a photo of the board) and a typed
+ * way in; the screen's heading says what it is for (SIMPLIFY §3.3).
+ */
 export function StartCard() {
   const t = useCopy()
+  const s = useFirstRunCopy()
   const ws = useWorkspace()
   const roles = useTheme().material
   if (ws.loading) return null
@@ -57,25 +63,33 @@ export function StartCard() {
         bgcolor: roles.secondaryContainer,
         color: roles.onSecondaryContainer,
         borderRadius: `${shape.xl}px`,
-        p: 6,
-        display: 'flex',
-        flexDirection: 'column',
-        minHeight: { xs: 'min(50dvh, 440px)', sm: 'auto' },
+        p: 4,
         ...enterRise,
       }}
     >
-      <Typography id="start-title" component="h2" variant="titleMedium">
-        {t.suggestAdd}
-      </Typography>
-      <Typography variant="bodyMedium" sx={{ mt: 1 }}>
-        {t.coachHint}
-      </Typography>
-      <Stack sx={{ mt: { xs: 'auto', sm: 5 }, pt: 3, gap: 2 }}>
-        <Button variant="outlined" startIcon={<Camera size={20} />} onClick={ws.requestPhoto}>
+      <Stack direction="row" sx={{ gap: 3, alignItems: 'flex-start' }}>
+        <Box aria-hidden="true" sx={{ display: 'flex', pt: 0.5 }}>
+          <Camera size={24} />
+        </Box>
+        <Typography id="start-title" variant="bodyLarge">
+          {s.firstBody}
+        </Typography>
+      </Stack>
+      <Stack sx={{ mt: 4, gap: 1 }}>
+        <Button
+          variant="contained"
+          startIcon={<Camera size={20} />}
+          onClick={ws.requestPhoto}
+          sx={{ minHeight: 48 }}
+        >
           {t.nextScanAction}
         </Button>
-        <Button variant="contained" startIcon={<Store size={20} />} onClick={ws.startNewShop}>
-          {t.suggestAdd}
+        <Button
+          startIcon={<Keyboard size={20} />}
+          onClick={ws.startNewShop}
+          sx={{ minHeight: 48, color: roles.onSecondaryContainer }}
+        >
+          {s.typeName}
         </Button>
       </Stack>
     </Box>

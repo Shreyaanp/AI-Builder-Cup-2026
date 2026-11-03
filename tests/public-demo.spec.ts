@@ -95,8 +95,10 @@ for (const width of [360, 390, 412]) {
           const axe = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze()
           expect(axe.violations).toEqual([])
         }
+        // Simplify batch 5: the owner side's "Browse shops" is in the shop switcher.
+        await page.locator('header[data-app-header] button[aria-haspopup="menu"]').click()
         await page
-          .getByRole('link', {
+          .getByRole('menuitem', {
             name: language === 'en' ? 'Browse shops' : 'दुकानें देखें',
             exact: true,
           })

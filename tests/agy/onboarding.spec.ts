@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import { enter, localOnly } from '../stories/support.js'
 import { FIRST_QUESTION } from '../newShopTopics.js'
+import { startNewShop as openNewShopFlow } from '../support/newShop.js'
 
 test.use({
   viewport: { width: 390, height: 844 },
@@ -14,7 +15,7 @@ test.beforeEach(async ({ page }) => {
 
 async function startNewShop(page: Page) {
   await enter(page)
-  await page.getByRole('banner').getByRole('button', { name: 'Add shop details' }).click()
+  await openNewShopFlow(page)
   await page.getByRole('button', { name: 'Let’s begin' }).click()
   await expect(page.getByRole('log')).toContainText(FIRST_QUESTION)
 }

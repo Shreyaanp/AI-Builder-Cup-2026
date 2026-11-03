@@ -2,6 +2,7 @@ import { AxeBuilder } from '@axe-core/playwright'
 import { FIRST_QUESTION } from './newShopTopics.js'
 import { expect, test, type Page, type WebSocketRoute } from '@playwright/test'
 import { enter, localOnly } from './stories/support.js'
+import { startNewShop } from './support/newShop.js'
 
 // The new-shop conversation as a "voice mode": one open conversation (the mic stays on), a chalk
 // orb that reacts to who is talking, the shop card filling up, the conversation on the same
@@ -102,7 +103,7 @@ async function proxyLive(page: Page): Promise<Live> {
 }
 
 async function openFlow(page: Page) {
-  await page.getByRole('banner').getByRole('button', { name: 'Add shop details' }).click()
+  await startNewShop(page)
   await expect(page.getByRole('heading', { name: 'Let’s open your shop' })).toBeVisible()
 }
 
@@ -432,8 +433,12 @@ for (const locale of LOCALES) {
           (() => Promise<{ addShop: string; continuePreview: string }>) | undefined
         >
       }
-      const { addShop, continuePreview } =
-        locale === 'en' ? app.en : (await locales.loaders[locale]?.())!
+      const simple = (await import('/src/features/v1/today/firstRunCopy.ts' as string)) as {
+        firstRunCopyFor: (l: string) => { typeName: string }
+      }
+      const { continuePreview } = locale === 'en' ? app.en : (await locales.loaders[locale]?.())!
+      // First run: the start card's typed way in (simplify batch 5: no top-bar "+").
+      const addShop = simple.firstRunCopyFor(locale).typeName
       return {
         ...voice.voiceModeCopyFor(locale),
         begin: flow.newShopCopyFor(locale).begin,
@@ -446,7 +451,7 @@ for (const locale of LOCALES) {
     }, locale)
     await page.reload()
     await page.getByRole('button', { name: copy.continuePreview! }).click()
-    await page.getByRole('banner').getByRole('button', { name: copy.addShop! }).click()
+    await page.getByRole('button', { name: copy.addShop! }).click()
     await page.getByRole('button', { name: copy.begin! }).click()
     const alert = page.getByTestId('voice-alert')
     await expect(alert).toContainText(copy.micBlockedTitle!)

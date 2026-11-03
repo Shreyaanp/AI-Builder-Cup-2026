@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import { enter, image, inChatFixtures, localOnly } from './stories/support.js'
 import { askedTopics, FIRST_QUESTION } from './newShopTopics.js'
+import { startNewShop } from './support/newShop.js'
 
 // Owner phone test, 17 Oct: closing the camera (X) stays quiet (#107), a menu photo never renames
 // the shop (#110), and the camera is a full-screen view opened from the in-chat card (#111).
@@ -20,7 +21,7 @@ test.beforeEach(async ({ page }) => {
 
 async function begin(page: Page) {
   await enter(page)
-  await page.getByRole('banner').getByRole('button', { name: 'Add shop details' }).click()
+  await startNewShop(page)
   await page.getByRole('button', { name: 'Let’s begin' }).click()
   await expect(page.getByRole('log')).toContainText(FIRST_QUESTION)
 }

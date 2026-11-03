@@ -48,10 +48,9 @@ test.describe('Try the demo shop flow', () => {
     for (const id of ['coach', 'shop', 'grow', 'you'])
       await expect(page.locator(`[data-tour="nav-${id}"]`)).toBeVisible()
 
-    // 4. Browse shops link in demo mode
-    const browseLink = page.getByRole('link', { name: 'Browse shops', exact: true })
-    await expect(browseLink).toBeVisible()
-    await browseLink.click()
+    // 4. Browse shops in demo mode: in the shop switcher (simplify batch 5)
+    await page.getByRole('button', { name: /^Choose shop/ }).click()
+    await page.getByRole('menuitem', { name: 'Browse shops', exact: true }).click()
 
     // Demo browse shows shops
     await expect(page.locator('main a').first()).toBeVisible({ timeout: 15_000 })

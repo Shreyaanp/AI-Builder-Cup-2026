@@ -106,17 +106,22 @@ export async function copyFor(page: Page, language: string) {
     const onboarding = (await import('/src/features/v1/onboardingCopy.ts' as string)) as {
       onboardingCopyFor: (l: string) => { skipForNow: string; done: string; faceStart: string }
     }
+    const firstRunModule = (await import('/src/features/v1/today/firstRunCopy.ts' as string)) as {
+      firstRunCopyFor: (l: string) => { firstTitle: string; typeName: string }
+    }
     const t = language === 'en' ? app.en : await locales.loaders[language]!()
     const f = flowModule.newShopCopyFor(language)
+    const first = firstRunModule.firstRunCopyFor(language)
     return {
       copy: {
         continuePreview: t.continuePreview!,
         acceptTerms: t.acceptTerms!,
         acceptPrivacy: t.acceptPrivacy!,
         agree: t.agree!,
-        coachGreeting: t.coachGreeting!,
-        addShop: t.addShop!,
-        suggestAdd: t.suggestAdd!,
+        firstTitle: first.firstTitle,
+        // First run's typed way in (#663: no header "Add shop details").
+        addShop: first.typeName,
+        scan: t.nextScanAction!,
         share: t.share!,
         currency: t.currency!,
         actionFailed: t.actionFailed!,
@@ -196,7 +201,7 @@ export function registerLargeTextCases() {
       }, language)
       const { copy, flow } = await copyFor(page, language)
       await enter(page, copy)
-      await page.getByRole('banner').getByRole('button', { name: copy.addShop }).click()
+      await page.getByRole('button', { name: copy.addShop }).click()
       await page.getByRole('button', { name: flow.begin }).click()
       await expect(page.getByRole('log')).not.toBeEmpty()
       await page.evaluate(() => {
@@ -263,7 +268,7 @@ export function registerReviewViewportCases() {
       const tag = `review-${variant.width}-${variant.language}-${variant.color}`
       await enter(page, copy)
       await capture(page, `${tag}-first`)
-      await page.getByRole('banner').getByRole('button', { name: copy.addShop }).click()
+      await page.getByRole('button', { name: copy.addShop }).click()
       await capture(page, `${tag}-hero`)
       await page.getByRole('button', { name: flow.begin }).click()
       await page.getByRole('button', { name: guided.typeItIn }).click()
