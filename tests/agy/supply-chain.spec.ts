@@ -29,10 +29,11 @@ test.describe('Supply chain flows on phone (390px)', () => {
     // 1. Today view displays supply chain warning card
     const todaySupply = page.getByRole('region', { name: 'Supply chain' })
     await expect(todaySupply).toBeVisible({ timeout: 15_000 })
-    await expect(todaySupply).toContainText(/Milk runs out/i)
+    // The demo's earlier 12 l is on its way and counted (OB-263): it offers Order more.
+    await expect(todaySupply).toContainText(/Milk: 12 l arriving .+✓/)
 
-    // 2. Click Reorder on the supply card
-    await todaySupply.getByRole('button', { name: 'Reorder', exact: true }).click()
+    // 2. Click Order more on the supply card
+    await todaySupply.getByRole('button', { name: 'Order more', exact: true }).click()
     const orderCard = page.getByRole('article')
     await expect(orderCard).toBeVisible()
     await expect(orderCard).toContainText('Drafted for you')
@@ -57,21 +58,21 @@ test.describe('Supply chain flows on phone (390px)', () => {
       await expect(row).not.toContainText('Waiting')
     }
 
-    // 5. Goods arrived: mark received and save stock
+    // 5. Goods arrived: the stock is saved at once, said plainly with Undo (OB-263)
     await orderCard.getByRole('button', { name: 'Goods arrived', exact: true }).click()
-    const reviewDialog = page.getByRole('dialog', { name: 'Check before saving' })
-    await expect(reviewDialog).toContainText('Milk')
-    await reviewDialog.getByRole('button', { name: 'Confirm and save', exact: true }).click()
-    await expect(reviewDialog).toHaveCount(0)
+    await expect(page.locator('.MuiSnackbar-root')).toContainText(
+      /\d+ l Milk received\. Stock is now \d+ l\./,
+    )
+    await expect(page.getByRole('dialog', { name: 'Check before saving' })).toHaveCount(0)
 
     // Orders dialog confirms received
     const ordersDialog = page.getByRole('dialog', { name: 'Purchase orders', exact: true })
     await expect(ordersDialog).toContainText('Received')
     await ordersDialog.getByRole('button', { name: 'Close', exact: true }).click()
 
-    // Verify Today view updates to show Milk restocked
-    await expect(todaySupply).toContainText('Milk restocked')
-    await expect(todaySupply.getByRole('button', { name: 'Reorder', exact: true })).toHaveCount(0)
+    // Verify Today view says the stock was topped up, with nothing to reorder
+    await expect(todaySupply).toContainText(/Milk stock topped up: \d+ l/)
+    await expect(todaySupply.getByRole('button')).toHaveCount(0)
 
     // Verify no horizontal overflow
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(
