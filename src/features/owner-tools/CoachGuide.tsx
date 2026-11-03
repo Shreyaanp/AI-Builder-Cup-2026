@@ -96,7 +96,7 @@ export function TodayChips({
   const chips = evening ? [{ label: tt.howToday, sentence: tt.howToday }, make] : [make, menu]
   return (
     <Box component="section" aria-label={t.guideTitle} data-testid="today-chips">
-      <Stack direction="row" sx={{ gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+      <Stack direction="row" sx={{ columnGap: 2, rowGap: 0, flexWrap: 'wrap', alignItems: 'center' }}>
         {chips.map(({ label, sentence }) => (
           <Chip
             key={label}

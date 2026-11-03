@@ -847,14 +847,15 @@ function PulseCard({ plan, actions }: { plan: TodayPlan; actions: TodayActions }
       `${plan.pulse.when === 'yesterday' ? tt.yesterday : tt.todaySoFar}: ${values.join(' · ')}`,
     )
   }
-  if (plan.forecast) {
+  // In the evening the "How much to make?" chip below answers this, so the card keeps to one line.
+  if (plan.forecast && !quiet) {
     let text = tt.forecast(
       number.format(plan.forecast.quantity),
       productName(plan.forecast.item, locale),
     )
     // The busiest hours are the owner's own setting; a coach line (rain, a festival) is news, so
     // it takes that place and the row stays short.
-    if (plan.forecast.busy && !coachLine && !quiet) {
+    if (plan.forecast.busy && !coachLine) {
       const [start, end] = plan.forecast.busy.map(
         (minutes) => new Date(Date.UTC(2026, 0, 1, Math.floor(minutes / 60), minutes % 60)),
       )

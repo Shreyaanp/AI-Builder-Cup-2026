@@ -28,10 +28,8 @@ async function openDemo(page: Page, hh: number, mm = 0, width = 390, height = 84
   await page.setViewportSize({ width, height })
   await page.clock.setFixedTime(shopTime(hh, mm))
   await page.goto('/demo')
-  await page
-    .getByRole('dialog')
-    .getByRole('button', { name: 'Skip', exact: true })
-    .click({ timeout: 60_000 })
+  // The intro's last button is Skip, in any language.
+  await page.getByRole('dialog').getByRole('button').last().click({ timeout: 60_000 })
   await expect(page.getByRole('dialog')).toHaveCount(0)
   await expect(page.getByTestId('today-needs')).toBeVisible({ timeout: 15_000 })
   await expect(page.getByTestId('today-pulse')).toBeVisible({ timeout: 15_000 })
