@@ -248,6 +248,9 @@ function DayOne({ step, food, actions }: { step: StepId; food: boolean; actions:
   const o = useOnboardingCopy()
   const roles = useTheme().material
   const action = useStepAction(step)
+  const name = ws.active?.fields.name ?? ''
+  // OB-306: an already shared shop is online; lead with its next task instead.
+  const shared = Boolean(ws.active?.public)
   return (
     <Box
       component="section"
@@ -255,6 +258,9 @@ function DayOne({ step, food, actions }: { step: StepId; food: boolean; actions:
       data-testid="today-day-one"
       sx={{
         p: { xs: 4, sm: 5 },
+        minHeight: { xs: 'min(54dvh, 520px)', sm: 'auto' },
+        display: 'flex',
+        flexDirection: 'column',
         borderRadius: `${shape.xl}px`,
         bgcolor: roles.surfaceContainer,
         ...enterRise,
@@ -263,28 +269,23 @@ function DayOne({ step, food, actions }: { step: StepId; food: boolean; actions:
       <Typography
         id="today-day-one"
         component="h2"
-        variant="headlineLarge"
-        sx={(t) => ({
+        variant="headlineSmall"
+        sx={{
           fontFamily: HAND_FONT,
           fontWeight: 700,
           lineHeight: 1.2,
-          [t.breakpoints.up('sm')]: { fontSize: t.typography.headlineMedium.fontSize },
-        })}
+        }}
       >
-        {tt.dayOne(ws.active?.fields.name ?? '')}
+        {shared ? stepText(step, food, tt, o) : tt.dayOne(name)}
       </Typography>
-      <Typography variant="bodyLarge" color="text.secondary" sx={{ mt: 1 }}>
-        {stepText(step, food, tt, o)}
+      <Typography
+        variant="bodyLarge"
+        color="text.secondary"
+        sx={{ mt: 1, overflowWrap: 'anywhere' }}
+      >
+        {shared ? name : stepText(step, food, tt, o)}
       </Typography>
-      <Stack direction="row" sx={{ mt: 4, gap: 2, flexWrap: 'wrap' }}>
-        <Button
-          variant="contained"
-          startIcon={action.icon}
-          onClick={action.run}
-          sx={{ minHeight: 48 }}
-        >
-          {action.label}
-        </Button>
+      <Stack direction="row" sx={{ mt: 'auto', pt: 3, gap: 2, flexWrap: 'wrap' }}>
         {action.second && (
           <Button
             variant="outlined"
@@ -302,6 +303,15 @@ function DayOne({ step, food, actions }: { step: StepId; food: boolean; actions:
           sx={{ minHeight: 48 }}
         >
           {tt.talk}
+        </Button>
+        <Button
+          fullWidth
+          variant="contained"
+          startIcon={action.icon}
+          onClick={action.run}
+          sx={{ minHeight: 48 }}
+        >
+          {action.label}
         </Button>
       </Stack>
     </Box>

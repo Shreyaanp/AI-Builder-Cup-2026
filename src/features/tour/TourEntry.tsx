@@ -21,8 +21,8 @@ export function TourOffer() {
       sx={{
         p: 4,
         borderRadius: '24px',
-        bgcolor: roles.secondaryContainer,
-        color: roles.onSecondaryContainer,
+        bgcolor: roles.surfaceContainerLow,
+        color: roles.onSurface,
       }}
     >
       <Typography variant="titleMedium">{t.offerTitle}</Typography>
@@ -30,7 +30,7 @@ export function TourOffer() {
         {t.offerBody}
       </Typography>
       <Button
-        variant="contained"
+        variant="outlined"
         sx={{ mt: 3 }}
         disabled={busy}
         startIcon={busy ? <CircularProgress size={16} /> : <Sparkles size={18} />}

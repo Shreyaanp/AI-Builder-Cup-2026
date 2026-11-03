@@ -1387,14 +1387,7 @@ function CoachScreen({
           ) : (
             <Stack spacing={{ xs: 3, sm: 5 }} sx={{ pt: { xs: 1, sm: 10 }, pb: 4 }}>
               {/* Before a shop exists the greeting introduces the coach. */}
-              <Typography
-                component="h1"
-                variant="headlineMedium"
-                sx={{
-                  fontSize: { xs: '1.5rem', sm: undefined },
-                  lineHeight: { xs: '2rem', sm: undefined },
-                }}
-              >
+              <Typography component="h1" variant="headlineSmall">
                 {t.coachGreeting}
               </Typography>
               <StartCard />

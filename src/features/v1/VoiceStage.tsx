@@ -409,7 +409,7 @@ export function ShopFill({ draft, onReview }: { draft: Draft; onReview: () => vo
             component="p"
             sx={{
               fontFamily: HAND_FONT,
-              typography: 'headlineSmall',
+              typography: 'headlineMedium',
               // Room for the hand font's descenders.
               lineHeight: 1.25,
               overflowWrap: 'anywhere',
@@ -472,7 +472,7 @@ export function ShopFill({ draft, onReview }: { draft: Draft; onReview: () => vo
           size="small"
           onClick={onReview}
           data-testid="review-my-shop"
-          sx={{ flexShrink: 0, ml: 'auto' }}
+          sx={{ flexShrink: 0, ml: 'auto', minHeight: 48 }}
         >
           {o.review}
         </Button>

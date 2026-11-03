@@ -58,24 +58,23 @@ export function StartCard() {
         color: roles.onSecondaryContainer,
         borderRadius: `${shape.xl}px`,
         p: 6,
+        display: 'flex',
+        flexDirection: 'column',
+        minHeight: { xs: 'min(50dvh, 440px)', sm: 'auto' },
         ...enterRise,
       }}
     >
-      <Typography id="start-title" component="h2" variant="titleLarge">
-        {t.nextScan}
+      <Typography id="start-title" component="h2" variant="titleMedium">
+        {t.suggestAdd}
       </Typography>
       <Typography variant="bodyMedium" sx={{ mt: 1 }}>
         {t.coachHint}
       </Typography>
-      <Stack direction="row" sx={{ mt: 5, gap: 2, flexWrap: 'wrap' }}>
-        <Button variant="contained" startIcon={<Camera size={20} />} onClick={ws.requestPhoto}>
+      <Stack sx={{ mt: { xs: 'auto', sm: 5 }, pt: 3, gap: 2 }}>
+        <Button variant="outlined" startIcon={<Camera size={20} />} onClick={ws.requestPhoto}>
           {t.nextScanAction}
         </Button>
-        <Button
-          startIcon={<Store size={20} />}
-          onClick={ws.startNewShop}
-          sx={{ color: roles.onSecondaryContainer }}
-        >
+        <Button variant="contained" startIcon={<Store size={20} />} onClick={ws.startNewShop}>
           {t.suggestAdd}
         </Button>
       </Stack>
