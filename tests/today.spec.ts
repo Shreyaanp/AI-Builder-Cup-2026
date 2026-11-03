@@ -191,10 +191,16 @@ test('needs you now: at most three, most urgent first, each leaves when done', a
   await expect(rows.nth(2)).toContainText('Add a phone number')
   // One primary action: only the top row's button is filled.
   await expect(card.locator('.MuiButton-contained')).toHaveCount(1)
+  // Simplify batch 5: one short pulse row of the two numbers that matter most; the coach line
+  // is its reason and takes the place of the shop's own busiest hours. Setup left is a row in
+  // the card (Add a phone number), not a separate bar.
   const pulse = page.getByTestId('today-pulse')
-  await expect(pulse).toContainText('Yesterday: ₹4,200 · 38 saw your page · 3 asked')
-  await expect(pulse).toContainText('Today: about 45 Masala chai, busiest')
-  await expect(page.getByTestId('today-progress')).toContainText('5/6')
+  await expect(pulse).toContainText('Yesterday: ₹4,200 · 38 saw your page')
+  await expect(pulse).not.toContainText('3 asked')
+  await expect(pulse).toContainText('Today: about 45 Masala chai')
+  await expect(pulse).not.toContainText('busiest')
+  await expect(pulse.getByTestId('today-line')).toHaveText('Diwali in 3 days: plan your stock')
+  await expect(page.getByTestId('today-progress')).toHaveCount(0)
   await axe(page)
   await shot(page, 'needs')
   // Answer the daily question: the row leaves and the next item takes its place.

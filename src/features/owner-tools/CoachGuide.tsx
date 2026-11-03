@@ -1,10 +1,13 @@
 import { Box, Button, Chip, Stack, Typography } from '@mui/material'
+import { ChevronRight } from 'lucide-react'
 import type { Business, Product } from '../v1/api'
 import type { ToolCopy } from './copy'
 import { useToolCopy } from './copy'
 import { openOwnerFeature } from './entry'
 import { useWorkspace } from '../v1/workspaceContext'
 import { SeeAgain } from '../first-run/FirstRun'
+import { useSimpleCopy } from '../v1/today/simpleCopy'
+import { useTodayCopy } from '../v1/today/todayCopy'
 import { useToday } from '../v1/today/useToday'
 import { useLocale } from '../../state/hooks'
 import { productName } from '../../i18n/productNames'
@@ -32,15 +35,7 @@ function guideExamples(t: ToolCopy, shop: Business | null, products: Product[], 
   return rows.map(([id, job, sentence]) => ({ id: id!, job: job!, sentence: sentence! }))
 }
 
-export function GuideChips({
-  compact = false,
-  disabled = false,
-  onSend,
-}: {
-  compact?: boolean
-  disabled?: boolean
-  onSend: (sentence: string) => void
-}) {
+export function GuideChips({ onSend }: { onSend: (sentence: string) => void }) {
   const t = useToolCopy()
   const locale = useLocale()
   const ws = useWorkspace()
@@ -51,27 +46,18 @@ export function GuideChips({
   )
   return (
     <Stack spacing={2}>
-      <Typography component={compact ? 'h2' : 'p'} variant={compact ? 'titleMedium' : 'bodyLarge'}>
-        {compact ? t.guideTitle : t.guideIntro}
+      <Typography component="p" variant="bodyLarge">
+        {t.guideIntro}
       </Typography>
-      <Box
-        sx={{
-          display: 'grid',
-          gridTemplateColumns: compact ? '1fr' : { xs: '1fr', md: '1fr 1fr' },
-          gap: 2,
-        }}
-      >
-        {(compact ? examples.slice(0, 3) : examples).map(({ id, job, sentence }) => (
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2 }}>
+        {examples.map(({ id, job, sentence }) => (
           <Stack key={id} spacing={0.5}>
-            {!compact && (
-              <Typography variant="labelLarge" component="h2">
-                {job}
-              </Typography>
-            )}
+            <Typography variant="labelLarge" component="h2">
+              {job}
+            </Typography>
             <Chip
               label={sentence}
               variant="outlined"
-              disabled={disabled}
               onClick={() => onSend(sentence)}
               sx={{
                 height: 'auto',
@@ -84,12 +70,63 @@ export function GuideChips({
           </Stack>
         ))}
       </Box>
-      {compact && (
-        <Button onClick={() => openOwnerFeature('guide')} sx={{ alignSelf: 'flex-start' }}>
-          {t.allGuide}
-        </Button>
-      )}
     </Stack>
+  )
+}
+
+/**
+ * Coach Today's two short chips that fit the hour, each sending a full sentence, and "What can I
+ * ask?" for every example (SIMPLIFY §3.6). The chat path to the screen's own tools.
+ */
+export function TodayChips({
+  evening,
+  disabled = false,
+  onSend,
+}: {
+  evening: boolean
+  disabled?: boolean
+  onSend: (sentence: string) => void
+}) {
+  const t = useToolCopy()
+  const s = useSimpleCopy()
+  const tt = useTodayCopy()
+  const ws = useWorkspace()
+  const examples = guideExamples(t, ws.active, ws.products)
+  const said = (id: string) => examples.find((example) => example.id === id)?.sentence ?? ''
+  const make = { label: s.chipMake, sentence: said('forecast') }
+  const menu = { label: s.chipMenu, sentence: said('menu') }
+  // Evenings ask how the day went; the rest of the day, the menu. Close the day is the card's.
+  const chips = evening ? [{ label: tt.howToday, sentence: tt.howToday }, make] : [make, menu]
+  return (
+    <Box component="section" aria-label={t.guideTitle} data-testid="today-chips">
+      <Stack
+        direction="row"
+        sx={{ columnGap: 2, rowGap: 0, flexWrap: 'wrap', alignItems: 'center' }}
+      >
+        {chips.map(({ label, sentence }) => (
+          <Chip
+            key={label}
+            label={label}
+            variant="outlined"
+            disabled={disabled}
+            onClick={() => onSend(sentence)}
+            sx={{
+              height: 'auto',
+              minHeight: 48,
+              maxWidth: '100%',
+              '& .MuiChip-label': { whiteSpace: 'normal', py: 1, overflowWrap: 'anywhere' },
+            }}
+          />
+        ))}
+        <Button
+          onClick={() => openOwnerFeature('guide')}
+          endIcon={<ChevronRight size={18} aria-hidden="true" />}
+          sx={{ minHeight: 48, px: 1 }}
+        >
+          {s.whatCanIAsk}
+        </Button>
+      </Stack>
+    </Box>
   )
 }
 

@@ -60,7 +60,6 @@ import {
   MessageSquare,
   MessageSquarePlus,
   Mic,
-  PackagePlus,
   Share2,
   Square,
   Send,
@@ -88,8 +87,6 @@ import { Sheet } from '../Sheet'
 import { useBackClose } from '../backStack'
 import { useConnectCopy } from '../../connect/strings'
 import { DOCUMENT_ACCEPT, useImport, type SalesImport } from '../useImport'
-import { StartCard } from '../ShopCard'
-import { TourOffer } from '../../tour/TourEntry'
 import { NeedsPill, TodayView, type TodayActions } from '../today/TodayView'
 import type { ShopSheetKind } from '../ShopTiles'
 import { useUnread } from '../useUnread'
@@ -99,7 +96,6 @@ import { useSpokenReveal } from '../useSpokenReveal'
 import { cardWords, mergeTranscript } from '../speechReveal'
 import { useOnline } from '../useOnline'
 import { useWorkspace } from '../workspaceContext'
-import { OwnerJourney } from '../../frontdoors/OwnerJourney'
 import { LoadError } from '../LoadError'
 import { enterRise, shape } from '../../../design/theme'
 import { useSourcingCopy } from '../../sourcing/copy'
@@ -118,12 +114,14 @@ import { useNextStepsCopy } from '../nextStepsCopy'
 import { asCoachAction, NEEDS_TAP, type CoachAction } from '../coachAction'
 import { requestOpen } from '../openRequest'
 import type { Destination } from '../workspaceContext'
-import { GuideChips } from '../../owner-tools/CoachGuide'
+import { TodayChips } from '../../owner-tools/CoachGuide'
+import { useSimpleCopy } from '../today/simpleCopy'
 import { openOwnerFeature } from '../../owner-tools/entry'
 import { OnceOpened } from '../../../app/OnceOpened'
 import {
   CloseDay,
   ConnectSheet,
+  FirstRun,
   OrderCard,
   OrdersSheet,
   PaymentCard,
@@ -252,6 +250,7 @@ function CoachScreen({
   setGalleryPhoto: (value: GalleryPhoto | null) => void
 }) {
   const t = useCopy()
+  const simple = useSimpleCopy()
   const o = useOnboardingCopy()
   const theme = useTheme()
   const roles = theme.material
@@ -1162,7 +1161,6 @@ function CoachScreen({
         mx: 'auto',
       }}
     >
-      {!ws.active && <OwnerJourney />}
       {/* One quiet line: which coach is answering. Every other action is behind the top bar's +. */}
       {!empty && (
         <Typography
@@ -1183,32 +1181,13 @@ function CoachScreen({
         open={actionsOpen}
         onClose={() => setActionsOpen(false)}
         titleId="coach-actions-title"
-        title={t.newChat}
+        title={simple.startAgain}
         dismissInActions
         actions={<Button onClick={() => setActionsOpen(false)}>{t.cancel}</Button>}
       >
+        {/* Start again and past chats; how the coach and its numbers work. Adding a shop lives in
+            the shop switcher, adding a product on Shop › Menu (SIMPLIFY §3.7). */}
         <Stack spacing={1} sx={{ alignItems: 'flex-start' }}>
-          <AiInfo feature="coach" inSheet />
-          <Button
-            startIcon={<Store size={18} />}
-            onClick={() => {
-              setActionsOpen(false)
-              ws.startNewShop()
-            }}
-          >
-            {t.addShop}
-          </Button>
-          {ws.active && (
-            <Button
-              startIcon={<PackagePlus size={18} />}
-              onClick={() => {
-                setActionsOpen(false)
-                ws.openEditor({ kind: 'product', product: null })
-              }}
-            >
-              {t.addProduct}
-            </Button>
-          )}
           <Button
             startIcon={<MessageSquarePlus size={18} />}
             disabled={empty}
@@ -1216,9 +1195,12 @@ function CoachScreen({
               setActionsOpen(false)
               resetThread()
             }}
+            sx={{ minHeight: 48 }}
           >
             {t.newChat}
           </Button>
+          {/* Today's forecast is explained here too, now that Today has no help line of its own. */}
+          <AiInfo feature="coach" also={ws.active ? ['forecast'] : []} inSheet />
         </Stack>
         {shopHistory.length > 0 && (
           <List
@@ -1376,31 +1358,21 @@ function CoachScreen({
           ws.loading || ws.loadError ? null : ws.active ? (
             // Today: how the shop is doing and what needs the owner now. Anything complete
             // goes away; the top bar already names the shop.
-            <Stack spacing={3}>
-              <TodayView key={ws.active.id} actions={today} showAiInfo={!sorting} />
-              <GuideChips
-                compact
-                disabled={busy !== 'idle' || voice.state !== 'idle'}
-                onSend={(sentence) => void send(sentence)}
-              />
-            </Stack>
+            <TodayView
+              key={ws.active.id}
+              actions={today}
+              chips={(evening) => (
+                <TodayChips
+                  evening={evening}
+                  disabled={busy !== 'idle' || voice.state !== 'idle'}
+                  onSend={(sentence) => void send(sentence)}
+                />
+              )}
+            />
           ) : (
-            <Stack spacing={{ xs: 3, sm: 5 }} sx={{ pt: { xs: 1, sm: 10 }, pb: 4 }}>
-              {/* Before a shop exists the greeting introduces the coach. */}
-              <Typography
-                component="h1"
-                variant="headlineMedium"
-                sx={{
-                  fontSize: { xs: '1.5rem', sm: undefined },
-                  lineHeight: { xs: '2rem', sm: undefined },
-                }}
-              >
-                {t.coachGreeting}
-              </Typography>
-              <StartCard />
-              {/* First visit: see the product working on a filled demo shop. */}
-              {ws.businesses.length === 0 && <TourOffer />}
-            </Stack>
+            <Suspense fallback={null}>
+              <FirstRun />
+            </Suspense>
           )
         ) : (
           <>
@@ -1850,7 +1822,7 @@ function CoachScreen({
                   void send()
                 }
               }}
-              placeholder={t.messagePlaceholder}
+              placeholder={ws.active ? simple.askPlaceholder : t.messagePlaceholder}
               disabled={voice.state !== 'idle'}
               aria-label={visible ? t.message : undefined}
               maxLength={2000}

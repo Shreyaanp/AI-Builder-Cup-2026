@@ -40,3 +40,4 @@ export const coachDeferred = [
   SupplyChatCard.preload,
   PaymentCard.preload,
 ]
+export const FirstRun = deferred(() => import('./FirstRun').then((m) => m.FirstRun))

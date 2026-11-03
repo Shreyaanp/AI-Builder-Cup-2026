@@ -105,10 +105,8 @@ for (const [width, height] of [
         await page.getByLabel('मैं शर्तों से सहमत हूँ').check()
         await page.getByLabel('मैंने गोपनीयता सूचना पढ़ी है').check()
         await page.getByRole('button', { name: 'सहमत होकर आगे बढ़ें' }).click()
-        await page
-          .getByRole('banner')
-          .getByRole('button', { name: 'दुकान की जानकारी जोड़ें' })
-          .click()
+        // First run: the start card's typed way in (simplify batch 5: no top-bar "+").
+        await page.getByRole('button', { name: 'दुकान का नाम लिखें' }).click()
         await page.getByRole('button', { name: 'शुरू करें', exact: true }).click()
         const message = page.getByLabel('संदेश', { exact: true })
         await expect(message).toBeEnabled()

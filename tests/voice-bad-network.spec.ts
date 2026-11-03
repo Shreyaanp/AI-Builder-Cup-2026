@@ -1,6 +1,7 @@
 import { expect, test, type Page, type WebSocket } from '@playwright/test'
 import { FIRST_QUESTION } from './newShopTopics.js'
 import { enter, localOnly } from './stories/support.js'
+import { startNewShop } from './support/newShop.js'
 
 // Owner decision (17 Oct): voice must survive a bad network ("I cannot afford this feature not
 // to work"). Production logs showed the socket closing from a phone network drop. The phone's
@@ -80,7 +81,7 @@ test('a throttled, dropped and backgrounded network: voice resumes silently, not
   }
 
   await enter(page)
-  await page.getByRole('banner').getByRole('button', { name: 'Add shop details' }).click()
+  await startNewShop(page)
   await page.getByRole('button', { name: 'Let’s begin' }).click()
   const log = page.getByRole('log')
   const orb = page.getByTestId('voice-orb').first()

@@ -76,7 +76,7 @@ export function TodaySupply({
           columnGap: 3,
           rowGap: 1,
           px: 1,
-          py: 2,
+          py: 1,
           minHeight: 56,
         }}
       >

@@ -4,6 +4,7 @@ import { enter, image, localOnly } from './stories/support.js'
 import { FIRST_QUESTION } from './newShopTopics.js'
 import { measure } from './ux/measure.js'
 import { writeFileSync } from 'node:fs'
+import { startNewShop } from './support/newShop.js'
 
 test.use({ reducedMotion: 'reduce' })
 
@@ -19,7 +20,7 @@ for (const outcome of ['empty', 'unavailable', 'refused'] as const) {
       }
     })
     await enter(page)
-    await page.getByRole('banner').getByRole('button', { name: 'Add shop details' }).click()
+    await startNewShop(page)
     await page.getByRole('button', { name: 'Let’s begin' }).click()
     await expect(page.getByRole('log')).toContainText(FIRST_QUESTION)
     await page.getByRole('button', { name: 'Type instead', exact: true }).click()

@@ -1,45 +1,37 @@
 import { useState, type ReactNode } from 'react'
-import { Box, Button, CircularProgress, Typography, useTheme } from '@mui/material'
-import { Sparkles } from 'lucide-react'
+import { Box, Button, CircularProgress, Typography } from '@mui/material'
+import { ChevronRight } from 'lucide-react'
 import { useLocale } from '../../state/hooks'
 import { useWorkspace } from '../v1/workspaceContext'
 import { tourCopy } from './strings'
 import { startDemoTour } from './tourActions'
+import { useFirstRunCopy } from '../v1/today/firstRunCopy'
 
 // The tour's entry points live apart from the walkthrough itself (Tour.tsx), so the owner's first
 // screen can offer the tour without loading it (OB-165).
 
-/** Offer card for owners with no shop yet: creates the filled demo shop and starts the tour. */
+/** First run, no shop yet: a quiet link under the start card that opens the filled demo shop and
+ * starts the tour (SIMPLIFY §3.3: one card, the demo one tap away). */
 export function TourOffer() {
   const ws = useWorkspace()
   const t = tourCopy(useLocale())
-  const roles = useTheme().material
+  const s = useFirstRunCopy()
   const [busy, setBusy] = useState(false)
   const [failed, setFailed] = useState(false)
   return (
-    <Box
-      sx={{
-        p: 4,
-        borderRadius: '24px',
-        bgcolor: roles.secondaryContainer,
-        color: roles.onSecondaryContainer,
-      }}
-    >
-      <Typography variant="titleMedium">{t.offerTitle}</Typography>
-      <Typography variant="bodyMedium" sx={{ mt: 1 }}>
-        {t.offerBody}
-      </Typography>
+    <Box>
       <Button
-        variant="contained"
-        sx={{ mt: 3 }}
         disabled={busy}
-        startIcon={busy ? <CircularProgress size={16} /> : <Sparkles size={18} />}
+        endIcon={
+          busy ? <CircularProgress size={16} /> : <ChevronRight size={18} aria-hidden="true" />
+        }
         onClick={() => void startDemoTour(ws, setBusy, setFailed)}
+        sx={{ minHeight: 48, px: 1 }}
       >
-        {busy ? t.preparing : t.offerButton}
+        {busy ? t.preparing : s.seeDemo}
       </Button>
       {failed && (
-        <Typography variant="bodySmall" color="error" sx={{ mt: 1 }} role="alert">
+        <Typography variant="bodyMedium" color="error" sx={{ mt: 1 }} role="alert">
           {t.failed}
         </Typography>
       )}

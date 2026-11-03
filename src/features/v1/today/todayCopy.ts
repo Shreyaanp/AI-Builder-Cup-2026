@@ -101,7 +101,7 @@ const copy: Record<Locale, TodayCopy> = {
     howToday: 'How did today go?',
     festival: (name, days) =>
       days === 0 ? `${name} is today: busy day ahead` : `${name} in ${days} days: plan your stock`,
-    rain: (p) => `Rain likely today (${p}%): plan your prep`,
+    rain: (p) => `Rain likely today (${p}%)`,
     busiest: (weekday, n, item) => `Usually your busiest day: ${n} ${item} last ${weekday}`,
     festivals: {
       diwali: 'Diwali',
@@ -159,7 +159,7 @@ const copy: Record<Locale, TodayCopy> = {
       days === 0
         ? `आज ${name} है: व्यस्त दिन होगा`
         : `${days} दिन में ${name}: स्टॉक की तैयारी करें`,
-    rain: (p) => `आज बारिश की संभावना (${p}%): तैयारी उसी हिसाब से करें`,
+    rain: (p) => `आज बारिश की संभावना (${p}%)`,
     busiest: (weekday, n, item) => `आम तौर पर आपका सबसे व्यस्त दिन: पिछले ${weekday} ${n} ${item}`,
     festivals: {
       diwali: 'दिवाली',

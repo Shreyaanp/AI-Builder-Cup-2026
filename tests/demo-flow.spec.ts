@@ -23,7 +23,7 @@ async function open(page: Page) {
   await page.getByLabel('I agree to the Terms').check()
   await page.getByLabel('I have read the Privacy Notice').check()
   await agree.click()
-  await expect(page.getByRole('heading', { name: 'What shall we work on today?' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Let’s put your shop online' })).toBeVisible()
 }
 
 test('demo: photo, price correction, customer page and availability', async ({

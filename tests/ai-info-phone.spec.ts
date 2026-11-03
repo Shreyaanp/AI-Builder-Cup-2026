@@ -2,6 +2,7 @@ import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
 import { enter, localOnly, seedShop } from './stories/support.js'
 import { shopMore } from './support/shopMore.js'
+import { startNewShop } from './support/newShop.js'
 
 test.use({ viewport: { width: 360, height: 800 }, reducedMotion: 'reduce' })
 
@@ -46,11 +47,14 @@ test('360px: AI help stays contextual across setup, Today, chat and imports', as
   test.setTimeout(120_000)
   await localOnly(page)
   await enter(page)
-  await page.getByRole('banner').getByRole('button', { name: 'Add shop details' }).click()
+  await startNewShop(page)
   await fits(page)
   await explain(page, 'voice', 'Gemini Live')
   await page.getByRole('button', { name: 'Cancel', exact: true }).click()
 
+  // The evening Today drops the forecast line, so pin the clock to mid-morning in the browser's zone.
+  const day = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Singapore' }).format(new Date())
+  await page.clock.setFixedTime(new Date(`${day}T10:00:00+08:00`))
   await page.route('**/api/v1/businesses/*/today', async (route) => {
     const response = await route.fetch()
     await route.fulfill({
@@ -60,7 +64,15 @@ test('360px: AI help stays contextual across setup, Today, chat and imports', as
   })
   await seedShop(page)
   await expect(page.getByTestId('today-pulse')).toBeVisible()
-  await explain(page, 'forecast', 'based on how your shop sold in recent weeks')
+  // Simplify batch 5: Today has no help line of its own; the coach's ⋯ sheet explains the
+  // forecast under the same "How this works".
+  await page.getByRole('button', { name: 'More options', exact: true }).click()
+  const sheet = page.getByRole('dialog', { name: 'Start again' })
+  await sheet.getByRole('button', { name: 'How this works' }).click()
+  await expect(sheet).toContainText('based on how your shop sold in recent weeks')
+  await fits(page)
+  await sheet.getByRole('button', { name: 'Cancel', exact: true }).click()
+  await expect(sheet).toHaveCount(0)
   await page.getByTestId('today-pulse').click()
   await expect(page.getByRole('log')).toContainText('I received your note')
   await explain(page, 'coach', 'The coach uses Google’s Gemini AI')
@@ -134,7 +146,7 @@ test('360px: Hindi help uses Hindi copy and closes with Escape', async ({ page }
   )
   await page.reload()
   await page.getByRole('button', { name: 'स्थानीय प्रीव्यू जारी रखें' }).click()
-  await page.getByRole('banner').getByRole('button', { name: 'दुकान की जानकारी जोड़ें' }).click()
+  await page.getByRole('button', { name: 'दुकान का नाम लिखें' }).click()
   const info = page.getByTestId('ai-info')
   await fits(page)
   await info.getByRole('button', { name: 'यह कैसे काम करता है' }).click()
