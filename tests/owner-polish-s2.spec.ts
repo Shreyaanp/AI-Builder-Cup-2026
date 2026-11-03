@@ -49,10 +49,12 @@ test('O-8: deleting data in the demo says plainly it is pretend', async ({ page 
 
 test('O-9: How this works opens the forecast explainer', async ({ page }, info) => {
   await openDemo(page, info)
-  await page.getByRole('button', { name: 'How this works' }).first().tap()
-  const sheet = page.getByRole('dialog', { name: 'How this works' })
+  // Simplify batch 5: Coach Today has no help line; the coach's ⋯ sheet explains the forecast.
+  await page.getByRole('button', { name: 'More options', exact: true }).tap()
+  const sheet = page.getByRole('dialog', { name: 'Start again' })
+  await sheet.getByRole('button', { name: 'How this works' }).tap()
   await expect(sheet).toContainText('based on how your shop sold in recent weeks')
-  await sheet.getByRole('button', { name: 'Close', exact: true }).tap()
+  await sheet.getByRole('button', { name: 'Cancel', exact: true }).tap()
   await expect(sheet).toHaveCount(0)
 })
 
