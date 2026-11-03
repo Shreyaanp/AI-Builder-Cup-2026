@@ -1,3 +1,4 @@
+import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
 import { enter, localOnly } from './stories/support.js'
 
@@ -136,10 +137,40 @@ for (const [width, height] of [
       expect(view.filled).toHaveLength(1)
       expect(view.tappable).toBeLessThanOrEqual(12)
       expect(await fitsWidth(page)).toBe(true)
+      // At most 3 text sizes on Today, none under 14 px (PHONE-UX rule 5).
+      const sizes = await page.evaluate(() => {
+        const found = new Set<number>()
+        const root = document.querySelector('[data-testid="today"]')!
+        const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
+        for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+          const el = node.parentElement
+          if (!node.textContent?.trim() || !el || !el.checkVisibility()) continue
+          found.add(Math.round(parseFloat(getComputedStyle(el).fontSize)))
+        }
+        return [...found].sort((a, b) => a - b)
+      })
+      expect(sizes.length, `text sizes ${sizes.join(', ')}`).toBeLessThanOrEqual(3)
+      expect(sizes[0]).toBeGreaterThanOrEqual(14)
+      const axe = await new AxeBuilder({ page })
+        .include('[data-testid="today"]')
+        .withTags(['wcag2a', 'wcag2aa'])
+        .analyze()
+      expect(axe.violations).toEqual([])
       await page.screenshot({ path: test.info().outputPath(`today-${width}-${scheme}.png`) })
     })
   }
 }
+
+test('desktop 1280: Coach Today and the top bar keep their one ⋯ and fit', async ({ page }) => {
+  await openDemo(page, 20, 30, 1280, 800)
+  const view = await todayView(page)
+  expect(view.filled).toEqual(['Close the day'])
+  await expect(
+    page.locator('header[data-app-header]').getByRole('button', { name: 'More options' }),
+  ).toBeVisible()
+  expect(await fitsWidth(page)).toBe(true)
+  await page.screenshot({ path: test.info().outputPath('today-1280.png') })
+})
 
 test('a chip sends its sentence; What can I ask? opens every example', async ({ page }) => {
   await openDemo(page, 10)
