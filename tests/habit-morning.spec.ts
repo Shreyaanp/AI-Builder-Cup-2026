@@ -1,3 +1,4 @@
+import { saveCloseDay } from './closeDaySupport.js'
 import { expect, test, type Page, type Request } from '@playwright/test'
 import { enter, localOnly } from './stories/support.js'
 import { growTool, openBuyStock } from './support/grow.js'
@@ -212,7 +213,7 @@ test('a promise set at close leads next morning; "Not today" clears it and it ne
   await dialog.locator('input[name=amount]').fill('2490')
   await dialog.locator('form button[type=submit]').click()
   await dialog.getByRole('button', { name: /^Review/ }).click()
-  await dialog.getByRole('button', { name: 'Save day' }).click()
+  await saveCloseDay(dialog)
   const block = dialog.getByTestId('close-tomorrow')
   await expect(block.getByRole('heading', { name: 'Tomorrow' })).toBeVisible({ timeout: 20_000 })
   // Both paths are named: the screen's own control and the chat phrase.
@@ -308,7 +309,7 @@ test('chat and screen both set a promise; doing it marks it done (offline coach)
   await dialog.locator('input[name=amount]').fill('1000')
   await dialog.locator('form button[type=submit]').click()
   await dialog.getByRole('button', { name: /^Review/ }).click()
-  await dialog.getByRole('button', { name: 'Save day' }).click()
+  await saveCloseDay(dialog)
   const block = dialog.getByTestId('close-tomorrow')
   await expect(block).toBeVisible({ timeout: 20_000 })
   await block.getByLabel('One thing for tomorrow').fill('Call Ganesh about cups')
