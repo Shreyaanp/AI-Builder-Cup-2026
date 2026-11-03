@@ -3,13 +3,13 @@ import { Box, Button, Stack, Typography } from '@mui/material'
 import { useDemoCopy } from '../frontdoors/strings'
 
 /**
- * The notice above every demo screen: what this is and Exit demo, on one 40 px line (SIMPLIFY
- * §3.14). The customer side also links back to the owner's view; on the owner side "Browse shops"
- * is in the shop switcher. The customer demo's steps open the real shop page and Passport; they
- * carry the same banner, so Exit demo is one tap away on every step. Buttons keep a 48 px hit
- * area by reaching 4 px past the line above and below.
+ * The notice above every demo screen: what this is and Exit demo, on one line (SIMPLIFY §3.14).
+ * The line is as tall as its 48 px buttons: a 40 px line would push their tap area into the top
+ * bar. The customer side also links back to the owner's view; on the owner side "Browse shops" is
+ * in the shop switcher. The customer demo's steps open the real shop page and Passport; they carry
+ * the same banner, so Exit demo is one tap away on every step.
  */
-const action = { minHeight: 48, my: -1, minWidth: 0, px: 1, flexShrink: 0 }
+const action = { minHeight: 48, minWidth: 0, px: 1, flexShrink: 0 }
 
 export function DemoBanner({
   customer,
@@ -33,8 +33,6 @@ export function DemoBanner({
       sx={{
         px: 4,
         pt: 'env(safe-area-inset-top)',
-        position: 'relative',
-        zIndex: (theme) => theme.zIndex.appBar + 1,
         bgcolor: (theme) => theme.material.secondaryContainer,
         color: (theme) => theme.material.onSecondaryContainer,
       }}
@@ -42,7 +40,7 @@ export function DemoBanner({
       {/* Keep the whole notice readable; move actions below it when space is tight. */}
       <Stack
         direction="row"
-        sx={{ alignItems: 'center', flexWrap: 'wrap', columnGap: 2, minHeight: 40 }}
+        sx={{ alignItems: 'center', flexWrap: 'wrap', columnGap: 2, minHeight: 48 }}
       >
         <Typography
           variant="bodyMedium"

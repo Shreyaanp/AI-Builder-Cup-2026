@@ -231,14 +231,18 @@ test('top bar: the shop and one ⋯ on Coach; at most 2 buttons elsewhere; Brows
   await expect(sheet.getByRole('button', { name: 'Add product' })).toHaveCount(0)
 })
 
-test('demo banner: one 40 px line; Exit demo keeps a 48 px target', async ({ page }) => {
+test('demo banner: one line as tall as its 48 px Exit demo target, at every phone width', async ({
+  page,
+}) => {
   for (const width of [360, 390, 412]) {
     await page.setViewportSize({ width, height: 844 })
     await page.goto('/demo')
     const banner = page.getByTestId('demo-banner')
     await expect(banner).toContainText('Demo shop · sample data', { timeout: 60_000 })
     const box = (await banner.boundingBox())!
-    expect(box.height, `${width}: banner height`).toBeLessThanOrEqual(40.5)
+    // One line (it wrapped to two at 360 with Browse shops in it); 40 px would push the 48 px
+    // target into the top bar, which the UX gate rejects.
+    expect(box.height, `${width}: banner height`).toBeLessThanOrEqual(48.5)
     const exit = (await banner.getByRole('button', { name: 'Exit demo' }).boundingBox())!
     expect(exit.height).toBeGreaterThanOrEqual(48)
     expect(exit.width).toBeGreaterThanOrEqual(48)
