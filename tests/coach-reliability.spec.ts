@@ -95,7 +95,10 @@ test('OB-72 resume makes at most four attempts and stop cancels recovery', async
   // Compile the lazily imported stream module before the time-bounded browser exercise.
   const streamModule = await page.request.get('/src/api/stream.ts')
   expect(streamModule.ok()).toBe(true)
-  const result = await page.evaluate(async () => {
+  // OB-258: the retries wait 0.5 + 1 + 2 + 4 s. On a busy machine those real waits stretched
+  // past the test timeout, so the exercise runs on a fake clock moved on until it settles.
+  await page.clock.install()
+  const exercise = page.evaluate(async () => {
     const modulePath = '/src/api/stream.ts'
     const { streamCoach } = await import(/* @vite-ignore */ modulePath)
     const originalFetch = window.fetch
@@ -133,6 +136,10 @@ test('OB-72 resume makes at most four attempts and stop cancels recovery', async
       window.fetch = originalFetch
     }
   })
+  let settled = false
+  void exercise.finally(() => (settled = true)).catch(() => undefined)
+  while (!settled) await page.clock.runFor(1_000)
+  const result = await exercise
   expect(result.attempts).toBe(5)
   expect(result.cursors).toEqual([null, 'turn:2', 'turn:2', 'turn:2', 'turn:2', null])
   expect(result.starts).toBe(2)
