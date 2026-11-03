@@ -749,6 +749,7 @@ def export() -> dict[str, object]:
                 "id": f.id,
                 "title": f.title,
                 "path": list(f.path),
+                "path_hi": [HINDI_LABELS.get(step, step) for step in f.path],
                 "ask": f.ask,
                 "ask_hi": f.ask_hi,
                 "screen": f.screen,
