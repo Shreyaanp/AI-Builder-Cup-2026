@@ -10,7 +10,14 @@ import { expect, test, type Locator, type Page } from '@playwright/test'
 //     finds the named element on screen.
 // Nearby demand, Send a rider and Reminders were screen-only; the chat now opens them.
 
-type Feature = { id: string; path: string[]; ask: string; ask_hi: string; screen: string }
+type Feature = {
+  id: string
+  path: string[]
+  path_hi: string[]
+  ask: string
+  ask_hi: string
+  screen: string
+}
 const guide = JSON.parse(
   readFileSync(new URL('../src/features/v1/appGuide.json', import.meta.url), 'utf-8'),
 ) as { tabs: string[]; features: Feature[] }
@@ -23,9 +30,10 @@ const TOPICS = JSON.parse(
 const LANGS = ['en', 'hi'] as const
 type Lang = (typeof LANGS)[number]
 const phrase = (feature: Feature, lang: Lang) => (lang === 'en' ? feature.ask : feature.ask_hi)
-/** The reply's closing line: the same path, in the phrase's language (labels stay English). */
+/** The reply's closing line: the same path in the phrase's language, with the Hindi app's own
+ * labels in Hindi (OB-261: no English breadcrumbs). */
 const pathLine = (feature: Feature, lang: Lang) =>
-  lang === 'en' ? `Next, open ${where(feature)}.` : `अब ${where(feature)} खोलें।`
+  lang === 'en' ? `Next, open ${where(feature)}.` : `अब ${feature.path_hi.join(' → ')} खोलें।`
 
 // Rows that are reachable in 2 taps but still sit below the first view at 390 x 844. Batch 3 put
 // every Shop row in the first view, and batch 4a every Grow row and More tools.
@@ -196,7 +204,7 @@ async function ask(page: Page, text: string, expected = '') {
             const texts = nodes.map((node) => node.textContent ?? '')
             let echo = -1
             texts.forEach((t, i) => {
-              if (t.includes('You:') && t.includes(said)) echo = i
+              if ((t.includes('You:') || t.includes('आप:')) && t.includes(said)) echo = i
             })
             if (echo < 0) return ''
             return want ? (texts.slice(echo + 1).find((t) => t.includes(want)) ?? '') : texts[echo]!
@@ -209,8 +217,20 @@ async function ask(page: Page, text: string, expected = '') {
   return found
 }
 
+/** "Reply in English", asked in the Hindi app: the chat switches it back (the same two paths). */
+async function backToEnglish(page: Page) {
+  const hindi = page.getByRole('textbox', { name: 'संदेश', exact: true })
+  if (!(await hindi.count())) return
+  await hindi.fill('Reply in English')
+  await page.getByRole('button', { name: 'भेजें', exact: true }).click()
+  await expect(page.getByRole('textbox', { name: 'Message', exact: true })).toBeVisible({
+    timeout: 30_000,
+  })
+}
+
 // The demo allows 30 coach messages per visitor in ten minutes; each tab's phrases go in groups
-// of 14 features (English and Hindi, at most 28 messages), one visitor per group. Shop has more
+// of 14 features (English and Hindi, at most 28 messages, plus 2 to switch back to English after
+// "Reply in Hindi"), one visitor per group. Shop has more
 // than 14 since the stamp card moved there (simplify batch 3).
 const PER_VISITOR = 14
 for (const name of ['Coach', 'Shop', 'Grow', 'You']) {
@@ -230,6 +250,8 @@ for (const name of ['Coach', 'Shop', 'Grow', 'You']) {
             new RegExp(TOPICS[feature.id]![lang], 'i'),
           )
           if (await page.getByRole('dialog').count()) await closeAll(page)
+          // "Reply in Hindi" really switches the app now (S2-9): back to English for the rest.
+          if (feature.id === 'reply_language') await backToEnglish(page)
         }
         // Screens the coach opens itself are checked below; close them to follow the path by hand.
         if (await page.getByRole('dialog').count()) await closeAll(page)

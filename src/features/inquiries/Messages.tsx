@@ -674,7 +674,7 @@ export function Messages({ businessId }: { businessId: string }) {
         id="messages-title"
         component="h2"
         variant="titleLarge"
-        sx={thread ? visuallyHidden : undefined}
+        sx={thread ? visuallyHidden : { pr: { sm: 12, xs: 0 } }}
       >
         {t.title} ({unreadCount})
       </Typography>
@@ -709,7 +709,7 @@ export function Messages({ businessId }: { businessId: string }) {
       )}
       {thread ? (
         <Stack spacing={2}>
-          <Stack direction="row" sx={{ alignItems: 'center', gap: 1 }}>
+          <Stack direction="row" sx={{ alignItems: 'center', gap: 1, pr: { sm: 12, xs: 0 } }}>
             <IconButton
               aria-label={t.back}
               onClick={() => {

@@ -183,6 +183,35 @@ CASES: list[Case] = [
         known="#531 / #527: no location action; the pin never moves",
     ),
     Case(
+        "change_language_by_chat",
+        "shop_details",
+        "Owner audit 3 Nov (S2-9): 'Change language to Hindi' got the examples list",
+        "chai_stall",
+        [
+            Turn(
+                "Change language to Hindi",
+                calls=[
+                    Call("set_reply_language", {"language": "~hi|hindi"}, replay={"language": "hi"})
+                ],
+                rubric="Switches the app and coach to Hindi and confirms in one line.",
+            )
+        ],
+    ),
+    Case(
+        "what_first_today",
+        "insights",
+        "Owner audit 3 Nov (OB-264): 'What should I do first today?' at 10 AM said close the day",
+        "kirana_with_po",
+        [
+            Turn(
+                "What should I do first today?",
+                **QUESTION_SAFE,
+                rubric="Leads with what needs the owner now (a waiting reply, low stock, prep) by "
+                "time of day; close the day only near closing. Changes nothing.",
+            )
+        ],
+    ),
+    Case(
         "hinglish_closed_today",
         "shop_details",
         "Owner voice (Hinglish): 'aaj dukaan band hai'",
@@ -302,6 +331,103 @@ CASES: list[Case] = [
                     )
                 ],
                 card=True,
+            )
+        ],
+    ),
+    Case(
+        "hinglish_sold_out",
+        "menu",
+        "Owner audit 3 Nov (OB-262): 'samosa khatam ho gaya' got the examples list",
+        "chai_stall",
+        [
+            Turn(
+                "samosa khatam ho gaya",
+                calls=[
+                    Call(
+                        "propose_products",
+                        {"items": [{"name": "~samosa", "available": False}]},
+                        replay={"items": [{"name": "Samosa", "available": False}]},
+                    )
+                ],
+                forbid=("prepare_order", "draft_reorder", "find_suppliers"),
+                card=True,
+                rubric="One sold-out card for Samosa; never a supplier or an order.",
+            )
+        ],
+    ),
+    Case(
+        "hindi_sold_out_never_orders",
+        "menu",
+        "Owner audit 3 Nov (OB-261): 'समोसा खत्म हो गया' drafted a tea-dust order",
+        "chai_stall",
+        [
+            Turn(
+                "समोसा खत्म हो गया",
+                calls=[
+                    Call(
+                        "propose_products",
+                        {"items": [{"name": "~samosa", "available": False}]},
+                        replay={"items": [{"name": "Samosa", "available": False}]},
+                    )
+                ],
+                forbid=("prepare_order", "draft_reorder", "find_suppliers"),
+                card=True,
+                reply_not=[r"[A-Za-z]{4,} →"],
+                rubric="Marks Samosa sold out for review, in Hindi; never drafts a purchase.",
+            )
+        ],
+    ),
+    Case(
+        "hinglish_two_in_one",
+        "menu",
+        "Owner audit 3 Nov (OB-262): a price and a sold out in one Hinglish sentence",
+        "chai_stall",
+        [
+            Turn(
+                "masala chai ab 22 ka hai aur samosa khatam",
+                calls=[
+                    Call(
+                        "propose_products",
+                        {
+                            "items": [
+                                {"name": "~masala chai", "price": 22},
+                                {"name": "~samosa", "available": False},
+                            ]
+                        },
+                        replay={
+                            "items": [
+                                {"name": "Masala chai", "price": 22},
+                                {"name": "Samosa", "available": False},
+                            ]
+                        },
+                    )
+                ],
+                card=True,
+                extra="one_products_call",
+            )
+        ],
+    ),
+    Case(
+        "tour_example_which_chai",
+        "menu",
+        "The tour's own example (OB-262) on a shop with two chais: 'Chai is 20 rupees now, "
+        "samosa sold out'",
+        "chai_stall",
+        [
+            Turn(
+                "Chai is 20 rupees now, samosa sold out",
+                calls=[
+                    Call(
+                        "propose_products",
+                        {"items": [{"name": "~samosa", "available": False}]},
+                        replay={"items": [{"name": "Samosa", "available": False}]},
+                    )
+                ],
+                forbid=("prepare_order", "draft_reorder"),
+                card=True,
+                ask=True,
+                rubric="Samosa sold out for review, and one short question: cutting or masala "
+                "chai at ₹20? Never guesses the chai, never drops it silently.",
             )
         ],
     ),
