@@ -90,8 +90,8 @@ export function TodayChips({
   const t = useToolCopy()
   const s = useSimpleCopy()
   const tt = useTodayCopy()
-  const ws = useWorkspace()
   const locale = useLocale()
+  const ws = useWorkspace()
   const examples = guideExamples(t, ws.active, ws.products, locale)
   const said = (id: string) => examples.find((example) => example.id === id)?.sentence ?? ''
   const make = { label: s.chipMake, sentence: said('forecast') }
