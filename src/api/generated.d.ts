@@ -6082,9 +6082,9 @@ export interface components {
             /**
              * Mode
              * @default template
-             * @enum {string}
+             * @constant
              */
-            mode: "template" | "gemini";
+            mode: "template";
         };
         /** Requirement */
         Requirement: {

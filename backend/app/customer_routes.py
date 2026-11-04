@@ -26,7 +26,7 @@ from .limits import client_ip, enforce_limits
 from .merchant import public_projection
 from .merchant_routes import consented_owner, owner, store
 from .product_source import source_of
-from .reply_suggestions import ReplySuggestions, suggest, templates
+from .reply_suggestions import ReplySuggestions, templates
 from .threads import thread_signals, token_hash
 
 router = APIRouter(prefix="/api/v1")
@@ -214,22 +214,8 @@ async def reply_suggestions(
     shop = public_projection(business_id, fields, inventory)
     for product, item in zip(shop["products"], inventory, strict=True):
         product["source"] = source_of(item, fields.get("category", ""))
-    demo = bool(fields.get("demo")) or uid.startswith("public-demo-")
-    if not demo:
-        try:
-            await enforce_limits(request, [("thread:suggest", uid)])
-        except HTTPException as error:
-            if error.status_code != 429:
-                raise
-            # Over the limit the owner still gets the fixed drafts; only the model waits.
-            return templates(shop, humans[-1].text)
-    return await suggest(
-        request.app.state.customer_answers,
-        shop,
-        humans[-1].text,
-        demo=demo,
-        customer=record.name or "",
-    )
+    # The fixed templates for every shop: no model text can reach a suggestion (OB-326).
+    return templates(shop, humans[-1].text)
 
 
 async def translate_record(

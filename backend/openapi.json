@@ -16830,10 +16830,7 @@
           },
           "mode": {
             "type": "string",
-            "enum": [
-              "template",
-              "gemini"
-            ],
+            "const": "template",
             "title": "Mode",
             "default": "template"
           }

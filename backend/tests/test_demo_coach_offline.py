@@ -603,19 +603,17 @@ def test_best_sellers_use_the_last_7_days_so_monday_is_never_empty():
 
 
 def test_OB_303_demo_drafts_replies_and_prepares_a_dictated_reply_offline(app, monkeypatch):  # noqa: N802, F811
-    """OB-303: Priya's question gets three template drafts (never the model); "reply to Priya:
+    """OB-303: Priya's question gets three template drafts (never a model); "reply to Priya:
     yes we have samosa" becomes a reply card that waits for the owner's Send."""
-    from app import reply_suggestions
+    from app import text_model
 
-    async def model_called(*_: object, **__: object) -> list[str]:
+    async def model_called(*_: object, **__: object) -> object:
         pytest.fail("The public demo asked the model for reply drafts")
 
-    # A spy on the model path itself (it would swallow a raising client into templates), with
-    # the model switched on so only the demo check keeps it away.
-    monkeypatch.setattr(reply_suggestions, "model_replies", model_called)
+    # Suggestions are templates only (OB-326); a spy on the text model proves none is asked.
+    monkeypatch.setattr(text_model, "generate", model_called)
     with TestClient(app) as client:
         app.state.v1_settings.public_demo_enabled = True
-        monkeypatch.setattr(app.state.customer_answers.settings, "coach_mode", "gemini")
         app.state.rate_limiter.counters.clear()
         session = open_demo(client).json()["session_id"]
         bid = owner(client, session, "businesses").json()[0]["id"]

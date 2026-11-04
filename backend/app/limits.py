@@ -84,8 +84,6 @@ LIMITS: dict[str, tuple[tuple[int, int], ...]] = {
     "helpful": ((30, 600),),
     "today": ((30, 60), (600, 86_400)),
     "thread:translate": ((30, 60),),
-    # One-tap reply drafts (OB-303): the text model for real shops, once per opened question.
-    "thread:suggest": ((30, 60), (600, 86_400)),
     # A-4: no cost; many phones share one IP (carrier NAT, office wifi, a demo room).
     "bootstrap": ((300, 60),),
     "consent": ((120, 60),),
@@ -124,8 +122,6 @@ PAID_OWNER_ACTIONS = frozenset(
         "supply:read",
         # Every upload is moderated with paid Vision before it is saved.
         "gallery",
-        # One-tap reply drafts use the text model for real shops (OB-303).
-        "thread:suggest",
     }
 )
 
