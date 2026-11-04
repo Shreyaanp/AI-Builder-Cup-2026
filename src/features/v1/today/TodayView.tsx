@@ -104,8 +104,8 @@ export function TodayView({
       </Stack>
     )
   }
-  // In the evening the card sits low, in the thumb zone: "Close the day" stays its first row and
-  // its one filled button (SIMPLIFY Batch 5; PHONE-UX rule 1).
+  // The card sits low at every hour, so its one filled button is in the thumb zone (PHONE-UX
+  // rule 1, OB-315); in the evening "Close the day" is its first row (SIMPLIFY Batch 5).
   const evening = plan.needs[0]?.kind === 'closeDay'
   const needs = (
     <NeedsCard
@@ -144,16 +144,15 @@ export function TodayView({
           progress={plan.progress}
         />
       )}
-      {/* One card, one filled button: the first row is the lead action, and stock (the supply
-          row with its run-out day, low items and supply exceptions) lives only here. Setup steps
-          left are rows in it too, so the setup bar is not a third progress element. */}
-      {!evening && needs}
       {firstCustomers && ws.shareUrl && (
         <FirstCustomers url={ws.shareUrl} name={shop.fields.name} />
       )}
       {(plan.pulse || plan.forecast) && <PulseCard plan={plan} actions={actions} />}
       {chips?.(plan.part === 'evening')}
-      {evening && <Box sx={{ mt: 'auto' }}>{needs}</Box>}
+      {/* One card, one filled button: the first row is the lead action, and stock (the supply
+          row with its run-out day, low items and supply exceptions) lives only here. Setup steps
+          left are rows in it too, so the setup bar is not a third progress element. */}
+      <Box sx={{ mt: 'auto' }}>{needs}</Box>
     </Box>
   )
 }
