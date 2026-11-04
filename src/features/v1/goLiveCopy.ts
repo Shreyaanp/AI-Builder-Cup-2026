@@ -1,5 +1,10 @@
 import { useLocale } from '../../state/hooks'
 import type { ListingField } from './goLive'
+import { useCopy } from './strings'
+import { useInChatCopy } from './inChatCopy'
+import { useNewShopCopy } from './newShopCopy'
+import { useOnboardingCopy } from './onboardingCopy'
+import { useRewardCopy } from '../rewards/strings'
 
 /** Go-live copy (issue #180): the review → list → congratulations path. */
 interface GoLiveCopy {
@@ -62,5 +67,28 @@ const copy: Record<'en' | 'hi', GoLiveCopy> = {
 }
 
 export function useGoLiveCopy(): GoLiveCopy {
-  return useLocale() === 'hi' ? copy.hi : copy.en
+  const locale = useLocale()
+  const t = useCopy()
+  const c = useInChatCopy()
+  const f = useNewShopCopy()
+  const o = useOnboardingCopy()
+  const rewards = useRewardCopy()
+  if (locale === 'en' || locale === 'hi') return copy[locale]
+  // Reuse the complete translated setup vocabulary rather than English fallback labels.
+  return {
+    review: o.review,
+    listShop: f.open,
+    listing: t.loading,
+    missingTitle: t.missing,
+    missing: { name: t.fields.name, category: t.fields.category, location: t.fields.location },
+    ask: { name: c.ask.name, category: c.ask.category },
+    setLocation: c.stepNames.location,
+    congrats: (name) => `${name} · ${f.ready}`,
+    yourLink: t.customerPage,
+    openShop: t.openPage,
+    share: t.share,
+    nextTitle: t.nextLabel,
+    addMenu: t.addProduct,
+    setUpStamps: rewards.stampCard,
+  }
 }
