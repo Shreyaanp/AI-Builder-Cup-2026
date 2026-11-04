@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { KeyboardEvent, ReactNode } from 'react'
 import {
   Alert,
@@ -32,8 +32,19 @@ import { useWorkspace } from './workspaceContext'
 import { useNewShopCopy } from './newShopCopy'
 import { useCopy } from './strings'
 import { shopRegion } from '../../region/region'
+import { useKeyboardViewport } from '../../hooks/useKeyboardViewport'
+import { useIdentity } from '../../auth/useIdentity'
+import { useLocale } from '../../state/hooks'
+import { readOnboardingDraft, saveOnboardingDraft } from './onboardingDraft'
 
 type Row = { key: string; name: string; price: string; unit: string }
+type ManualDraft = {
+  index: number
+  fields: Business['fields']
+  rows: Row[]
+  stamps: string
+  pin: { choice: PinChoice; label: string } | null
+}
 export type GuidedResult = {
   fields: Business['fields']
   products: Product[]
@@ -93,6 +104,13 @@ export function GuidedDetails({
   onDirty?: (dirty: boolean) => void
 }) {
   const { readOnlyMessage } = useWorkspace()
+  const { scope } = useIdentity()
+  const locale = useLocale()
+  const currencyNames = useMemo(() => new Intl.DisplayNames(locale, { type: 'currency' }), [locale])
+  const [recovery] = useState(() =>
+    mode === 'new' ? readOnboardingDraft<ManualDraft>(scope, 'manual') : null,
+  )
+  useKeyboardViewport()
   const t = useCopy()
   const c = useInChatCopy()
   const f = useNewShopCopy()
@@ -100,22 +118,29 @@ export function GuidedDetails({
   const rewards = useRewardCopy()
   const roles = useTheme().material
   const steps = mode === 'new' ? NEW_STEPS : EDIT_STEPS
-  const [index, setIndex] = useState(Math.max(0, steps.indexOf(startStep ?? steps[0]!)))
-  const step = steps[index]!
-  const [fields, setFields] = useState(initial)
-  const currency = fields.currency || shopRegion(fields).currency
-  const [rows, setRows] = useState<Row[]>(() =>
-    initialProducts.length
-      ? initialProducts.map((p) => ({
-          key: crypto.randomUUID(),
-          name: p.name,
-          price: String(toMajor(p.price, currency)),
-          unit: p.unit,
-        }))
-      : [newRow()],
+  const [index, setIndex] = useState(
+    recovery?.index ?? Math.max(0, steps.indexOf(startStep ?? steps[0]!)),
   )
-  const [stamps, setStamps] = useState(String(initial.stamps_needed ?? 8))
-  const [pin, setPin] = useState<{ choice: PinChoice; label: string } | null>(null)
+  const step = steps[index]!
+  const [fields, setFields] = useState(recovery?.fields ?? initial)
+  const currency = fields.currency || shopRegion(fields).currency
+  const [rows, setRows] = useState<Row[]>(
+    () =>
+      recovery?.rows ??
+      (initialProducts.length
+        ? initialProducts.map((p) => ({
+            key: crypto.randomUUID(),
+            name: p.name,
+            price: String(toMajor(p.price, currency)),
+            unit: p.unit,
+          }))
+        : [newRow()]),
+  )
+  const [stamps, setStamps] = useState(recovery?.stamps ?? String(initial.stamps_needed ?? 8))
+  const [pin, setPin] = useState<{ choice: PinChoice; label: string } | null>(recovery?.pin ?? null)
+  useEffect(() => {
+    if (mode === 'new') saveOnboardingDraft(scope, 'manual', { index, fields, rows, stamps, pin })
+  }, [mode, scope, index, fields, rows, stamps, pin])
   const [problem, setProblem] = useState('')
   const heading = useRef<HTMLHeadingElement>(null)
   const page = useRef<HTMLDivElement>(null)
@@ -209,8 +234,7 @@ export function GuidedDetails({
     setFields((current) => ({ ...current, ...patch }))
 
   const pressed = (on: boolean) => ({
-    height: 44,
-    fontSize: '0.95rem',
+    minHeight: 48,
     ...(on ? { bgcolor: roles.secondaryContainer, color: roles.onSecondaryContainer } : {}),
   })
 
@@ -361,7 +385,7 @@ export function GuidedDetails({
           >
             {[currency, ...CURRENCIES.filter((code) => code !== currency)].map((code) => (
               <MenuItem key={code} value={code}>
-                {code} · {currencySymbol(code)}
+                {currencyNames.of(code)} · {currencySymbol(code)}
               </MenuItem>
             ))}
           </TextField>
@@ -589,7 +613,8 @@ export function GuidedDetails({
       data-testid="guided-details"
       data-step={step}
       sx={{
-        minHeight: '100dvh',
+        height: 'calc(100dvh - var(--c-keyboard, 0px))',
+        overflowY: 'auto',
         display: 'flex',
         flexDirection: 'column',
         width: '100%',
@@ -649,7 +674,7 @@ export function GuidedDetails({
             onClick={() => go(at)}
             sx={{
               flexShrink: 0,
-              height: 40,
+              height: 48,
               ...(at === index
                 ? {
                     bgcolor: roles.primary,
@@ -661,15 +686,15 @@ export function GuidedDetails({
           />
         ))}
       </Box>
-      <Box key={step} sx={{ flex: 1, pt: 1, pb: 3, ...fieldFade }}>
+      <Box key={step} sx={{ flex: '1 0 auto', pt: 1, pb: 3, ...fieldFade }}>
         <Typography
           ref={heading}
           tabIndex={-1}
           component="h2"
+          variant="headlineMedium"
           sx={{
             fontFamily: HAND_FONT,
-            fontSize: { xs: '2.1rem', md: '2.6rem' },
-            lineHeight: 1.1,
+            lineHeight: 1.3,
             '&:focus': { outline: 'none' },
           }}
         >
@@ -689,6 +714,7 @@ export function GuidedDetails({
         sx={{
           position: 'sticky',
           bottom: 0,
+          flexShrink: 0,
           display: 'flex',
           gap: 1.5,
           pt: 2,

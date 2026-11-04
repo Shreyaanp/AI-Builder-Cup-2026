@@ -4097,6 +4097,8 @@ export interface components {
             currency?: string | null;
             /** Session Id */
             session_id?: string | null;
+            /** Turn Id */
+            turn_id?: string | null;
             /** Business Id */
             business_id?: string | null;
             /**

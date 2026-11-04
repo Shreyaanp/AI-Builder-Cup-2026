@@ -38,7 +38,13 @@ export function CurrentLocationAction({
   )
 }
 
-export function LocationPin({ fields }: { fields: Business['fields'] }) {
+export function LocationPin({
+  fields,
+  showCoordinates = true,
+}: {
+  fields: Business['fields']
+  showCoordinates?: boolean
+}) {
   const t = useCopy()
   const f = useNewShopCopy()
   const c = useInChatCopy()
@@ -70,9 +76,11 @@ export function LocationPin({ fields }: { fields: Business['fields'] }) {
             )}
           </Typography>
         )}
-        <Typography variant="bodySmall" color="text.secondary" sx={{ mt: 1 }}>
-          {fields.lat.toFixed(5)}, {fields.lng.toFixed(5)}
-        </Typography>
+        {showCoordinates && (
+          <Typography variant="bodySmall" color="text.secondary" sx={{ mt: 1 }}>
+            {fields.lat.toFixed(5)}, {fields.lng.toFixed(5)}
+          </Typography>
+        )}
       </Box>
     </Stack>
   )

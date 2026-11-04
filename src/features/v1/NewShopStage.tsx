@@ -30,7 +30,7 @@ export function NewShopReady({ preview = false }: { preview?: boolean }) {
   const [busy, setBusy] = useState(false)
   const [failed, setFailed] = useState(false)
   const name = ws.active?.fields.name ?? ''
-  const link = ws.shareUrl ? new URL(ws.shareUrl, location.origin).href : null
+  const link = ws.active?.public && ws.shareUrl ? new URL(ws.shareUrl, location.origin).href : null
   useChalkTimeline(root, (root) => {
     if (preview) return
     const shop = hits(root, '[data-ready-shop]')
@@ -53,10 +53,15 @@ export function NewShopReady({ preview = false }: { preview?: boolean }) {
       ref={root}
       sx={{
         width: '100%',
+        minHeight: '100dvh',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
         maxWidth: 780,
         mx: 'auto',
         textAlign: 'center',
-        py: { xs: 8, md: 14 },
+        pt: { xs: 4, md: 8 },
+        pb: 'calc(112px + env(safe-area-inset-bottom))',
         px: 4,
       }}
     >
@@ -79,16 +84,15 @@ export function NewShopReady({ preview = false }: { preview?: boolean }) {
         ref={title}
         tabIndex={-1}
         component="h1"
-        variant="displaySmall"
+        variant="headlineMedium"
         sx={{
           fontFamily: HAND_FONT,
-          fontSize: { xs: '3rem', md: '4rem' },
           // Caveat has tall ascenders: a tight line height made wrapped lines touch (OB-112).
           lineHeight: 1.3,
           '&:focus': { outline: 'none' },
         }}
       >
-        {g.congrats(name)}
+        {ws.active?.public ? g.congrats(name) : `${name} · ${f.ready}`}
       </Typography>
       <Typography
         variant="bodyLarge"
@@ -97,103 +101,151 @@ export function NewShopReady({ preview = false }: { preview?: boolean }) {
       >
         {t.newShopReadyBody}
       </Typography>
-      {link && (
-        <Stack data-testid="shop-link" sx={{ mt: 4, gap: 3, alignItems: 'center' }}>
-          <Typography
-            variant="bodyMedium"
-            aria-label={g.yourLink}
-            sx={{
-              px: 4,
-              py: 3,
-              borderRadius: `${shape.sm}px`,
-              bgcolor: roles.surfaceContainerHighest,
-              overflowWrap: 'anywhere',
-              fontFamily: 'monospace',
+      <Box component="details" sx={{ mt: 3 }}>
+        <Box
+          component="summary"
+          sx={{
+            minHeight: 48,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            color: roles.primary,
+            border: `1px solid ${roles.outline}`,
+            borderRadius: `${shape.full}px`,
+            typography: 'labelLarge',
+            '&:focus-visible': { outline: `2px solid ${roles.primary}`, outlineOffset: 2 },
+          }}
+        >
+          <Share2 size={20} aria-hidden="true" style={{ marginInlineEnd: 8 }} />
+          {g.share}
+        </Box>
+        {link && (
+          <Stack data-testid="shop-link" sx={{ mt: 4, gap: 3, alignItems: 'center' }}>
+            <Typography
+              component="a"
+              href={link}
+              target="_blank"
+              rel="noreferrer"
+              variant="bodyMedium"
+              aria-label={g.yourLink}
+              sx={{
+                px: 4,
+                py: 3,
+                borderRadius: `${shape.sm}px`,
+                bgcolor: roles.surfaceContainerHighest,
+                overflowWrap: 'anywhere',
+              }}
+            >
+              {g.yourLink}
+            </Typography>
+            <Box
+              data-testid="shop-qr"
+              sx={{
+                '& .shop-qr-name': { typography: 'headlineMedium' },
+                '& .shop-qr-caption': { typography: 'bodyLarge' },
+              }}
+            >
+              <ShopQr url={link} name={name} />
+            </Box>
+            <FirstCustomers url={link} name={name} />
+          </Stack>
+        )}
+        <Stack
+          sx={{
+            mt: 6,
+            p: 3,
+            gap: 2,
+            bgcolor: roles.surfaceContainer,
+            borderRadius: `${shape.lg}px`,
+            textAlign: 'start',
+          }}
+        >
+          {link && (
+            <Button
+              variant="outlined"
+              component="a"
+              href={link}
+              target="_blank"
+              rel="noreferrer"
+              startIcon={<ExternalLink size={22} />}
+            >
+              {g.openShop}
+            </Button>
+          )}
+          <Button
+            variant="outlined"
+            startIcon={<Share2 size={22} />}
+            onClick={() => setSharing(true)}
+          >
+            {g.share}
+          </Button>
+          <Typography component="h2" variant="titleSmall" color="text.secondary">
+            {g.nextTitle}
+          </Typography>
+          <Button
+            onClick={() => {
+              ws.dismissNewShopReady()
+              ws.go('shop')
             }}
           >
-            {link}
-          </Typography>
-          <Box data-testid="shop-qr">
-            <ShopQr url={link} name={name} />
-          </Box>
-          <FirstCustomers url={link} name={name} />
+            {g.addMenu}
+          </Button>
+          <Button
+            onClick={() => {
+              ws.dismissNewShopReady()
+              ws.go('grow')
+            }}
+          >
+            {g.setUpStamps}
+          </Button>
+          <Button
+            variant="outlined"
+            startIcon={<Camera size={22} />}
+            onClick={() => {
+              ws.dismissNewShopReady()
+              ws.requestPhoto()
+            }}
+          >
+            {f.photos}
+          </Button>
+          <Button
+            disabled={busy}
+            startIcon={<Sparkles size={22} />}
+            onClick={() => void startDemoTour(ws, setBusy, setFailed)}
+          >
+            {busy ? tour.preparing : f.tour}
+          </Button>
+          {failed && <Alert severity="error">{tour.failed}</Alert>}
         </Stack>
-      )}
-      <Stack
+        {ws.active && (
+          <Box sx={{ mt: 3 }}>
+            <MapsHandoff fields={ws.active.fields} products={ws.products} />
+          </Box>
+        )}
+      </Box>
+      <Box
         sx={{
-          mt: 6,
-          p: 3,
-          gap: 2,
-          bgcolor: roles.surfaceContainer,
-          borderRadius: `${shape.lg}px`,
-          textAlign: 'start',
+          position: 'fixed',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          px: 4,
+          pt: 2,
+          pb: 'calc(16px + env(safe-area-inset-bottom))',
+          bgcolor: roles.surface,
+          zIndex: 2,
         }}
       >
-        {link && (
-          <Button
-            variant="contained"
-            component="a"
-            href={link}
-            target="_blank"
-            rel="noreferrer"
-            startIcon={<ExternalLink size={22} />}
-          >
-            {g.openShop}
-          </Button>
-        )}
         <Button
-          variant="outlined"
-          startIcon={<Share2 size={22} />}
-          onClick={() => setSharing(true)}
+          variant="contained"
+          fullWidth
+          sx={{ minHeight: 56, maxWidth: 716 }}
+          onClick={ws.dismissNewShopReady}
         >
-          {g.share}
+          {t.newShopContinue}
         </Button>
-        <Typography component="h2" variant="titleSmall" color="text.secondary">
-          {g.nextTitle}
-        </Typography>
-        <Button
-          onClick={() => {
-            ws.dismissNewShopReady()
-            ws.go('shop')
-          }}
-        >
-          {g.addMenu}
-        </Button>
-        <Button
-          onClick={() => {
-            ws.dismissNewShopReady()
-            ws.go('grow')
-          }}
-        >
-          {g.setUpStamps}
-        </Button>
-        <Button
-          variant="outlined"
-          startIcon={<Camera size={22} />}
-          onClick={() => {
-            ws.dismissNewShopReady()
-            ws.requestPhoto()
-          }}
-        >
-          {f.photos}
-        </Button>
-        <Button
-          disabled={busy}
-          startIcon={<Sparkles size={22} />}
-          onClick={() => void startDemoTour(ws, setBusy, setFailed)}
-        >
-          {busy ? tour.preparing : f.tour}
-        </Button>
-        {failed && <Alert severity="error">{tour.failed}</Alert>}
-      </Stack>
-      {ws.active && (
-        <Box sx={{ mt: 3 }}>
-          <MapsHandoff fields={ws.active.fields} products={ws.products} />
-        </Box>
-      )}
-      <Button sx={{ mt: 3 }} onClick={ws.dismissNewShopReady}>
-        {t.newShopContinue}
-      </Button>
+      </Box>
       <ShopSheets kind={sharing ? 'customer' : null} onClose={() => setSharing(false)} />
     </Box>
   )

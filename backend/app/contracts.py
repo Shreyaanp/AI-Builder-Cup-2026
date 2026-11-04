@@ -17,6 +17,8 @@ class CoachTurn(StrictModel):
     language: str = Field(default="en", pattern=r"^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8}){0,3}$")
     currency: str | None = Field(default=None, pattern=r"^[A-Z]{3}$")
     session_id: UUID | None = None
+    # The app's id for this owner turn: the same id again in a session is not a second turn.
+    turn_id: UUID | None = None
     business_id: UUID | None = None
     new_shop: bool = False
     new_shop_draft: NewShopDraft | None = None
