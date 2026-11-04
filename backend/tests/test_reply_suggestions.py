@@ -1,6 +1,8 @@
 """OB-303: one-tap reply drafts are grounded in the shop's own data, in the customer's language."""
 
+import asyncio
 import re
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
@@ -47,6 +49,9 @@ def offered_prices(replies: list[str]) -> set[str]:
         ("カヤトーストはありますか", "ja"),
         ("오늘 영업해요?", "ko"),
         ("இன்று திறந்திருக்கிறதா?", "ta"),
+        ("Ada roti canai hari ini?", "ms"),
+        ("samosa irukka?", "ta"),
+        ("சமோசா இருக்கா?", "ta"),
     ],
 )
 def test_customer_language_by_script_and_words(text: str, language: str) -> None:
@@ -115,6 +120,160 @@ def test_grounding_check_rejects_invented_prices_and_sold_out_offers() -> None:
     assert grounded("Sorry, Ragi biscuit is sold out right now.", SHOP)
 
 
+@pytest.mark.parametrize(
+    "draft",
+    [
+        # Invented items.
+        "Yes we have Pizza and Butter naan today!",
+        "Yes, we have butter naan and pizza.",
+        "हाँ, बटर नान मिलेगा!",
+        # A sold-out item offered, with a negation that is not the fixed sold-out sentence.
+        "Ragi biscuit fresh today — not sold out!",
+        "Yes! रागी बिस्कुट मिल जाएगा, कोई बात नहीं",
+        "ராகி பிஸ்கட் இன்று கிடைக்கும்!",
+        "Ya, biskut ragi ada hari ini!",
+        "Yes, ragi-biscuit ready",
+        "Yes, ragi  biscuits ready",
+        "Sorry, Ragi biscuit is sold out right now. Just kidding, Ragi biscuit is here!",
+        # Prices written as words.
+        "Masala chai is twenty rupees",
+        "मसाला चाय बीस रुपये की है",
+    ],
+)
+def test_grounding_check_rejects_invented_items_sold_out_offers_and_spelled_prices(
+    draft: str,
+) -> None:
+    assert not grounded(draft, SHOP)
+
+
+def test_grounding_check_keeps_true_drafts_in_every_script() -> None:
+    for draft in [
+        "Sorry, Ragi biscuit is sold out right now. We do have Samosa (₹20).",
+        "माफ़ कीजिए, रागी बिस्कुट अभी ख़त्म हो गया है।",
+        "மன்னிக்கவும், ராகி பிஸ்கட் இப்போது தீர்ந்துவிட்டது.",
+        "ஆம், சமோசா இருக்கிறது!",
+        "Hi Priya, we're open 06:30–21:00. See you soon!",
+        "Thank you! I'll reply shortly.",
+    ]:
+        assert grounded(draft, SHOP, allowed=("Priya",)), draft
+    # The customer's own name only when the route passes it.
+    assert not grounded("Hi Priya, see you soon!", SHOP)
+
+
+WEDNESDAY = datetime(2026, 11, 4, 4, tzinfo=UTC)  # 09:30 in Bengaluru
+CLOSED = {**SHOP, "timezone": "Asia/Kolkata", "closed_on": "2026-11-04"}
+
+
+def test_closed_today_drafts_never_say_open_or_available() -> None:
+    for question, language in [
+        ("Is Masala chai available?", "en"),
+        ("aaj shop khuli hai?", "hi"),
+        ("क्या आज समोसा मिलेगा?", "hi"),
+        ("Do you have Ragi biscuit today?", "en"),
+        ("What time do you open?", "en"),
+        ("சமோசா இருக்கா?", "ta"),
+        ("Ada roti canai hari ini?", "ms"),
+    ]:
+        replies = template_replies(CLOSED, question, language, WEDNESDAY)
+        copy = reply_suggestions.COPY[language]
+        assert copy[reply_suggestions.CLOSED_TODAY] in replies, question
+        joined = " ".join(replies)
+        # Only sorry-closed, tomorrow's hours, sold out, thanks and "tell me more".
+        items = [reply_suggestions._name(p, language) for p in SHOP["products"]]
+        allowed = {
+            copy[reply_suggestions.CLOSED_TODAY],
+            copy[reply_suggestions.OPEN_TOMORROW].format(hours="06:30–21:00"),
+            copy[reply_suggestions.THANKS],
+            copy[reply_suggestions.MORE],
+            *(copy[reply_suggestions.SOLD_OUT].format(item=item) for item in items),
+            *(copy[reply_suggestions.BACK_SOON].format(item=item) for item in items),
+        }
+        assert set(replies) <= allowed, (question, replies)
+        assert not re.search(
+            r"available today|We're open 06:30–21:00\. See|आज मिल रहा|दुकान 06:30–21:00 खुली है",
+            joined,
+        )
+    # The next day it is open as usual.
+    thursday = datetime(2026, 11, 5, 4, tzinfo=UTC)
+    assert template_replies(CLOSED, "Is Masala chai available?", "en", thursday)[0].startswith(
+        "Yes, Masala chai is available today"
+    )
+
+
+def test_every_language_says_sorry_we_are_closed_today() -> None:
+    for locale, copy in reply_suggestions.COPY.items():
+        sentence = copy[reply_suggestions.CLOSED_TODAY]
+        assert sentence and "{" not in sentence, locale
+        if locale != "en":
+            assert sentence != reply_suggestions.COPY["en"][reply_suggestions.CLOSED_TODAY]
+    assert template_replies(CLOSED, "Is it open?", "hi", WEDNESDAY)[0] == (
+        "माफ़ कीजिए, आज दुकान बंद है।"
+    )
+
+
+def test_weekly_hours_answer_for_today_and_tomorrow() -> None:
+    week = {
+        **SHOP,
+        "timezone": "Asia/Kolkata",
+        "weekly_hours": [
+            {"day": "wed", "closed": False, "open": "07:00", "close": "20:00"},
+            {"day": "thu", "closed": False, "open": "08:00", "close": "13:00"},
+            {"day": "fri", "closed": True, "open": None, "close": None},
+        ],
+    }
+    assert template_replies(week, "What time do you open?", "en", WEDNESDAY)[0] == (
+        "We're open 07:00–20:00. See you soon!"
+    )
+    tomorrow = template_replies(week, "When do you open tomorrow?", "en", WEDNESDAY)
+    assert tomorrow[0] == "Tomorrow we're open 08:00–13:00. See you then!"
+    assert not any("06:30" in r or "07:00" in r for r in tomorrow)
+    assert template_replies(week, "kal dukaan kab khulegi?", "hi", WEDNESDAY)[0] == (
+        "कल दुकान 08:00–13:00 खुली रहेगी। तब मिलते हैं!"
+    )
+    thursday = datetime(2026, 11, 5, 4, tzinfo=UTC)
+    assert template_replies(week, "Open tomorrow?", "en", thursday)[0] == (
+        "Sorry, we're closed tomorrow."
+    )
+    # A weekday the shop always closes is a closed day too.
+    friday = datetime(2026, 11, 6, 4, tzinfo=UTC)
+    closed = template_replies(week, "Is Samosa available?", "en", friday)
+    assert closed[0] == "Sorry, we're closed today." and "available today" not in " ".join(closed)
+
+
+def test_model_gets_closed_day_hours_and_sold_out_and_its_open_drafts_are_rejected() -> None:
+    facts = reply_suggestions.model_facts(CLOSED, "en", WEDNESDAY)
+    assert facts["closed_on"] == "2026-11-04" and facts["closed_today"] is True
+    assert facts["today_hours"] == "" and facts["tomorrow_hours"] == "06:30–21:00"
+    assert facts["closed_today_sentence"] == "Sorry, we're closed today."
+    assert facts["weekly_hours"] == [] and facts["sold_out"] == ["Ragi biscuit"]
+    assert facts["sold_out_sentence"] == "Sorry, {item} is sold out right now."
+    open_facts = reply_suggestions.model_facts(SHOP, "en", WEDNESDAY)
+    assert open_facts["closed_today"] is False and open_facts["today_hours"] == "06:30–21:00"
+    for draft in [
+        "Yes, Masala chai is available today: ₹20 per cup.",
+        "Yes, Masala chai is ₹20 a cup today!",
+        "We're open 06:30–21:00, come by any time!",
+        "दुकान 06:30–21:00 खुली है",
+        "Sorry, we're closed today. But Samosa is ready if you come by!",
+    ]:
+        assert not grounded(draft, CLOSED, now=WEDNESDAY), draft
+    assert grounded("Sorry, we're closed today.", CLOSED, now=WEDNESDAY)
+    assert grounded("Sorry, we're closed today. Masala chai is ₹20.", CLOSED, now=WEDNESDAY)
+
+
+def test_bought_stock_is_never_offered_and_tamil_names_match_items() -> None:
+    replies = template_replies(SHOP, "How much is tea dust?", "en")
+    assert not any("Tea dust" in r or "₹320" in r for r in replies)
+    tamil = template_replies(SHOP, "மசாலா டீ கிடைக்குமா?", "ta")
+    assert tamil[0].startswith("ஆம், மசாலா டீ இன்று கிடைக்கும்: ₹20")
+    sold_out = template_replies(SHOP, "ராகி பிஸ்கட் இருக்கா?", "ta")
+    assert sold_out[0] == "மன்னிக்கவும், ராகி பிஸ்கட் இப்போது தீர்ந்துவிட்டது."
+    assert template_replies(SHOP, "Ada teh masala?", "ms")[0].startswith(
+        "Ya, teh masala ada hari ini: ₹20"
+    )
+    assert template_replies(SHOP, "आप कैसे पेमेंट लेते हैं?", "hi")[0] == ("आप नक़द, UPI से भुगतान कर सकते हैं।")
+
+
 async def test_demo_and_offline_never_call_the_model() -> None:
     answers = SimpleNamespace(
         settings=SimpleNamespace(coach_mode="gemini"),
@@ -131,19 +290,48 @@ async def test_demo_and_offline_never_call_the_model() -> None:
 async def test_model_drafts_are_filtered_and_fall_back_to_templates(monkeypatch) -> None:
     answers = SimpleNamespace(settings=SimpleNamespace(coach_mode="gemini"))
 
-    async def drafted(*_: object) -> list[str]:
+    async def drafted(*_: object, **__: object) -> list[str]:
         return ["Yes, Masala chai is ₹20 a cup.", "Come by, we're open 06:30–21:00!"]
 
     monkeypatch.setattr(reply_suggestions, "model_replies", drafted)
     result = await suggest(answers, SHOP, "Masala chai?", demo=False)
     assert result.mode == "gemini" and result.replies[0].startswith("Yes, Masala chai is ₹20")
 
-    async def unavailable(*_: object) -> list[str]:
+    async def unavailable(*_: object, **__: object) -> list[str]:
         return []
 
     monkeypatch.setattr(reply_suggestions, "model_replies", unavailable)
     result = await suggest(answers, SHOP, "Masala chai?", demo=False)
     assert result.mode == "template" and len(result.replies) == 3
+
+
+async def test_one_ungrounded_model_draft_means_templates(monkeypatch) -> None:
+    """A model answer with any draft that fails the check is not shown at all."""
+    from app import text_model
+
+    answers = SimpleNamespace(
+        settings=SimpleNamespace(coach_mode="gemini"),
+        ready=AsyncMock(return_value=object()),
+        active=asyncio.Semaphore(1),
+    )
+
+    async def generate(*_: object, **__: object) -> object:
+        return object()
+
+    monkeypatch.setattr(text_model, "generate", generate)
+    monkeypatch.setattr(
+        "app.gemini_schema.parse_reply",
+        lambda *_: reply_suggestions.Drafts(
+            replies=[
+                "Yes, Masala chai is ₹20 a cup.",
+                "Come by, we're open 06:30–21:00!",
+                "We also have Pizza today!",
+            ]
+        ),
+    )
+    result = await suggest(answers, SHOP, "Masala chai?", demo=False)
+    assert result.mode == "template"
+    assert result.replies[0].startswith("Yes, Masala chai is available today")
 
 
 def test_owner_route_drafts_for_a_waiting_customer_only(app, monkeypatch) -> None:
@@ -167,5 +355,18 @@ def test_owner_route_drafts_for_a_waiting_customer_only(app, monkeypatch) -> Non
         # Nothing is sent by asking for drafts.
         thread = owner_client.get(f"/api/v1/businesses/{bid}/inquiries").json()[0]
         assert [m["author"] for m in thread["messages"]] == ["customer"]
+        # Over the suggestion limit the owner still gets the fixed drafts, never an error.
+        from fastapi import HTTPException
+
+        from app import customer_routes
+
+        async def limited(*_: object, **__: object) -> None:
+            raise HTTPException(429, "RATE_LIMITED")
+
+        enforce = customer_routes.enforce_limits
+        monkeypatch.setattr(customer_routes, "enforce_limits", limited)
+        busy = owner_client.get(path + "/replies")
+        assert busy.status_code == 200 and busy.json()["replies"] == drafts["replies"]
+        monkeypatch.setattr(customer_routes, "enforce_limits", enforce)
         owner_client.post(path + "/messages", json={"text": "जी हाँ!"})
         assert owner_client.get(path + "/replies").json()["replies"] == []

@@ -4,6 +4,7 @@ example chips for anything else, and never a model or paid Maps call (OB-155).""
 import json
 from unittest.mock import AsyncMock
 
+import pytest
 from fastapi.testclient import TestClient
 
 from app.demo_coach import SUGGESTIONS
@@ -604,11 +605,17 @@ def test_best_sellers_use_the_last_7_days_so_monday_is_never_empty():
 def test_OB_303_demo_drafts_replies_and_prepares_a_dictated_reply_offline(app, monkeypatch):  # noqa: N802, F811
     """OB-303: Priya's question gets three template drafts (never the model); "reply to Priya:
     yes we have samosa" becomes a reply card that waits for the owner's Send."""
-    from google import genai
+    from app import reply_suggestions
 
-    monkeypatch.setattr(genai, "Client", lambda **_: AssertionError("Demo called Gemini"))
+    async def model_called(*_: object, **__: object) -> list[str]:
+        pytest.fail("The public demo asked the model for reply drafts")
+
+    # A spy on the model path itself (it would swallow a raising client into templates), with
+    # the model switched on so only the demo check keeps it away.
+    monkeypatch.setattr(reply_suggestions, "model_replies", model_called)
     with TestClient(app) as client:
         app.state.v1_settings.public_demo_enabled = True
+        monkeypatch.setattr(app.state.customer_answers.settings, "coach_mode", "gemini")
         app.state.rate_limiter.counters.clear()
         session = open_demo(client).json()["session_id"]
         bid = owner(client, session, "businesses").json()[0]["id"]
@@ -639,13 +646,39 @@ def test_OB_303_demo_drafts_replies_and_prepares_a_dictated_reply_offline(app, m
             reply = " ".join(e.get("text") or "" for e in events)
             assert "Nothing goes until you do" in reply or "अपने-आप नहीं जाता" in reply
         hindi = coach_events(client, session, "प्रिया को जवाब दो: हाँ, समोसा है")
-        assert next(e["data"] for e in hindi if e["kind"] == "action")["thread_id"] == priya["id"]
-        for refused in ("don't reply to Priya", "Priya ko reply mat karo", "reply to Zed: hi"):
+        card = next(e["data"] for e in hindi if e["kind"] == "action")
+        assert card["thread_id"] == priya["id"] and card["label"] == "Priya को जवाब दें"
+        # A real "no" for the customer is a reply, not a "don't".
+        for message, said in (
+            ("Priya ko bolo ki nahi, samosa khatam hai", "nahi, samosa khatam hai"),
+            ("reply to Priya don't come today, we are closed", "don't come today, we are closed"),
+        ):
+            events = coach_events(client, session, message)
+            card = next(e["data"] for e in events if e["kind"] == "action")
+            assert card["thread_id"] == priya["id"], message
+            assert card["text"].casefold().rstrip(".") == said, message
+        for refused in (
+            "don't reply to Priya",
+            "Priya ko reply mat karo",
+            "Priya ko jawab nahi dena",
+            "reply to Priya don't send",
+            "reply to Zed: hi",
+            "राहुल को जवाब दो: हाँ, समोसा है",
+        ):
             events = coach_events(client, session, refused)
             assert not any(
                 e["kind"] == "action" and (e.get("data") or {}).get("target") == "reply"
                 for e in events
             ), refused
+        # A name that matches nobody asks which customer, naming the one who is waiting.
+        rahul = " ".join(
+            e.get("text") or "" for e in coach_events(client, session, "राहुल को जवाब दो: हाँ")
+        )
+        assert "किस ग्राहक" in rahul and "Priya" in rahul
+        zed = " ".join(
+            e.get("text") or "" for e in coach_events(client, session, "reply to Zed: hi")
+        )
+        assert "Which customer?" in zed and "Priya" in zed
         # Preparing a reply never sends it.
         threads = owner(client, session, f"businesses/{bid}/inquiries").json()
         priya = next(t for t in threads if t["name"] == "Priya")

@@ -18,7 +18,12 @@ const VIETNAMESE = /[ăâđêôơưạảấầẩẫậắằẳẵặẹẻẽ
 const LATIN: [Locale, RegExp][] = [
   ['fil', /\b(?:po|meron|mayroon|magkano|ba kayo|salamat|bukas po|pwede)\b/],
   ['id', /\b(?:apakah|bisa|tidak|berapa harganya|terima kasih|kak|buka jam)\b/],
-  ['ms', /\b(?:boleh|ada tak|tak|berapa|terima kasih|kedai|pukul berapa)\b/],
+  [
+    'ms',
+    /\b(?:boleh|ada tak|tak|berapa|terima kasih|kedai|pukul berapa|ada|hari ini|nak|esok|roti canai)\b/,
+  ],
+  // Tamil in Roman letters ("samosa irukka?").
+  ['ta', /\b(?:irukka|irukku|irukkaa|kidaikkuma|kidaikum|evvalavu|vilai|naalai)\b/],
   ['hi', /\b(?:kya|hai|milega|milegi|chahiye|kitne ka|kitna|bhaiya|aap|kab)\b/],
 ]
 
