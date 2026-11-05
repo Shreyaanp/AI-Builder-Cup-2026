@@ -467,8 +467,7 @@ function TilePinMap({
           display: 'flex',
           alignItems: 'flex-end',
           color: roles.onSurface,
-          fontSize: 11,
-          lineHeight: '18px',
+          typography: 'bodySmall',
           borderTopRightRadius: 4,
           '& a': {
             color: 'inherit',

@@ -11859,6 +11859,18 @@
             ],
             "title": "Session Id"
           },
+          "turn_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Turn Id"
+          },
           "business_id": {
             "anyOf": [
               {

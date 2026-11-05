@@ -260,6 +260,9 @@ function DayOne({
   const o = useOnboardingCopy()
   const roles = useTheme().material
   const action = useStepAction(step)
+  const name = ws.active?.fields.name ?? ''
+  // OB-306: an already shared shop is online; lead with its next task instead.
+  const shared = Boolean(ws.active?.public)
   return (
     <Box
       component="section"
@@ -275,18 +278,21 @@ function DayOne({
       <Typography
         id="today-day-one"
         component="h2"
-        variant="headlineLarge"
-        sx={(t) => ({
+        variant="headlineSmall"
+        sx={{
           fontFamily: HAND_FONT,
           fontWeight: 700,
           lineHeight: 1.2,
-          [t.breakpoints.up('sm')]: { fontSize: t.typography.headlineMedium.fontSize },
-        })}
+        }}
       >
-        {tt.dayOne(ws.active?.fields.name ?? '')}
+        {shared ? stepText(step, food, tt, o) : tt.dayOne(name)}
       </Typography>
-      <Typography variant="bodyLarge" color="text.secondary" sx={{ mt: 1 }}>
-        {stepText(step, food, tt, o)}
+      <Typography
+        variant="bodyLarge"
+        color="text.secondary"
+        sx={{ mt: 1, overflowWrap: 'anywhere' }}
+      >
+        {shared ? name : stepText(step, food, tt, o)}
       </Typography>
       {/* Setup progress lives in the one card that sets the shop up, not as its own bar. */}
       {progress && (
