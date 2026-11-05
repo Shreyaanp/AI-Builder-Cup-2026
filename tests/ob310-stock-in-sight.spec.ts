@@ -168,7 +168,7 @@ for (const language of ['en', 'hi'] as const)
     if (language === 'hi') {
       // Every word on the stock line is Hindi.
       await expect(sheet.locator('[data-menu-card="Bun maska"]')).toContainText('कम बचे हैं')
-      await expect(sheet.getByRole('button', { name: /^मैं ख़रीदता हूँ/ })).toBeVisible()
+      await expect(sheet.getByRole('button', { name: /^ख़रीदा हुआ सामान/ })).toBeVisible()
     }
     await page.screenshot({ path: test.info().outputPath(`menu-360-${language}.png`) })
   })
