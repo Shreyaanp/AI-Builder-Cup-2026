@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { openBuyStock } from './support/grow.js'
 
 // OB-263, OB-301: Home stops asking you to reorder what is already on the way. After Reorder →
 // Approve and send the row says "N kg arriving … ✓" with nothing to tap; after Goods arrived it
@@ -43,16 +44,25 @@ async function teaDustStock(page: Page): Promise<number> {
   })
 }
 
-/** Today's tea dust row, after Order more → Approve and send, with the sheet still open. */
+/**
+ * The demo's 13 kg is already on its way and nothing runs out before it lands, so Today asks
+ * for nothing. Ordering more is Buy stock → Draft a reorder → Approve and send, with the sheet
+ * still open afterwards.
+ */
 async function reorder(page: Page) {
   const row = page.getByTestId('today-needs').locator('[data-tour="today-supply"]')
-  // 13 kg is already on its way: the row says so and offers more only as a text button.
   await expect(row.getByTestId('today-supply-line')).toHaveText(
-    /^Tea dust: 13 kg arriving [A-Z][a-z]{2}\u00a0✓$/,
+    /^Tea dust: 13 kg arriving [A-Z][a-z]{2} ✓$/,
     { timeout: 15_000 },
   )
-  await expect(row.locator('.MuiButton-contained')).toHaveCount(0)
-  await row.getByRole('button', { name: 'Order more', exact: true }).click()
+  // No button, and no "Order more" that would ask for a second order for no reason.
+  await expect(row.getByRole('button')).toHaveCount(0)
+  await expect(row).not.toContainText(/Still runs out/)
+  await page.locator('[data-tour="nav-grow"]').click()
+  const sheet = await openBuyStock(page, 'To do')
+  // Arriving news is not a to do: no ✓ row under To do.
+  await expect(sheet).not.toContainText('arriving')
+  await sheet.getByRole('button', { name: 'Draft a reorder' }).click()
   const card = page.getByRole('dialog').locator('article')
   await card.getByRole('button', { name: 'Approve and send', exact: true }).click()
   await expect(card.getByTestId('supplier-talk')).toContainText('Your order is on the way', {
@@ -61,13 +71,20 @@ async function reorder(page: Page) {
   return { row, card }
 }
 
+/** Closes the order sheet and goes back to Today. */
+async function backToToday(page: Page) {
+  await page.getByRole('dialog').getByRole('button', { name: 'Close', exact: true }).click()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await page.locator('[data-tour="nav-coach"]').click()
+  await expect(page.getByTestId('today-needs')).toBeVisible({ timeout: 15_000 })
+}
+
 test('OB-263 after Reorder → Approve and send, Today says it is arriving and asks nothing', async ({
   page,
 }) => {
   await openDemo(page)
   const { row } = await reorder(page)
-  await page.getByRole('dialog').getByRole('button', { name: 'Close', exact: true }).click()
-  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await backToToday(page)
   await expect(row.getByTestId('today-supply-line')).toHaveText(
     /^Tea dust: \d+ kg arriving [A-Z][a-z]{2}\u00a0✓$/,
   )
@@ -86,7 +103,7 @@ test('OB-263 after Reorder → Approve and send, Today says it is arriving and a
 test('OB-263 Goods arrived: what came and the stock now, Undo, then topped up once', async ({
   page,
 }) => {
-  await openDemo(page)
+  await openDemo(page, 360, 800)
   const before = await teaDustStock(page)
   const { row, card } = await reorder(page)
   await card.getByRole('button', { name: 'Goods arrived', exact: true }).click()
@@ -103,7 +120,15 @@ test('OB-263 Goods arrived: what came and the stock now, Undo, then topped up on
   await expect(page.locator('body')).not.toContainText('₹320')
   expect(await teaDustStock(page)).toBe(Number(now))
 
-  await page.getByRole('dialog').getByRole('button', { name: 'Close', exact: true }).click()
+  await backToToday(page)
+  // The Undo note is still up, and it does not cover the "topped up" row (360 wide).
+  const noteBox = await note.boundingBox()
+  const rowBox = await row.boundingBox()
+  if (noteBox && rowBox)
+    expect(
+      noteBox.y + noteBox.height <= rowBox.y || noteBox.y >= rowBox.y + rowBox.height,
+      'the Undo note covers the topped up row',
+    ).toBe(true)
   await expect(row.getByTestId('today-supply-line')).toHaveText(
     `Tea dust stock topped up: ${now} kg\u00a0✓`,
   )

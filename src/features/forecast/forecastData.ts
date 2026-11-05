@@ -93,6 +93,8 @@ export function useRunsOut() {
     more,
     // Said once: the label already says what is coming.
     onOrder: arriving ? '' : onOrder,
+    /** Only news ("19 kg arriving Fri ✓"): nothing to do, so no To do card for it (OB-263). */
+    arriving: Boolean(arriving) && more === 0,
     label: arriving
       ? arriving
       : need

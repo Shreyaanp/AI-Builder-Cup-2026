@@ -132,7 +132,8 @@ for (const world of [
         )
         const real = page.locator('[data-tour="today-supply"]')
         await expect(real).toContainText(new RegExp(`${world.item}( runs out|: .+ arriving)`))
-        await expect(real.getByRole('button', { name: /^(Reorder|Order more)$/ })).toBeVisible()
+        // Its order is on the way and nothing runs out before it lands: no button to tap (OB-263).
+        await expect(real.getByRole('button', { name: /^(Reorder|Order more)$/ })).toHaveCount(0)
         await noSideScroll(page)
         await shot(1)
       })
@@ -144,7 +145,7 @@ for (const world of [
           `WhatsApp to ${world.wholesaler.replace(' (Demo)', '')}: ${story.order.lines.length} items`,
         )
         await expect(card).toContainText(money(story.order.total))
-        await expect(page.locator('[data-tour="reorder"]')).toBeVisible()
+        await expect(page.locator('[data-tour="reorder"]')).toHaveCount(0)
         await noSideScroll(page)
         await shot(2)
       })

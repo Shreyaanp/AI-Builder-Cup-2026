@@ -113,22 +113,30 @@ for (const size of WIDTHS) {
     await page.getByRole('button', { name: 'Try supply demo', exact: true }).click()
     const today = page.getByRole('region', { name: 'Supply chain' })
     // The demo's earlier 12 l order is on its way; Today says so, and counts it in the run-out
-    // day, so it offers only "Order more", never a second filled Reorder (OB-263).
+    // day, and nothing runs out before it lands, so Today has no button at all (OB-263).
     await expect(today).toContainText(/Milk: 12 l arriving .+✓/)
     await expect(today).not.toContainText(/Milk runs out/)
-    await today.getByRole('button', { name: 'Order more', exact: true }).click()
+    await expect(today.getByRole('button')).toHaveCount(0)
+    // Ordering more is Buy stock → Draft a reorder; the arriving news is not a to do there.
+    await page.getByRole('button', { name: 'Grow', exact: true }).click()
+    const stock = await openBuyStock(page)
+    await expect(stock.getByRole('button', { name: /^Milk: 12 l arriving/ })).toHaveCount(0)
+    await stock.getByRole('button', { name: 'Draft a reorder' }).click()
     const card = page.getByRole('article')
     await expect(card).toContainText('12 l Milk')
     await card.getByRole('button', { name: 'Approve and send', exact: true }).click()
     await expect(card).toContainText('Marked Sent')
-    await page.getByRole('dialog').getByRole('button', { name: 'Close', exact: true }).click()
-    await expect(page.getByRole('dialog')).toHaveCount(0)
+    await close(page)
+    await page.getByRole('button', { name: 'Coach', exact: true }).click()
 
     // #597: with 24 l on its way, another reorder drafts nothing and says why.
     await expect(today).toContainText(/Milk: 24 l arriving .+✓/)
     await expect(today.getByRole('button')).toHaveCount(0)
-    // Grow agrees with Today: milk is covered, so no supplier search is offered for it.
-    const covered = await runsOut(page, /^Milk: 24 l arriving/)
+    // Grow agrees with Today: milk is covered, so it is not a to do and no supplier search is
+    // offered for it.
+    await page.getByRole('button', { name: 'Grow', exact: true }).click()
+    const covered = await openBuyStock(page)
+    await expect(covered.getByRole('button', { name: /^Milk: 24 l arriving/ })).toHaveCount(0)
     await expect(covered).not.toContainText('Find suppliers')
     await close(page)
 

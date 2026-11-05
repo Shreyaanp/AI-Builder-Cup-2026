@@ -1,7 +1,7 @@
 import { test, expect, type Page } from '@playwright/test'
 import { shopMore } from './support/shopMore.js'
 import { pinShopTime, SHOP_TIMES } from './support/shopClock.js'
-import { openGrowTool, showInGrow } from './support/grow.js'
+import { openBuyStock, openGrowTool, showInGrow } from './support/grow.js'
 
 test.setTimeout(90_000)
 
@@ -72,10 +72,14 @@ test('tabs stay tappable after load, also after a reload', async ({ page }) => {
   await noErrors(page)
 })
 
-test('Coach: Reorder opens the purchase order draft', async ({ page }) => {
+test('Buy stock: Draft a reorder opens the purchase order draft', async ({ page }) => {
   await openDemo(page)
-  // With 13 kg already on its way the demo offers Order more, the same draft (OB-263).
-  await opensSheet(page, /^(Reorder|Order more)$/, /Purchase orders/)
+  // With 13 kg already on its way and nothing running out, Today has no Reorder or Order more
+  // (OB-263): the draft is one tap away in Grow → Buy stock.
+  await expect(page.getByRole('button', { name: /^(Reorder|Order more)$/ })).toHaveCount(0)
+  await tab(page, 'grow')
+  const stock = await openBuyStock(page)
+  await stock.getByRole('button', { name: 'Draft a reorder' }).click()
   await expect(
     page
       .getByRole('dialog')

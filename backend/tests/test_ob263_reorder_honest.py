@@ -5,6 +5,7 @@ from datetime import date, timedelta
 
 from app import shop_today, supply_chain
 from app.forecast import Forecast
+from app.merchant import ProductFields
 from tests.test_ob248_demo_flow import draft_and_send, instant, order_of, stock_of  # noqa: F401
 from tests.test_photos import app  # noqa: F401
 from tests.test_public_demo import owner
@@ -77,11 +78,10 @@ def board(client, session, bid):
 def test_OB_263_demo_reorder_then_arrival_then_undo(live_parent_demo, instant) -> None:  # noqa: F811
     client, _app, session, bid = live_parent_demo
     tea = next(need for need in needs(client, session, bid) if need["item"] == "Tea dust")
-    # The seeded 13 kg on its way is counted: the run-out day moves on (or clears). It does not
-    # cover the week after it lands, so Today still offers "Order more".
+    # The seeded 13 kg on its way is counted: nothing runs out before it lands, so Today has
+    # no "Order more" for it (that button needs a run-out day) and ordering stays in Buy stock.
     assert tea["on_order"] > 0 and tea["arrives"]
-    assert not tea["runs_out"] or tea["runs_out"] > tea["arrives"]
-    assert tea["cover"] == "partly"
+    assert tea["runs_out"] == ""
 
     before = stock_of(client, session, bid, "Tea dust")
     sent = draft_and_send(client, session, bid)
@@ -139,3 +139,76 @@ def test_OB_263_demo_reorder_then_arrival_then_undo(live_parent_demo, instant) -
         json={"version": reopened["version"]},
     )
     assert again.status_code == 409
+
+
+def test_OB_263_undo_after_some_stock_was_used_takes_off_only_what_came(
+    live_parent_demo,  # noqa: F811
+    instant,  # noqa: F811
+) -> None:
+    client, _app, session, bid = live_parent_demo
+    sent = draft_and_send(client, session, bid)
+    oid = sent["id"]
+    order_of(client, session, bid, oid)
+    on_the_way = order_of(client, session, bid, oid)
+    came = owner(
+        client,
+        session,
+        f"businesses/{bid}/supply/orders/{oid}/received",
+        "POST",
+        json={"version": on_the_way["version"]},
+    ).json()
+    proposal = came["proposal"]
+    owner(
+        client,
+        session,
+        f"proposals/{proposal['id']}/approve",
+        "POST",
+        json={"digest": proposal["digest"]},
+    )
+    before = stock_of(client, session, bid, "Tea dust")
+    added = round(sent["lines"][0]["quantity"])
+    assert before > added
+
+    # One kg is used after the delivery was saved.
+    row = next(
+        item
+        for item in owner(client, session, f"businesses/{bid}/inventory").json()
+        if item["name"] == "Tea dust"
+    )
+    revision = owner(client, session, "businesses").json()[0]["revision"]
+    used = owner(
+        client,
+        session,
+        "proposals",
+        "POST",
+        json={
+            "kind": "inventory",
+            "business_id": bid,
+            "revision": revision,
+            "products": [
+                {
+                    **{k: v for k, v in row.items() if k in ProductFields.model_fields},
+                    "stock": before - 1,
+                }
+            ],
+        },
+    ).json()
+    owner(
+        client,
+        session,
+        f"proposals/{used['id']}/approve",
+        "POST",
+        json={"digest": used["digest"]},
+    )
+    assert stock_of(client, session, bid, "Tea dust") == before - 1
+
+    latest = order_of(client, session, bid, oid)
+    undone = owner(
+        client,
+        session,
+        f"businesses/{bid}/supply/orders/{oid}/received/undo",
+        "POST",
+        json={"version": latest["version"]},
+    )
+    assert undone.status_code == 200, undone.text
+    assert stock_of(client, session, bid, "Tea dust") == before - 1 - added

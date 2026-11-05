@@ -3,7 +3,7 @@ import { ApiError, type Api, type Proposal } from '../v1/api'
 import { isServiceShop } from '../v1/tabsCopy'
 import { useWorkspace } from '../v1/workspaceContext'
 import { useLocale } from '../../state/hooks'
-import { productName } from '../../i18n/productNames'
+import { productFeminine, productName } from '../../i18n/productNames'
 import { useShopCopy } from '../shop/strings'
 import { unitLabel } from '../shop/units'
 import { useSupplyCopy } from './copy'
@@ -249,12 +249,13 @@ export function usePoActions(onChange: (order: PurchaseOrder) => void) {
         return {
           amount: `${number.format(Math.max(0, (after.stock ?? 0) - was))} ${each}`,
           name: productName(after.name, locale),
+          feminine: productFeminine(after.name, locale),
           stock: `${number.format(after.stock ?? 0)} ${each}`,
         }
       })
       const message =
         rows.length === 1
-          ? change.receivedOne(rows[0]!.amount, rows[0]!.name, rows[0]!.stock)
+          ? change.receivedOne(rows[0]!.amount, rows[0]!.name, rows[0]!.stock, rows[0]!.feminine)
           : change.receivedMany(rows.length)
       const url = `${base}/orders/${encodeURIComponent(order.id)}`
       notify(message, () => {
@@ -539,9 +540,13 @@ export function onItsWay(need: SupplyNeed | undefined): boolean {
   return Boolean(need && (need.on_order || need.on_order_other?.length))
 }
 
-/** Still to order although some is on its way: what is coming does not cover it (#603). */
+/**
+ * Still to order although some is on its way: what is coming does not cover it and it still
+ * runs out (#603). "Less than a week of cover" alone is not a reason to ask for a second order;
+ * ordering stays one tap away in Buy stock (OB-263).
+ */
 export function stillShort(need: SupplyNeed | undefined): boolean {
-  return need?.cover === 'partly' || need?.cover === 'units'
+  return Boolean(need?.runs_out) && (need?.cover === 'partly' || need?.cover === 'units')
 }
 
 // "Stock topped up" is said once per delivery, then the row moves on (OB-263): shown during

@@ -78,8 +78,13 @@ const en = {
   ) => string,
   toppedUp: (item: string, stock: string) => `${item} stock topped up: ${stock}\u00a0✓`,
   // Goods arrived: what came and the stock now, with Undo; never a price (OB-263).
-  receivedOne: (amount: string, item: string, stock: string) =>
-    `${amount} ${item} received. Stock is now ${stock}.`,
+  receivedOne: ((amount: string, item: string, stock: string) =>
+    `${amount} ${item} received. Stock is now ${stock}.`) as (
+    amount: string,
+    item: string,
+    stock: string,
+    feminine?: boolean,
+  ) => string,
   receivedMany: (n: number) => `${n} items received. Stock updated.`,
   receivedUndone: 'Undone. The order is on its way again.',
 }
@@ -142,7 +147,8 @@ const hi: OrderChangeCopy = {
     day ? `${item} रास्ते में, ${day}\u00a0✓` : `${item} रास्ते में\u00a0✓`,
   stillRunsOut: (day, feminine) => `फिर भी ${day} को खत्म ${feminine ? 'होगी' : 'होगा'}`,
   toppedUp: (item, stock) => `${item} का स्टॉक भर गया: ${stock}\u00a0✓`,
-  receivedOne: (amount, item, stock) => `${amount} ${item} आ गया। अब स्टॉक ${stock} है।`,
+  receivedOne: (amount, item, stock, feminine) =>
+    `${amount} ${item} आ ${feminine ? 'गई' : 'गया'}। अब स्टॉक ${stock} है।`,
   receivedMany: (n) => `${n} चीज़ें आ गईं। स्टॉक अपडेट हो गया।`,
   receivedUndone: 'वापस ले लिया। ऑर्डर फिर से रास्ते में है।',
 }

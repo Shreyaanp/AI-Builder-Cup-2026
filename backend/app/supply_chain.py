@@ -1771,8 +1771,9 @@ def undo_receive(
     for product in context["inventory"]:
         name = product["name"]
         stock = product.get("stock")
-        # Only stock the owner saved goes back; an unsaved review changed nothing.
-        if name not in after or stock is None or stock < after[name]:
+        # Only stock the owner saved goes back; an unsaved review left it as it was. Some used
+        # since is fine: what the delivery added comes off whatever is there now.
+        if name not in after or stock is None or stock == (before.get(name) or 0):
             continue
         fields = {k: v for k, v in product.items() if k in ProductFields.model_fields}
         added = after[name] - (before.get(name) or 0)

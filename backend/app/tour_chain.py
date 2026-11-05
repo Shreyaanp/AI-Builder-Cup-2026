@@ -44,6 +44,7 @@ def _order(po: dict[str, Any]) -> dict[str, Any]:
         "lines": _lines(po),
         "documents": [d["kind"] for d in po["documents"]],
         "received": bool(po.get("received")),
+        "delivery": po.get("delivery") or "",
     }
 
 

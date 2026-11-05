@@ -141,8 +141,15 @@ for (const width of widths) {
         await assertPhoneLayout(page, 'Supply orders')
         const supply = page.getByRole('region', { name: /Supply chain|सामान मँगाना/ })
         await expect(supply).toBeVisible()
-        // Order more when the demo's 12 l is already on its way (OB-263).
-        await supply.getByRole('button', { name: /Reorder|Order more|फिर|और मँगाएँ/ }).click()
+        // The demo's 12 l is already on its way and nothing runs out before it lands, so Today
+        // has no button (OB-263): ordering more is Buy stock → Draft a reorder.
+        await expect(supply.getByRole('button')).toHaveCount(0)
+        await page.locator('[data-tour="nav-grow"]').click()
+        await (await showInGrow(page, page.locator('[data-tour="supply"]'))).click()
+        await page
+          .getByRole('dialog')
+          .getByRole('button', { name: /Draft a reorder|फिर से सामान मँगाएँ/ })
+          .click()
         const order = page.getByRole('article')
         await expect(order).toBeVisible()
         await assertPhoneLayout(page, 'Purchase orders')

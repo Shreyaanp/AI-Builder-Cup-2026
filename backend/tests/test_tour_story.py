@@ -536,8 +536,10 @@ def test_tour_chain_follows_one_order_on_seeded_records(app) -> None:  # noqa: F
             assert response.status_code == 200, response.text
             stories[zone] = (bid, response.json())
         bid, india = stories["Asia/Kolkata"]
-        # The tour order is on its way, so the run-out day counts it: later, or none (OB-263).
+        # The tour order is on its way: the run-out day is none, or after it lands (OB-263).
         assert india["today"]["item"] == "Tea dust" and india["today"]["stock"]
+        runs_out = india["today"]["runs_out"]
+        assert not runs_out or runs_out > india["order"]["delivery"]
         assert india["order"]["number"] == "4500000001"
         assert india["order"]["partner"] == "Sri Lakshmi Provisions (Demo)"
         assert [line["item"] for line in india["order"]["lines"]][1:] == [

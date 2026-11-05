@@ -14,13 +14,17 @@ test('Today → forecast reorder → SAP → replies → reviewed stock → Toda
   await openBuyStock(page)
   await page.getByRole('button', { name: 'Try supply demo', exact: true }).click()
   const today = page.getByRole('region', { name: 'Supply chain' })
-  // The demo's earlier 12 l is on its way and counted (OB-263): Order more, not a second Reorder.
+  // The demo's earlier 12 l is on its way and nothing runs out before it lands (OB-263): the row
+  // is news with no button; ordering more is Buy stock → Draft a reorder.
   await expect(today).toContainText(/Milk: 12 l arriving .+✓/)
+  await expect(today.getByRole('button')).toHaveCount(0)
   const overflow = async () =>
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
   await overflow()
   await page.screenshot({ path: 'output/playwright/supply-today.png' })
-  await today.getByRole('button', { name: 'Order more', exact: true }).click()
+  await page.getByRole('button', { name: 'Grow', exact: true }).click()
+  const buyStock = await openBuyStock(page)
+  await buyStock.getByRole('button', { name: 'Draft a reorder' }).click()
   const card = page.getByRole('article')
   await expect(card).toContainText('Drafted for you')
   await expect(card).toContainText('Minimum order: 12 l')
@@ -53,10 +57,10 @@ test('Today → forecast reorder → SAP → replies → reviewed stock → Toda
     /\d+ l Milk received\. Stock is now 27 l\./,
   )
   await expect(page.getByRole('dialog', { name: 'Check before saving' })).toHaveCount(0)
-  const orders = page.getByRole('dialog', { name: 'Purchase orders', exact: true })
-  await expect(orders).toContainText('Received')
-  await orders.getByRole('button', { name: 'Close', exact: true }).click()
-  await expect(orders).toHaveCount(0)
+  await expect(buyStock).toContainText('Received')
+  await buyStock.getByRole('button', { name: 'Close', exact: true }).click()
+  await expect(buyStock).toHaveCount(0)
+  await page.getByRole('button', { name: 'Coach', exact: true }).click()
   await expect(today).toContainText('Milk stock topped up: 27 l')
   await expect(today.getByRole('button')).toHaveCount(0)
   const businesses = await (await page.request.get('/api/v1/businesses')).json()

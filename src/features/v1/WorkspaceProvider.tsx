@@ -545,8 +545,14 @@ export function WorkspaceProvider({
           setToast('')
           setToastUndo(null)
         }}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-        sx={{ bottom: { xs: 'calc(96px + env(safe-area-inset-bottom))', sm: 24 } }}
+        // An Undo note sits under the top bar on a phone: at the bottom it covered the row the
+        // owner just acted on (the "topped up" line after Goods arrived, OB-263).
+        anchorOrigin={{ vertical: toastUndo && compact ? 'top' : 'bottom', horizontal: 'center' }}
+        sx={
+          toastUndo && compact
+            ? { top: 'calc(64px + env(safe-area-inset-top))' }
+            : { bottom: { xs: 'calc(96px + env(safe-area-inset-bottom))', sm: 24 } }
+        }
         action={
           toastUndo ? (
             <Button
