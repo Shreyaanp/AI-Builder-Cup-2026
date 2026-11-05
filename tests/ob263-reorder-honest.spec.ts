@@ -52,7 +52,7 @@ async function teaDustStock(page: Page): Promise<number> {
 async function reorder(page: Page) {
   const row = page.getByTestId('today-needs').locator('[data-tour="today-supply"]')
   await expect(row.getByTestId('today-supply-line')).toHaveText(
-    /^Tea dust: 13 kg arriving [A-Z][a-z]{2} ✓$/,
+    /^Tea dust: 13 kg arriving [A-Z][a-z]{2}\u00a0✓$/,
     { timeout: 15_000 },
   )
   // No button, and no "Order more" that would ask for a second order for no reason.
