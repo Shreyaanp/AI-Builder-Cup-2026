@@ -1,6 +1,10 @@
 import { useState } from 'react'
-import { Box, IconButton, Skeleton, Stack, Typography } from '@mui/material'
-import { ArrowLeft, Truck } from 'lucide-react'
+import { Box, Button, IconButton, Skeleton, Stack, Typography } from '@mui/material'
+import { ArrowLeft, ShoppingBasket, Truck } from 'lucide-react'
+import { ThingsIBuySheet } from '../shop/ThingsIBuySheet'
+import { onMenu } from '../shop/stock'
+import { useStockCopy } from '../shop/stockCopy'
+import { useWorkspace } from '../v1/workspaceContext'
 import { track } from '../../app/analytics'
 import { RunsOutCard } from '../forecast/PrepPlan'
 import { useRunsOut } from '../forecast/forecastData'
@@ -77,6 +81,8 @@ export function BuyStockRow({
   const s = useSupplyCopy()
   const runsOut = useRunsOut()
   const stock = useStock(tab !== null)
+  // "Things I buy" with their stock, one tap from here (OB-310); sheets never stack.
+  const [things, setThings] = useState(false)
   const line = [runsOut?.short, stock.toDo ? grow.toDo(stock.toDo) : ''].filter(Boolean).join(' · ')
   return (
     <>
@@ -96,7 +102,21 @@ export function BuyStockRow({
           onTab('todo')
         }}
       />
-      <BuyStockSheet tab={tab} onTab={onTab} stock={stock} hasRunsOut={runsOut !== null} />
+      <BuyStockSheet
+        tab={tab}
+        onTab={onTab}
+        stock={stock}
+        hasRunsOut={runsOut !== null}
+        onThingsIBuy={() => {
+          onTab(null)
+          setThings(true)
+        }}
+      />
+      <ThingsIBuySheet
+        open={things}
+        onClose={() => setThings(false)}
+        onBuyStock={() => onTab('todo')}
+      />
     </>
   )
 }
@@ -106,15 +126,20 @@ function BuyStockSheet({
   onTab,
   stock,
   hasRunsOut,
+  onThingsIBuy,
 }: {
   tab: StockTab | null
   onTab: (tab: StockTab | null) => void
   stock: ReturnType<typeof useStock>
   hasRunsOut: boolean
+  onThingsIBuy: () => void
 }) {
   const grow = useGrowCopy()
   const paths = useTwoPathsCopy()
   const t = useCopy()
+  const stockCopy = useStockCopy()
+  const ws = useWorkspace()
+  const bought = ws.products.filter((product) => !onMenu(product)).length
   const [drill, setDrill] = useState<Drill>(null)
   const close = () => {
     setDrill(null)
@@ -189,6 +214,17 @@ function BuyStockSheet({
           {tab === 'todo' && (
             <>
               {!drill && <RunsOutCard onAct={close} />}
+              {!drill && bought > 0 && (
+                <Button
+                  variant="outlined"
+                  aria-haspopup="dialog"
+                  startIcon={<ShoppingBasket size={18} />}
+                  onClick={onThingsIBuy}
+                  sx={{ alignSelf: 'flex-start', minHeight: 48 }}
+                >
+                  {stockCopy.thingsIBuy} · {stockCopy.thingsIBuyCount(bought)}
+                </Button>
+              )}
               {!drill && stock.loaded && count.todo === 0 && (
                 <Typography variant="bodyLarge" color="text.secondary">
                   {grow.nothingToDo}

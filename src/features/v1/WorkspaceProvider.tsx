@@ -5,6 +5,9 @@ import { X } from 'lucide-react'
 import { canOfferInstall, offerInstall, rememberInstallDeclined } from '../../app/pwa'
 import { useCopy } from './strings'
 import { newlySoldOut, useSoldOutUndoCopy } from './soldOutUndo'
+import { useStockCopy } from '../shop/stockCopy'
+import { productName } from '../../i18n/productNames'
+import { useLocale } from '../../state/hooks'
 import type { Api, Business, Me, Product, Proposal } from './api'
 import { WorkspaceContext } from './workspaceContext'
 import type { Destination, Editor, NewShopPhase, Workspace } from './workspaceContext'
@@ -123,6 +126,15 @@ export function WorkspaceProvider({
   // Items a confirmed change just marked sold out: the saved note offers Undo (OB-261).
   const [undoSoldOut, setUndoSoldOut] = useState<string[]>([])
   const undoCopy = useSoldOutUndoCopy()
+  // The last stock tap, named, with Undo back to the count before this run of taps (OB-310).
+  const [stockUndo, setStockUndo] = useState<{
+    id: string
+    name: string
+    before: number | null
+    after: number | null
+  } | null>(null)
+  const stockCopy = useStockCopy()
+  const locale = useLocale()
   const [photoPending, setPhotoPending] = useState(false)
   const consumePhotoRequest = useCallback(() => setPhotoPending(false), [])
   // A chat starter from another screen (e.g. My shop's "Customers ask" card).
@@ -232,6 +244,57 @@ export function WorkspaceProvider({
     },
     [activeId, api, reload, t.actionFailed],
   )
+  const saveItem = useCallback(
+    async (product: Product, path: string, body: object, change: Partial<Product>) => {
+      if (!activeId || !product.id) return false
+      const id = product.id
+      const patch = (fields: Partial<Product>) =>
+        setInventory((current) => ({
+          ...current,
+          items: current.items.map((item) => (item.id === id ? { ...item, ...fields } : item)),
+        }))
+      // Optimistic, like the sold-out switch: a failure restores what was saved.
+      patch(change)
+      try {
+        await api(`/businesses/${activeId}/inventory/${encodeURIComponent(id)}/${path}`, {
+          method: 'POST',
+          body: JSON.stringify(body),
+        })
+        await reload()
+        return true
+      } catch {
+        patch({ stock: product.stock, for_sale: product.for_sale })
+        setToast(t.actionFailed)
+        return false
+      }
+    },
+    [activeId, api, reload, t.actionFailed],
+  )
+  const setStock = useCallback(
+    async (product: Product, change: { stock: number | null } | { add: number }) => {
+      const before = product.stock ?? null
+      const after =
+        'add' in change ? Math.max(0, (before ?? 0) + change.add) : (change.stock ?? null)
+      const done = await saveItem(product, 'stock', change, { stock: after })
+      if (done && product.id) {
+        const id = product.id
+        // A run of taps on one item keeps the first count, so Undo goes back to it.
+        setStockUndo((last) => ({
+          id,
+          name: product.name,
+          before: last?.id === id ? last.before : before,
+          after,
+        }))
+      }
+      return done
+    },
+    [saveItem],
+  )
+  const setForSale = useCallback(
+    (product: Product, forSale: boolean) =>
+      saveItem(product, 'for-sale', { for_sale: forSale }, { for_sale: forSale }),
+    [saveItem],
+  )
   const confirm = useCallback(
     async (proposal: Proposal) => {
       const receipt = await api<{ business_id: string }>(`/proposals/${proposal.id}/approve`, {
@@ -334,6 +397,8 @@ export function WorkspaceProvider({
       },
       reload,
       setAvailability,
+      setStock,
+      setForSale,
       setShared,
       // A sandbox shop has no public page; its link opens the demo's customer side.
       shareUrl:
@@ -387,6 +452,8 @@ export function WorkspaceProvider({
       speakReplies,
       reload,
       setAvailability,
+      setStock,
+      setForSale,
       setShared,
       savedProposals,
       confirm,
@@ -524,6 +591,46 @@ export function WorkspaceProvider({
             sx={{ color: theme.material.inversePrimary, minHeight: 48 }}
           >
             {undoCopy.undo}
+          </Button>
+        }
+      />
+      <Snackbar
+        open={stockUndo !== null}
+        message={
+          stockUndo
+            ? stockUndo.after === null
+              ? t.saved
+              : stockCopy.saved(productName(stockUndo.name, locale), stockUndo.after)
+            : ''
+        }
+        autoHideDuration={6000}
+        onClose={(_, reason) => {
+          if (reason !== 'clickaway') setStockUndo(null)
+        }}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        sx={{ bottom: { xs: 'calc(96px + env(safe-area-inset-bottom))', sm: 24 } }}
+        action={
+          <Button
+            color="inherit"
+            onClick={() => {
+              const undo = stockUndo
+              setStockUndo(null)
+              const item = inventory.items.find((entry) => entry.id === undo?.id)
+              if (!undo || !item) return
+              void saveItem(item, 'stock', { stock: undo.before }, { stock: undo.before }).then(
+                (done) => {
+                  if (done)
+                    setToast(
+                      undo.before === null
+                        ? t.saved
+                        : stockCopy.saved(productName(undo.name, locale), undo.before),
+                    )
+                },
+              )
+            }}
+            sx={{ color: theme.material.inversePrimary, minHeight: 48 }}
+          >
+            {stockCopy.undo}
           </Button>
         }
       />

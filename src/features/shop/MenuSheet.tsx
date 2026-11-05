@@ -5,7 +5,6 @@ import {
   Box,
   Button,
   ButtonBase,
-  Chip,
   CircularProgress,
   InputAdornment,
   InputBase,
@@ -25,6 +24,9 @@ import { useWorkspace } from '../v1/workspaceContext'
 import { groupProducts } from './groupProducts'
 import { categoryLabel, useShopCopy } from './strings'
 import { unitLabel } from './units'
+import { onMenu, useUsualSales } from './stock'
+import { StockLine } from './stockLine'
+import { useStockCopy } from './stockCopy'
 
 /**
  * The full menu: one section per category, each a grid of compact item cards (two per row on
@@ -35,22 +37,31 @@ export function MenuSheet({
   open,
   onClose,
   focus = null,
+  onThingsIBuy,
 }: {
   open: boolean
   onClose: () => void
   /** Move focus to this item when the sheet opens. */
   focus?: string | null
+  /** Opens "Things I buy" (OB-310). */
+  onThingsIBuy?: () => void
 }) {
   const t = useCopy()
   const copy = useShopCopy()
+  const stock = useStockCopy()
+  const roles = useTheme().material
   const ws = useWorkspace()
   const [sales, setSales] = useState<SalesImport | null>(null)
   const [importing, setImporting] = useState(false)
   const [sorting, setSorting] = useState(false)
   const importer = useImport({ onBeforeReview: onClose, onSales: setSales })
+  const usual = useUsualSales(open)
   const shop = ws.active
   if (!shop) return null
-  const unsorted = ws.products.filter((product) => !product.category?.trim()).length
+  // What customers can buy; tea dust and milk the shop buys have their own list (OB-310).
+  const menu = ws.products.filter(onMenu)
+  const bought = ws.products.length - menu.length
+  const unsorted = menu.filter((product) => !product.category?.trim()).length
 
   async function sortMenu() {
     if (!shop || sorting) return
@@ -134,13 +145,13 @@ export function MenuSheet({
             {copy.sortHint(unsorted)}
           </Alert>
         )}
-        {ws.products.length === 0 ? (
+        {menu.length === 0 ? (
           <Typography variant="bodyMedium" color="text.secondary">
             {t.productsEmpty}
           </Typography>
         ) : (
           <Stack spacing={5}>
-            {groupProducts(ws.products).map((group, index) => (
+            {groupProducts(menu).map((group, index) => (
               <Box
                 component="section"
                 key={group.category || 'uncategorised'}
@@ -161,8 +172,9 @@ export function MenuSheet({
                     p: 0,
                     listStyle: 'none',
                     display: 'grid',
-                    // Two per row on a phone sheet, three or more when the sheet is wider.
-                    gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 148px), 1fr))',
+                    // One per row on a phone, so the count and its − / + fit beside each other;
+                    // two or more when the sheet is wider.
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 260px), 1fr))',
                     gap: 2,
                   }}
                 >
@@ -170,6 +182,7 @@ export function MenuSheet({
                     <ItemCard
                       key={product.id ?? `${product.name}-${product.unit}`}
                       product={product}
+                      usual={usual?.items[product.name]}
                       onEdit={() => {
                         onClose()
                         ws.openEditor({ kind: 'product', product })
@@ -181,13 +194,49 @@ export function MenuSheet({
             ))}
           </Stack>
         )}
+        {bought > 0 && onThingsIBuy && (
+          <ButtonBase
+            onClick={onThingsIBuy}
+            aria-haspopup="dialog"
+            sx={{
+              mt: 4,
+              width: '100%',
+              minHeight: 56,
+              px: 2,
+              gap: 2,
+              justifyContent: 'space-between',
+              borderRadius: `${shape.md}px`,
+              border: `1px solid ${roles.outlineVariant}`,
+              '&:focus-visible': { outline: `2px solid ${roles.primary}` },
+            }}
+          >
+            <Typography component="span" variant="bodyLarge" sx={{ textAlign: 'start' }}>
+              {stock.thingsIBuy}
+            </Typography>
+            <Typography component="span" variant="bodyMedium" color="text.secondary">
+              {stock.thingsIBuyCount(bought)}
+            </Typography>
+          </ButtonBase>
+        )}
       </Sheet>
       <SalesImportSheet imported={sales} onClose={() => setSales(null)} />
     </>
   )
 }
 
-function ItemCard({ product, onEdit }: { product: Product; onEdit: () => void }) {
+/** One item: name and price on top, its stock with − / + below (OB-310). */
+export function ItemCard({
+  product,
+  usual,
+  onEdit,
+  priced = true,
+}: {
+  product: Product
+  usual?: number
+  onEdit: () => void
+  /** "Things I buy" have no customer price to change in place. */
+  priced?: boolean
+}) {
   const t = useCopy()
   const copy = useShopCopy()
   const roles = useTheme().material
@@ -195,10 +244,10 @@ function ItemCard({ product, onEdit }: { product: Product; onEdit: () => void })
   return (
     <Box
       component="li"
+      data-menu-card={product.name}
       sx={{
         display: 'flex',
         flexDirection: 'column',
-        justifyContent: 'space-between',
         gap: 1,
         minWidth: 0,
         p: 2,
@@ -207,50 +256,45 @@ function ItemCard({ product, onEdit }: { product: Product; onEdit: () => void })
         border: `1px solid ${soldOut ? roles.outlineVariant : 'transparent'}`,
       }}
     >
-      <ButtonBase
-        onClick={onEdit}
-        data-menu-item={product.name}
-        aria-label={`${t.editProduct} ${product.name}`}
-        sx={{
-          display: 'block',
-          textAlign: 'start',
-          borderRadius: `${shape.sm}px`,
-          minHeight: 48,
-          px: 1,
-          '&:focus-visible': { outline: `2px solid ${roles.primary}` },
-        }}
-      >
-        <Typography
-          component="span"
-          variant="bodyLarge"
+      {/* Wraps, so the in-place price editor drops below a long name instead of squeezing it. */}
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', gap: 1 }}>
+        <ButtonBase
+          onClick={onEdit}
+          data-menu-item={product.name}
+          aria-label={`${t.editProduct} ${product.name}`}
           sx={{
             display: 'block',
-            fontWeight: 500,
-            overflowWrap: 'anywhere',
-            color: soldOut ? roles.onSurfaceVariant : roles.onSurface,
+            flex: '1 1 120px',
+            minWidth: 0,
+            textAlign: 'start',
+            borderRadius: `${shape.sm}px`,
+            minHeight: 48,
+            px: 1,
+            '&:focus-visible': { outline: `2px solid ${roles.primary}` },
           }}
         >
-          {product.name}
-        </Typography>
-        <Typography component="span" variant="bodyMedium" color="text.secondary">
-          {unitLabel(product.unit, copy)}
-        </Typography>
-      </ButtonBase>
-      {soldOut && (
-        <Chip
-          size="small"
-          label={t.soldOut}
-          variant="outlined"
-          // Quiet on purpose: Add product stays the one saturated action on the sheet.
-          sx={{
-            alignSelf: 'flex-start',
-            ml: 1,
-            borderColor: roles.outline,
-            color: roles.onSurfaceVariant,
-          }}
-        />
-      )}
-      <PriceField product={product} />
+          <Typography
+            component="span"
+            variant="bodyLarge"
+            sx={{
+              display: 'block',
+              fontWeight: 500,
+              overflowWrap: 'anywhere',
+              color: soldOut ? roles.onSurfaceVariant : roles.onSurface,
+            }}
+          >
+            {product.name}
+          </Typography>
+          <Typography component="span" variant="bodyMedium" color="text.secondary">
+            {unitLabel(product.unit, copy)}
+          </Typography>
+        </ButtonBase>
+        {priced && <PriceField product={product} />}
+      </Box>
+      {/* "Sold out" is the quiet count line, so Add product stays the one saturated action. */}
+      <Box sx={{ pl: 1 }}>
+        <StockLine product={product} usual={usual} />
+      </Box>
     </Box>
   )
 }

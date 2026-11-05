@@ -25,7 +25,7 @@ from .customer import (
 from .limits import client_ip, enforce_limits
 from .merchant import public_projection
 from .merchant_routes import consented_owner, owner, store
-from .product_source import source_of
+from .product_source import for_sale, source_of
 from .reply_suggestions import ReplySuggestions, templates
 from .threads import thread_signals, token_hash
 
@@ -209,11 +209,13 @@ async def reply_suggestions(
         return ReplySuggestions(language="en")
     context = await anyio.to_thread.run_sync(store(request).context, uid, business_id)
     fields = context["business"]["fields"]
-    inventory = context["inventory"]
+    category = fields.get("category", "")
+    # Never a thing the shop buys to make others (tea dust) as a stand-in (OB-310).
+    inventory = [item for item in context["inventory"] if for_sale(item, category)]
     # The customer-facing projection only, plus made/bought to pick a sold-out item's stand-in.
     shop = public_projection(business_id, fields, inventory)
     for product, item in zip(shop["products"], inventory, strict=True):
-        product["source"] = source_of(item, fields.get("category", ""))
+        product["source"] = source_of(item, category)
     # The fixed templates for every shop: no model text can reach a suggestion (OB-326).
     return templates(shop, humans[-1].text)
 

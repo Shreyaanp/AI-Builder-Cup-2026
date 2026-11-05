@@ -16,6 +16,7 @@ import { useRewardCopy } from '../rewards/strings'
 import { HoursList } from '../shop/Hours'
 import { categoryLabel, useShopCopy } from '../shop/strings'
 import { unitLabel } from '../shop/units'
+import { useStockCopy } from '../shop/stockCopy'
 import { CurrentLocationAction, LocationPin } from './CurrentLocation'
 import { ClosedTodayNote } from './CoachActions'
 import { useNextStepsCopy } from './nextStepsCopy'
@@ -36,6 +37,7 @@ export function ReviewDialog({
   const t = useCopy()
   const rewards = useRewardCopy()
   const shopCopy = useShopCopy()
+  const stockCopy = useStockCopy()
   const locale = useLocale()
   const pinCopy = discoverCopy(locale)
   const next = useNextStepsCopy()
@@ -264,6 +266,11 @@ export function ReviewDialog({
                       {product.available === false
                         ? t.soldOut
                         : `${t.stock}: ${product.stock} ${unitLabel(product.unit, shopCopy)}`}
+                    </Typography>
+                  )}
+                  {product.for_sale !== undefined && (
+                    <Typography variant="bodySmall" color="text.secondary">
+                      {product.for_sale ? stockCopy.forSale : stockCopy.thingsIBuy}
                     </Typography>
                   )}
                 </Box>

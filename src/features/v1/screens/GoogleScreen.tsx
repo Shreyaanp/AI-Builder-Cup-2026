@@ -21,6 +21,7 @@ import { shape } from '../../../design/theme'
 import { HoursList } from '../../shop/Hours'
 import { hasHours, weekdays } from '../../shop/hoursModel'
 import { useShopCopy } from '../../shop/strings'
+import { onMenu } from '../../shop/stock'
 import { useLocale } from '../../../state/hooks'
 import { categoryArt } from '../../frontdoors/photos'
 import { fill, useGoogleCopy } from '../../google/strings'
@@ -152,9 +153,11 @@ function GoogleGuide() {
     weeklyHours && `${t.fields.hours}: ${weeklyHours}`,
     f.hours && `${t.fields.hours}: ${f.hours}`,
     f.phone && `${t.fields.phone}: ${f.phone}`,
-    ws.products.length > 0 &&
+    // What customers can buy, never the tea dust the shop buys (OB-310).
+    ws.products.some(onMenu) &&
       `${t.products}: ` +
         ws.products
+          .filter(onMenu)
           .map((p) => `${p.name} ${formatShopPrice(p.price, currency)}/${p.unit}`)
           .join(', '),
   ]
@@ -281,7 +284,7 @@ function GoogleGuide() {
                 .map((id) => gallery.urls[id])
                 .filter((url): url is string => Boolean(url))}
               items={ws.products
-                .filter((p) => p.available)
+                .filter((p) => p.available && onMenu(p))
                 .slice(0, 3)
                 .map((p) => ({ name: p.name, price: formatShopPrice(p.price, currency) }))}
             />

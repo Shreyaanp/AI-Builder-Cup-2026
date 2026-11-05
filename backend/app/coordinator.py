@@ -1051,6 +1051,9 @@ def propose_products(items: list[ProductInput]) -> dict[str, Any]:
             changes.append(
                 f"{product.name}: {'back in stock' if product.available else 'sold out'}"
             )
+        if product.stock is not None and known.get("stock") != product.stock:
+            before = "not counted" if known.get("stock") is None else f"{known['stock']} left"
+            changes.append(f"{product.name}: {before} → {product.stock} left")
     return {
         "status": "needs_review",
         "proposal_id": proposal["id"],

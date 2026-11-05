@@ -383,6 +383,22 @@ def source_of(product: dict[str, Any], category: str = "") -> Source:
     return "unknown"
 
 
+def for_sale(product: dict[str, Any], category: str = "") -> bool:
+    """Whether customers can buy this item, or it is one of the "Things I buy" (OB-310): tea dust
+    or milk a tea stall makes chai from. The owner's own switch first; else a raw supply the shop
+    buys is kept off the customer menu, only at a shop that makes what it sells: a kirana or a
+    dairy of no known kind sells its milk. Nothing is rewritten: items saved before this keep
+    their records and only move lists."""
+    saved = product.get("for_sale")
+    if isinstance(saved, bool):
+        return saved
+    if shop_kind(category) not in FOOD | SERVICES:
+        return True
+    return not (
+        source_of(product, category) == "bought" and raw_ingredient(product.get("name") or "")
+    )
+
+
 def same_kind(category: str, other: str, other_is_supplier: bool = False) -> bool:
     """A shop of the same kind as this one, never a supplier to it: a bakery does not order
     bread from another bakery, nor a tea stall samosas from another tea stall or a café (OB-239,

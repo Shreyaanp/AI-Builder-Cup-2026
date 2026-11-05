@@ -30,6 +30,7 @@ from .community import Documents, SqliteDocuments
 from .customer import Inquiry, InquiryInput, InquiryReceipt
 from .money import exponent
 from .playbook import migrate_stored
+from .product_source import for_sale
 from .region import (
     country_at,
     country_of_timezone,
@@ -330,6 +331,9 @@ class ProductFields(BaseModel):
     # The owner's answer to "Do you make it or buy it?": only bought stock is ever reordered
     # (OB-239). Unset means the app infers it (product_source.py); a menu edit keeps it.
     source: Literal["made", "bought"] | None = None
+    # The owner's "Customers can buy this" switch: False keeps an item in "Things I buy", off the
+    # customer menu and page (OB-310). Unset means the app infers it (product_source.for_sale).
+    for_sale: bool | None = None
     # Set only when the owner picks a new unit for an item saved under another one: the commit
     # updates that saved item instead of adding a second one. Never stored on the item.
     previous_unit: str | None = Field(default=None, min_length=1, max_length=40)
@@ -343,6 +347,8 @@ class ProductFields(BaseModel):
             data.pop("previous_unit", None)
         if data.get("source") is None:
             data.pop("source", None)
+        if data.get("for_sale") is None:
+            data.pop("for_sale", None)
         return data
 
 
@@ -358,10 +364,40 @@ class SourceRequest(BaseModel):
     source: Literal["made", "bought"]
 
 
+class StockRequest(BaseModel):
+    """The owner's − / + or "Made 20": a new count, or an amount added (OB-310). No AI involved.
+    `stock: null` is "not counted" again: Undo of the first tap on an item nobody counted."""
+
+    model_config = ConfigDict(extra="forbid")
+    stock: int | None = Field(default=None, ge=0, le=1_000_000)
+    add: int | None = Field(default=None, ge=-1_000_000, le=1_000_000)
+
+    @model_validator(mode="after")
+    def one_change(self) -> StockRequest:
+        if ("stock" in self.model_fields_set) == (self.add is not None):
+            raise ValueError("Send either stock or add.")
+        return self
+
+    def apply(self, fields: dict[str, Any]) -> dict[str, Any]:
+        if self.add is None:
+            return {**fields, "stock": self.stock}
+        stock = (fields.get("stock") or 0) + self.add
+        return {**fields, "stock": min(max(stock, 0), 1_000_000)}
+
+
+class ForSaleRequest(BaseModel):
+    """ "Customers can buy this", or one of the things the shop buys to make others (OB-310)."""
+
+    model_config = ConfigDict(extra="forbid")
+    for_sale: bool
+
+
 def kept_source(product: dict[str, Any], saved: dict[str, Any] | None) -> dict[str, Any]:
-    """A menu edit never forgets the owner's make-or-buy answer (OB-239)."""
-    if saved and saved.get("source") and not product.get("source"):
-        return {**product, "source": saved["source"]}
+    """A menu edit never forgets the owner's make-or-buy answer (OB-239) or their "Customers can
+    buy this" switch (OB-310)."""
+    for key in ("source", "for_sale"):
+        if saved and saved.get(key) is not None and product.get(key) is None:
+            product = {**product, key: saved[key]}
     return product
 
 
@@ -528,6 +564,14 @@ class MerchantRepository(Protocol):
         """The owner's make-or-buy answer, saved on the item so it is never asked again."""
         ...
 
+    def edit_item(
+        self, uid: str, bid: str, product_id: str, edit: Callable[[dict[str, Any]], dict[str, Any]]
+    ) -> dict[str, Any]:
+        """One owner tap on one saved item (its stock, make or buy, for sale), from its current
+        stored fields inside the store's transaction; bumps the revision like the sold-out
+        switch, so the app reloads the item at once and pending proposals go stale."""
+        ...
+
     def planning(
         self, uid: str, bid: str, pid: str, action: str, payload: dict[str, Any]
     ) -> dict[str, Any]: ...
@@ -639,6 +683,8 @@ def public_projection(
                 "available": product.get("available", True),
             }
             for product in products
+            # Things the shop buys to make others (tea dust, milk) are never on its menu (OB-310).
+            if for_sale(product, fields.get("category", ""))
         ],
     }
 
@@ -1169,6 +1215,11 @@ class MerchantStore:
         return {"id": product_id, **fields, "revision": revision[0]}
 
     def set_source(self, uid: str, bid: str, product_id: str, source: str) -> dict[str, Any]:
+        return self.edit_item(uid, bid, product_id, lambda fields: {**fields, "source": source})
+
+    def edit_item(
+        self, uid: str, bid: str, product_id: str, edit: Callable[[dict[str, Any]], dict[str, Any]]
+    ) -> dict[str, Any]:
         with self.connect() as db:
             db.execute("BEGIN IMMEDIATE")
             self.owned(db, uid, bid)
@@ -1177,7 +1228,7 @@ class MerchantStore:
             ).fetchone()
             if not row:
                 raise HTTPException(404, "Product not found.")
-            fields = {**json.loads(row[0]), "source": source}
+            fields = edit(json.loads(row[0]))
             db.execute("UPDATE inventory SET fields=? WHERE id=?", (json.dumps(fields), product_id))
             # A new revision, like the sold-out switch: the app reloads the item at once.
             db.execute("UPDATE businesses SET revision=revision+1 WHERE id=?", (bid,))

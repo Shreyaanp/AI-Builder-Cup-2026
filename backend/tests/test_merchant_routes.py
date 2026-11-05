@@ -137,6 +137,8 @@ def test_inventory_approval_saves_product_for_owner_only(app) -> None:
             **product,
             "available": True,
             "category": "drinks",
+            # The owner's list says which items customers can buy (OB-310).
+            "for_sale": True,
         }
 
     with TestClient(app) as stranger:

@@ -22,6 +22,7 @@ from .demo_coach_words import (
 )
 from .demo_food_words import FOOD_UNITS, NUMBER_WORDS, is_food, singular
 from .demo_item_names import hindi_item, item_named_in
+from .demo_stock_words import stock_change
 
 # When unsure: one short question, never a guessed card (S2-9); the examples are chips under it.
 FALLBACK = (
@@ -664,6 +665,7 @@ async def public_demo_turn(ctx: Any, question: str) -> list[StreamEvent] | None:
         or await first_jobs(ctx, question)
         or sales_today(ctx, question)
         or close_day(ctx, question)
+        or stock_change(ctx, question)
         or owner_changes(ctx, question)
     )
     if found:

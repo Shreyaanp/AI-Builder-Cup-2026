@@ -506,6 +506,11 @@ class FirestoreMerchantStore:
         return result
 
     def set_source(self, uid: str, bid: str, product_id: str, source: str) -> dict[str, Any]:
+        return self.edit_item(uid, bid, product_id, lambda fields: {**fields, "source": source})
+
+    def edit_item(
+        self, uid: str, bid: str, product_id: str, edit: Callable[[dict[str, Any]], dict[str, Any]]
+    ) -> dict[str, Any]:
         business_ref = self.businesses.document(document_id(bid, "Business not found."))
         if not re.fullmatch(r"[0-9a-f]{64}", product_id):
             raise HTTPException(404, "Product not found.")
@@ -517,7 +522,7 @@ class FirestoreMerchantStore:
             item = item_ref.get(transaction=transaction)
             if not item.exists:
                 raise HTTPException(404, "Product not found.")
-            fields = {**(item.to_dict() or {})["fields"], "source": source}
+            fields = edit((item.to_dict() or {})["fields"])
             transaction.update(item_ref, {"fields": fields, "updated": time.time()})
             # A new revision, like the sold-out switch: the app reloads the item at once.
             transaction.update(business_ref, {"revision": business["revision"] + 1})

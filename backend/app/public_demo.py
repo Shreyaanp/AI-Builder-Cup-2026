@@ -86,7 +86,7 @@ ALLOWED: tuple[tuple[str, re.Pattern[str]], ...] = tuple(
         ("GET", "places/(?:reverse|pin)"),
         ("POST", "proposals"),
         ("POST", rf"proposals/{_ID}/approve"),
-        ("POST", rf"{_BIZ}/inventory/{_ID}/(?:availability|source)"),
+        ("POST", rf"{_BIZ}/inventory/{_ID}/(?:availability|source|stock|for-sale)"),
         ("POST", rf"{_BIZ}/(?:share|sort-menu|update)"),
         ("PUT", rf"{_BIZ}/perks"),
         ("DELETE", rf"{_BIZ}/notes/{_ID}"),

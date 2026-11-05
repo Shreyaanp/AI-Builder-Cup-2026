@@ -97,6 +97,8 @@ function Forecast({ chart }: { chart: ForecastChart }) {
   const t = useChartCopy()
   const locale = useLocale()
   const number = new Intl.NumberFormat(locale, { maximumFractionDigits: 0 })
+  // A slow supply (0.3 kg of tea dust a day) keeps its decimal rather than reading as 0.
+  const dayValue = new Intl.NumberFormat(locale, { maximumFractionDigits: 1 })
   const weekday = new Intl.DateTimeFormat(locale, { weekday: 'narrow' })
   const items = chart.items.slice(0, 4)
   const peak = Math.max(1, ...items.flatMap((i) => i.days.map((d) => d.upper ?? d.quantity)))
@@ -133,6 +135,27 @@ function Forecast({ chart }: { chart: ForecastChart }) {
                   {number.format(total)} {item.unit}
                 </Typography>
               </Stack>
+              {/* Each day's number over its bar, so no bar has to be guessed (OB-310). */}
+              <Box
+                aria-hidden="true"
+                data-bar-values
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: `repeat(${item.days.length}, 1fr)`,
+                  gap: 1,
+                  mb: 0.5,
+                }}
+              >
+                {item.days.map((day) => (
+                  <Typography
+                    key={day.date}
+                    variant="labelSmall"
+                    sx={{ textAlign: 'center', fontVariantNumeric: 'tabular-nums' }}
+                  >
+                    {dayValue.format(day.quantity)}
+                  </Typography>
+                ))}
+              </Box>
               <Box
                 aria-hidden="true"
                 sx={{

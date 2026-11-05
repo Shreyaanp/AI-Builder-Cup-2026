@@ -52,6 +52,16 @@ export interface Workspace {
   reload: () => Promise<void>
   /** Owner's immediate sold-out switch; false when it did not save (the switch moves back). */
   setAvailability: (product: Product, available: boolean) => Promise<boolean>
+  /**
+   * The menu's − / + and "Made 20" (OB-310): saved at once, then a named note with Undo
+   * ("Bun maska: 5 left · Undo"). `add` counts from the saved stock. False when it did not save.
+   */
+  setStock: (
+    product: Product,
+    change: { stock: number | null } | { add: number },
+  ) => Promise<boolean>
+  /** Moves an item between the customer menu and "Things I buy" (OB-310). */
+  setForSale: (product: Product, forSale: boolean) => Promise<boolean>
   /** Turns the public customer page on or off. */
   setShared: (shared: boolean) => Promise<void>
   shareUrl: string | null
