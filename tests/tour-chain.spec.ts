@@ -145,7 +145,7 @@ for (const world of [
           `WhatsApp to ${world.wholesaler.replace(' (Demo)', '')}: ${story.order.lines.length} items`,
         )
         await expect(card).toContainText(money(story.order.total))
-        await expect(page.locator('[data-tour="reorder"]')).toHaveCount(0)
+        await expect(page.locator('[data-tour="reorder"]')).toBeVisible()
         await noSideScroll(page)
         await shot(2)
       })

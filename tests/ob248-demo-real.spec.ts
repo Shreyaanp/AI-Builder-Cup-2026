@@ -317,7 +317,7 @@ test('OB-248 Hindi: a short reply and a new price, each accepted, show the owner
     await expect(talk).toContainText('आपका ऑर्डर निकल चुका है', { timeout: 20_000 })
     await card.getByRole('button', { name: 'माल आ गया', exact: true }).click()
     await expect(page.locator('.MuiSnackbar-root')).toContainText(
-      /\d+ किलो चाय पत्ती आ गया। अब स्टॉक \d+ किलो है।/,
+      /\d+ किलो चाय पत्ती आ गई। अब स्टॉक \d+ किलो है।/,
       { timeout: 15_000 },
     )
     await expect(talk).toContainText('यह रहा बिल', { timeout: 20_000 })
@@ -528,7 +528,7 @@ test('OB-248 Hindi: Goods arrived says what came and the stock now in Hindi, wit
   await card.getByRole('button', { name: 'माल आ गया', exact: true }).click({ timeout: 30_000 })
   // OB-263: no review sheet with the selling price; one note, all Hindi, with Undo.
   const note = page.locator('.MuiSnackbar-root')
-  await expect(note).toContainText(/\d+ किलो चाय पत्ती आ गया। अब स्टॉक \d+ किलो है।/, {
+  await expect(note).toContainText(/\d+ किलो चाय पत्ती आ गई। अब स्टॉक \d+ किलो है।/, {
     timeout: 15_000,
   })
   await expect(note).toContainText('वापस लें')

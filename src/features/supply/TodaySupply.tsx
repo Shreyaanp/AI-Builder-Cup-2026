@@ -115,7 +115,11 @@ export function TodaySupply({
         <Box aria-hidden="true" sx={{ display: 'flex', color: roles.primary, flexShrink: 0 }}>
           {promise ? <NotebookPen size={20} /> : <Truck size={20} />}
         </Box>
-        <Box sx={{ flex: '1 1 160px', minWidth: 0 }}>
+        {/* The tour's "Reorder" step lights the button; with nothing to order it lights the line. */}
+        <Box
+          data-tour={need && reorder ? undefined : 'reorder'}
+          sx={{ flex: '1 1 160px', minWidth: 0 }}
+        >
           {promise && (
             <Typography variant="bodyLarge" sx={{ overflowWrap: 'anywhere', fontWeight: 500 }}>
               {promise.said}

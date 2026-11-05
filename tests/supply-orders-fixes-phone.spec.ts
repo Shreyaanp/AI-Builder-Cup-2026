@@ -32,6 +32,12 @@ async function runsOut(page: Page, name: RegExp) {
   return card
 }
 
+/** Grow → Buy stock → To do, from wherever the shop is. */
+async function openBuyStockAgain(page: Page) {
+  await page.getByRole('button', { name: 'Grow', exact: true }).click()
+  return openBuyStock(page)
+}
+
 async function close(page: Page) {
   await page.getByRole('dialog').getByRole('button', { name: 'Close', exact: true }).last().click()
   await expect(page.getByRole('dialog')).toHaveCount(0)
@@ -273,20 +279,19 @@ for (const size of WIDTHS) {
     await expect(page.getByRole('region', { name: 'Supply chain' })).toContainText(
       /Milk: 12 l arriving/,
     )
-    const tile = await runsOut(page, /^Milk: \d+ l arriving/)
-    // 12 l on its way is short of the week's 25 l: still to order, with what is coming shown.
-    await expect(tile).toContainText('Find suppliers')
-    await expect(tile).toContainText(/12 l arriving/)
+    // Nothing runs out before it lands: arriving news is not a to do, so Grow has no card for it.
+    const sheet = await openBuyStockAgain(page)
+    await expect(sheet.getByRole('button', { name: /^Milk: \d+ l arriving/ })).toHaveCount(0)
+    await expect(sheet).not.toContainText('Find suppliers')
 
-    // Draft and approve in the same sheet, go back: the card reads covered at once.
-    const sheet = page.getByRole('dialog', { name: /^Buy stock/ })
+    // Draft and approve in the same sheet, go back: still no card, and no supplier search.
     await sheet.getByRole('button', { name: 'Draft a reorder' }).click()
     const card = page.getByRole('article')
     await card.getByRole('button', { name: 'Approve and send', exact: true }).click()
     await expect(card).toContainText('Marked Sent')
     await sheet.getByRole('button', { name: 'Buy stock', exact: true }).click()
-    await expect(tile).toContainText(/24 l arriving/)
-    await expect(tile).not.toContainText('Find suppliers')
+    await expect(sheet.getByRole('button', { name: /^Milk: \d+ l arriving/ })).toHaveCount(0)
+    await expect(sheet).not.toContainText('Find suppliers')
 
     // Cancel one sent order on the same sheet, go back: no stale "24 l on order".
     await sheet.getByRole('button', { name: /^On the way/ }).click()
@@ -299,8 +304,12 @@ for (const size of WIDTHS) {
     })
     await detail.getByRole('button', { name: 'Buy stock', exact: true }).click()
     await sheet.getByRole('button', { name: /^To do/ }).click()
-    await expect(tile).toContainText(/12 l arriving/)
-    await expect(tile).toContainText('Find suppliers')
+    await close(page)
+    // Today follows: the cancelled 12 l is gone, so it says 12 l, not a stale 24 l.
+    await page.getByRole('button', { name: 'Coach', exact: true }).click()
+    await expect(page.getByRole('region', { name: 'Supply chain' })).toContainText(
+      /Milk: 12 l arriving/,
+    )
     await noSideScroll(page)
   })
 
@@ -316,11 +325,8 @@ for (const size of WIDTHS) {
     await expect(page.getByRole('region', { name: 'Supply chain' })).toContainText(
       /Milk: 12 l arriving/,
     )
-    const tile = await runsOut(page, /^Milk: \d+ l arriving/)
-    await expect(tile).toContainText(/12 l arriving/)
-
     // Receive the whole order from Buy stock → On the way: no stale "on order".
-    const hub = page.getByRole('dialog', { name: /^Buy stock/ })
+    const hub = await openBuyStockAgain(page)
     await hub.getByRole('button', { name: /^On the way/ }).click()
     await hub.getByRole('button', { name: /^Milk from Fresh Dairy \(Demo\)/ }).click()
     await hub.getByRole('button', { name: 'Delivery from Fresh Dairy (Demo)', exact: true }).click()
@@ -352,11 +358,8 @@ for (const size of WIDTHS) {
     await expect(page.getByRole('region', { name: 'Supply chain' })).toContainText(
       /Milk: 12 l arriving/,
     )
-    const tile = await runsOut(page, /^Milk: \d+ l arriving/)
-    await expect(tile).toContainText(/12 l arriving/)
-
     // The demo partner is a buyer: its order for 20 l Milk is one to ship, not stock coming in.
-    const hub = page.getByRole('dialog', { name: /^Buy stock/ })
+    const hub = await openBuyStockAgain(page)
     await hub.getByRole('button', { name: /^On the way/ }).click()
     const next = hub.getByRole('button', { name: 'Show next step (demo)' })
     await next.click()
@@ -364,9 +367,12 @@ for (const size of WIDTHS) {
     await next.click()
     await expect(hub).toContainText(/New order · Milk/)
     await hub.getByRole('button', { name: /^To do/ }).click()
-    await expect(tile).toContainText(/12 l arriving/)
-    await expect(tile).toContainText('Find suppliers')
     await expect(page.getByText(/32 l arriving/)).toHaveCount(0)
+    await close(page)
+    await page.getByRole('button', { name: 'Coach', exact: true }).click()
+    await expect(page.getByRole('region', { name: 'Supply chain' })).toContainText(
+      /Milk: 12 l arriving/,
+    )
     await noSideScroll(page)
   })
 }
@@ -403,10 +409,11 @@ for (const size of WIDTHS) {
     const po = (await supply()).orders.find((o: { number: string }) => o.number === '4500012345')
     expect([po.status, !!po.received]).toEqual(['invoiced', false])
 
+    // Invoiced but not arrived is still on its way: Today still says 12 l arriving.
     await page.getByRole('button', { name: 'Coach', exact: true }).click()
-    const tile = await runsOut(page, /^Milk: \d+ l arriving/)
-    await expect(tile).toContainText(/12 l arriving/)
-    await expect(tile).toContainText('Find suppliers')
+    await expect(page.getByRole('region', { name: 'Supply chain' })).toContainText(
+      /Milk: 12 l arriving/,
+    )
     await noSideScroll(page)
   })
 }

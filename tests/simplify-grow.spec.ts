@@ -186,10 +186,11 @@ const FORMER: {
     shows: (page) => page.getByRole('dialog').getByRole('button', { name: 'Draft a reorder' }),
   },
   {
-    // Its order on the way counted, it says what is arriving instead (OB-263).
+    // Its order on the way counted and nothing runs out before it lands: no card, and ordering
+    // more stays one tap away (OB-263).
     was: 'Tea dust runs out · Find suppliers',
     path: ['Buy stock'],
-    shows: (page) => page.getByRole('dialog').getByRole('button', { name: /runs out|arriving/ }),
+    shows: (page) => page.getByRole('dialog').getByRole('button', { name: 'Draft a reorder' }),
   },
   {
     was: 'Supply chain (needs me now, must send)',
