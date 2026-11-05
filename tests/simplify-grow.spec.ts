@@ -318,8 +318,8 @@ test('Buy stock: a drafted reorder is one card in To do and "1 to do" on the row
   await sheet.getByRole('button', { name: 'Buy stock', exact: true }).click()
   await expect(sheet.getByRole('article')).toHaveCount(0)
   await expect(sheet.getByRole('button', { name: /Sri Lakshmi/ })).toHaveCount(1)
-  // The runs-out card and the draft: two cards, and the tab says 2.
-  await expect(sheet.getByRole('button', { name: /^To do/ })).toHaveText(/^To do\s*2$/)
+  // Only the draft is a to do: the 13 kg already on its way is news, not a card (OB-263).
+  await expect(sheet.getByRole('button', { name: /^To do/ })).toHaveText(/^To do\s*1$/)
   await sheet.getByRole('button', { name: 'Close', exact: true }).last().click()
   await expect(page.getByRole('dialog')).toHaveCount(0, { timeout: 10_000 })
   await expect(grow(page).getByRole('button', { name: /^Buy stock/ })).toContainText(
