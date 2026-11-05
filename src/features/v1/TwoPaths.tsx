@@ -1,9 +1,7 @@
 import { useRef, useState } from 'react'
-import { Box, Button, MenuItem, Stack, Switch, TextField, Typography } from '@mui/material'
+import { Box, Button, Stack, Switch, TextField, Typography } from '@mui/material'
 import { Search } from 'lucide-react'
-import { isLanguagePref, LOCALE_NAMES, LOCALES, systemLocale } from '../../i18n/locales'
 import { shopZone } from '../../region/region'
-import { usePreferences, usePreferencesDispatch } from '../../state/hooks'
 import { useSourcingCopy } from '../sourcing/copy'
 import type { Proposal } from './api'
 import { useCopy } from './strings'
@@ -72,37 +70,6 @@ export function ClosedTodaySwitch({ onReview }: { onReview: () => void }) {
         slotProps={{ input: { 'aria-label': c.closedToday } }}
       />
     </Stack>
-  )
-}
-
-/** Messages: the owner's own language for the app and the coach (the coach's set_reply_language). */
-export function YourLanguage() {
-  const c = useTwoPathsCopy()
-  const t = useCopy()
-  const preferences = usePreferences()
-  const dispatch = usePreferencesDispatch()
-  return (
-    <TextField
-      select
-      fullWidth
-      label={c.yourLanguage}
-      helperText={c.yourLanguageHint}
-      value={preferences.language}
-      onChange={(event) =>
-        isLanguagePref(event.target.value) &&
-        dispatch({ type: 'language', language: event.target.value })
-      }
-      sx={{ mt: 6 }}
-    >
-      <MenuItem value="system">
-        {t.languageSystem} ({LOCALE_NAMES[systemLocale()]})
-      </MenuItem>
-      {LOCALES.map((code) => (
-        <MenuItem key={code} value={code} lang={code}>
-          {LOCALE_NAMES[code]}
-        </MenuItem>
-      ))}
-    </TextField>
   )
 }
 

@@ -164,7 +164,7 @@ test('#2 #7 the owner message thread is a real list, with full-size translation 
     id: 't1',
     name: 'Priya',
     contact: 'priya@example.com',
-    message: 'Do you have Special Chai today?',
+    message: 'क्या आज स्पेशल चाय है?',
     created: 1_760_000_000,
     unread: true,
     done: false,
@@ -174,7 +174,7 @@ test('#2 #7 the owner message thread is a real list, with full-size translation 
         id: 'm1',
         author: 'customer',
         kind: '',
-        text: 'Do you have Special Chai today?',
+        text: 'क्या आज स्पेशल चाय है?',
         created: 1_760_000_000,
       },
       { id: 'm2', author: 'owner', kind: '', text: 'Yes, until 9 pm.', created: 1_760_000_100 },
@@ -195,6 +195,8 @@ test('#2 #7 the owner message thread is a real list, with full-size translation 
   // Every message is an item of the list inside the live region.
   await expect(log.getByRole('list').getByRole('listitem')).toHaveCount(2)
   await axe(page)
+  // OB-303: offered on the customer's Hindi question only, not on the owner's English reply.
+  await expect(log.getByRole('button', { name: 'See translation' })).toHaveCount(1)
   const translate = log.getByRole('button', { name: 'See translation' }).first()
   await atLeast44(translate)
 })

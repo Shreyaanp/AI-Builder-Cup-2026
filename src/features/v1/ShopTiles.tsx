@@ -39,7 +39,7 @@ import { MenuSheet } from '../shop/MenuSheet'
 import { ConnectRow } from '../connect/ConnectTile'
 import { Sheet } from './Sheet'
 import { AskHint } from './AskHint'
-import { ClosedTodaySwitch, YourLanguage } from './TwoPaths'
+import { ClosedTodaySwitch } from './TwoPaths'
 import { ShopQr } from './ShopQr'
 import { OwnerPerks } from '../passport/games/OwnerPerks'
 import { useUnread } from './useUnread'
@@ -703,8 +703,8 @@ export function ShopSheets({
       // Messages brings its own "Messages (n)" heading, which names the sheet.
       return (
         <Sheet {...common} titleId="messages-title" ask="messages">
+          {/* The owner's language lives in You → Language, not beside the conversation. */}
           <Messages key={`messages-${shop.id}`} businessId={shop.id} />
-          <YourLanguage />
         </Sheet>
       )
     case 'readiness': {

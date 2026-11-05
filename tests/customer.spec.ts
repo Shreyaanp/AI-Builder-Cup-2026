@@ -159,10 +159,18 @@ test('Signed-in customer and owner have a live two-way conversation', async ({
       timeout: 5_000,
     })
     const composer = customer.getByRole('textbox', { name: 'Message', exact: true })
-    await composer.fill('Thank you!')
+    // OB-303: "See translation" is offered for a customer's words in another language only,
+    // never for English in an English app or on the owner's own reply.
+    await expect(
+      messages.getByRole('button', { name: 'See translation', exact: true }),
+    ).toHaveCount(0)
+    await composer.fill('धन्यवाद!')
     await composer.press('Enter')
-    await expect(messages).toContainText('Thank you!', { timeout: 5_000 })
-    await messages.getByRole('button', { name: 'See translation', exact: true }).last().click()
+    await expect(messages).toContainText('धन्यवाद!', { timeout: 5_000 })
+    await expect(
+      messages.getByRole('button', { name: 'See translation', exact: true }),
+    ).toHaveCount(1)
+    await messages.getByRole('button', { name: 'See translation', exact: true }).click()
     await expect(messages).toContainText('Sample translation for the demo')
     // OB-305: More options sits beside Dialog's Close button on desktop without being intercepted.
     await messages.getByRole('button', { name: 'More options', exact: true }).click()

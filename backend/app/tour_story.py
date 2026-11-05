@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import secrets
 from datetime import date, datetime, time, timedelta
+from time import time as time_now
 from typing import Any
 from uuid import NAMESPACE_URL, uuid5
 from zoneinfo import ZoneInfo
@@ -91,7 +92,12 @@ def inquiries(demo: DemoShop, day: date) -> list[Inquiry]:
             ("Priya", f"Is {item} available this afternoon?", ""),
         ]
     ):
-        at = stamp(day - timedelta(days=2 - index), demo.fields.timezone, 0 if index == 2 else 10)
+        at = stamp(day - timedelta(days=2 - index), demo.fields.timezone, 10)
+        if index == 2:
+            # Today's question came in this morning, never at a midnight "12:00 am" (OB-303), and
+            # never later than now when the tour starts before seven.
+            start = stamp(day, demo.fields.timezone, 0)
+            at = max(start, min(stamp(day, demo.fields.timezone, 7), time_now() - 240))
         iid = stable(f"{demo.id}/inquiry/{index}")
         messages = [
             ThreadMessage(id=stable(iid + "/ask"), author="customer", text=question, created=at)

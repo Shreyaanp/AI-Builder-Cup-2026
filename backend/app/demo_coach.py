@@ -13,6 +13,7 @@ from .demo_coach_words import (
     FALLBACK_HI,
     app_language,
     close_day,
+    customer_reply,
     first_jobs,
     owner_changes,
     sales_today,
@@ -658,6 +659,7 @@ async def public_demo_turn(ctx: Any, question: str) -> list[StreamEvent] | None:
     # sales, closing the day, tomorrow's note and the app language (OB-261, 262, 264, S2-9).
     found = (
         app_language(question)
+        or customer_reply(ctx, question)
         or tomorrow_note(ctx, question)
         or await first_jobs(ctx, question)
         or sales_today(ctx, question)
