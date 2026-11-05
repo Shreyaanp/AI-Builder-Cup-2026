@@ -21,6 +21,7 @@ import { ChevronLeft, EllipsisVertical } from 'lucide-react'
 import type { components } from '../../api/generated'
 import type { Locale } from '../../i18n/locales'
 import { useLocale } from '../../state/hooks'
+import { shopZone } from '../../region/region'
 import { useWorkspace } from '../v1/workspaceContext'
 import { useCopy } from '../v1/strings'
 import type { TipList } from '../customer/types'
@@ -35,6 +36,8 @@ const en = {
   reload: 'Reload messages',
   failed: 'Could not load or update messages. Please try again.',
   unnamed: 'Customer',
+  suggested: 'Suggested replies',
+  sent: 'Sent',
 }
 const translations: Record<Exclude<Locale, 'en'>, Omit<typeof en, keyof ConversationCopy>> = {
   hi: {
@@ -44,6 +47,8 @@ const translations: Record<Exclude<Locale, 'en'>, Omit<typeof en, keyof Conversa
     reload: 'संदेश फिर लोड करें',
     failed: 'संदेश लोड या अपडेट नहीं हुए। फिर कोशिश करें।',
     unnamed: 'ग्राहक',
+    suggested: 'सुझाए गए जवाब',
+    sent: 'भेजा गया',
   },
   bn: {
     title: 'বার্তাগুলি',
@@ -52,6 +57,8 @@ const translations: Record<Exclude<Locale, 'en'>, Omit<typeof en, keyof Conversa
     reload: 'বার্তা আবার লোড করুন',
     failed: 'বার্তা লোড বা আপডেট হয়নি। আবার চেষ্টা করুন।',
     unnamed: 'ক্রেতা',
+    suggested: 'প্রস্তাবিত উত্তর',
+    sent: 'পাঠানো হয়েছে',
   },
   te: {
     title: 'సందేశాలు',
@@ -60,6 +67,8 @@ const translations: Record<Exclude<Locale, 'en'>, Omit<typeof en, keyof Conversa
     reload: 'సందేశాలు మళ్లీ లోడ్ చేయండి',
     failed: 'సందేశాలు లోడ్ లేదా నవీకరణ కాలేదు. మళ్లీ ప్రయత్నించండి.',
     unnamed: 'కస్టమర్',
+    suggested: 'సూచించిన జవాబులు',
+    sent: 'పంపబడింది',
   },
   mr: {
     title: 'संदेश',
@@ -68,6 +77,8 @@ const translations: Record<Exclude<Locale, 'en'>, Omit<typeof en, keyof Conversa
     reload: 'संदेश पुन्हा लोड करा',
     failed: 'संदेश लोड किंवा अपडेट झाले नाहीत. पुन्हा प्रयत्न करा.',
     unnamed: 'ग्राहक',
+    suggested: 'सुचवलेली उत्तरे',
+    sent: 'पाठवले',
   },
   kn: {
     title: 'ಸಂದೇಶಗಳು',
@@ -76,6 +87,8 @@ const translations: Record<Exclude<Locale, 'en'>, Omit<typeof en, keyof Conversa
     reload: 'ಸಂದೇಶ ಮತ್ತೆ ಲೋಡ್ ಮಾಡಿ',
     failed: 'ಸಂದೇಶ ಲೋಡ್ ಅಥವಾ ನವೀಕರಿಸಲಾಗಲಿಲ್ಲ. ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.',
     unnamed: 'ಗ್ರಾಹಕ',
+    suggested: 'ಸೂಚಿಸಿದ ಉತ್ತರಗಳು',
+    sent: 'ಕಳುಹಿಸಲಾಗಿದೆ',
   },
 
   'zh-Hans': {
@@ -85,6 +98,8 @@ const translations: Record<Exclude<Locale, 'en'>, Omit<typeof en, keyof Conversa
     reload: '重新加载留言',
     failed: '无法加载或更新留言，请重试。',
     unnamed: '顾客',
+    suggested: '建议回复',
+    sent: '已发送',
   },
   ms: {
     title: 'Mesej',
@@ -93,6 +108,8 @@ const translations: Record<Exclude<Locale, 'en'>, Omit<typeof en, keyof Conversa
     reload: 'Muat semula mesej',
     failed: 'Tidak dapat memuatkan atau mengemas kini mesej. Sila cuba lagi.',
     unnamed: 'Pelanggan',
+    suggested: 'Balasan dicadangkan',
+    sent: 'Dihantar',
   },
   ta: {
     title: 'செய்திகள்',
@@ -101,6 +118,8 @@ const translations: Record<Exclude<Locale, 'en'>, Omit<typeof en, keyof Conversa
     reload: 'செய்திகளை மீண்டும் ஏற்று',
     failed: 'செய்திகளை ஏற்றவோ புதுப்பிக்கவோ முடியவில்லை. மீண்டும் முயலுங்கள்.',
     unnamed: 'வாடிக்கையாளர்',
+    suggested: 'பரிந்துரைத்த பதில்கள்',
+    sent: 'அனுப்பப்பட்டது',
   },
   ja: {
     title: 'メッセージ',
@@ -109,6 +128,8 @@ const translations: Record<Exclude<Locale, 'en'>, Omit<typeof en, keyof Conversa
     reload: 'メッセージを再読み込み',
     failed: 'メッセージを読み込めないか、更新できませんでした。もう一度お試しください。',
     unnamed: 'お客様',
+    suggested: '返信の候補',
+    sent: '送信済み',
   },
   ko: {
     title: '메시지',
@@ -117,6 +138,8 @@ const translations: Record<Exclude<Locale, 'en'>, Omit<typeof en, keyof Conversa
     reload: '메시지 새로고침',
     failed: '메시지를 불러오거나 업데이트하지 못했어요. 다시 시도해 주세요.',
     unnamed: '손님',
+    suggested: '추천 답장',
+    sent: '보냄',
   },
   id: {
     title: 'Pesan',
@@ -125,6 +148,8 @@ const translations: Record<Exclude<Locale, 'en'>, Omit<typeof en, keyof Conversa
     reload: 'Muat ulang pesan',
     failed: 'Tidak dapat memuat atau memperbarui pesan. Silakan coba lagi.',
     unnamed: 'Pelanggan',
+    suggested: 'Saran balasan',
+    sent: 'Terkirim',
   },
   th: {
     title: 'ข้อความ',
@@ -133,6 +158,8 @@ const translations: Record<Exclude<Locale, 'en'>, Omit<typeof en, keyof Conversa
     reload: 'โหลดข้อความใหม่',
     failed: 'โหลดหรืออัปเดตข้อความไม่สำเร็จ กรุณาลองใหม่',
     unnamed: 'ลูกค้า',
+    suggested: 'คำตอบที่แนะนำ',
+    sent: 'ส่งแล้ว',
   },
   vi: {
     title: 'Tin nhắn',
@@ -141,6 +168,8 @@ const translations: Record<Exclude<Locale, 'en'>, Omit<typeof en, keyof Conversa
     reload: 'Tải lại tin nhắn',
     failed: 'Không tải hoặc cập nhật được tin nhắn. Vui lòng thử lại.',
     unnamed: 'Khách hàng',
+    suggested: 'Gợi ý trả lời',
+    sent: 'Đã gửi',
   },
   fil: {
     title: 'Mga mensahe',
@@ -149,6 +178,8 @@ const translations: Record<Exclude<Locale, 'en'>, Omit<typeof en, keyof Conversa
     reload: 'I-reload ang mga mensahe',
     failed: 'Hindi ma-load o ma-update ang mga mensahe. Subukang muli.',
     unnamed: 'Customer',
+    suggested: 'Mga mungkahing sagot',
+    sent: 'Naipadala',
   },
 }
 const chatTranslations: Record<Exclude<Locale, 'en'>, ConversationCopy> = {
@@ -576,6 +607,7 @@ const chatTranslations: Record<Exclude<Locale, 'en'>, ConversationCopy> = {
 }
 
 type Inquiry = components['schemas']['Inquiry']
+type ReplySuggestions = components['schemas']['ReplySuggestions']
 
 export function Messages({ businessId }: { businessId: string }) {
   const guest = useGuestCopy()
@@ -584,7 +616,8 @@ export function Messages({ businessId }: { businessId: string }) {
     ...en,
     ...(locale === 'en' ? {} : { ...translations[locale], ...chatTranslations[locale] }),
   }
-  const { api } = useWorkspace()
+  const { api, active } = useWorkspace()
+  const timeZone = shopZone(active?.fields)
   const [items, setItems] = useState<Inquiry[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
@@ -647,6 +680,26 @@ export function Messages({ businessId }: { businessId: string }) {
     }
   }, [api, path, load])
   const thread = items.find((item) => item.id === selected)
+  // One-tap drafts for the customer's latest words, fetched once per question (OB-303).
+  const question = thread?.messages?.filter((m) => m.kind !== 'ai').at(-1)
+  const asking = question?.author === 'customer' ? question.id : null
+  const [drafts, setDrafts] = useState<{ id: string; replies: string[] } | null>(null)
+  useEffect(() => {
+    if (!selected || !asking) return
+    const abort = new AbortController()
+    api<ReplySuggestions>(`${path}/${encodeURIComponent(selected)}/replies`, {
+      signal: abort.signal,
+    }).then(
+      (result) => {
+        const replies = Array.isArray(result?.replies)
+          ? result.replies.filter((r): r is string => typeof r === 'string' && r.trim() !== '')
+          : []
+        if (!abort.signal.aborted) setDrafts({ id: asking, replies: replies.slice(0, 3) })
+      },
+      () => undefined,
+    )
+    return () => abort.abort()
+  }, [api, path, selected, asking])
   const update = async (id: string, action: string, text?: string) => {
     const result = await api<Inquiry>(`${path}/${encodeURIComponent(id)}/${action}`, {
       method: 'POST',
@@ -804,6 +857,11 @@ export function Messages({ businessId }: { businessId: string }) {
             thread={thread}
             viewer="owner"
             copy={t}
+            owner={{
+              suggestions: drafts && drafts.id === asking ? drafts.replies : [],
+              timeZone,
+              copy: { suggested: t.suggested, sent: t.sent },
+            }}
             onSend={async (text) => {
               await update(thread.id, 'messages', text)
             }}
@@ -831,6 +889,14 @@ export function Messages({ businessId }: { businessId: string }) {
           >
             {items.map((item) => {
               const name = item.name || t.unnamed
+              // The latest words from a person, not the AI's instant answer; "You: …" when the
+              // shop has the last word, so the row never reads as if the customer wrote it.
+              const latest = item.messages?.filter((m) => m.kind !== 'ai').at(-1)
+              const preview = latest
+                ? latest.author === 'owner'
+                  ? `${t.you}: ${latest.text}`
+                  : latest.text
+                : item.message
               const status = item.blocked
                 ? t.blocked
                 : item.done
@@ -879,8 +945,7 @@ export function Messages({ businessId }: { businessId: string }) {
                           overflow: 'hidden',
                         }}
                       >
-                        {/* The latest words from a person, not the AI's instant answer. */}
-                        {item.messages?.filter((m) => m.kind !== 'ai').at(-1)?.text ?? item.message}
+                        {preview}
                       </Typography>
                       {status && (
                         <Typography component="span" variant="labelLarge" sx={{ display: 'block' }}>

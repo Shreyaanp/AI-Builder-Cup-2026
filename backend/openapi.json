@@ -3167,6 +3167,55 @@
         }
       }
     },
+    "/api/v1/businesses/{business_id}/inquiries/{inquiry_id}/replies": {
+      "get": {
+        "summary": "Reply Suggestions",
+        "description": "One-tap reply drafts for the customer's latest words (OB-303); never sent from here.",
+        "operationId": "reply_suggestions_api_v1_businesses__business_id__inquiries__inquiry_id__replies_get",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          },
+          {
+            "name": "inquiry_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Inquiry Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReplySuggestions"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/public/shops/{business_id}/inquiries/{inquiry_id}/messages/{message_id}/translation": {
       "post": {
         "summary": "Customer Translation",
@@ -16764,6 +16813,33 @@
         "additionalProperties": false,
         "type": "object",
         "title": "ReorderBody"
+      },
+      "ReplySuggestions": {
+        "properties": {
+          "language": {
+            "type": "string",
+            "title": "Language"
+          },
+          "replies": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 3,
+            "title": "Replies"
+          },
+          "mode": {
+            "type": "string",
+            "const": "template",
+            "title": "Mode",
+            "default": "template"
+          }
+        },
+        "type": "object",
+        "required": [
+          "language"
+        ],
+        "title": "ReplySuggestions"
       },
       "Requirement": {
         "properties": {

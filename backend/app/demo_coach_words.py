@@ -19,6 +19,7 @@ from .app_guide import next_line, next_line_hi
 from .contracts import StreamEvent
 from .demo_food_words import singular
 from .demo_item_names import HINDI_UNITS, hindi_item
+from .latin_names import strength
 
 HINDI = re.compile(r"[ऀ-ॿ]")
 DEVANAGARI_DIGITS = str.maketrans("०१२३४५६७८९", "0123456789")
@@ -675,6 +676,107 @@ def app_language(question: str) -> list[StreamEvent] | None:
         _reply(
             f"Done: the app language is now {english}, for you and the coach. Customer replies "
             "still follow each customer's own language. " + next_line("reply_language")
+        ),
+    ]
+
+
+# --- "Reply to Priya: yes we have samosa" (OB-303) ----------------------------------------------
+
+REPLY_TO = re.compile(
+    r"^(?:please\s+)?(?:reply|answer|tell|message|write)\s+(?:back\s+)?(?:to\s+)?(?P<name>[a-z]+)"
+    r"\s*(?P<sep>[:,\-]\s*|\s+that\s+|\s+)(?P<text>.+)$"
+)
+REPLY_TO_HI = re.compile(
+    r"^(?P<name>\S+)\s+(?:को|ko)\s+(?:जवाब|जवाब\s+में|reply|jawab|bolo|batao|likho|बोलो|बताओ|लिखो)"
+    r"(?:\s+(?:दो|दें|दीजिए|करो|do|de|karo|kar\s+do))?\s*(?P<sep>[:,\-]\s*|\s+(?:कि|ki)\s+|\s+)"
+    r"(?P<text>.+)$"
+)
+# "Don't" only when it is about the reply itself, said right after the verb ("Priya ko reply mat
+# karo", "reply to Priya don't send"). After "ki" or a colon the words are the reply: "Priya ko
+# bolo ki nahi, samosa khatam hai" is a real "no" for Priya.
+DONT = re.compile(
+    r"^(?:mat|मत)(?!\w)|^(?:nahi|nahin|na|नहीं|ना)(?:\s+(?:karo|karna|kare|karein|dena|do|bhejo|"
+    r"करो|करना|करें|देना|दो|भेजो)(?!\w)|$)|^(?:don't|dont|do not)\s+(?:send|reply|answer|message|"
+    r"tell|write|do)(?!\w)|^(?:not|never ?mind|cancel)(?!\w)"
+)
+
+
+def same_name(name: str, said: str) -> bool:
+    name, said = name.casefold(), said.casefold()
+    if not name or not said:
+        return False
+    return name == said or bool(strength(name, said) or strength(said, name))
+
+
+def which_customer(waiting: list[str], hindi: bool) -> StreamEvent:
+    """Asked when the name said is nobody's (or more than one customer's): which customer."""
+    names = ", ".join(dict.fromkeys(n for n in waiting if n))
+    if hindi:
+        return _reply("किस ग्राहक को जवाब देना है?" + (f" जवाब का इंतज़ार: {names}।" if names else ""))
+    return _reply("Which customer?" + (f" Waiting for a reply: {names}." if names else ""))
+
+
+def customer_reply(ctx: Any, question: str) -> list[StreamEvent] | None:
+    """A reply the owner dictates to a waiting customer, prepared as the same reply card the real
+    coach's prepare_customer_reply makes: it is sent only when the owner taps Send."""
+    text = " ".join(question.replace("’", "'").split())
+    found = REPLY_TO.fullmatch(text.casefold()) or REPLY_TO_HI.fullmatch(text.casefold())
+    if not found or not ctx.business_id:
+        return None
+    words = text[found.start("text") :].strip()
+    # After a colon, comma, "that" or "ki" the words are quoted: "nahi" there is the reply.
+    quoted = bool(found.group("sep").strip())
+    if not words or (not quoted and DONT.search(words.casefold())):
+        return None
+    hindi = speaks_hindi(question)
+    said = found.group("name")
+    threads = [
+        t for t in ctx.store.inquiries(ctx.uid, ctx.business_id) if not t.done and not t.blocked
+    ]
+    # The name as written, or the same name in another script read in Latin letters ("प्रिया"
+    # is Priya). A name that matches nobody never goes to whoever happens to be waiting.
+    named = [t for t in threads if same_name((t.name or "").split(" ")[0], said)]
+    if len(named) != 1:
+        # "Reply to customers" is a question about the app, not a dictated reply: only words
+        # after a colon or "ki", or a name in Devanagari, are clearly meant for someone.
+        if not quoted and not HINDI.search(said):
+            return None
+        waiting = [
+            (t.name or "").split(" ")[0][:30]
+            for t in threads
+            if t.messages and t.messages[-1].author == "customer"
+        ]
+        return [which_customer(waiting, hindi)]
+    thread = named[0]
+    first = (thread.name or "customer").split(" ")[0][:30]
+    reply = words[0].upper() + words[1:]
+    if not re.search(r"[.!?।]$", reply):
+        reply += "।" if HINDI.search(reply) else "."
+    last = thread.messages[-1].text if thread.messages else thread.message
+    card = StreamEvent(
+        kind="action",
+        data={
+            "target": "reply",
+            "label": f"{first} को जवाब दें" if hindi else f"Reply to {first}",
+            "business_id": ctx.business_id,
+            "thread_id": thread.id,
+            "question": last[:200],
+            "text": reply[:500],
+        },
+    )
+    if hindi:
+        return [
+            card,
+            _reply(
+                f"{first} के लिए जवाब तैयार है। जाँच लें, बदलना हो तो बदलें, फिर भेजें दबाएँ। "
+                "यह अपने-आप नहीं जाता। " + next_line_hi("messages")
+            ),
+        ]
+    return [
+        card,
+        _reply(
+            f"Your reply to {first} is ready. Check it, change it if you like, then tap Send. "
+            "Nothing goes until you do. " + next_line("messages")
         ),
     ]
 

@@ -65,7 +65,6 @@ INNER_LABELS: dict[tuple[str, str], frozenset[str]] = {
     ("Shop", "Menu"): frozenset({"Add product"}),
     ("Shop", "Services"): frozenset({"Add product"}),
     ("Shop", "Shop details"): frozenset({"Closed today"}),
-    ("Shop", "Messages"): frozenset({"Your language (app and coach)"}),
     # The More row opens on the Shop screen itself: the stamp card and the billing app.
     ("Shop", "More"): frozenset({"Stamp card", "Link your billing app"}),
     ("Grow", "How much to make"): frozenset({"Change the numbers"}),
@@ -332,11 +331,12 @@ FEATURES: tuple[Feature, ...] = (
         "Choose the language the app and the coach use with you; replies to customers still "
         "follow the customer's own language.",
         '"Reply in Hindi" or "English mein bolo".',
-        ("Shop", "Messages", "Your language (app and coach)"),
+        # In You, not beside a customer's conversation (OB-303).
+        ("You", "Language"),
         ("language", "hindi", "english", "tamil", "speak", "mein bolo"),
         "Reply in Hindi",
         "हिंदी में जवाब दो",
-        "messages",
+        "you",
         what_hi="ऐप और कोच आपसे किस भाषा में बात करें, यह चुनें; ग्राहकों को जवाब उनकी अपनी भाषा में जाते हैं।",
     ),
     Feature(
@@ -698,6 +698,7 @@ HINDI_LABELS = {
     "Find a supplier": "सप्लायर ढूँढें",
     "Get on Google": "Google पर आएँ",
     "How much to make": "कितना बनाना है",
+    "Language": "भाषा",
     "Link your billing app": "बिक्री का हिसाब जोड़ें",
     "Menu": "मेन्यू",
     "Messages": "संदेश",
@@ -715,7 +716,6 @@ HINDI_LABELS = {
     "Verify it’s you": "पुष्टि करें कि यह आप हैं",
     "What can I ask?": "मैं क्या पूछूँ?",
     "What the coach knows": "कोच क्या जानता है",
-    "Your language (app and coach)": "आपकी भाषा (ऐप और कोच)",
     "Your shop page": "आपकी दुकान का पेज",
     "Your shops": "आपकी दुकानें",
 }

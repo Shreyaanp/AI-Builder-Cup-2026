@@ -1116,6 +1116,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/businesses/{business_id}/inquiries/{inquiry_id}/replies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Reply Suggestions
+         * @description One-tap reply drafts for the customer's latest words (OB-303); never sent from here.
+         */
+        get: operations["reply_suggestions_api_v1_businesses__business_id__inquiries__inquiry_id__replies_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/public/shops/{business_id}/inquiries/{inquiry_id}/messages/{message_id}/translation": {
         parameters: {
             query?: never;
@@ -6053,6 +6073,19 @@ export interface components {
              */
             source: "" | "made" | "bought";
         };
+        /** ReplySuggestions */
+        ReplySuggestions: {
+            /** Language */
+            language: string;
+            /** Replies */
+            replies?: string[];
+            /**
+             * Mode
+             * @default template
+             * @constant
+             */
+            mode: "template";
+        };
         /** Requirement */
         Requirement: {
             /**
@@ -9675,6 +9708,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Inquiry"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reply_suggestions_api_v1_businesses__business_id__inquiries__inquiry_id__replies_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+                inquiry_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReplySuggestions"];
                 };
             };
             /** @description Validation Error */
