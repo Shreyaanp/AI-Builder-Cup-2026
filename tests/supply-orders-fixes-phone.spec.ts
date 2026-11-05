@@ -32,6 +32,12 @@ async function runsOut(page: Page, name: RegExp) {
   return card
 }
 
+/** Grow → Buy stock → To do, from wherever the shop is. */
+async function openBuyStockAgain(page: Page) {
+  await page.getByRole('button', { name: 'Grow', exact: true }).click()
+  return openBuyStock(page)
+}
+
 async function close(page: Page) {
   await page.getByRole('dialog').getByRole('button', { name: 'Close', exact: true }).last().click()
   await expect(page.getByRole('dialog')).toHaveCount(0)
@@ -112,22 +118,31 @@ for (const size of WIDTHS) {
     await openBuyStock(page)
     await page.getByRole('button', { name: 'Try supply demo', exact: true }).click()
     const today = page.getByRole('region', { name: 'Supply chain' })
-    await expect(today).toContainText(/Milk runs out/)
-    // The demo's earlier 12 l order is on its way; Today says so.
-    await expect(today).toContainText(/12 l on order, arriving/)
-    await today.getByRole('button', { name: 'Reorder', exact: true }).click()
+    // The demo's earlier 12 l order is on its way; Today says so, and counts it in the run-out
+    // day, and nothing runs out before it lands, so Today has no button at all (OB-263).
+    await expect(today).toContainText(/Milk: 12 l arriving .+✓/)
+    await expect(today).not.toContainText(/Milk runs out/)
+    await expect(today.getByRole('button')).toHaveCount(0)
+    // Ordering more is Buy stock → Draft a reorder; the arriving news is not a to do there.
+    await page.getByRole('button', { name: 'Grow', exact: true }).click()
+    const stock = await openBuyStock(page)
+    await expect(stock.getByRole('button', { name: /^Milk: 12 l arriving/ })).toHaveCount(0)
+    await stock.getByRole('button', { name: 'Draft a reorder' }).click()
     const card = page.getByRole('article')
     await expect(card).toContainText('12 l Milk')
     await card.getByRole('button', { name: 'Approve and send', exact: true }).click()
     await expect(card).toContainText('Marked Sent')
-    await page.getByRole('dialog').getByRole('button', { name: 'Close', exact: true }).click()
-    await expect(page.getByRole('dialog')).toHaveCount(0)
+    await close(page)
+    await page.getByRole('button', { name: 'Coach', exact: true }).click()
 
     // #597: with 24 l on its way, another reorder drafts nothing and says why.
-    await expect(today).toContainText(/24 l on order/)
-    // Grow agrees with Today: milk is covered, so no supplier search is offered for it.
-    const covered = await runsOut(page, /^Milk runs out/)
-    await expect(covered).toContainText(/24 l on order, arriving/)
+    await expect(today).toContainText(/Milk: 24 l arriving .+✓/)
+    await expect(today.getByRole('button')).toHaveCount(0)
+    // Grow agrees with Today: milk is covered, so it is not a to do and no supplier search is
+    // offered for it.
+    await page.getByRole('button', { name: 'Grow', exact: true }).click()
+    const covered = await openBuyStock(page)
+    await expect(covered.getByRole('button', { name: /^Milk: 24 l arriving/ })).toHaveCount(0)
     await expect(covered).not.toContainText('Find suppliers')
     await close(page)
 
@@ -135,6 +150,8 @@ for (const size of WIDTHS) {
     await page.route(/\/businesses\/[^/]+\/supply$/, async (route) => {
       const body = await (await route.fetch()).json()
       for (const need of body.needs ?? []) {
+        // Nothing on order: the shelf alone runs out tomorrow.
+        need.runs_out = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10)
         delete need.on_order
         delete need.arrives
         need.covered = false
@@ -258,21 +275,23 @@ for (const size of WIDTHS) {
     await page.getByRole('button', { name: 'Grow', exact: true }).click()
     await openBuyStock(page)
     await page.getByRole('button', { name: 'Try supply demo', exact: true }).click()
-    await expect(page.getByRole('region', { name: 'Supply chain' })).toContainText(/Milk runs out/)
-    const tile = await runsOut(page, /^Milk runs out/)
-    // 12 l on its way is short of the week's 25 l: still to order, with what is coming shown.
-    await expect(tile).toContainText('Find suppliers')
-    await expect(tile).toContainText(/12 l on order, arriving/)
+    // 12 l on its way counts from its day (OB-263): Today and Grow say it is arriving.
+    await expect(page.getByRole('region', { name: 'Supply chain' })).toContainText(
+      /Milk: 12 l arriving/,
+    )
+    // Nothing runs out before it lands: arriving news is not a to do, so Grow has no card for it.
+    const sheet = await openBuyStockAgain(page)
+    await expect(sheet.getByRole('button', { name: /^Milk: \d+ l arriving/ })).toHaveCount(0)
+    await expect(sheet).not.toContainText('Find suppliers')
 
-    // Draft and approve in the same sheet, go back: the card reads covered at once.
-    const sheet = page.getByRole('dialog', { name: /^Buy stock/ })
+    // Draft and approve in the same sheet, go back: still no card, and no supplier search.
     await sheet.getByRole('button', { name: 'Draft a reorder' }).click()
     const card = page.getByRole('article')
     await card.getByRole('button', { name: 'Approve and send', exact: true }).click()
     await expect(card).toContainText('Marked Sent')
     await sheet.getByRole('button', { name: 'Buy stock', exact: true }).click()
-    await expect(tile).toContainText(/24 l on order, arriving/)
-    await expect(tile).not.toContainText('Find suppliers')
+    await expect(sheet.getByRole('button', { name: /^Milk: \d+ l arriving/ })).toHaveCount(0)
+    await expect(sheet).not.toContainText('Find suppliers')
 
     // Cancel one sent order on the same sheet, go back: no stale "24 l on order".
     await sheet.getByRole('button', { name: /^On the way/ }).click()
@@ -285,8 +304,12 @@ for (const size of WIDTHS) {
     })
     await detail.getByRole('button', { name: 'Buy stock', exact: true }).click()
     await sheet.getByRole('button', { name: /^To do/ }).click()
-    await expect(tile).toContainText(/12 l on order, arriving/)
-    await expect(tile).toContainText('Find suppliers')
+    await close(page)
+    // Today follows: the cancelled 12 l is gone, so it says 12 l, not a stale 24 l.
+    await page.getByRole('button', { name: 'Coach', exact: true }).click()
+    await expect(page.getByRole('region', { name: 'Supply chain' })).toContainText(
+      /Milk: 12 l arriving/,
+    )
     await noSideScroll(page)
   })
 
@@ -298,12 +321,12 @@ for (const size of WIDTHS) {
     await page.getByRole('button', { name: 'Grow', exact: true }).click()
     await openBuyStock(page)
     await page.getByRole('button', { name: 'Try supply demo', exact: true }).click()
-    await expect(page.getByRole('region', { name: 'Supply chain' })).toContainText(/Milk runs out/)
-    const tile = await runsOut(page, /^Milk runs out/)
-    await expect(tile).toContainText(/12 l on order, arriving/)
-
+    // 12 l on its way counts from its day (OB-263): Today and Grow say it is arriving.
+    await expect(page.getByRole('region', { name: 'Supply chain' })).toContainText(
+      /Milk: 12 l arriving/,
+    )
     // Receive the whole order from Buy stock → On the way: no stale "on order".
-    const hub = page.getByRole('dialog', { name: /^Buy stock/ })
+    const hub = await openBuyStockAgain(page)
     await hub.getByRole('button', { name: /^On the way/ }).click()
     await hub.getByRole('button', { name: /^Milk from Fresh Dairy \(Demo\)/ }).click()
     await hub.getByRole('button', { name: 'Delivery from Fresh Dairy (Demo)', exact: true }).click()
@@ -317,7 +340,7 @@ for (const size of WIDTHS) {
     await hub.getByRole('button', { name: 'Close', exact: true }).click()
     await expect(page.getByRole('dialog')).toHaveCount(0)
     await openBuyStock(page)
-    await expect(page.getByText(/on order, arriving/)).toHaveCount(0)
+    await expect(page.getByText(/on order, arriving|l arriving/)).toHaveCount(0)
     await noSideScroll(page)
   })
 }
@@ -331,12 +354,12 @@ for (const size of WIDTHS) {
     await page.getByRole('button', { name: 'Grow', exact: true }).click()
     await openBuyStock(page)
     await page.getByRole('button', { name: 'Try supply demo', exact: true }).click()
-    await expect(page.getByRole('region', { name: 'Supply chain' })).toContainText(/Milk runs out/)
-    const tile = await runsOut(page, /^Milk runs out/)
-    await expect(tile).toContainText(/12 l on order, arriving/)
-
+    // 12 l on its way counts from its day (OB-263): Today and Grow say it is arriving.
+    await expect(page.getByRole('region', { name: 'Supply chain' })).toContainText(
+      /Milk: 12 l arriving/,
+    )
     // The demo partner is a buyer: its order for 20 l Milk is one to ship, not stock coming in.
-    const hub = page.getByRole('dialog', { name: /^Buy stock/ })
+    const hub = await openBuyStockAgain(page)
     await hub.getByRole('button', { name: /^On the way/ }).click()
     const next = hub.getByRole('button', { name: 'Show next step (demo)' })
     await next.click()
@@ -344,9 +367,12 @@ for (const size of WIDTHS) {
     await next.click()
     await expect(hub).toContainText(/New order · Milk/)
     await hub.getByRole('button', { name: /^To do/ }).click()
-    await expect(tile).toContainText(/12 l on order, arriving/)
-    await expect(tile).toContainText('Find suppliers')
-    await expect(page.getByText(/32 l on order/)).toHaveCount(0)
+    await expect(page.getByText(/32 l arriving/)).toHaveCount(0)
+    await close(page)
+    await page.getByRole('button', { name: 'Coach', exact: true }).click()
+    await expect(page.getByRole('region', { name: 'Supply chain' })).toContainText(
+      /Milk: 12 l arriving/,
+    )
     await noSideScroll(page)
   })
 }
@@ -360,7 +386,9 @@ for (const size of WIDTHS) {
     await page.getByRole('button', { name: 'Grow', exact: true }).click()
     await openBuyStock(page)
     await page.getByRole('button', { name: 'Try supply demo', exact: true }).click()
-    await expect(page.getByRole('region', { name: 'Supply chain' })).toContainText(/Milk runs out/)
+    await expect(page.getByRole('region', { name: 'Supply chain' })).toContainText(
+      /Milk: 12 l arriving/,
+    )
 
     // The supplier's invoice arrives before the goods (demo simulate), up to "invoiced".
     const shops = await (await page.request.get('/api/v1/businesses')).json()
@@ -381,10 +409,11 @@ for (const size of WIDTHS) {
     const po = (await supply()).orders.find((o: { number: string }) => o.number === '4500012345')
     expect([po.status, !!po.received]).toEqual(['invoiced', false])
 
+    // Invoiced but not arrived is still on its way: Today still says 12 l arriving.
     await page.getByRole('button', { name: 'Coach', exact: true }).click()
-    const tile = await runsOut(page, /^Milk runs out/)
-    await expect(tile).toContainText(/12 l on order, arriving/)
-    await expect(tile).toContainText('Find suppliers')
+    await expect(page.getByRole('region', { name: 'Supply chain' })).toContainText(
+      /Milk: 12 l arriving/,
+    )
     await noSideScroll(page)
   })
 }

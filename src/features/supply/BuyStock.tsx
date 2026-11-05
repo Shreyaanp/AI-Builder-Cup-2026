@@ -96,7 +96,12 @@ export function BuyStockRow({
           onTab('todo')
         }}
       />
-      <BuyStockSheet tab={tab} onTab={onTab} stock={stock} hasRunsOut={runsOut !== null} />
+      <BuyStockSheet
+        tab={tab}
+        onTab={onTab}
+        stock={stock}
+        hasRunsOut={runsOut !== null && !runsOut.arriving}
+      />
     </>
   )
 }

@@ -27,7 +27,7 @@ export type Need =
       supply?: boolean
     }
   /** The supply that runs out first, with its run-out day: the one stock row with a date. */
-  | { id: string; kind: 'supply'; item: string }
+  | { id: string; kind: 'supply'; item: string; waiting?: boolean }
   | { id: string; kind: 'closeDay' }
   | { id: string; kind: 'menu' }
   | {
@@ -81,8 +81,9 @@ export interface TodayInput {
   /** The owner's face check (null while unknown): skipped at onboarding → a reminder. */
   face?: 'not_started' | 'verified' | 'in_review' | 'not_verified' | null
   /** The supply card's lead item (null while unknown or nothing runs out); `soon` when it runs
-   * out within 2 days, the brief's rule for "Order now" (brief.py best_action). */
-  supply?: { item: string; soon?: boolean } | null
+   * out within 2 days, the brief's rule for "Order now" (brief.py best_action); `waiting` when
+   * some is on its way already, or the stock just topped up: never the lead (OB-263). */
+  supply?: { item: string; soon?: boolean; waiting?: boolean } | null
   /** This morning's promise was done or cleared here (before the server facts reload). */
   promiseAnswered?: boolean
 }
@@ -172,6 +173,8 @@ const NEED_HINT: Record<Need['kind'], TodayHints['needs_you'][number] | null> = 
 export function byPlaybook(needs: Need[], hints?: TodayHints | null): Need[] {
   if (!hints) return needs
   const rank = (need: Need) => {
+    // Already on its way: the playbook's "low stock first" is about stock still to order.
+    if (need.kind === 'supply' && need.waiting) return hints.needs_you.length
     const hint = NEED_HINT[need.kind]
     const index = hint ? hints.needs_you.indexOf(hint) : -1
     return index < 0 ? hints.needs_you.length : index
@@ -244,13 +247,20 @@ export function todayPlan(input: TodayInput): TodayPlan {
   if (unread) all.push({ id: 'reply', kind: 'reply', count: unread })
   if (closeWindow && !isClosed) all.push({ id: 'close-day', kind: 'closeDay' })
   const supplyRow: Need | null =
-    supply && !merged ? { id: 'supply', kind: 'supply', item: supply } : null
+    supply && !merged
+      ? {
+          id: 'supply',
+          kind: 'supply',
+          item: supply,
+          ...(input.supply?.waiting && { waiting: true }),
+        }
+      : null
   // A supply that runs out within 2 days leads before the daily menu question, as in the brief.
   if (supplyRow && input.supply?.soon) all.push(supplyRow)
   if (products.length && facts && shop.last_confirmed !== facts.date && !input.menuAnswered)
     all.push({ id: 'menu', kind: 'menu' })
   const soldOut = products.filter((product) => product.available === false)
-  if (supplyRow && !input.supply?.soon) all.push(supplyRow)
+  if (supplyRow && !input.supply?.soon && !input.supply?.waiting) all.push(supplyRow)
   // The supply row (with its run-out day) or last night's promise already names this item:
   // never twice on Today.
   const named = [supply, promise?.item]
@@ -265,6 +275,8 @@ export function todayPlan(input: TodayInput): TodayPlan {
       productId: low.product_id ?? null,
     })
   if (soldOut.length) all.push({ id: 'sold-out', kind: 'soldOut', items: soldOut })
+  // On its way, or just topped up: news first, "Order more" at most. Never the lead.
+  if (supplyRow && input.supply?.waiting && !input.supply.soon) all.push(supplyRow)
   // On day one the hero carries the next step; elsewhere missing steps wait their turn here.
   if (!dayOne) for (const step of steps) all.push({ id: `step-${step}`, kind: 'step', step })
   const asked = shop.public ? missingFacts(shop.fields) : []

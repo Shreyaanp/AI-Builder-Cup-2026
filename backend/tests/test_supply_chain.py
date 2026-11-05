@@ -439,7 +439,14 @@ def run_loop(store: MerchantStore, bid: str, system: str) -> dict:
     assert po["disputed"] and po["lines"][0]["invoiced_price"] == int(agreed)
     po = supply_chain.accept(store, "alice", bid, po["id"], po["version"])
     assert po["status"] == "closed"
-    assert [d["kind"] for d in po["documents"]] == ["ORDERS", "ORDRSP", "DESADV", "INVOIC"]
+    # "Goods arrived" sends the goods receipt with it (OB-263).
+    assert [d["kind"] for d in po["documents"]] == [
+        "ORDERS",
+        "ORDRSP",
+        "DESADV",
+        "RECEIPT",
+        "INVOIC",
+    ]
     return po
 
 

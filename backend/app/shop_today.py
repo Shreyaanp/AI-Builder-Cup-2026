@@ -29,6 +29,7 @@ from .region import shop_currency, shop_zone
 from .rescue import buffer_for, local_now
 from .shop_time import shop_timezone
 from .supply_chain import runs_out
+from .supply_coming import arrivals_by_item
 
 router = APIRouter(prefix="/api/v1/businesses", tags=["today"])
 log = structlog.get_logger(__name__)
@@ -159,18 +160,23 @@ def pulse(
 
 
 def low_stock(
-    inventory: list[dict[str, Any]], forecast: brief.Forecast, today: date, category: str = ""
+    inventory: list[dict[str, Any]],
+    forecast: brief.Forecast,
+    today: date,
+    category: str = "",
+    arrivals: dict[str, list[tuple[str, float]]] | None = None,
 ) -> list[LowItem]:
     """Stock that runs out by tomorrow, or has 5 or fewer left. The run-out day is the supply
-    tile's (OB-238). Each row says if the shop buys it (an order), makes it (make more) or has
-    not said (one question), so a made item never becomes a supplier order (OB-239)."""
+    tile's (OB-238), counting what is on order from the day it arrives (OB-263). Each row says
+    if the shop buys it (an order), makes it (make more) or has not said (one question), so a
+    made item never becomes a supplier order (OB-239)."""
     predictions = {"predictions": [p.model_dump(mode="json") for p in forecast.predictions]}
     out = []
     for product in inventory:
         stock = product.get("stock")
         if stock is None or product.get("available") is False:
             continue
-        found = runs_out(product, predictions, today)
+        found = runs_out(product, predictions, today, (arrivals or {}).get(product["name"]))
         day = date.fromisoformat(found) if found else None
         if stock <= 5 or (day is not None and day <= today + timedelta(days=1)):
             out.append(
@@ -311,7 +317,13 @@ async def today_page(business_id: str, request: Request) -> Today:
         if top and top.quantity >= 1
         else None,
         low_stock=low_stock(
-            context["inventory"], forecast, today, str(fields.get("category") or "")
+            context["inventory"],
+            forecast,
+            today,
+            str(fields.get("category") or ""),
+            await anyio.to_thread.run_sync(
+                arrivals_by_item, service, uid, business_id, context["inventory"]
+            ),
         ),
         line=coach_line(fields, today, sales, weather, hints.line_topics if hints else None),
         demo=bool(fields.get("demo")),

@@ -4,6 +4,8 @@ import type { Locale } from '../../i18n/locales.js'
 const en = {
   today: {
     title: (item: string, day: string) => `${item} runs out ${day}`,
+    // The order on its way covers the week: no run-out day to tell (OB-263).
+    covered: (item: string) => `${item}: order on its way`,
     body: (left: string, daily: string) => `${left} left, about ${daily} a day, from your sales.`,
   },
   order: {
@@ -21,6 +23,7 @@ export type ChainCopy = typeof en
 const hi: ChainCopy = {
   today: {
     title: (item, day) => `${item} ${day} को ख़त्म होगा`,
+    covered: (item) => `${item} का ऑर्डर रास्ते में है`,
     body: (left, daily) => `${left} बचा है, रोज़ लगभग ${daily}। आपकी बिक्री से।`,
   },
   order: {

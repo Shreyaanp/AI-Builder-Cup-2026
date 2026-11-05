@@ -118,10 +118,11 @@ test('the order card speaks of the supplier and the item, not an order number', 
   page,
 }) => {
   await openDemo(page)
-  await page
-    .getByRole('button', { name: /^Reorder$/ })
-    .first()
-    .click({ timeout: 10_000 })
+  // Some is on its way already and nothing runs out (OB-263): Today has no button, so the draft
+  // comes from Buy stock.
+  await tab(page, 'grow')
+  const stock = await openBuyStock(page)
+  await stock.getByRole('button', { name: 'Draft a reorder' }).click({ timeout: 10_000 })
   const dialog = page.getByRole('dialog')
   await expect(dialog.getByRole('article')).toBeVisible({ timeout: 10_000 })
   await expect(dialog.getByRole('article')).toHaveAccessibleName(/ from /)

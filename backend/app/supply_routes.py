@@ -143,6 +143,13 @@ async def overview(business_id: str, request: Request) -> dict[str, Any]:
         )
         coming = supply_coming.on_order(store(request), uid, business_id, need["item"], unit, known)
         need["on_order"], need["arrives"] = coming["quantity"], coming["arrives"]
+        # Stock on order counts from the day it arrives: 19 kg arriving Wed moves the run-out
+        # day on, or clears it (OB-263). The need stays listed, so Today says it is on its way.
+        if coming["arrivals"]:
+            product = next(p for p in context["inventory"] if p["name"] == need["item"])
+            need["runs_out"] = supply_chain.need_from_forecast(
+                product, predicted, need["item"], today, coming["arrivals"]
+            )["runs_out"]
         need["on_order_other"] = [
             {"quantity": row["quantity"], "unit": row["unit"], "arrives": row["arrives"]}
             for row in coming["other"]
@@ -152,7 +159,7 @@ async def overview(business_id: str, request: Request) -> dict[str, Any]:
         need["cover"] = supply_coming.cover(need, coming)
         need["covered"] = need["cover"] in {"full", "units"}
     # Then what a linked supplier can bring first: chai runs out because tea dust does.
-    needs.sort(key=lambda need: (need["covered"], not need["supplied"], need["runs_out"]))
+    needs.sort(key=lambda need: (need["covered"], not need["supplied"], need["runs_out"] or "9999"))
     return {"suppliers": rows, "orders": orders, "needs": needs}
 
 
@@ -371,6 +378,17 @@ async def received(
     uid = await consented_owner(request)
     return await anyio.to_thread.run_sync(
         supply_chain.receive, store(request), uid, business_id, order_id, body.version
+    )
+
+
+@router.post("/businesses/{business_id}/supply/orders/{order_id}/received/undo")
+async def undo_received(
+    business_id: str, order_id: str, body: Version, request: Request
+) -> dict[str, Any]:
+    """Undo "Goods arrived": the order is on its way again and the stock is as before."""
+    uid = await consented_owner(request)
+    return await anyio.to_thread.run_sync(
+        supply_chain.undo_receive, store(request), uid, business_id, order_id, body.version
     )
 
 

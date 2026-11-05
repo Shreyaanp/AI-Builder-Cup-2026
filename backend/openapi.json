@@ -8701,6 +8701,67 @@
         }
       }
     },
+    "/api/v1/businesses/{business_id}/supply/orders/{order_id}/received/undo": {
+      "post": {
+        "summary": "Undo Received",
+        "description": "Undo \"Goods arrived\": the order is on its way again and the stock is as before.",
+        "operationId": "undo_received_api_v1_businesses__business_id__supply_orders__order_id__received_undo_post",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          },
+          {
+            "name": "order_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Order Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Version"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Undo Received Api V1 Businesses  Business Id  Supply Orders  Order Id  Received Undo Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/businesses/{business_id}/supply/board": {
       "get": {
         "summary": "Board",

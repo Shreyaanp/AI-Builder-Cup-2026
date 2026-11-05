@@ -5,7 +5,14 @@ import { productFeminine, productName } from '../../i18n/productNames'
 import { useWorkspace } from '../v1/workspaceContext'
 import type { Api } from '../v1/api'
 import { useSourcingCopy } from '../sourcing/copy'
-import { dayLabel, leadNeed, useOnOrderText, useSupply } from '../supply/supplyData'
+import {
+  dayLabel,
+  leadNeed,
+  onItsWay,
+  useOnOrderText,
+  useSupply,
+  weekdayLabel,
+} from '../supply/supplyData'
 import { useOrderChangeCopy } from '../supply/orderChangeCopy'
 
 type Forecast = components['schemas']['Forecast']
@@ -52,14 +59,6 @@ export function useForecast() {
   return { state, value: state?.value, retry: () => retry((n) => n + 1) }
 }
 
-/** "Thu": the day alone, for a one-line status; the full date when it is not a date. */
-function weekday(iso: string, locale: string) {
-  const day = new Date(`${(iso ?? '').slice(0, 10)}T12:00:00`)
-  return Number.isNaN(day.getTime())
-    ? dayLabel(iso, locale)
-    : new Intl.DateTimeFormat(locale, { weekday: 'short' }).format(day)
-}
-
 /**
  * What runs out first, from the supply needs Today reads, so the two screens cannot disagree
  * (#603): the first need not yet covered leads, with how many more. Only items with no forecast
@@ -73,8 +72,14 @@ export function useRunsOut() {
   const { data: supply } = useSupply(true)
   const { value } = useForecast()
   const onOrderText = useOnOrderText()
+  const arrivingText = useOnOrderText(true)
   const { need, more } = leadNeed(supply?.needs)
   const onOrder = need ? onOrderText(need) : ''
+  // What is on order may clear the run-out day: then it says what is coming (OB-263).
+  const arriving =
+    need && !need.runs_out && onItsWay(need)
+      ? `${productName(need.item, locale)}: ${arrivingText(need)}`
+      : ''
   const forecastFor = new Set((value?.predictions ?? []).map((row) => row.item.toLowerCase()))
   const low =
     supply && value && !need
@@ -86,27 +91,37 @@ export function useRunsOut() {
   return {
     need,
     more,
-    onOrder,
-    label: need
-      ? s.runsOut(
-          productName(need.item, locale),
-          dayLabel(need.runs_out, locale),
-          productFeminine(need.item, locale),
-        )
-      : s.runningLow(
-          low
-            .map((item) => productName(item.name, locale))
-            .slice(0, 3)
-            .join(', '),
-        ),
+    // Said once: the label already says what is coming.
+    onOrder: arriving ? '' : onOrder,
+    /** Only news ("19 kg arriving Fri ✓"): nothing to do, so no To do card for it (OB-263). */
+    arriving: Boolean(arriving) && more === 0,
+    label: arriving
+      ? arriving
+      : need
+        ? s.runsOut(
+            productName(need.item, locale),
+            dayLabel(need.runs_out, locale),
+            productFeminine(need.item, locale),
+          )
+        : s.runningLow(
+            low
+              .map((item) => productName(item.name, locale))
+              .slice(0, 3)
+              .join(', '),
+          ),
     /** The same in a few words for Grow's Buy stock row: "Tea dust runs out Thu" (OB-254). */
-    short: need
-      ? s.runsOut(
-          productName(need.item, locale),
-          weekday(need.runs_out, locale),
-          productFeminine(need.item, locale),
+    short: arriving
+      ? c.arrivingShort(
+          productName(need!.item, locale),
+          weekdayLabel(need!.arrives || need!.on_order_other?.[0]?.arrives || '', locale),
         )
-      : s.runningLow(productName(low[0]!.name, locale)),
+      : need
+        ? s.runsOut(
+            productName(need.item, locale),
+            weekdayLabel(need.runs_out, locale),
+            productFeminine(need.item, locale),
+          )
+        : s.runningLow(productName(low[0]!.name, locale)),
     /** Asks the coach to reorder what is partly on order, or to find suppliers for the rest. */
     act: () => {
       const name = (need?.item ?? low[0]?.name ?? '').toLowerCase()

@@ -120,6 +120,8 @@ export function WorkspaceProvider({
     return () => window.removeEventListener('popstate', restore)
   }, [])
   const [toast, setToast] = useState('')
+  // The toast's Undo, when the note offers one ("6 kg Tea dust received… Undo", OB-263).
+  const [toastUndo, setToastUndo] = useState<{ run: () => void } | null>(null)
   // Items a confirmed change just marked sold out: the saved note offers Undo (OB-261).
   const [undoSoldOut, setUndoSoldOut] = useState<string[]>([])
   const undoCopy = useSoldOutUndoCopy()
@@ -333,6 +335,10 @@ export function WorkspaceProvider({
         setActiveId(id)
       },
       reload,
+      reloadProducts: async () => {
+        await reload()
+        await loadProducts(activeId).catch(() => undefined)
+      },
       setAvailability,
       setShared,
       // A sandbox shop has no public page; its link opens the demo's customer side.
@@ -345,7 +351,10 @@ export function WorkspaceProvider({
       review: setProposal,
       savedProposals,
       confirm,
-      notify: setToast,
+      notify: (message: string, undo?: () => void) => {
+        setToastUndo(undo ? { run: undo } : null)
+        setToast(message)
+      },
       requestPhoto: () => {
         setDestination('coach')
         setPhotoPending(true)
@@ -530,10 +539,36 @@ export function WorkspaceProvider({
       <Snackbar
         open={Boolean(toast)}
         message={toast}
-        autoHideDuration={4000}
-        onClose={() => setToast('')}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-        sx={{ bottom: { xs: 'calc(96px + env(safe-area-inset-bottom))', sm: 24 } }}
+        autoHideDuration={toastUndo ? 8000 : 4000}
+        onClose={(_, reason) => {
+          if (toastUndo && reason === 'clickaway') return
+          setToast('')
+          setToastUndo(null)
+        }}
+        // An Undo note sits under the top bar on a phone: at the bottom it covered the row the
+        // owner just acted on (the "topped up" line after Goods arrived, OB-263).
+        anchorOrigin={{ vertical: toastUndo && compact ? 'top' : 'bottom', horizontal: 'center' }}
+        sx={
+          toastUndo && compact
+            ? { top: 'calc(64px + env(safe-area-inset-top))' }
+            : { bottom: { xs: 'calc(96px + env(safe-area-inset-bottom))', sm: 24 } }
+        }
+        action={
+          toastUndo ? (
+            <Button
+              color="inherit"
+              onClick={() => {
+                const undo = toastUndo
+                setToast('')
+                setToastUndo(null)
+                undo.run()
+              }}
+              sx={{ color: theme.material.inversePrimary, minHeight: 48 }}
+            >
+              {undoCopy.undo}
+            </Button>
+          ) : undefined
+        }
       />
     </WorkspaceContext>
   )

@@ -65,6 +65,28 @@ const en = {
   // Grow and Today lead with one need; the rest still to order.
   moreRunOut: (n: number) => (n === 1 ? '1 more item runs out' : `${n} more items run out`),
   reorderPrompt: (item: string) => `reorder ${item}`,
+  // Ordered already: Today says it is coming, never a second Reorder (OB-263).
+  arrivingLine: (quantity: string, unit: string, day: string) =>
+    day ? `${quantity} ${unit} arriving ${day}\u00a0✓` : `${quantity} ${unit} on its way\u00a0✓`,
+  // Hindi needs the item's gender (होगी / होगा); English does not.
+  // Grow's one-line Buy stock status (OB-263).
+  arrivingShort: (item: string, day: string) =>
+    day ? `${item} arriving ${day}\u00a0✓` : `${item} on its way\u00a0✓`,
+  stillRunsOut: ((day: string) => `Still runs out ${day}`) as (
+    day: string,
+    feminine: boolean,
+  ) => string,
+  toppedUp: (item: string, stock: string) => `${item} stock topped up: ${stock}\u00a0✓`,
+  // Goods arrived: what came and the stock now, with Undo; never a price (OB-263).
+  receivedOne: ((amount: string, item: string, stock: string) =>
+    `${amount} ${item} received. Stock is now ${stock}.`) as (
+    amount: string,
+    item: string,
+    stock: string,
+    feminine?: boolean,
+  ) => string,
+  receivedMany: (n: number) => `${n} items received. Stock updated.`,
+  receivedUndone: 'Undone. The order is on its way again.',
 }
 
 export type OrderChangeCopy = typeof en
@@ -117,6 +139,18 @@ const hi: OrderChangeCopy = {
   notNow: 'अभी नहीं',
   moreRunOut: (n) => (n === 1 ? '1 और चीज़ खत्म हो रही है' : `${n} और चीज़ें खत्म हो रही हैं`),
   reorderPrompt: (item) => `${item} फिर से मँगाएँ`,
+  arrivingLine: (quantity, unit, day) =>
+    day
+      ? `${quantity} ${unit} ${day} को आ रहा है\u00a0✓`
+      : `${quantity} ${unit} रास्ते में है\u00a0✓`,
+  arrivingShort: (item, day) =>
+    day ? `${item} रास्ते में, ${day}\u00a0✓` : `${item} रास्ते में\u00a0✓`,
+  stillRunsOut: (day, feminine) => `फिर भी ${day} को खत्म ${feminine ? 'होगी' : 'होगा'}`,
+  toppedUp: (item, stock) => `${item} का स्टॉक भर गया: ${stock}\u00a0✓`,
+  receivedOne: (amount, item, stock, feminine) =>
+    `${amount} ${item} आ ${feminine ? 'गई' : 'गया'}। अब स्टॉक ${stock} है।`,
+  receivedMany: (n) => `${n} चीज़ें आ गईं। स्टॉक अपडेट हो गया।`,
+  receivedUndone: 'वापस ले लिया। ऑर्डर फिर से रास्ते में है।',
 }
 
 const tables: Record<string, OrderChangeCopy> = { en, hi }

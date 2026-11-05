@@ -49,7 +49,7 @@ test('OB-30: owner tour opens the public demo, then the order story, spotlights 
   // OB-51: seven real steps, each lighting a real element (tests/tour-real-steps.spec.ts checks
   // the geometry; tests/tour-chain.spec.ts checks the seeded numbers on the first two).
   const titles = [
-    /runs out/,
+    /runs out|order on its way/,
     'The AI drafts the order',
     'Your menu, by category',
     'Tomorrow’s prep plan',
