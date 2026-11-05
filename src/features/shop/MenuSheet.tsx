@@ -26,6 +26,7 @@ import { categoryLabel, useShopCopy } from './strings'
 import { unitLabel } from './units'
 import { onMenu, useUsualSales } from './stock'
 import { StockLine } from './stockLine'
+import { StockNote } from './StockNote'
 import { useStockCopy } from './stockCopy'
 
 /**
@@ -118,6 +119,7 @@ export function MenuSheet({
           </Stack>
         }
       >
+        {open && <StockNote inSheet />}
         {importing && (
           <ImportPanel
             importer={importer}

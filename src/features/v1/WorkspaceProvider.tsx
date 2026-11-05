@@ -6,6 +6,7 @@ import { canOfferInstall, offerInstall, rememberInstallDeclined } from '../../ap
 import { useCopy } from './strings'
 import { newlySoldOut, useSoldOutUndoCopy } from './soldOutUndo'
 import { useStockCopy } from '../shop/stockCopy'
+import { StockNote } from '../shop/StockNote'
 import { productName } from '../../i18n/productNames'
 import { useLocale } from '../../state/hooks'
 import type { Api, Business, Me, Product, Proposal } from './api'
@@ -290,6 +291,29 @@ export function WorkspaceProvider({
     },
     [saveItem],
   )
+  const [noteHosts, setNoteHosts] = useState(0)
+  const hostStockNote = useCallback(() => {
+    setNoteHosts((count) => count + 1)
+    return () => setNoteHosts((count) => count - 1)
+  }, [])
+  const stockNote = useMemo(() => {
+    if (!stockUndo) return null
+    const named = (count: number | null) =>
+      count === null ? t.saved : stockCopy.saved(productName(stockUndo.name, locale), count)
+    return {
+      message: named(stockUndo.after),
+      close: () => setStockUndo(null),
+      undo: () => {
+        setStockUndo(null)
+        const item = inventory.items.find((entry) => entry.id === stockUndo.id)
+        if (!item) return
+        const before = stockUndo.before
+        void saveItem(item, 'stock', { stock: before }, { stock: before }).then((done) => {
+          if (done) setToast(named(before))
+        })
+      },
+    }
+  }, [stockUndo, inventory.items, saveItem, stockCopy, locale, t.saved])
   const setForSale = useCallback(
     (product: Product, forSale: boolean) =>
       saveItem(product, 'for-sale', { for_sale: forSale }, { for_sale: forSale }),
@@ -399,6 +423,9 @@ export function WorkspaceProvider({
       setAvailability,
       setStock,
       setForSale,
+      stockNote,
+      hostStockNote,
+      stockNoteHosted: noteHosts > 0,
       setShared,
       // A sandbox shop has no public page; its link opens the demo's customer side.
       shareUrl:
@@ -454,6 +481,9 @@ export function WorkspaceProvider({
       setAvailability,
       setStock,
       setForSale,
+      stockNote,
+      hostStockNote,
+      noteHosts,
       setShared,
       savedProposals,
       confirm,
@@ -594,46 +624,7 @@ export function WorkspaceProvider({
           </Button>
         }
       />
-      <Snackbar
-        open={stockUndo !== null}
-        message={
-          stockUndo
-            ? stockUndo.after === null
-              ? t.saved
-              : stockCopy.saved(productName(stockUndo.name, locale), stockUndo.after)
-            : ''
-        }
-        autoHideDuration={6000}
-        onClose={(_, reason) => {
-          if (reason !== 'clickaway') setStockUndo(null)
-        }}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-        sx={{ bottom: { xs: 'calc(96px + env(safe-area-inset-bottom))', sm: 24 } }}
-        action={
-          <Button
-            color="inherit"
-            onClick={() => {
-              const undo = stockUndo
-              setStockUndo(null)
-              const item = inventory.items.find((entry) => entry.id === undo?.id)
-              if (!undo || !item) return
-              void saveItem(item, 'stock', { stock: undo.before }, { stock: undo.before }).then(
-                (done) => {
-                  if (done)
-                    setToast(
-                      undo.before === null
-                        ? t.saved
-                        : stockCopy.saved(productName(undo.name, locale), undo.before),
-                    )
-                },
-              )
-            }}
-            sx={{ color: theme.material.inversePrimary, minHeight: 48 }}
-          >
-            {stockCopy.undo}
-          </Button>
-        }
-      />
+      <StockNote />
       <Snackbar
         open={Boolean(toast)}
         message={toast}

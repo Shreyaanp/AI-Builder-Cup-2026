@@ -38,8 +38,8 @@ export function StockLine({ product, usual }: { product: Product; usual?: number
           </Typography>
         )}
         {low && (
-          // Gentle, never alarming: the tertiary role, no red and no icon (OB-310).
-          <Typography variant="bodyMedium" sx={{ display: 'block', color: roles.tertiary }}>
+          // Gentle, never alarming: the secondary role, no red and no icon (OB-310).
+          <Typography variant="bodyMedium" sx={{ display: 'block', color: roles.secondary }}>
             {copy.low}
           </Typography>
         )}

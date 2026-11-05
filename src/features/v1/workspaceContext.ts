@@ -60,6 +60,15 @@ export interface Workspace {
     product: Product,
     change: { stock: number | null } | { add: number },
   ) => Promise<boolean>
+  /** The last stock tap's named note and its Undo, until it is closed (OB-310). */
+  stockNote: { message: string; undo: () => void; close: () => void } | null
+  /**
+   * An open sheet shows the stock note inside itself, where the screen reader and keyboard can
+   * reach Undo (a modal hides everything outside it). Returns the call that hands it back.
+   */
+  hostStockNote: () => () => void
+  /** True while an open sheet shows the stock note. */
+  stockNoteHosted: boolean
   /** Moves an item between the customer menu and "Things I buy" (OB-310). */
   setForSale: (product: Product, forSale: boolean) => Promise<boolean>
   /** Turns the public customer page on or off. */

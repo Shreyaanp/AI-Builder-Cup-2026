@@ -6,6 +6,7 @@ import { requestOpen } from '../v1/openRequest'
 import { ItemCard } from './MenuSheet'
 import { onMenu } from './stock'
 import { useStockCopy } from './stockCopy'
+import { StockNote } from './StockNote'
 
 /**
  * "Things I buy" (OB-310): tea dust, milk or flour the shop buys to make its menu, with their
@@ -46,6 +47,7 @@ export function ThingsIBuySheet({
         </Button>
       }
     >
+      {open && <StockNote inSheet />}
       <Typography variant="bodyMedium" color="text.secondary" sx={{ mb: 4 }}>
         {items.length ? copy.thingsIBuyHint : copy.noThings}
       </Typography>
