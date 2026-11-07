@@ -25,7 +25,8 @@ from .demo_coach_words import (
 )
 from .demo_item_names import hindi_item
 
-N = r"(?P<n>\d{1,6})"
+# "1000", "1,000" or the Indian "1,00,000".
+N = r"(?P<n>\d{1,3}(?:,\d{2})*,\d{3}|\d{1,7})"
 # "bana diye", "banaye", "ready hain", "made": the owner made them, so stock goes up.
 MADE = (
     r"(?:bana(?:\s+(?:diye|diya|di|liye|liya|li|gaye|gaya))?|banaye|banaya|banae|banai|bane"
@@ -83,7 +84,7 @@ def _said(text: str) -> tuple[str, str, int] | None:
     for kind, patterns in (("add", HI_ADD if hindi else ADD), ("set", HI_SET if hindi else SET)):
         for pattern in patterns:
             if found := pattern.fullmatch(text):
-                return kind, found["name"], int(found["n"])
+                return kind, found["name"], int(found["n"].replace(",", ""))
     return None
 
 

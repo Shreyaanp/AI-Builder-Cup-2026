@@ -228,6 +228,15 @@ def test_ob310_chat_sets_a_stock_count(demo, message, language):  # noqa: F811
 
 
 @pytest.mark.parametrize(
+    ("message", "count"),
+    [("samosa stock 1,000", 1000), ("samosa stock 1,00,000", 100000), ("samosa stock 1000", 1000)],
+)
+def test_ob310_chat_reads_grouped_numbers(demo, message, count):  # noqa: F811
+    # Owners write "1,000" or the Indian "1,00,000"; both mean the plain number.
+    assert stock_of(demo(message, "en")) == {"Samosa": count}
+
+
+@pytest.mark.parametrize(
     "message",
     [
         "bun maska 10 more mat banao",
