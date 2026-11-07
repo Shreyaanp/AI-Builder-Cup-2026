@@ -1,5 +1,4 @@
-import { useEffect, useState } from 'react'
-import { AiInfo } from '../AiInfo'
+import { useEffect, useId, useState } from 'react'
 import type { ReactNode } from 'react'
 import {
   Box,
@@ -23,25 +22,32 @@ import {
   MessageSquare,
   Mic,
   Moon,
+  NotebookPen,
   PackageMinus,
   PencilLine,
-  Sparkles,
   ZapOff,
   ShieldCheck,
 } from 'lucide-react'
 import { useIdentity } from '../../../auth/useIdentity'
 import { HAND_FONT, enterRise, motion, shape } from '../../../design/theme'
+import { productFeminine, productName } from '../../../i18n/productNames'
 import { useLocale } from '../../../state/hooks'
 import { closeDayCopy } from '../../closeday/strings'
-import { shopCurrency, toMajor } from '../format'
+import { formatShopPrice, shopCurrency } from '../format'
 import { useCopy } from '../strings'
+import { isServiceShop } from '../tabsCopy'
 import { useWorkspace } from '../workspaceContext'
 import { useOnboardingCopy } from '../onboardingCopy'
+import { useSourceCopy } from './sourceCopy'
 import { useTodayCopy, type Festival } from './todayCopy'
+import { promiseCopyFor } from './promiseCopy'
 import type { CoachLine, Need, StepId, TodayPlan } from './todayPlan'
 import { useTodayPlan } from './useTodayPlan'
+import { PromiseSupplyRow } from './PromiseSupplyRow'
+import { promiseSaid, usePromiseSettle } from './promiseSettle'
+import { countAction, countShown } from './habitCount'
+import { useLocalDay } from './useLocalDay'
 import { FirstCustomers } from '../FirstCustomers'
-import { TodaySupply } from '../../supply/TodaySupply'
 import { TodaySupplyNeeds } from '../../supply/SupplyEntry'
 
 /** What the Coach screen lets Today do: talk to the coach, open sheets, start the mic. */
@@ -62,17 +68,24 @@ const LEAVE_MS = 320
 /** The first view of the Coach tab: how the shop is doing and what to do now. */
 export function TodayView({
   actions,
-  showAiInfo = true,
+  chips,
 }: {
   actions: TodayActions
-  showAiInfo?: boolean
+  /** The chat path under the numbers: chips that fit the hour. */
+  chips?: (evening: boolean) => ReactNode
 }) {
   const ws = useWorkspace()
   const tt = useTodayCopy()
-  const roles = useTheme().material
   const { name } = useIdentity()
-  const { plan, answerMenu, firstCustomers } = useTodayPlan(actions.unread)
+  const { plan, answerMenu, answerPromise, firstCustomers } = useTodayPlan(actions.unread)
   const shop = ws.active
+  const shown = plan?.needs.map((need) => need.kind).join(',') ?? null
+  const day = useLocalDay()
+  useEffect(() => {
+    if (shown !== null) countShown(ws, shown ? shown.split(',') : [])
+    // Counted when what Today shows changes (or the day turns over), not on every workspace update.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shown, ws.active?.id, day])
   if (!shop) return null
   if (!plan) {
     return (
@@ -91,85 +104,93 @@ export function TodayView({
       </Stack>
     )
   }
+  // In the evening the card sits low, in the thumb zone: "Close the day" stays its first row and
+  // its one filled button (SIMPLIFY Batch 5; PHONE-UX rule 1).
+  const evening = plan.needs[0]?.kind === 'closeDay'
+  const needs = (
+    <NeedsCard
+      key={shop.id}
+      plan={plan}
+      actions={actions}
+      answerMenu={answerMenu}
+      answerPromise={answerPromise}
+      footer={<TodaySupplyNeeds inCard={plan.needs.length > 0} />}
+    />
+  )
   return (
-    <Stack spacing={{ xs: 4, sm: 5 }} sx={{ pt: { xs: 1, sm: 6 }, pb: 4 }} data-testid="today">
+    <Box
+      data-testid="today"
+      data-layout={evening ? 'evening' : undefined}
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: { xs: 2, sm: 5 },
+        minHeight: '100%',
+        pt: { xs: 0, sm: 6 },
+        pb: { xs: 0, sm: 4 },
+      }}
+    >
       <Box data-tour="today">
-        <Typography
-          component="h1"
-          variant="headlineSmall"
-          sx={{ overflowWrap: 'anywhere', fontSize: { xs: '1.375rem', sm: undefined } }}
-        >
+        <Typography component="h1" variant="headlineSmall" sx={{ overflowWrap: 'anywhere' }}>
           {tt.greet(plan.part, name ?? '')}
         </Typography>
-        {plan.line && <LineText line={plan.line} />}
+        {!plan.pulse && !plan.forecast && <LineText line={plan.line} />}
       </Box>
-      {plan.progress && (
-        <Box data-testid="today-progress">
-          <Stack direction="row" sx={{ justifyContent: 'space-between', mb: 1 }}>
-            <Typography variant="labelMedium" color="text.secondary">
-              {tt.setup}
-            </Typography>
-            <Typography
-              variant="labelMedium"
-              sx={{ fontVariantNumeric: 'tabular-nums', color: roles.onSurfaceVariant }}
-            >
-              {plan.progress.done}/{plan.progress.total}
-            </Typography>
-          </Stack>
-          <LinearProgress
-            variant="determinate"
-            value={(plan.progress.done / plan.progress.total) * 100}
-            aria-label={`${tt.setup}: ${plan.progress.done}/${plan.progress.total}`}
-            sx={{ height: 4, borderRadius: 2, bgcolor: roles.surfaceContainerHighest }}
-          />
-        </Box>
+      {plan.dayOne && (
+        <DayOne
+          step={plan.dayOne.step}
+          food={plan.food}
+          actions={actions}
+          progress={plan.progress}
+        />
       )}
-      <TodaySupply key={shop.id} />
-      <TodaySupplyNeeds key={`needs-${shop.id}`} />
-      {plan.dayOne && <DayOne step={plan.dayOne.step} food={plan.food} actions={actions} />}
-      <NeedsCard plan={plan} actions={actions} answerMenu={answerMenu} />
+      {/* One card, one filled button: the first row is the lead action, and stock (the supply
+          row with its run-out day, low items and supply exceptions) lives only here. Setup steps
+          left are rows in it too, so the setup bar is not a third progress element. */}
+      {!evening && needs}
       {firstCustomers && ws.shareUrl && (
         <FirstCustomers url={ws.shareUrl} name={shop.fields.name} />
       )}
-      {(plan.pulse || plan.forecast) && (
-        <Box>
-          <PulseCard plan={plan} actions={actions} />
-          {plan.forecast && showAiInfo && <AiInfo feature="forecast" />}
-        </Box>
-      )}
-    </Stack>
+      {(plan.pulse || plan.forecast) && <PulseCard plan={plan} actions={actions} />}
+      {chips?.(plan.part === 'evening')}
+      {evening && <Box sx={{ mt: 'auto' }}>{needs}</Box>}
+    </Box>
   )
 }
 
-function LineText({ line }: { line: CoachLine }) {
+/** No numbers yet: the coach's line stands alone under the greeting. */
+function LineText({ line }: { line: CoachLine | null }) {
+  const text = useLineText(line)
+  const roles = useTheme().material
+  if (!text) return null
+  return (
+    <Typography
+      variant="bodyLarge"
+      data-testid="today-line"
+      sx={{ color: roles.onSurfaceVariant, mt: 2 }}
+    >
+      {text}
+    </Typography>
+  )
+}
+
+/** The coach's one line (weather, festival, busiest day) in the owner's words. */
+function useLineText(line: CoachLine | null): string {
   const tt = useTodayCopy()
   const locale = useLocale()
-  const roles = useTheme().material
+  if (!line) return ''
   const number = new Intl.NumberFormat(locale)
-  let text = ''
   if (line.kind === 'festival' && line.festival && line.days != null)
-    text = tt.festival(tt.festivals[line.festival as Festival] ?? line.festival, line.days)
-  else if (line.kind === 'rain' && line.rain != null) text = tt.rain(line.rain)
-  else if (line.kind === 'busiest_day' && line.weekday != null && line.item && line.count) {
+    return tt.festival(tt.festivals[line.festival as Festival] ?? line.festival, line.days)
+  if (line.kind === 'rain' && line.rain != null) return tt.rain(line.rain)
+  if (line.kind === 'busiest_day' && line.weekday != null && line.item && line.count) {
     // 5 Jan 2026 was a Monday: weekday 0 → Monday in the owner's language.
     const weekday = new Intl.DateTimeFormat(locale, { weekday: 'long', timeZone: 'UTC' }).format(
       new Date(Date.UTC(2026, 0, 5 + line.weekday)),
     )
-    text = tt.busiest(weekday, number.format(line.count), line.item)
+    return tt.busiest(weekday, number.format(line.count), productName(line.item, locale))
   }
-  if (!text) return null
-  return (
-    <Stack
-      direction="row"
-      data-testid="today-line"
-      sx={{ gap: 2, mt: 2, alignItems: 'flex-start', color: roles.onSurfaceVariant }}
-    >
-      <Box aria-hidden="true" sx={{ display: 'flex', color: roles.primary, pt: 0.5 }}>
-        <Sparkles size={18} />
-      </Box>
-      <Typography variant="bodyLarge">{text}</Typography>
-    </Stack>
-  )
+  return ''
 }
 
 function stepText(
@@ -218,17 +239,31 @@ function useStepAction(step: StepId): StepAction {
   return {
     label: tt.add,
     icon: <PencilLine size={18} />,
-    run: () => ws.active && ws.openEditor({ kind: 'business', fields: ws.active.fields }),
+    run: () =>
+      ws.active && ws.openEditor({ kind: 'business', fields: ws.active.fields, step: 'phone' }),
   }
 }
 
 /** A brand-new shop: one warm line, the next step and the mic. */
-function DayOne({ step, food, actions }: { step: StepId; food: boolean; actions: TodayActions }) {
+function DayOne({
+  step,
+  food,
+  actions,
+  progress,
+}: {
+  step: StepId
+  food: boolean
+  actions: TodayActions
+  progress: TodayPlan['progress']
+}) {
   const ws = useWorkspace()
   const tt = useTodayCopy()
   const o = useOnboardingCopy()
   const roles = useTheme().material
   const action = useStepAction(step)
+  const name = ws.active?.fields.name ?? ''
+  // OB-306: an already shared shop is online; lead with its next task instead.
+  const shared = Boolean(ws.active?.public)
   return (
     <Box
       component="section"
@@ -244,13 +279,44 @@ function DayOne({ step, food, actions }: { step: StepId; food: boolean; actions:
       <Typography
         id="today-day-one"
         component="h2"
-        sx={{ fontFamily: HAND_FONT, fontSize: '1.75rem', fontWeight: 700, lineHeight: 1.2 }}
+        variant="headlineSmall"
+        sx={{
+          fontFamily: HAND_FONT,
+          fontWeight: 700,
+          lineHeight: 1.2,
+        }}
       >
-        {tt.dayOne(ws.active?.fields.name ?? '')}
+        {shared ? stepText(step, food, tt, o) : tt.dayOne(name)}
       </Typography>
-      <Typography variant="bodyLarge" color="text.secondary" sx={{ mt: 1 }}>
-        {stepText(step, food, tt, o)}
+      <Typography
+        variant="bodyLarge"
+        color="text.secondary"
+        sx={{ mt: 1, overflowWrap: 'anywhere' }}
+      >
+        {shared ? name : stepText(step, food, tt, o)}
       </Typography>
+      {/* Setup progress lives in the one card that sets the shop up, not as its own bar. */}
+      {progress && (
+        <Box data-testid="today-progress" sx={{ mt: 3 }}>
+          <Stack direction="row" sx={{ justifyContent: 'space-between', mb: 1 }}>
+            <Typography variant="labelLarge" color="text.secondary">
+              {tt.setup}
+            </Typography>
+            <Typography
+              variant="labelLarge"
+              sx={{ fontVariantNumeric: 'tabular-nums', color: roles.onSurfaceVariant }}
+            >
+              {progress.done}/{progress.total}
+            </Typography>
+          </Stack>
+          <LinearProgress
+            variant="determinate"
+            value={(progress.done / progress.total) * 100}
+            aria-label={`${tt.setup}: ${progress.done}/${progress.total}`}
+            sx={{ height: 4, borderRadius: 2, bgcolor: roles.surfaceContainerHighest }}
+          />
+        </Box>
+      )}
       <Stack direction="row" sx={{ mt: 4, gap: 2, flexWrap: 'wrap' }}>
         <Button
           variant="contained"
@@ -283,9 +349,13 @@ function DayOne({ step, food, actions }: { step: StepId; food: boolean; actions:
   )
 }
 
-/** Rows that just left stay a moment with a check, then go (static under reduced motion). */
-function useLeaving(needs: Need[]): { need: Need; leaving: boolean }[] {
+/**
+ * Rows that just left stay a moment with a check, then go (static under reduced motion). A row
+ * that only moved (into or out of "N more things") is not done: it goes at once, with no check.
+ */
+function useLeaving(needs: Need[], moved: Need[]): { need: Need; leaving: boolean }[] {
   const ids = needs.map((need) => need.id).join('|')
+  const elsewhere = new Set(moved.map((need) => need.id))
   const [state, setState] = useState<{ ids: string; rows: { need: Need; leaving: boolean }[] }>(
     () => ({ ids, rows: needs.map((need) => ({ need, leaving: false })) }),
   )
@@ -294,7 +364,7 @@ function useLeaving(needs: Need[]): { need: Need; leaving: boolean }[] {
     const current = new Map(needs.map((need) => [need.id, need]))
     const next = needs.map((need) => ({ need, leaving: false }))
     state.rows.forEach((row, index) => {
-      if (!current.has(row.need.id))
+      if (!current.has(row.need.id) && !elsewhere.has(row.need.id))
         next.splice(Math.min(index, next.length), 0, { need: row.need, leaving: true })
     })
     rows = next
@@ -314,34 +384,95 @@ function useLeaving(needs: Need[]): { need: Need; leaving: boolean }[] {
   return rows.map((row) => ({ ...row, need: latest.get(row.need.id) ?? row.need }))
 }
 
-/** "Needs you now": at most three live items; "All set for today" when nothing is left. */
+/** "Needs you now": three live items, then "N more things"; "All set for today" when none. */
 export function NeedsCard({
   plan,
   actions,
   answerMenu,
+  answerPromise,
   compact = false,
+  footer,
 }: {
   plan: TodayPlan
   actions: TodayActions
   answerMenu: () => void
+  answerPromise: (day: string) => void
   compact?: boolean
+  /** Shown inside the card after the rows (Today's supply exceptions); alone when no rows. */
+  footer?: ReactNode
 }) {
   const tt = useTodayCopy()
   const roles = useTheme().material
-  const rows = useLeaving(plan.needs)
-  if (!rows.length)
-    return compact || plan.dayOne ? null : (
-      <Stack
-        direction="row"
-        data-testid="today-all-set"
-        sx={{ gap: 2, alignItems: 'center', color: roles.onSurfaceVariant, ...enterRise }}
-      >
-        <CircleCheck size={20} color={roles.primary} aria-hidden="true" />
-        <Typography variant="titleMedium" component="p">
-          {tt.allSet}
-        </Typography>
-      </Stack>
+  const rows = useLeaving(plan.needs, plan.more)
+  const moreRows = useLeaving(plan.more, plan.needs)
+  // The lead is the first live row: a row on its way out never holds the one filled button.
+  const lead = rows.find((each) => !each.leaving)
+  const [open, setOpen] = useState(false)
+  const moreId = useId()
+  const row = ({ need, leaving }: { need: Need; leaving: boolean }, first: boolean) =>
+    need.kind === 'supply' || (need.kind === 'promise' && need.supply) ? (
+      leaving ? null : (
+        <PromiseSupplyRow
+          key={need.id}
+          promise={need.kind === 'promise' ? need.promise : null}
+          first={first}
+          answerPromise={answerPromise}
+        />
+      )
+    ) : (
+      <NeedRow
+        key={need.id}
+        need={need}
+        leaving={leaving}
+        first={first}
+        food={plan.food}
+        actions={actions}
+        answerMenu={answerMenu}
+        answerPromise={answerPromise}
+      />
     )
+  const list = {
+    listStyle: 'none',
+    m: 0,
+    p: 0,
+    '& > li + li': { borderTop: `1px solid ${roles.outlineVariant}` },
+  }
+  if (!rows.length)
+    return compact || plan.dayOne ? (
+      footer
+    ) : (
+      <>
+        <Stack
+          direction="row"
+          data-testid="today-all-set"
+          sx={{ gap: 2, alignItems: 'center', color: roles.onSurfaceVariant, ...enterRise }}
+        >
+          <CircleCheck size={20} color={roles.primary} aria-hidden="true" />
+          <Typography variant="titleMedium" component="p">
+            {tt.allSet}
+          </Typography>
+        </Stack>
+        {footer}
+      </>
+    )
+  const more = moreRows.length > 0 && (
+    <Button
+      variant="text"
+      aria-expanded={open}
+      aria-controls={open ? moreId : undefined}
+      onClick={() => setOpen((was) => !was)}
+      endIcon={
+        <ChevronDown
+          size={18}
+          aria-hidden="true"
+          style={{ transform: open ? 'rotate(180deg)' : undefined }}
+        />
+      }
+      sx={{ minHeight: 48, px: 1 }}
+    >
+      {open ? tt.hide : tt.more(plan.more.length)}
+    </Button>
+  )
   return (
     <Box
       component="section"
@@ -350,40 +481,46 @@ export function NeedsCard({
       data-testid="today-needs"
       sx={{
         p: compact ? 2 : { xs: 3, sm: 4 },
+        pt: compact ? 2 : { xs: 1, sm: 2 },
         borderRadius: `${shape.lgIncreased}px`,
         bgcolor: roles.surfaceContainerHigh,
         ...(compact ? {} : enterRise),
       }}
     >
+      {/* The rest stay one tap away in the same card, with text buttons only: one filled
+          button on the card, and nothing drops off Coach (SIMPLIFY Batch 5). On Today the
+          "N more things" sits beside the title, so the card ends with its last row. */}
       {!compact && (
-        <Typography
-          id="today-needs"
-          component="h2"
-          sx={{
-            fontFamily: HAND_FONT,
-            fontSize: '1.5rem',
-            fontWeight: 700,
-            lineHeight: 1.2,
-            px: 1,
-            mb: 1,
-          }}
+        <Stack
+          direction="row"
+          sx={{ alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1 }}
         >
-          {tt.needsTitle}
-        </Typography>
+          <Typography
+            id="today-needs"
+            component="h2"
+            variant="headlineSmall"
+            sx={{ fontFamily: HAND_FONT, fontWeight: 700, lineHeight: 1.2, px: 1 }}
+          >
+            {tt.needsTitle}
+          </Typography>
+          {more}
+        </Stack>
       )}
-      <Stack component="ul" sx={{ listStyle: 'none', m: 0, p: 0 }}>
-        {rows.map(({ need, leaving }, index) => (
-          <NeedRow
-            key={need.id}
-            need={need}
-            leaving={leaving}
-            first={index === 0 && !plan.dayOne && !compact}
-            food={plan.food}
-            actions={actions}
-            answerMenu={answerMenu}
-          />
-        ))}
+      <Stack component="ul" sx={list}>
+        {rows.map((each) => row(each, each === lead && !plan.dayOne && !compact))}
       </Stack>
+      {compact && more}
+      {open && moreRows.length > 0 && (
+        <Stack
+          component="ul"
+          id={moreId}
+          data-testid="today-more"
+          sx={{ ...list, borderTop: `1px solid ${roles.outlineVariant}` }}
+        >
+          {moreRows.map((each) => row(each, false))}
+        </Stack>
+      )}
+      {footer}
     </Box>
   )
 }
@@ -395,6 +532,7 @@ function NeedRow({
   food,
   actions,
   answerMenu,
+  answerPromise,
 }: {
   need: Need
   leaving: boolean
@@ -402,15 +540,22 @@ function NeedRow({
   food: boolean
   actions: TodayActions
   answerMenu: () => void
+  answerPromise: (day: string) => void
 }) {
   const t = useCopy()
   const tt = useTodayCopy()
+  const sc = useSourceCopy()
   const o = useOnboardingCopy()
   const locale = useLocale()
+  const pc = promiseCopyFor(locale)
   const ws = useWorkspace()
   const roles = useTheme().material
   const [busy, setBusy] = useState(false)
   const step = useStepAction(need.kind === 'step' ? need.step : 'items')
+  const promiseSettle = usePromiseSettle(
+    need.kind === 'promise' ? need.promise : null,
+    answerPromise,
+  )
   const primary = first ? 'contained' : 'text'
   async function run(work: () => Promise<unknown>) {
     setBusy(true)
@@ -423,9 +568,45 @@ function NeedRow({
     }
   }
   let icon: ReactNode
-  let text: string
+  let text = ''
   let buttons: ReactNode
-  if (need.kind === 'reply') {
+  if (need.kind === 'promise') {
+    // Last night's promise (HABIT change 4): do it, or "Not today" clears it with no comment.
+    const { promise } = need
+    icon = <NotebookPen size={20} />
+    text = promiseSaid(promise, locale)
+    const { settle } = promiseSettle
+    const doIt =
+      promise.item && promise.kind === 'order'
+        ? { label: pc.orderNow, ask: tt.orderDraft(promise.item) }
+        : promise.item && promise.kind === 'make'
+          ? { label: pc.makeMore, ask: sc.makeDraft(promise.item) }
+          : null
+    buttons = (
+      <>
+        <Button
+          variant={primary}
+          disabled={promiseSettle.busy}
+          sx={{ minHeight: 48 }}
+          onClick={() => {
+            settle('done')
+            if (doIt) actions.ask(doIt.ask)
+          }}
+        >
+          {doIt?.label ?? pc.done}
+        </Button>
+        {/* Clearing it is not a useful action: never action_done, never the first action. */}
+        <Button
+          disabled={promiseSettle.busy}
+          data-uncounted
+          sx={{ minHeight: 48 }}
+          onClick={() => settle('skipped')}
+        >
+          {pc.notToday}
+        </Button>
+      </>
+    )
+  } else if (need.kind === 'reply') {
     icon = <MessageSquare size={20} />
     text = tt.waiting(need.count)
     buttons = (
@@ -477,20 +658,75 @@ function NeedRow({
     )
   } else if (need.kind === 'low') {
     icon = <PackageMinus size={20} />
-    text = tt.low(need.item, need.left)
-    buttons = (
-      <Button
-        variant={primary}
-        sx={{ minHeight: 48 }}
-        onClick={() => actions.ask(tt.orderDraft(need.item))}
-      >
-        {tt.order}
-      </Button>
-    )
+    const name = productName(need.item, locale)
+    const productId = need.productId
+    if (need.source === 'unknown' && productId) {
+      // One question, saved on the item so it is never asked again (OB-239).
+      text = sc.ask(name, need.left)
+      const answer = (source: 'made' | 'bought') =>
+        void run(async () => {
+          if (!ws.active) return
+          await ws.api(
+            `/businesses/${ws.active.id}/inventory/${encodeURIComponent(productId)}/source`,
+            { method: 'POST', body: JSON.stringify({ source }) },
+          )
+          await ws.reload()
+        })
+      buttons = (
+        <>
+          <Button
+            variant={primary}
+            disabled={busy}
+            aria-label={sc.makeLabel(name)}
+            sx={{ minHeight: 48, minWidth: 48 }}
+            onClick={() => answer('made')}
+          >
+            {sc.make}
+          </Button>
+          <Button
+            variant={first ? 'outlined' : 'text'}
+            disabled={busy}
+            aria-label={sc.buyLabel(name)}
+            sx={{ minHeight: 48, minWidth: 48 }}
+            onClick={() => answer('bought')}
+          >
+            {sc.buy}
+          </Button>
+        </>
+      )
+    } else if (need.source === 'made') {
+      // Made here: the prep plan, never a supplier order (OB-239).
+      text = tt.low(name, need.left)
+      buttons = (
+        <Button
+          variant={primary}
+          sx={{ minHeight: 48 }}
+          onClick={() => actions.ask(sc.makeDraft(need.item))}
+        >
+          {sc.makeMore}
+        </Button>
+      )
+    } else if (need.source === 'unknown') {
+      // Not said, and no item to save the answer on: never an Order button (OB-243).
+      text = sc.askInMenu(name, need.left, isServiceShop(ws.active?.fields.category))
+    } else {
+      text = tt.low(name, need.left)
+      buttons = (
+        <Button
+          variant={primary}
+          sx={{ minHeight: 48 }}
+          onClick={() => actions.ask(tt.orderDraft(need.item))}
+        >
+          {tt.order}
+        </Button>
+      )
+    }
   } else if (need.kind === 'soldOut') {
     icon = <ZapOff size={20} />
     const only = need.items.length === 1 ? need.items[0] : undefined
-    text = only ? tt.soldOut(only.name) : tt.soldOutMany(need.items.length)
+    text = only
+      ? tt.soldOut(productName(only.name, locale), productFeminine(only.name, locale))
+      : tt.soldOutMany(need.items.length)
     buttons = only ? (
       <Button
         variant={primary}
@@ -520,7 +756,7 @@ function NeedRow({
         )}
       </>
     )
-  } else {
+  } else if (need.kind === 'facts') {
     icon = <CircleHelp size={20} />
     const fact = need.facts[0]!
     text = t.customersAsk(need.facts.map((f) => t.askNames[f]).join(' '))
@@ -538,6 +774,10 @@ function NeedRow({
     <Box
       component="li"
       data-need={need.kind}
+      onClickCapture={(event) => {
+        const button = (event.target as HTMLElement).closest('button')
+        if (button && !button.hasAttribute('data-uncounted')) countAction(ws, need.kind)
+      }}
       aria-hidden={leaving || undefined}
       inert={leaving || undefined}
       sx={{
@@ -547,9 +787,8 @@ function NeedRow({
         columnGap: 3,
         rowGap: 1,
         px: 1,
-        py: 2,
+        py: 1,
         minHeight: 56,
-        '& + &': { borderTop: `1px solid ${roles.outlineVariant}` },
         ...(leaving
           ? {
               pointerEvents: 'none',
@@ -586,18 +825,22 @@ function PulseCard({ plan, actions }: { plan: TodayPlan; actions: TodayActions }
   const roles = useTheme().material
   const number = new Intl.NumberFormat(locale, { maximumFractionDigits: 1 })
   const currency = shopCurrency(ws.active)
+  // Once the day is closed the pulse is today's, and so is the question it asks (HABIT change 3).
+  const ask = plan.pulse?.when === 'today' ? tt.howToday : tt.howYesterday
+  // In the evening the card below owns the screen: the weather line would push Reply out of view.
+  const quiet = plan.part === 'evening'
+  // Rain only changes how much to make, and the forecast row already says that: with a forecast it
+  // gives its line back, so Today fits a 360 phone (a festival is news and stays).
+  const rainInForecast = plan.forecast && plan.line?.kind === 'rain'
+  const coachLine = useLineText(quiet || rainInForecast ? null : plan.line)
   const lines: string[] = []
   if (plan.pulse) {
-    const values = plan.pulse.values.map(({ metric, value }) => {
+    // One short row: the two numbers that matter most (the rest are one tap away in the chat).
+    const values = plan.pulse.values.slice(0, 2).map(({ metric, value }) => {
       const n = number.format(value)
       if (metric === 'sales')
-        // A day's takings read best whole: ₹4,200, not ₹4,200.00.
-        return new Intl.NumberFormat(locale, {
-          style: 'currency',
-          currency,
-          minimumFractionDigits: 0,
-          maximumFractionDigits: 0,
-        }).format(toMajor(value, currency))
+        // Exact, in the shop's grouping: whole rupees stay whole (₹1,01,000), paise show when present (₹1.01).
+        return formatShopPrice(value, currency, locale)
       if (metric === 'items') return tt.sold(n)
       if (metric === 'views') return tt.views(n)
       if (metric === 'questions') return tt.asked(n)
@@ -608,33 +851,38 @@ function PulseCard({ plan, actions }: { plan: TodayPlan; actions: TodayActions }
       `${plan.pulse.when === 'yesterday' ? tt.yesterday : tt.todaySoFar}: ${values.join(' · ')}`,
     )
   }
-  if (plan.forecast) {
-    let text = tt.forecast(number.format(plan.forecast.quantity), plan.forecast.item)
-    if (plan.forecast.busy) {
+  // In the evening the "How much to make?" chip below answers this, so the card keeps to one line.
+  if (plan.forecast && !quiet) {
+    let text = tt.forecast(
+      number.format(plan.forecast.quantity),
+      productName(plan.forecast.item, locale),
+    )
+    // The busiest hours are the owner's own setting; a coach line (rain, a festival) is news, so
+    // it takes that place and the row stays short.
+    if (plan.forecast.busy && !plan.line) {
       const [start, end] = plan.forecast.busy.map(
         (minutes) => new Date(Date.UTC(2026, 0, 1, Math.floor(minutes / 60), minutes % 60)),
       )
-      const hours = new Intl.DateTimeFormat(locale, {
-        hour: 'numeric',
-        minute: plan.forecast.busy.some((m) => m % 60) ? '2-digit' : undefined,
-        timeZone: 'UTC',
-      }).formatRange(start!, end!)
+      const hours = busyHours(locale, plan.forecast.busy, start!, end!)
       text += `, ${tt.busy(hours)}`
     }
     lines.push(text)
   }
+  // The weather or festival line is a reason under the numbers, not a block of its own.
+  if (coachLine) lines.push(coachLine)
+  if (lines.length === 0) return null
   return (
     <ButtonBase
       data-testid="today-pulse"
       data-tour="forecast"
-      aria-label={`${lines.join('. ')}. ${tt.howYesterday}`}
-      onClick={() => actions.ask(tt.howYesterday)}
+      aria-label={`${lines.join('. ')}. ${ask}`}
+      onClick={() => actions.ask(ask)}
       sx={{
         width: '100%',
         justifyContent: 'flex-start',
         gap: 3,
         px: { xs: 3, sm: 4 },
-        py: 3,
+        py: 2,
         minHeight: 56,
         textAlign: 'start',
         borderRadius: `${shape.lg}px`,
@@ -647,6 +895,7 @@ function PulseCard({ plan, actions }: { plan: TodayPlan; actions: TodayActions }
           <Typography
             key={index}
             component="span"
+            data-testid={line === coachLine ? 'today-line' : undefined}
             variant={index === 0 ? 'bodyLarge' : 'bodyMedium'}
             sx={{
               display: 'block',
@@ -667,9 +916,9 @@ function PulseCard({ plan, actions }: { plan: TodayPlan; actions: TodayActions }
 export function NeedsPill({ actions }: { actions: TodayActions }) {
   const tt = useTodayCopy()
   const roles = useTheme().material
-  const { plan, answerMenu } = useTodayPlan(actions.unread)
+  const { plan, answerMenu, answerPromise } = useTodayPlan(actions.unread)
   const [open, setOpen] = useState(false)
-  const count = plan?.needs.length ?? 0
+  const count = plan ? plan.needs.length + plan.more.length : 0
   if (!plan || !count) return null
   return (
     <Box data-testid="today-pill" sx={{ pb: 2 }}>
@@ -707,9 +956,38 @@ export function NeedsPill({ actions }: { actions: TodayActions }) {
       </ButtonBase>
       {open && (
         <Box id="today-pill-panel" sx={{ mt: 2 }}>
-          <NeedsCard plan={plan} actions={actions} answerMenu={answerMenu} compact />
+          <NeedsCard
+            plan={plan}
+            actions={actions}
+            answerMenu={answerMenu}
+            answerPromise={answerPromise}
+            compact
+          />
         </Box>
       )}
     </Box>
   )
+}
+
+/** "7:30–9:30 am"; Hindi names the part of the day instead (सुबह 7:30–9:30). */
+function busyHours(locale: string, busy: [number, number], start: Date, end: Date): string {
+  const minute = busy.some((m) => m % 60) ? '2-digit' : undefined
+  if (!locale.toLowerCase().startsWith('hi')) {
+    return new Intl.DateTimeFormat(locale, {
+      hour: 'numeric',
+      minute,
+      timeZone: 'UTC',
+    }).formatRange(start, end)
+  }
+  const part = (d: Date) => {
+    const h = d.getUTCHours()
+    return h < 12 ? 'सुबह' : h < 16 ? 'दोपहर' : h < 20 ? 'शाम' : 'रात'
+  }
+  const clock = (d: Date) => {
+    const m = d.getUTCMinutes()
+    return `${d.getUTCHours() % 12 || 12}${minute || m ? `:${String(m).padStart(2, '0')}` : ''}`
+  }
+  return part(start) === part(end)
+    ? `${part(start)} ${clock(start)}–${clock(end)}`
+    : `${part(start)} ${clock(start)}–${part(end)} ${clock(end)}`
 }

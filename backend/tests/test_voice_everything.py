@@ -32,6 +32,7 @@ from app.voice_tools import (
     set_open_today,
     suggest_starter_items,
 )
+from tests.pins import SHOP_PIN, pin_shop
 from tests.test_merchant_routes import approve, stream_events
 from tests.test_photos import join
 
@@ -113,6 +114,7 @@ def test_stamp_card_is_reviewed_and_validated(shop):
 
 
 def test_customer_messages_and_prepared_reply_never_send(shop):
+    pin_shop(shop.store, "alice", shop.business_id)
     shop.store.share("alice", shop.business_id, True)
     shop.store.add_inquiry(
         shop.business_id,
@@ -396,7 +398,9 @@ def test_closed_on_reaches_customers(tmp_path: Path):
         "bob",
         ProposalRequest(
             kind="business",
-            business=BusinessFields(name="Shut Shop", hours="0:00-23:59", timezone="UTC"),
+            business=BusinessFields(
+                name="Shut Shop", hours="0:00-23:59", timezone="UTC", **SHOP_PIN
+            ),
         ),
     )
     bid = store.commit("bob", proposal["id"], proposal["digest"])["business_id"]

@@ -93,7 +93,7 @@ test('first scan: the shop button, the card and the passport show the same stamp
     await expect(button).toHaveText('Stamp card · 3 of 10 stamps')
     await expect(card.getByRole('status')).toHaveText('3 stamps')
     await expect(card.getByRole('img', { name: '3 of 10 stamps' })).toBeVisible()
-    await expect(card).toContainText('7 more for A free kaya bun')
+    await expect(card).toContainText('7 more for a free kaya bun')
 
     // The passport counts the same card the same way.
     await customer.goto(`${shopUrl.origin}/explore/passport`)

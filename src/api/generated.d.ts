@@ -188,6 +188,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/businesses/{business_id}/inventory/{product_id}/source": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Product Source
+         * @description The owner's one tap, "I make it" or "I buy it": only bought stock is ever reordered, and
+         *     the question is never asked again for this item (OB-239). No AI involved.
+         */
+        post: operations["product_source_api_v1_businesses__business_id__inventory__product_id__source_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/businesses/{business_id}/share": {
         parameters: {
             query?: never;
@@ -360,7 +381,8 @@ export interface paths {
         /**
          * Add Gallery Photo
          * @description An explicit owner action ("Add photo"), like the sold-out switch: no AI, no proposal.
-         *     The photo is re-encoded (metadata stripped) and safety-checked before it is kept.
+         *     The photo is re-encoded (metadata stripped) and safety-checked before it is kept. `kind`
+         *     (shop front, inside, menu, product, other) is what the Photos sheet groups by.
          */
         post: operations["add_gallery_photo_api_v1_businesses__business_id__gallery_post"];
         delete?: never;
@@ -381,6 +403,46 @@ export interface paths {
         post?: never;
         /** Remove Gallery Photo */
         delete: operations["remove_gallery_photo_api_v1_businesses__business_id__gallery__photo_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/businesses/{business_id}/gallery/{photo_id}/cover": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Make Cover Photo
+         * @description The first gallery photo is the one customers see on the shop page and in search.
+         */
+        post: operations["make_cover_photo_api_v1_businesses__business_id__gallery__photo_id__cover_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/businesses/{business_id}/gallery/{photo_id}/kind": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Move Gallery Photo
+         * @description Move a photo to another group (shop front, inside, menu, product, other). Owner-only.
+         */
+        post: operations["move_gallery_photo_api_v1_businesses__business_id__gallery__photo_id__kind_post"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -1054,6 +1116,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/businesses/{business_id}/inquiries/{inquiry_id}/replies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Reply Suggestions
+         * @description One-tap reply drafts for the customer's latest words (OB-303); never sent from here.
+         */
+        get: operations["reply_suggestions_api_v1_businesses__business_id__inquiries__inquiry_id__replies_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/public/shops/{business_id}/inquiries/{inquiry_id}/messages/{message_id}/translation": {
         parameters: {
             query?: never;
@@ -1172,6 +1254,27 @@ export interface paths {
         /** Local Guest */
         post: operations["local_guest_api_v1_customer_guest_post"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/customer/data": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Erase My Data
+         * @description OB-96 "Delete my data": chats (and the shops' copies), passport, tips, follows,
+         *     preferences, searches and the profile. Only this customer's; Try again repeats every step.
+         */
+        delete: operations["erase_my_data_api_v1_customer_data_delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1417,6 +1520,26 @@ export interface paths {
          * @description A typed city or area anywhere in the world, or coordinates reverse-geocoded to an area.
          */
         get: operations["find_place_api_v1_discover_place_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/places/pin": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Suggest Owner Pin
+         * @description Suggest a country-biased point; the owner must confirm it before it is saved.
+         */
+        get: operations["suggest_owner_pin_api_v1_places_pin_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2091,6 +2214,79 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/businesses/{business_id}/day/{day}/reward": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Day Reward */
+        get: operations["day_reward_api_v1_businesses__business_id__day__day__reward_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/businesses/{business_id}/habit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Count Habit */
+        post: operations["count_habit_api_v1_businesses__business_id__habit_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/businesses/{business_id}/promise": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Promise
+         * @description The open promise for a morning: this one by default, or a given day (tonight's for
+         *     tomorrow, so the close screen and tests can read it back).
+         */
+        get: operations["read_promise_api_v1_businesses__business_id__promise_get"];
+        put?: never;
+        /** New Promise */
+        post: operations["new_promise_api_v1_businesses__business_id__promise_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/businesses/{business_id}/promise/{day}/{state}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Answer Promise */
+        post: operations["answer_promise_api_v1_businesses__business_id__promise__day___state__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/businesses/{business_id}/analytics": {
         parameters: {
             query?: never;
@@ -2266,6 +2462,46 @@ export interface paths {
         put?: never;
         /** Discard Order */
         post: operations["discard_order_api_v1_businesses__business_id__orders__order_id__discard_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/businesses/{business_id}/orders/{order_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel Order
+         * @description Cancel a sent order: the supplier gets the cancellation at once.
+         */
+        post: operations["cancel_order_api_v1_businesses__business_id__orders__order_id__cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/businesses/{business_id}/orders/{order_id}/change": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Change Order
+         * @description New quantities on a sent order: the supplier is told what changed.
+         */
+        post: operations["change_order_api_v1_businesses__business_id__orders__order_id__change_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2496,6 +2732,43 @@ export interface paths {
         put?: never;
         /** Cancel Order */
         post: operations["cancel_order_api_v1_businesses__business_id__supply_orders__order_id__cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/businesses/{business_id}/supply/orders/{order_id}/again": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Order Again */
+        post: operations["order_again_api_v1_businesses__business_id__supply_orders__order_id__again_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/businesses/{business_id}/supply/orders/{order_id}/talk": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Talk
+         * @description Public demo only: a message to the scripted supplier. Nothing is sent to anyone.
+         */
+        post: operations["talk_api_v1_businesses__business_id__supply_orders__order_id__talk_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3423,7 +3696,7 @@ export interface components {
             /** Version */
             version: number;
             /** Shipped */
-            shipped?: components["schemas"]["LineQuantity"][];
+            shipped?: components["schemas"]["app__supply_routes__LineQuantity"][];
         };
         /** AvailabilityRequest */
         AvailabilityRequest: {
@@ -3795,6 +4068,22 @@ export interface components {
              */
             unread: number;
         };
+        /** CloseReward */
+        CloseReward: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Currency */
+            currency: string;
+            /** Total */
+            total: number | null;
+            /** Items */
+            items: number;
+            same_weekday?: components["schemas"]["SameWeekday"] | null;
+            forecast?: components["schemas"]["ForecastCheck"] | null;
+        };
         /** CoachLine */
         CoachLine: {
             /**
@@ -3828,6 +4117,8 @@ export interface components {
             currency?: string | null;
             /** Session Id */
             session_id?: string | null;
+            /** Turn Id */
+            turn_id?: string | null;
             /** Business Id */
             business_id?: string | null;
             /**
@@ -3972,6 +4263,8 @@ export interface components {
             demo_visits: number;
             /** You */
             you: number;
+            /** Helped */
+            helped: boolean;
             /** Helpers */
             helpers: number;
             /** Reached */
@@ -4446,6 +4739,17 @@ export interface components {
             /** Confidence Level */
             confidence_level?: number | null;
         };
+        /** ForecastCheck */
+        ForecastCheck: {
+            /** Item */
+            item: string;
+            /** Forecast */
+            forecast: number;
+            /** Sold */
+            sold: number;
+            /** Unit */
+            unit: string;
+        };
         /** FreezeInput */
         FreezeInput: {
             /**
@@ -4495,6 +4799,23 @@ export interface components {
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /** HabitEvent */
+        HabitEvent: {
+            /**
+             * Event
+             * @enum {string}
+             */
+            event: "opened" | "prompt_shown" | "action_done" | "closed" | "push_shown" | "push_opened" | "promise_set" | "promise_done";
+            /** Kind */
+            kind?: string | null;
+            /** Seconds */
+            seconds?: number | null;
+        };
+        /** HabitEvents */
+        HabitEvents: {
+            /** Events */
+            events: components["schemas"]["HabitEvent"][];
         };
         /** Helpful */
         Helpful: {
@@ -4723,13 +5044,6 @@ export interface components {
             /** Requirements */
             requirements: components["schemas"]["Requirement"][];
         };
-        /** LineQuantity */
-        LineQuantity: {
-            /** Line */
-            line: number;
-            /** Quantity */
-            quantity: number;
-        };
         /** LocalSignIn */
         LocalSignIn: {
             /**
@@ -4746,6 +5060,14 @@ export interface components {
             stock: number;
             /** Runs Out */
             runs_out: string | null;
+            /**
+             * Source
+             * @default bought
+             * @enum {string}
+             */
+            source: "made" | "bought" | "unknown";
+            /** Product Id */
+            product_id?: string | null;
         };
         /** LowStock */
         LowStock: {
@@ -4753,8 +5075,19 @@ export interface components {
             name: string;
             /** Stock */
             stock: number;
+            /**
+             * Unit
+             * @default
+             */
+            unit: string;
             /** Runs Out */
             runs_out: string | null;
+            /**
+             * Source
+             * @default bought
+             * @enum {string}
+             */
+            source: "made" | "bought" | "unknown";
         };
         /** Match */
         Match: {
@@ -4822,6 +5155,19 @@ export interface components {
              * @enum {string}
              */
             metric: "items_sold" | "sales" | "busy_hours" | "orders_due" | "fittings" | "bookings" | "questions" | "views" | "stamps" | "returning" | "low_stock" | "leftovers";
+        };
+        /** NewPromise */
+        NewPromise: {
+            /** Text */
+            text: string;
+            /**
+             * Kind
+             * @default note
+             * @enum {string}
+             */
+            kind: "order" | "make" | "note";
+            /** Item */
+            item?: string | null;
         };
         /** NewShopDraft */
         NewShopDraft: {
@@ -4933,6 +5279,13 @@ export interface components {
             fit: number;
             /** Demo */
             demo: boolean;
+        };
+        /** OrderChange */
+        OrderChange: {
+            /** Version */
+            version: number;
+            /** Lines */
+            lines: components["schemas"]["app__sourcing_routes__LineQuantity"][];
         };
         /** OrderMessage */
         OrderMessage: {
@@ -5108,6 +5461,11 @@ export interface components {
              * @default []
              */
             saved: string[];
+        };
+        /** PhotoKind */
+        PhotoKind: {
+            /** Kind */
+            kind: string;
         };
         /** Pick */
         Pick: {
@@ -5390,6 +5748,8 @@ export interface components {
              * @default true
              */
             available: boolean;
+            /** Source */
+            source?: ("made" | "bought") | null;
             /** Previous Unit */
             previous_unit?: string | null;
         };
@@ -5405,6 +5765,30 @@ export interface components {
             preferences?: components["schemas"]["Preferences"];
             /** Searches */
             searches?: components["schemas"]["Search"][];
+        };
+        /** Promise */
+        Promise: {
+            /**
+             * Day
+             * Format: date
+             */
+            day: string;
+            /** Text */
+            text: string;
+            /**
+             * Kind
+             * @default note
+             * @enum {string}
+             */
+            kind: "order" | "make" | "note";
+            /** Item */
+            item?: string | null;
+            /**
+             * State
+             * @default open
+             * @enum {string}
+             */
+            state: "open" | "done" | "skipped";
         };
         /** ProposalRequest */
         ProposalRequest: {
@@ -5628,7 +6012,7 @@ export interface components {
             /** Version */
             version: number;
             /** Received */
-            received?: components["schemas"]["LineQuantity"][];
+            received?: components["schemas"]["app__supply_routes__LineQuantity"][];
             /**
              * Note
              * @default
@@ -5677,6 +6061,30 @@ export interface components {
              * @default
              */
             supplier_id: string;
+            /**
+             * Anyway
+             * @default false
+             */
+            anyway: boolean;
+            /**
+             * Source
+             * @default
+             * @enum {string}
+             */
+            source: "" | "made" | "bought";
+        };
+        /** ReplySuggestions */
+        ReplySuggestions: {
+            /** Language */
+            language: string;
+            /** Replies */
+            replies?: string[];
+            /**
+             * Mode
+             * @default template
+             * @constant
+             */
+            mode: "template";
         };
         /** Requirement */
         Requirement: {
@@ -5881,6 +6289,20 @@ export interface components {
             booking: string;
             /** Walk Ins */
             walk_ins?: boolean | null;
+        };
+        /** SameWeekday */
+        SameWeekday: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Weeks Ago */
+            weeks_ago: number;
+            /** Total */
+            total: number;
+            /** Difference */
+            difference: number;
         };
         /**
          * ScratchView
@@ -6375,6 +6797,17 @@ export interface components {
              */
             variant: "full" | "partial" | "substitute" | "match" | "price_mismatch";
         };
+        /**
+         * SourceRequest
+         * @description The owner's one tap: they make this item, or they buy it (OB-239).
+         */
+        SourceRequest: {
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "made" | "bought";
+        };
         /** SpeakRequest */
         SpeakRequest: {
             /** Text */
@@ -6565,6 +6998,13 @@ export interface components {
              */
             measurements: string;
         };
+        /** TalkBody */
+        TalkBody: {
+            /** Version */
+            version: number;
+            /** Text */
+            text: string;
+        };
         /** ThreadMessage */
         ThreadMessage: {
             /** Text */
@@ -6647,6 +7087,7 @@ export interface components {
             hints?: components["schemas"]["TodayHints"] | null;
             /** Has Customer Stamp */
             has_customer_stamp?: boolean | null;
+            promise?: components["schemas"]["Promise"] | null;
         };
         /** TodayArea */
         TodayArea: {
@@ -6995,6 +7436,20 @@ export interface components {
              * @enum {string}
              */
             decision: "accepted" | "edited" | "declined";
+            /** Quantity */
+            quantity: number;
+        };
+        /** LineQuantity */
+        app__sourcing_routes__LineQuantity: {
+            /** Line */
+            line: number;
+            /** Quantity */
+            quantity: number;
+        };
+        /** LineQuantity */
+        app__supply_routes__LineQuantity: {
+            /** Line */
+            line: number;
             /** Quantity */
             quantity: number;
         };
@@ -7398,6 +7853,44 @@ export interface operations {
             };
         };
     };
+    product_source_api_v1_businesses__business_id__inventory__product_id__source_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+                product_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SourceRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     share_api_v1_businesses__business_id__share_post: {
         parameters: {
             query?: never;
@@ -7699,7 +8192,9 @@ export interface operations {
     };
     add_gallery_photo_api_v1_businesses__business_id__gallery_post: {
         parameters: {
-            query?: never;
+            query?: {
+                kind?: string;
+            };
             header?: never;
             path: {
                 business_id: string;
@@ -7741,6 +8236,78 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    make_cover_photo_api_v1_businesses__business_id__gallery__photo_id__cover_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+                photo_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    move_gallery_photo_api_v1_businesses__business_id__gallery__photo_id__kind_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+                photo_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PhotoKind"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -9154,6 +9721,38 @@ export interface operations {
             };
         };
     };
+    reply_suggestions_api_v1_businesses__business_id__inquiries__inquiry_id__replies_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+                inquiry_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReplySuggestions"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     customer_translation_api_v1_public_shops__business_id__inquiries__inquiry_id__messages__message_id__translation_post: {
         parameters: {
             query?: never;
@@ -9382,6 +9981,28 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Me"];
+                };
+            };
+        };
+    };
+    erase_my_data_api_v1_customer_data_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
@@ -9926,6 +10547,37 @@ export interface operations {
                 q?: string | null;
                 lat?: number | null;
                 lng?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlaceMatch"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    suggest_owner_pin_api_v1_places_pin_get: {
+        parameters: {
+            query: {
+                q: string;
             };
             header?: never;
             path?: never;
@@ -11253,6 +11905,170 @@ export interface operations {
             };
         };
     };
+    day_reward_api_v1_businesses__business_id__day__day__reward_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+                day: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CloseReward"] | null;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    count_habit_api_v1_businesses__business_id__habit_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HabitEvents"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_promise_api_v1_businesses__business_id__promise_get: {
+        parameters: {
+            query?: {
+                day?: string | null;
+            };
+            header?: never;
+            path: {
+                business_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Promise"] | null;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    new_promise_api_v1_businesses__business_id__promise_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NewPromise"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Promise"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    answer_promise_api_v1_businesses__business_id__promise__day___state__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+                day: string;
+                state: "done" | "skipped";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     shop_analytics_api_v1_businesses__business_id__analytics_get: {
         parameters: {
             query?: never;
@@ -11637,6 +12453,82 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["OrderVersion"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_order_api_v1_businesses__business_id__orders__order_id__cancel_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+                order_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OrderVersion"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    change_order_api_v1_businesses__business_id__orders__order_id__change_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+                order_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OrderChange"];
             };
         };
         responses: {
@@ -12096,6 +12988,78 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["Version"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    order_again_api_v1_businesses__business_id__supply_orders__order_id__again_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+                order_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    talk_api_v1_businesses__business_id__supply_orders__order_id__talk_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+                order_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TalkBody"];
             };
         };
         responses: {

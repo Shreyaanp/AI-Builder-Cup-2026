@@ -73,7 +73,31 @@ jobs:
       - run: uv run pytest -q
         env:
           FIRESTORE_EMULATOR_HOST: 127.0.0.1:8085
-      - run: uv run pip-audit --local --progress-spinner off
+      # google-adk caps opentelemetry-api<=1.44; remove when adk allows >=1.45.1 (#582)
+      - run: uv run pip-audit --local --progress-spinner off --ignore-vuln CVE-2026-114603
+  # Coach evals (OB-173): the owner coach's expected tool calls, arguments and approval cards
+  # against the real tools, driven by a replay model (no provider, free, deterministic).
+  # Known failures are xfail with their issue number; live Gemini runs are by hand (README).
+  coach-evals:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ inputs.revision || github.sha }}
+      - uses: astral-sh/setup-uv@v10.3.0
+        with:
+          version: '0.13.0'
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+      - run: uv sync --locked
+      - run: uv run ruff check evals
+      - run: uv run ruff format --check evals
+      - run: uv run mypy evals
+      - run: uv run pytest evals -q -rxX
   frontend:
     runs-on: ubuntu-latest
     steps:
@@ -97,6 +121,8 @@ jobs:
       - run: git diff --exit-code -- backend/openapi.json src/api/generated.d.ts
       - run: npm run lint
       - run: npm run build
+      # OB-165: the welcome and first owner screen stay within their JavaScript budget.
+      - run: npm run test:budget
       - run: npm run test:hooks
       - run: npm run format:check
   # Browser tests run per device project, each split into parallel shards.

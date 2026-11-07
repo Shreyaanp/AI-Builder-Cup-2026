@@ -33,6 +33,8 @@ async function sharedShop(page: Page) {
   const prepared = await page.request.post('/api/v1/proposals', {
     data: {
       kind: 'business',
+      // OB-168: a shared shop needs the owner's pin, not only address text.
+      owner_location: { lat: 1.2847, lng: 103.832, accuracy_m: 0, source: 'pin' },
       business: {
         name: 'Tiong Bahru Kopi',
         location: 'Tiong Bahru, Singapore',

@@ -4,10 +4,11 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   useSyncExternalStore,
 } from 'react'
-import { Alert, Box, Button, Skeleton, Snackbar, Stack, Typography } from '@mui/material'
+import { Alert, Box, Button, Skeleton, Snackbar, Stack } from '@mui/material'
 import { IdentityContext } from '../../auth/context'
 import { hiddenFeatures } from '../../auth/features'
 import { useDemoCopy } from '../frontdoors/strings'
@@ -18,38 +19,22 @@ import { AppShell } from '../v1/AppShell'
 import { BackHistory } from '../v1/backStack'
 import { ApiError, type Api } from '../v1/api'
 import { setCoachEndpoint } from '../../api/stream'
+import { nameSampleShops } from '../../i18n/productNames'
 import { DemoWelcome } from './DemoWelcome'
 import { DemoBrowse } from '../customer/DemoBrowse'
 import { currentPath, subscribePath, customerNavigate } from '../frontdoors/navigation'
+import { DemoBanner } from './DemoBanner'
+import {
+  exitDemo,
+  forgetSession,
+  rememberSession,
+  savedSession,
+  setCustomerTour,
+  type Session,
+} from './demoSession'
 
-type Session = { session_id: string; expires_at: number }
-const SESSION_KEY = 'chalkboard.demo.session'
+nameSampleShops()
 
-/** This tab's demo sandbox, while it has at least a minute left. */
-function savedSession(): Session | null {
-  try {
-    const value = JSON.parse(sessionStorage.getItem(SESSION_KEY) ?? 'null') as Session | null
-    return value && value.expires_at * 1000 - Date.now() > 60_000 ? value : null
-  } catch {
-    return null
-  }
-}
-function rememberSession(value: Session) {
-  try {
-    sessionStorage.setItem(SESSION_KEY, JSON.stringify(value))
-  } catch {
-    /* Without storage the next page simply opens a new sandbox. */
-  }
-}
-/** Forgets the stored sandbox, unless a newer one has replaced it since this one ended. */
-function forgetSession(id?: string) {
-  try {
-    if (id && savedSession()?.session_id !== id && sessionStorage.getItem(SESSION_KEY)) return
-    sessionStorage.removeItem(SESSION_KEY)
-  } catch {
-    /* Nothing was stored. */
-  }
-}
 type DemoShop = { id: string; name: string }
 const PublicShop = lazy(() => import('../public/PublicShop'))
 const demoIdentity = {
@@ -57,7 +42,8 @@ const demoIdentity = {
   status: 'ready' as const,
   scope: 'demo',
   error: '',
-  features: hiddenFeatures,
+  // Get on Google opens the practice simulator here: nothing reaches Google.
+  features: { ...hiddenFeatures, google_guide: true },
   getToken: async () => null,
   signIn: async () => undefined,
   signOut: async () => undefined,
@@ -66,6 +52,21 @@ const demoMe = { legal_version: '', consent: null, consent_current: true }
 
 export default function DemoApp() {
   const t = useDemoCopy()
+  const bannerRef = useRef<HTMLElement>(null)
+  useEffect(() => {
+    const banner = bannerRef.current
+    if (!banner) return
+    // The notice can wrap with translations or larger text; reserve its actual height.
+    const measure = () =>
+      banner.parentElement?.style.setProperty(
+        '--app-viewport',
+        `calc(100dvh - ${banner.getBoundingClientRect().height}px)`,
+      )
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(banner)
+    return () => observer.disconnect()
+  }, [])
   const [session, setSession] = useState<Session | null>(null)
   const [state, setState] = useState<'loading' | 'ready' | 'failed' | 'expired'>('loading')
   const [attempt, setAttempt] = useState(0)
@@ -150,8 +151,8 @@ export default function DemoApp() {
       },
     [session, t.expired, t.readOnly],
   )
-  // The owner app on the visitor's own sandbox: reads and safe writes run there and reset
-  // with it; anything that would leave the demo (a message, push, payment) is not sent.
+  // The owner app on the visitor's own sandbox: every feature runs there and resets with it.
+  // Only what would touch the real world answers DEMO_NOT_SENT, with a plain "pretend" note.
   const ownerApi = useMemo<Api>(
     () =>
       async <T,>(path: string, init: RequestInit & { raw?: boolean } = {}) => {
@@ -190,7 +191,12 @@ export default function DemoApp() {
   )
   useEffect(() => {
     if (!session || customer) return
-    setCoachEndpoint(`/api/v1/demo/sessions/${session.session_id}/coach`)
+    const sessionId = session.session_id
+    setCoachEndpoint(`/api/v1/demo/sessions/${sessionId}/coach`, () => {
+      forgetSession(sessionId)
+      setSession(null)
+      setState('expired')
+    })
     return () => setCoachEndpoint(null)
   }, [session, customer])
   useEffect(() => {
@@ -201,21 +207,13 @@ export default function DemoApp() {
       .catch(() => undefined)
     return () => abort.abort()
   }, [session, customer, api])
-  const exit = useCallback(async () => {
-    forgetSession(session?.session_id)
-    try {
-      if (session)
-        await fetch(`/api/v1/demo/sessions/${session.session_id}`, {
-          method: 'DELETE',
-          credentials: 'omit',
-          signal: AbortSignal.timeout(5000),
-        })
-    } catch {
-      // An unreachable server must not trap the visitor; the fixture also expires on its own.
-    } finally {
-      location.assign(customer ? '/explore/' : '/')
-    }
-  }, [session, customer])
+  // The customer demo's steps open the real shop page and Passport: while this side is open they
+  // carry the demo banner too (CustomerApp reads this).
+  useEffect(() => setCustomerTour(customer), [customer])
+  const exit = useCallback(
+    () => exitDemo(session, customer ? '/explore/' : '/'),
+    [session, customer],
+  )
   return (
     <IdentityContext value={demoIdentity}>
       <Box
@@ -225,43 +223,12 @@ export default function DemoApp() {
           '--app-viewport': 'calc(100dvh - 48px - env(safe-area-inset-top))',
         }}
       >
-        <Box
-          component="header"
-          sx={{
-            px: 2,
-            pt: 'env(safe-area-inset-top)',
-            bgcolor: (theme) => theme.material.secondaryContainer,
-            color: (theme) => theme.material.onSecondaryContainer,
-          }}
-        >
-          {/* One slim line: what this is, the other side, and the way out. */}
-          <Stack direction="row" sx={{ alignItems: 'center', gap: 1, minHeight: 48 }}>
-            <Typography variant="bodySmall" noWrap sx={{ flex: 1, minWidth: 0 }}>
-              {t.banner}
-            </Typography>
-            <Button
-              size="small"
-              href={customer ? '/demo' : '/explore/demo'}
-              onClick={customerNavigate}
-              sx={{ minHeight: 48, minWidth: 0, px: 1, flexShrink: 0 }}
-            >
-              {customer ? t.owner : t.customer}
-            </Button>
-            <Button
-              size="small"
-              onClick={() => void exit()}
-              sx={{ minHeight: 48, minWidth: 0, px: 1, flexShrink: 0 }}
-            >
-              {t.exit}
-            </Button>
-          </Stack>
-          {customer && !shop && (
-            <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'flex-end' }}>
-              <LanguagePicker variant="inline" />
-              <AppearanceToggle inline />
-            </Stack>
-          )}
-        </Box>
+        <DemoBanner
+          ref={bannerRef}
+          customer={customer}
+          onSwitch={customerNavigate}
+          onExit={() => void exit()}
+        />
         {state === 'loading' ? (
           <Stack spacing={2} sx={{ p: 2 }} aria-busy="true">
             <Skeleton height={80} />
@@ -286,11 +253,25 @@ export default function DemoApp() {
               <PublicShop id={shop} previewApi={api} />
             </Suspense>
           ) : (
-            <DemoBrowse shops={shops} api={api} />
+            <DemoBrowse
+              shops={shops}
+              api={api}
+              actions={
+                <>
+                  <LanguagePicker variant="inline" />
+                  <AppearanceToggle inline />
+                </>
+              }
+            />
           )
         ) : (
           <BackHistory value>
-            <WorkspaceProvider api={ownerApi} me={demoMe} readOnlyMessage={t.demoNotice}>
+            <WorkspaceProvider
+              api={ownerApi}
+              me={demoMe}
+              readOnlyMessage={t.demoNotice}
+              onStartOwnShop={exit}
+            >
               <AppShell />
               <DemoWelcome />
             </WorkspaceProvider>

@@ -1,8 +1,10 @@
+import { suggestShopPin } from '../pinSupport.js'
 import { expect, test, type Page } from '@playwright/test'
 import { FIRST_QUESTION } from '../newShopTopics.js'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import zlib from 'node:zlib'
+import { startNewShop } from '../support/newShop.js'
 
 export const gpsBoard = new URL('./fixtures/bengaluru-board.jpg', import.meta.url)
 export const gpsBoardPath = fileURLToPath(gpsBoard)
@@ -75,13 +77,26 @@ export async function shot(page: Page, story: number, step: string | number) {
   ).toBe(true)
 }
 
-export async function enter(page: Page) {
+export async function enter(
+  page: Page,
+  copy?: {
+    continuePreview: string
+    acceptTerms: string
+    acceptPrivacy: string
+    agree: string
+    firstTitle: string
+  },
+) {
   await page.goto('/')
-  await page.getByRole('button', { name: 'Continue local preview' }).click()
-  await page.getByLabel('I agree to the Terms').check()
-  await page.getByLabel('I have read the Privacy Notice').check()
-  await page.getByRole('button', { name: 'Agree and continue' }).click()
-  await expect(page.getByRole('heading', { name: 'What shall we work on today?' })).toBeVisible()
+  await page
+    .getByRole('button', { name: copy?.continuePreview ?? 'Continue local preview' })
+    .click()
+  await page.getByLabel(copy?.acceptTerms ?? 'I agree to the Terms').check()
+  await page.getByLabel(copy?.acceptPrivacy ?? 'I have read the Privacy Notice').check()
+  await page.getByRole('button', { name: copy?.agree ?? 'Agree and continue' }).click()
+  await expect(
+    page.getByRole('heading', { name: copy?.firstTitle ?? 'Let’s put your shop online' }),
+  ).toBeVisible()
 }
 
 /** A chat photo is first sorted in one line; the owner picks Menu to open the menu review. */
@@ -104,10 +119,11 @@ export async function confirm(page: Page) {
 export async function openNewShopReview(
   page: Page,
   details = 'name: Courtyard Chai; category: Tea stall; location: Indiranagar, Bengaluru',
+  point?: { lat: number; lng: number; label: string },
 ) {
+  await suggestShopPin(page, point)
   const begin = page.getByRole('button', { name: 'Let’s begin' })
-  if (!(await begin.isVisible()))
-    await page.getByRole('banner').getByRole('button', { name: 'Add shop details' }).click()
+  if (!(await begin.isVisible())) await startNewShop(page)
   await begin.click()
   await expect(page.getByRole('log')).toContainText(FIRST_QUESTION)
   await page.getByLabel('Message', { exact: true }).fill(details)
@@ -146,7 +162,9 @@ export async function createShopFromReview(page: Page) {
     (await summary.locator(`[data-field="${field}"]`).getAttribute('data-filled')) === 'false'
   const missing = [
     (await empty('category')) ? 'category: Tea stall' : '',
-    (await empty('location')) ? 'location: Indiranagar, Bengaluru' : '',
+    (await summary.locator('[data-field="location"]').getByText('Not yet', { exact: true }).count())
+      ? 'location: Tiong Bahru, Singapore'
+      : '',
   ].filter(Boolean)
   await closeSheet(page)
   if (missing.length) {
@@ -154,6 +172,10 @@ export async function createShopFromReview(page: Page) {
     await page.getByRole('button', { name: 'Send', exact: true }).click()
   }
   await expect(page.getByTestId('shop-live')).toBeVisible()
+  // OB-190: finish the coach's turn before setup leaves onboarding.
+  const mute = page.getByRole('button', { name: /^Mute the coach/ })
+  if (await mute.isVisible()) await mute.click()
+  await expect(page.getByRole('status').filter({ hasText: 'Type your answer' })).toBeVisible()
   await page.getByRole('button', { name: 'Cancel', exact: true }).click()
   await expect(page.getByRole('heading', { name: /Congratulations, .* is live!/ })).toBeVisible()
   await page.getByRole('button', { name: 'Continue with my shop' }).click()
@@ -181,8 +203,21 @@ export async function image(page: Page) {
   return { name: 'fixture-board.png', mimeType: 'image/png', buffer: Buffer.from(data, 'base64') }
 }
 
-/** Arrange an owned shop in the same SQLite preview as existing specs; story actions use UI. */
-export async function seedShop(page: Page, withPhotoPin = false, name = shopName) {
+/**
+ * Arrange an owned shop in the same SQLite preview as existing specs; story actions use UI.
+ * OB-168: only a pinned shop can be shared, so the shop gets the owner's pin unless `pin` is
+ * false (a story about a shop that has no pin yet).
+ */
+/** seedShop()'s default pin: Indiranagar, where many fixtures sit. */
+const INDIRANAGAR = { lat: 12.9716, lng: 77.6412 }
+
+/** `pin`: the owner's confirmed point (true: Indiranagar), or false for an unpinned shop. */
+export async function seedShop(
+  page: Page,
+  withPhotoPin = false,
+  name = shopName,
+  pin: boolean | { lat: number; lng: number } = true,
+) {
   let pinned: { id: string; revision: number } | null = null
   if (withPhotoPin) {
     // Only the new-shop photo path can currently review GPS. Keep its empty address while
@@ -232,6 +267,16 @@ export async function seedShop(page: Page, withPhotoPin = false, name = shopName
         reward_text: 'Your eighth chai is free',
         stamps_needed: 8,
       },
+      // OB-168: API setup confirms a pin too; photo setup retains its own GPS evidence.
+      ...(pinned || !pin
+        ? {}
+        : {
+            owner_location: {
+              ...(pin === true ? INDIRANAGAR : pin),
+              accuracy_m: 0,
+              source: 'pin',
+            },
+          }),
       products: pinned ? [] : products,
     },
   })
@@ -266,7 +311,7 @@ export async function seedShop(page: Page, withPhotoPin = false, name = shopName
 
 export async function share(page: Page) {
   await page.getByRole('button', { name: 'Shop', exact: true }).click()
-  await page.getByRole('button', { name: /^Customer page/ }).click()
+  await page.getByRole('button', { name: /^Your shop page/ }).click()
   const sharing = page.getByRole('switch', { name: 'Share customer page' })
   if (!(await sharing.isChecked())) await sharing.click()
   await expect(sharing).toBeChecked()
@@ -274,6 +319,38 @@ export async function share(page: Page) {
   expect(href).toBeTruthy()
   await expect(page.getByRole('img', { name: /QR code for/ })).toBeVisible()
   return new URL(href!, page.url()).toString()
+}
+
+/**
+ * OB-168: other owners' public shops near a point are pinned and so appear on customer pages
+ * (front door, results, "Similar nearby"). Their names, categories and items are those owners'
+ * own words ("Similar nearby" shows the category of a shop with no matching item).
+ */
+export async function otherOwnersWords(page: Page, at: { lat: number; lng: number }, own: string) {
+  const response = await page.request.get(
+    `/api/v1/discover?lat=${at.lat}&lng=${at.lng}&radius=50000`,
+  )
+  expect(response.ok()).toBe(true)
+  const { places } = (await response.json()) as {
+    places: {
+      id: string
+      name: string
+      category: string
+      source: string
+      items: { name: string }[]
+    }[]
+  }
+  return places
+    .filter((place) => place.source === 'chalkboard' && place.id !== own)
+    .flatMap((place) => [place.name, place.category, ...place.items.map((item) => item.name)])
+}
+
+/** The shop's own menu rows on its customer page (not the "Similar nearby" cards). */
+export function menuRow(page: Page, name: string) {
+  return page
+    .getByRole('listitem')
+    .filter({ hasText: name })
+    .and(page.locator(':not([data-testid="similar-nearby"] li)'))
 }
 
 /** share(), plus the signed QR link the owner's poster encodes (`?source=qr&k=…`). */

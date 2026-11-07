@@ -19,12 +19,17 @@ import { useBackClose } from './backStack'
 import { useInChatCopy } from './inChatCopy'
 import { useOnboardingCopy } from './onboardingCopy'
 import { useVoiceModeCopy } from './voiceModeCopy'
+import { useIdentity } from '../../auth/useIdentity'
+import {
+  PHOTO_TYPES,
+  clearOnboardingPhoto,
+  loadOnboardingPhoto,
+  saveOnboardingPhoto,
+} from './onboardingDraft'
 
 export type Shot = 'board' | 'front'
 type Problem = 'blocked' | 'no-camera' | 'failed'
 type Phase = 'ask' | 'starting' | 'live' | 'preview' | 'sending' | 'problem'
-
-const PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 
 /**
  * The camera's entry point in the conversation: a card with the reason, "Open camera", upload and
@@ -39,14 +44,15 @@ export function CameraCard({
   onActive,
 }: {
   shots: Shot[]
-  /** Reads the photo into the shop (the conversation shows the result). */
-  onPhoto: (file: File) => Promise<void>
+  /** Returns a localised recovery message when the photo could not be read. */
+  onPhoto: (file: File) => Promise<string | null>
   /** `quiet`: the X or a finished photo, nothing is said; otherwise the owner chose Skip. */
   onClose: (quiet: boolean) => void
   /** The owner is using the camera (the coach waits instead of nudging). */
   onActive?: () => void
 }) {
   const c = useInChatCopy()
+  const { scope } = useIdentity()
   const v = useVoiceModeCopy()
   const o = useOnboardingCopy()
   const roles = useTheme().material
@@ -55,10 +61,26 @@ export function CameraCard({
   const [index, setIndex] = useState(0)
   const [preview, setPreview] = useState<{ url: string; file: File } | null>(null)
   const [flash, setFlash] = useState(0)
+  const [readError, setReadError] = useState<string | null>(null)
   const stream = useRef<MediaStream | null>(null)
   const video = useRef<HTMLVideoElement>(null)
   const upload = useRef<HTMLInputElement>(null)
   const shutter = useRef<HTMLButtonElement>(null)
+  const retryFile = useRef<File | null>(null)
+  const restoring = useRef(true)
+  useEffect(() => {
+    let mounted = true
+    void loadOnboardingPhoto(scope, 'camera').then((file) => {
+      if (!mounted || !restoring.current || !file) return
+      const at = shots.findIndex((shot) => file.name === `${shot}.jpg`)
+      if (at >= 0) setIndex(at)
+      setPreview({ url: URL.createObjectURL(file), file })
+      setPhase('preview')
+    })
+    return () => {
+      mounted = false
+    }
+  }, [scope, shots])
   const shot = shots[index] ?? 'board'
 
   function stop() {
@@ -66,6 +88,8 @@ export function CameraCard({
     stream.current = null
   }
   async function start() {
+    restoring.current = false
+    clearOnboardingPhoto(scope, 'camera')
     onActive?.()
     setPhase('starting')
     if (!navigator.mediaDevices?.getUserMedia) {
@@ -120,9 +144,10 @@ export function CameraCard({
     canvas.getContext('2d')?.drawImage(node, 0, 0)
     setFlash((n) => n + 1)
     canvas.toBlob(
-      (blob) => {
+      async (blob) => {
         if (!blob) return
         const file = new File([blob], `${shot}.jpg`, { type: 'image/jpeg' })
+        await saveOnboardingPhoto(scope, file, 'camera')
         setPreview({ url: URL.createObjectURL(blob), file })
         setPhase('preview')
       },
@@ -131,6 +156,7 @@ export function CameraCard({
     )
   }
   function advance() {
+    clearOnboardingPhoto(scope, 'camera')
     setPreview(null)
     if (index + 1 < shots.length) {
       setIndex(index + 1)
@@ -141,19 +167,31 @@ export function CameraCard({
     }
   }
   async function send(file: File) {
+    retryFile.current = file
+    setReadError(null)
     setPhase('sending')
-    try {
-      await onPhoto(file)
-    } finally {
-      advance()
+    // Only the shutter keeps a shot for recovery; an upload can be picked again. onPhoto checks
+    // the type and size before anything is read.
+    const error = await onPhoto(file)
+    if (error) {
+      // A refused or unreadable photo is not kept in the browser; Try again uses this tab's copy.
+      clearOnboardingPhoto(scope, 'camera')
+      stop()
+      setPreview(null)
+      setReadError(error)
+      setPhase('ask')
+      return
     }
+    advance()
   }
   function close(quiet: boolean) {
+    clearOnboardingPhoto(scope, 'camera')
     stop()
     onClose(quiet)
   }
   /** The full-screen camera closes; the owner is back at the card in the chat. */
   function leave() {
+    clearOnboardingPhoto(scope, 'camera')
     stop()
     setPreview(null)
     setPhase('ask')
@@ -194,7 +232,7 @@ export function CameraCard({
         ...enterRise,
       }}
     >
-      <Stack direction="row" sx={{ alignItems: 'center', gap: 1, mb: 1.5 }}>
+      <Stack direction="row" sx={{ alignItems: 'center', gap: 1, mb: 2 }}>
         <Camera size={20} aria-hidden="true" color={roles.primary} />
         <Box sx={{ flex: 1, minWidth: 0 }}>
           <Typography component="h3" variant="titleSmall">
@@ -215,8 +253,25 @@ export function CameraCard({
 
       {(phase === 'ask' || fullScreen) && (
         <Stack spacing={2}>
+          {readError && (
+            <Alert
+              severity="warning"
+              data-testid="photo-read-error"
+              action={
+                <Button
+                  color="inherit"
+                  onClick={() => retryFile.current && void send(retryFile.current)}
+                  sx={{ minHeight: 48 }}
+                >
+                  {v.tryAgain}
+                </Button>
+              }
+            >
+              {readError}
+            </Alert>
+          )}
           <Typography variant="bodyMedium" color="text.secondary">
-            {c.cameraWhy}
+            {readError ? guide : c.cameraWhy}
           </Typography>
           <Stack direction="row" sx={{ gap: 1, flexWrap: 'wrap' }}>
             <Button
@@ -258,7 +313,7 @@ export function CameraCard({
         >
           <AlertTitle>{problemTitle}</AlertTitle>
           <Typography variant="bodyMedium">{problemBody}</Typography>
-          <Stack direction="row" sx={{ gap: 1, mt: 1.5, flexWrap: 'wrap' }}>
+          <Stack direction="row" sx={{ gap: 1, mt: 2, flexWrap: 'wrap' }}>
             {problem !== 'no-camera' && (
               <Button variant="contained" size="small" onClick={() => void start()}>
                 {v.tryAgain}
@@ -293,7 +348,7 @@ export function CameraCard({
           onUpload={() => upload.current?.click()}
           onRetake={() => {
             setPreview(null)
-            setPhase('live')
+            void start()
           }}
           onUse={() => preview && void send(preview.file)}
         />

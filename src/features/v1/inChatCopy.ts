@@ -37,6 +37,7 @@ type InChatCopy = {
   cameraFailedBody: string
   cameraDone: string
   /** Map card inside the conversation. */
+  pinRequired: string
   mapTitle: string
   mapHint: string
   biggerMap: string
@@ -78,6 +79,7 @@ type InChatCopy = {
 
 const copy: Record<Locale, InChatCopy> = {
   en: {
+    pinRequired: 'Add your location so customers can find you.',
     cameraBoard: 'Show me your price board',
     cameraFront: 'Now your shopfront',
     guideBoard: 'Fit the whole price board in the frame, prices readable',
@@ -169,6 +171,7 @@ const copy: Record<Locale, InChatCopy> = {
     placeWords: /\b(where|location|address|located)\b/i,
   },
   'zh-Hans': {
+    pinRequired: '添加位置，让顾客找到您。',
     cameraBoard: '给我看看你的价目牌',
     cameraFront: '现在拍一下店面',
     guideBoard: '把整块价目牌放进框里，价格要看得清',
@@ -257,6 +260,7 @@ const copy: Record<Locale, InChatCopy> = {
     placeWords: /哪里|位置|地址|在哪/,
   },
   ms: {
+    pinRequired: 'Tambah lokasi supaya pelanggan boleh menemui anda.',
     cameraBoard: 'Tunjukkan papan harga anda',
     cameraFront: 'Sekarang bahagian depan kedai',
     guideBoard: 'Muatkan seluruh papan harga dalam bingkai, harga boleh dibaca',
@@ -356,6 +360,7 @@ const copy: Record<Locale, InChatCopy> = {
     placeWords: /\b(di mana|lokasi|alamat)\b/i,
   },
   ta: {
+    pinRequired: 'வாடிக்கையாளர்கள் உங்களைக் கண்டுபிடிக்க இருப்பிடத்தைச் சேர்க்கவும்.',
     cameraBoard: 'உங்கள் விலைப் பலகையைக் காட்டுங்கள்',
     cameraFront: 'இப்போது கடையின் முன்பக்கம்',
     guideBoard: 'முழு விலைப் பலகையும் சட்டத்துக்குள் வரட்டும், விலைகள் தெளிவாகத் தெரியட்டும்',
@@ -446,6 +451,7 @@ const copy: Record<Locale, InChatCopy> = {
     placeWords: /எங்கே|இடம்|முகவரி/,
   },
   ja: {
+    pinRequired: 'お客様が見つけられるよう、お店の場所を追加してください。',
     cameraBoard: '価格表を見せてください',
     cameraFront: '次はお店の正面です',
     guideBoard: '価格表全体を枠に入れて、値段が読めるように',
@@ -536,6 +542,7 @@ const copy: Record<Locale, InChatCopy> = {
     placeWords: /どこ|場所|住所/,
   },
   ko: {
+    pinRequired: '고객이 찾을 수 있도록 위치를 추가하세요.',
     cameraBoard: '가격표를 보여 주세요',
     cameraFront: '이제 가게 앞모습이요',
     guideBoard: '가격표 전체가 틀 안에 들어오게, 가격이 읽히도록',
@@ -626,6 +633,7 @@ const copy: Record<Locale, InChatCopy> = {
     placeWords: /어디|위치|주소/,
   },
   id: {
+    pinRequired: 'Tambahkan lokasi agar pelanggan dapat menemukan Anda.',
     cameraBoard: 'Tunjukkan papan harga Anda',
     cameraFront: 'Sekarang bagian depan toko',
     guideBoard: 'Masukkan seluruh papan harga ke bingkai, harga terbaca jelas',
@@ -724,6 +732,7 @@ const copy: Record<Locale, InChatCopy> = {
     placeWords: /\b(di mana|lokasi|alamat)\b/i,
   },
   th: {
+    pinRequired: 'เพิ่มตำแหน่งเพื่อให้ลูกค้าหาคุณเจอ',
     cameraBoard: 'ขอดูป้ายราคาหน่อย',
     cameraFront: 'ต่อไปถ่ายหน้าร้าน',
     guideBoard: 'ให้ป้ายราคาทั้งหมดอยู่ในกรอบ อ่านราคาได้ชัด',
@@ -822,6 +831,7 @@ const copy: Record<Locale, InChatCopy> = {
     placeWords: /ที่ไหน|ตำแหน่ง|ที่อยู่/,
   },
   vi: {
+    pinRequired: 'Thêm vị trí để khách hàng tìm thấy bạn.',
     cameraBoard: 'Cho tôi xem bảng giá của bạn',
     cameraFront: 'Giờ đến mặt tiền cửa hàng',
     guideBoard: 'Đưa cả bảng giá vào khung, giá đọc được rõ',
@@ -921,6 +931,7 @@ const copy: Record<Locale, InChatCopy> = {
     placeWords: /ở đâu|vị trí|địa chỉ/i,
   },
   fil: {
+    pinRequired: 'Idagdag ang lokasyon para mahanap ka ng mga customer.',
     cameraBoard: 'Ipakita ang price board mo',
     cameraFront: 'Ngayon, ang harap ng tindahan',
     guideBoard: 'Ipasok ang buong price board sa frame, malinaw ang presyo',
@@ -1020,6 +1031,7 @@ const copy: Record<Locale, InChatCopy> = {
     placeWords: /\b(nasaan|saan|lokasyon|address)\b/i,
   },
   hi: {
+    pinRequired: 'जगह जोड़ें ताकि ग्राहक आपको ढूँढ सकें।',
     cameraBoard: 'अपना रेट बोर्ड दिखाइए',
     cameraFront: 'अब दुकान का सामने वाला हिस्सा',
     guideBoard: 'पूरा रेट बोर्ड फ़्रेम में लाइए, दाम साफ़ पढ़े जाएँ',
@@ -1118,6 +1130,7 @@ const copy: Record<Locale, InChatCopy> = {
     placeWords: /कहाँ|कहां|पता|जगह|लोकेशन/,
   },
   bn: {
+    pinRequired: 'জায়গা যোগ করুন যাতে গ্রাহকরা আপনাকে খুঁজে পান।',
     cameraBoard: 'আপনার দামের বোর্ডটা দেখান',
     cameraFront: 'এবার দোকানের সামনের দিক',
     guideBoard: 'পুরো দামের বোর্ড ফ্রেমে আনুন, দাম যেন পড়া যায়',
@@ -1216,6 +1229,7 @@ const copy: Record<Locale, InChatCopy> = {
     placeWords: /কোথায়|ঠিকানা|জায়গা/,
   },
   te: {
+    pinRequired: 'కస్టమర్లు మిమ్మల్ని కనుగొనేలా మీ స్థలాన్ని జోడించండి.',
     cameraBoard: 'మీ ధరల బోర్డు చూపించండి',
     cameraFront: 'ఇప్పుడు దుకాణం ముందు భాగం',
     guideBoard: 'ధరల బోర్డు మొత్తం ఫ్రేమ్‌లోకి రావాలి, ధరలు స్పష్టంగా చదవగలగాలి',
@@ -1305,6 +1319,7 @@ const copy: Record<Locale, InChatCopy> = {
     placeWords: /ఎక్కడ|చిరునామా|స్థానం/,
   },
   mr: {
+    pinRequired: 'ग्राहकांना तुम्ही सापडावे म्हणून जागा जोडा.',
     cameraBoard: 'तुमचा दरफलक दाखवा',
     cameraFront: 'आता दुकानाचा पुढचा भाग',
     guideBoard: 'संपूर्ण दरफलक चौकटीत आणा, किमती स्पष्ट वाचता याव्यात',
@@ -1394,6 +1409,7 @@ const copy: Record<Locale, InChatCopy> = {
     placeWords: /कुठे|पत्ता|ठिकाण/,
   },
   kn: {
+    pinRequired: 'ಗ್ರಾಹಕರು ನಿಮ್ಮನ್ನು ಹುಡುಕಲು ನಿಮ್ಮ ಸ್ಥಳ ಸೇರಿಸಿ.',
     cameraBoard: 'ನಿಮ್ಮ ದರ ಫಲಕ ತೋರಿಸಿ',
     cameraFront: 'ಈಗ ಅಂಗಡಿಯ ಮುಂಭಾಗ',
     guideBoard: 'ಪೂರ್ತಿ ದರ ಫಲಕ ಚೌಕಟ್ಟಿನೊಳಗೆ ಬರಲಿ, ಬೆಲೆಗಳು ಸ್ಪಷ್ಟವಾಗಿ ಓದುವಂತಿರಲಿ',

@@ -204,6 +204,8 @@ for (const [side, action] of [
       localStorage.setItem('chalkboard.business.installDismissed', '1')
       sessionStorage.setItem('chalkboard.closeday.fixture', '2026-10-18')
       localStorage.setItem(`chalkboard.${side === 'owner' ? 'customer' : 'owner'}.private`, 'keep')
+      // A-18: the Passport kept on this phone for offline use belongs to the customer session.
+      localStorage.setItem('chalkboard.customer.passportView.v1', '{"key":"area","view":{}}')
       await caches.open('chalkboard-business-private')
       await caches.open('chalkboard-customer-private')
       for (const name of ['private-db', 'firebaseLocalStorageDb'])
@@ -261,7 +263,7 @@ for (const [side, action] of [
     await expect(page).toHaveURL(side === 'owner' ? /\/\?app=business$/ : /\/explore\/$/)
     // The front door says what happened in one line.
     const farewell =
-      action === 'delete' ? 'Account deleted. You are signed out.' : 'You are signed out.'
+      action === 'delete' ? 'Your data is deleted. You are signed out.' : 'You are signed out.'
     await expect(page.getByRole('status').filter({ hasText: farewell })).toBeVisible()
     // Captain UX gate (#335): the note sat over the docked Ask box; it now stays in the top part.
     const note = await page.getByRole('status').filter({ hasText: farewell }).boundingBox()
@@ -288,6 +290,7 @@ for (const [side, action] of [
           other: localStorage.getItem(
             `chalkboard.${side === 'owner' ? 'customer' : 'owner'}.private`,
           ),
+          keptPassport: localStorage.getItem('chalkboard.customer.passportView.v1'),
           databases: (await indexedDB.databases()).map((db) => db.name),
           // Firebase's database stays (another tab may hold it open); its records are gone.
           firebaseRecords: await new Promise<number>((resolve, reject) => {
@@ -311,6 +314,8 @@ for (const [side, action] of [
       businessInstall: side === 'owner' ? null : '1',
       ownerDay: side === 'owner' ? null : '2026-10-18',
       other: 'keep',
+      // Gone after a customer sign-out; an owner sign-out leaves the customer side alone.
+      keptPassport: side === 'customer' ? null : '{"key":"area","view":{}}',
       databases: ['firebaseLocalStorageDb'],
       firebaseRecords: 0,
       caches: [side === 'owner' ? 'chalkboard-customer-private' : 'chalkboard-business-private'],
@@ -379,7 +384,7 @@ for (const finish of ['Skip', 'Start']) {
     await customerProfile(second)
     await second
       .getByRole('region', { name: 'Help', exact: true })
-      .getByRole('button', { name: 'See again' })
+      .getByRole('button', { name: 'Replay the intro' })
       .click()
     await expect(
       second.getByRole('heading', { name: 'Find local shops near you', exact: true }),

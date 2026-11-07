@@ -235,11 +235,13 @@ test('ask: a real shop answers with its exact item and price; back returns to th
     page.on('requestfailed', ended)
   })
   await ask(page, 'kopi')
-  await expect(page.getByText('Understanding what you need…')).toBeVisible()
-  if (isMobile) await page.screenshot({ path: 'docs/stories/customer-ai-2-thinking.png' })
+  // A fast stream may finish before the transient thinking label can be observed.
+  const thinking = page.getByText('Understanding what you need…')
+  if (isMobile && (await thinking.isVisible()))
+    await page.screenshot({ path: 'docs/stories/customer-ai-2-thinking.png' })
   const card = page.locator(`a[href="/explore/s/${id}"]`)
   await expect(card).toContainText('Kopi', { timeout: 15_000 })
-  await expect(card).toContainText('₹18.00')
+  await expect(card).toContainText(/₹18(?![.\d])/)
   await expect(card).toContainText(/\d+ (m|km)/)
   await expect(page.getByRole('group', { name: 'Map of these places' })).toBeVisible()
   await streamed
@@ -311,7 +313,7 @@ test('errors keep the conversation: retry, cancel, stop and offline recovery', a
   await page.screenshot({ path: 'docs/stories/customer-ai-5-error.png' })
   fail = false
   await alert.getByRole('button', { name: 'Try again' }).click()
-  await expect(page.locator('a[href="/explore/s/demo-fixture-kopi"]')).toContainText('₹18.00')
+  await expect(page.locator('a[href="/explore/s/demo-fixture-kopi"]')).toContainText(/₹18(?![.\d])/)
   // Cancel removes only the failed turn.
   fail = true
   await ask(page, 'bread')
@@ -381,7 +383,9 @@ for (const mode of ['light', 'dark'] as const)
     )
   })
 
-test('speed: first answer text appears quickly with the offline fixture', async ({ page }) => {
+test('OB-76 speed: first answer text appears quickly with the offline fixture', async ({
+  page,
+}) => {
   test.setTimeout(60_000)
   await page.route('**/api/v1/discover/ask', (route) =>
     route.fulfill({ json: answer('Fast Kopi') }),

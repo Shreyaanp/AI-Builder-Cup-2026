@@ -14,7 +14,7 @@ test('public menu keeps local prices, hides private stock, and updates across co
     await localOnly(customer)
     await customer.goto(path)
     const kopi = customer.getByRole('listitem').filter({ hasText: 'Kopi' })
-    await expect(kopi).toContainText('₹18.00')
+    await expect(kopi).toContainText('₹18')
     const publicShop = await (await customer.request.get(`/api/v1/public/shops/${id}`)).json()
     expect(publicShop.products[0]).not.toHaveProperty('stock')
     const products = await (await page.request.get(`/api/v1/businesses/${id}/inventory`)).json()
@@ -76,7 +76,7 @@ test('instant facts remain anonymous; owner chat needs sign-in, replies arrive, 
     await page.getByRole('button', { name: 'Shop', exact: true }).click()
     await page.getByRole('button', { name: /^Messages 1/ }).click()
     const messages = page.getByRole('region', { name: /Messages/ })
-    await messages.getByRole('button', { name: 'Open conversation', exact: true }).click()
+    await messages.getByRole('button', { name: /^Open conversation/ }).click()
     await messages.getByLabel('Reply', { exact: true }).fill('Please ask staff before ordering')
     await messages.getByRole('button', { name: 'Send message', exact: true }).click()
     await expect(customer.getByRole('list', { name: /Courtyard Chai/ })).toContainText(
@@ -87,7 +87,8 @@ test('instant facts remain anonymous; owner chat needs sign-in, replies arrive, 
     await expect(customer.getByRole('list', { name: /Courtyard Chai/ })).toContainText(
       'Please ask staff before ordering',
     )
-    await messages.getByRole('button', { name: 'Close conversation', exact: true }).click()
+    await messages.getByRole('button', { name: 'More options', exact: true }).click()
+    await page.getByRole('menuitem', { name: 'Close conversation', exact: true }).click()
     await expect(customer.getByText('This conversation is closed.')).toBeVisible({ timeout: 6500 })
     // Fixed Q11: hidden chat-author labels stay inside their bubbles; the page fits 1440px.
     await audit(customer)
@@ -123,7 +124,7 @@ test('Tamil public facts and prices remain consistent with owner data', async ({
   await publish(page, id)
   await page.goto(`/s/${id}`)
   await expect(page.locator('html')).toHaveAttribute('lang', /^ta/)
-  await expect(page.getByRole('listitem').filter({ hasText: 'Kopi' })).toContainText('₹18.00')
+  await expect(page.getByRole('listitem').filter({ hasText: 'Kopi' })).toContainText('₹18')
   await audit(page)
 })
 
@@ -146,5 +147,7 @@ test('actual offline public question preserves input and reconnect retry works',
     await context.setOffline(false)
   }
   await page.getByRole('button', { name: 'Ask the shop assistant' }).click()
-  await expect(page.getByRole('status').filter({ hasText: 'Listed price' })).toContainText('₹18.00')
+  await expect(page.getByRole('status').filter({ hasText: 'Listed price' })).toContainText(
+    /₹18(?![.\d])/,
+  )
 })

@@ -65,7 +65,7 @@ test('customer story: ask, follow, sign in to chat, demo reply, Chats and Saved'
   const card = page.locator(`a[href="/explore/s/${SHOP}"]`).first()
   if (await card.isVisible()) await card.click()
   else await page.goto(`/explore/s/${SHOP}`)
-  const name = 'Crumb & Courtyard (Demo)'
+  const name = 'Crumb & Courtyard'
   await expect(page.getByRole('heading', { name, level: 1 })).toBeVisible({ timeout: 15_000 })
 
   // 3. Follow while signed out: kept on this device.

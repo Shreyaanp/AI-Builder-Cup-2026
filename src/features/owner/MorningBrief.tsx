@@ -1,17 +1,30 @@
+import { useShopCopy } from '../shop/strings'
+import { unitLabel } from '../shop/units'
+import { useOrderUnit } from '../supply/supplyData'
 import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Box, Button, Chip, IconButton, Link, Stack, Typography, useTheme } from '@mui/material'
 import { gsap } from 'gsap'
-import { CloudSun, PackageMinus, Sparkles, Sunrise, UtensilsCrossed, X } from 'lucide-react'
+import {
+  CloudSun,
+  ExternalLink,
+  PackageMinus,
+  Sparkles,
+  Sunrise,
+  UtensilsCrossed,
+  X,
+} from 'lucide-react'
 import type { components } from '../../api/generated'
-import { useChalkTimeline } from '../../design/chalkMotion'
+import { hits, useChalkTimeline } from '../../design/chalkMotion'
 import { scrollArea, shape } from '../../design/theme'
 import { useLocale } from '../../state/hooks'
+import { productName } from '../../i18n/productNames'
 import { CloseDay } from '../closeday/CloseDay'
 import { closeDayCopy } from '../closeday/strings'
 import { useCopy as usePlanCopy } from '../planning/strings'
 import type { ShopSheetKind } from '../v1/ShopTiles'
 import { useWorkspace } from '../v1/workspaceContext'
+import { useInGroup } from '../v1/growLayout'
 import { fill, useOwnerCopy } from './copy'
 import { shopNow } from './time'
 import { dayLabel } from '../supply/supplyData'
@@ -47,11 +60,19 @@ function hideToday(shop: string, date: string) {
 export function MorningBrief({
   onSheet,
   onRadar,
+  onPlan,
+  embedded = false,
 }: {
   onSheet: (kind: ShopSheetKind) => void
   onRadar: () => void
+  /** How much to make, with the numbers open (Grow). */
+  onPlan: () => void
+  /** Inside Grow's Morning brief row: the row names it and opens it, so no title or hide. */
+  embedded?: boolean
 }) {
   const t = useOwnerCopy()
+  const shopCopy = useShopCopy()
+  const orderUnit = useOrderUnit()
   const locale = useLocale()
   const theme = useTheme()
   const roles = theme.material
@@ -60,7 +81,8 @@ export function MorningBrief({
   const shop = ws.active!
   const today = shopNow(shopZone(shop.fields)).date
   const [brief, setBrief] = useState<Brief | null>(null)
-  const [hidden, setHidden] = useState(() => hiddenToday(shop.id, today))
+  const [hiddenByOwner, setHidden] = useState(() => hiddenToday(shop.id, today))
+  const hidden = hiddenByOwner && !embedded
   const [index, setIndex] = useState(0)
   const [closing, setClosing] = useState(false)
   const track = useRef<HTMLDivElement>(null)
@@ -77,7 +99,9 @@ export function MorningBrief({
   useChalkTimeline(
     scope,
     (root) => {
-      gsap.from(root.querySelectorAll('.brief-line'), {
+      const lines = hits(root, '.brief-line')
+      if (!lines.length) return
+      gsap.from(lines, {
         y: 6,
         opacity: 0,
         duration: 0.35,
@@ -87,6 +111,7 @@ export function MorningBrief({
     },
     [Boolean(brief)],
   )
+  useInGroup(t.brief, Boolean(brief) && !hidden)
   if (hidden || !brief) return null
 
   // Treat optional server collections as empty; the rest of the shop remains usable.
@@ -136,15 +161,19 @@ export function MorningBrief({
               direction="row"
               sx={{ gap: 2, alignItems: 'baseline' }}
             >
-              <Typography variant="bodyLarge" sx={{ flex: 1, minWidth: 0 }} noWrap>
-                {row.name}
+              {/* Long names wrap, never cut off, beside the longer "Sun, Nov 2" (OB-238). */}
+              <Typography
+                variant="bodyLarge"
+                sx={{ flex: 1, minWidth: 0, overflowWrap: 'anywhere' }}
+              >
+                {productName(row.name, locale)}
               </Typography>
               <Typography
                 component="p"
                 variant="titleMedium"
                 sx={{ fontVariantNumeric: 'tabular-nums' }}
               >
-                {number(row.quantity)} {row.unit}
+                {number(row.quantity)} {orderUnit(row.unit)}
               </Typography>
               {typeof row.lower === 'number' && typeof row.upper === 'number' && (
                 <Typography variant="bodySmall" color="text.secondary">
@@ -171,7 +200,7 @@ export function MorningBrief({
                 <Stack direction="row" sx={{ gap: 2, alignItems: 'baseline', flexWrap: 'wrap' }}>
                   <Typography
                     component="p"
-                    variant="headlineSmall"
+                    variant="titleLarge"
                     sx={{ fontVariantNumeric: 'tabular-nums' }}
                   >
                     {new Intl.NumberFormat(locale, {
@@ -181,23 +210,29 @@ export function MorningBrief({
                     }).format(brief.weather.temperature_c)}
                   </Typography>
                   <Typography variant="bodyLarge">
-                    {fill(t.rain, { pct: Math.round(brief.weather.rain_probability) })}
+                    {fill(t.rain, { pct: number(Math.round(brief.weather.rain_probability)) })}
                   </Typography>
                   {brief.weather.demo && <Chip size="small" label={t.demo} />}
                 </Stack>
-                {/* Open-Meteo is CC BY 4.0: the attribution always shows with the data. */}
+                {/* Open-Meteo is CC BY 4.0: the attribution shows with real data. The demo shows
+                    sample numbers, so it carries no source name. */}
                 <Typography variant="bodySmall" color="text.secondary">
-                  <Link
-                    href={brief.weather.url}
-                    target="_blank"
-                    rel="noopener"
-                    color="inherit"
-                    sx={{ display: 'inline-flex', alignItems: 'center', minHeight: 48 }}
-                  >
-                    {fill(brief.weather.demo ? t.weatherDemoCredit : t.weatherCredit, {
-                      source: 'Open-Meteo (CC BY 4.0)',
-                    })}
-                  </Link>
+                  {brief.weather.demo ? (
+                    fill(t.weatherDemoCredit, {})
+                  ) : (
+                    <Link
+                      href={brief.weather.url}
+                      target="_blank"
+                      rel="noopener"
+                      color="inherit"
+                      sx={{ display: 'inline-flex', alignItems: 'center', gap: 1, minHeight: 48 }}
+                    >
+                      {fill(t.weatherCredit, {
+                        source: 'Open-Meteo (CC BY 4.0)',
+                      })}
+                      <ExternalLink size={14} aria-hidden="true" />
+                    </Link>
+                  )}
                 </Typography>
               </Stack>
             ),
@@ -212,23 +247,22 @@ export function MorningBrief({
         <Stack spacing={1}>
           {lowStock.slice(0, 3).map((row) => (
             <Stack key={row.name} direction="row" sx={{ gap: 2, alignItems: 'baseline' }}>
-              <Typography variant="bodyLarge" sx={{ flex: 1, minWidth: 0 }} noWrap>
-                {row.name}
+              {/* Long names wrap, never cut off, beside the longer "Sun, Nov 2" (OB-238). */}
+              <Typography
+                variant="bodyLarge"
+                sx={{ flex: 1, minWidth: 0, overflowWrap: 'anywhere' }}
+              >
+                {productName(row.name, locale)}
               </Typography>
               <Typography variant="bodyMedium" sx={{ fontVariantNumeric: 'tabular-nums' }}>
-                {fill(t.stockLeft, { n: number(row.stock) })}
+                {fill(t.stockLeft, {
+                  n: `${number(row.stock)} ${unitLabel(row.unit ?? '', shopCopy)}`.trim(),
+                })}
               </Typography>
               {typeof row.runs_out === 'string' && (
                 <Typography variant="bodySmall" color="text.secondary">
-                  {fill(t.runsOut, {
-                    date: ws.readOnlyMessage
-                      ? dayLabel(row.runs_out, locale)
-                      : new Intl.DateTimeFormat(locale, {
-                          weekday: 'short',
-                          day: 'numeric',
-                          timeZone: 'UTC',
-                        }).format(new Date(`${row.runs_out}T00:00:00Z`)),
-                  })}
+                  {/* The supply tile's own words for the day, "Sun, Nov 2" (OB-238). */}
+                  {fill(t.runsOut, { date: dayLabel(row.runs_out, locale) })}
                 </Typography>
               )}
             </Stack>
@@ -254,7 +288,7 @@ export function MorningBrief({
               case 'radar':
                 return onRadar()
               case 'reduce_prep':
-                return onSheet('plan')
+                return onPlan()
               case 'confirm_menu':
                 return onSheet('menu')
               case 'record_sales':
@@ -279,31 +313,43 @@ export function MorningBrief({
       component="section"
       aria-label={t.brief}
       aria-roledescription="carousel"
-      sx={{
-        borderRadius: `${shape.lgIncreased}px`,
-        bgcolor: roles.surfaceContainer,
-        border: `1px solid ${roles.outlineVariant}`,
-        overflow: 'hidden',
-      }}
+      sx={
+        embedded
+          ? { overflow: 'hidden' }
+          : {
+              borderRadius: `${shape.lgIncreased}px`,
+              bgcolor: roles.surfaceContainer,
+              border: `1px solid ${roles.outlineVariant}`,
+              overflow: 'hidden',
+            }
+      }
     >
-      <Stack direction="row" sx={{ alignItems: 'center', gap: 2, pl: 4, pr: 1, pt: 2 }}>
-        <Box aria-hidden="true" sx={{ display: 'flex', color: lilac.main }}>
-          <Sunrise size={20} />
-        </Box>
-        <Typography id="brief-title" component="h2" variant="labelLarge" sx={{ flex: 1 }}>
-          {t.brief}
-        </Typography>
-        {brief.demo && <Chip size="small" label={t.demo} />}
-        <IconButton
-          aria-label={t.hide}
-          onClick={() => {
-            hideToday(shop.id, today)
-            setHidden(true)
-          }}
-        >
-          <X size={18} />
-        </IconButton>
-      </Stack>
+      {embedded ? (
+        brief.demo && (
+          <Stack direction="row" sx={{ justifyContent: 'flex-end', px: 4, pt: 2 }}>
+            <Chip size="small" label={t.demo} />
+          </Stack>
+        )
+      ) : (
+        <Stack direction="row" sx={{ alignItems: 'center', gap: 2, pl: 4, pr: 1, pt: 2 }}>
+          <Box aria-hidden="true" sx={{ display: 'flex', color: lilac.main }}>
+            <Sunrise size={20} />
+          </Box>
+          <Typography id="brief-title" component="h2" variant="labelLarge" sx={{ flex: 1 }}>
+            {t.brief}
+          </Typography>
+          {brief.demo && <Chip size="small" label={t.demo} />}
+          <IconButton
+            aria-label={t.hide}
+            onClick={() => {
+              hideToday(shop.id, today)
+              setHidden(true)
+            }}
+          >
+            <X size={18} />
+          </IconButton>
+        </Stack>
+      )}
       <Box
         ref={track}
         onScroll={(event) => {

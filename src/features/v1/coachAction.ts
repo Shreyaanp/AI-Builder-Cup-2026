@@ -25,11 +25,16 @@ export type CoachAction = {
     | 'playbook'
     | 'connect'
     | 'icon'
+    | 'radar'
+    | 'rider'
+    | 'reminders'
   label: string
   business_id?: string | null
   thread_id?: string
   question?: string
   text?: string
+  /** Offered after "I can't do that yet" (OB-172): shown as a chip, never opened by itself. */
+  offer?: boolean
 }
 
 const TARGETS = new Set<CoachAction['target']>([
@@ -57,6 +62,9 @@ const TARGETS = new Set<CoachAction['target']>([
   'playbook',
   'connect',
   'icon',
+  'radar',
+  'rider',
+  'reminders',
 ])
 
 /** Only known targets are acted on; anything else from the server is ignored. */

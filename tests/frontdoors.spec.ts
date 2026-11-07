@@ -99,6 +99,11 @@ test('marketing has two paths, all sections, no splash or auth bootstrap', async
   await expect(
     page.getByRole('heading', { name: 'Everything a corner shop needs. Nothing it doesn’t.' }),
   ).toBeVisible()
+  // OB-121: the landing phone story belongs to the Bengaluru rupee market.
+  const phonePreview = page.locator('.lp-screen.static')
+  await expect(phonePreview.locator('.lp-bubble.me')).toContainText('₹18')
+  await expect(phonePreview.locator('.lp-bubble.coach')).toContainText('₹20 → ₹18')
+  await expect(phonePreview).not.toContainText('$')
   expect(await page.locator('[data-testid="brand-splash"]').count()).toBe(0)
   expect(await page.locator('link[rel="manifest"]').count()).toBe(0)
   expect(
@@ -164,7 +169,9 @@ test('first customer visit: the Ask page asks where inline, then shows nearby ca
   )
   await expect(page.getByRole('textbox', { name: 'Ask about anything nearby' })).toBeVisible()
   await expect(page.getByText('Step 1 of 2', { exact: true })).toHaveCount(0)
-  const where = page.getByRole('region', { name: 'Start with your neighbourhood' })
+  // One input on the page (the Ask bar); the area chip opens the area sheet (A-7, A-33).
+  await page.getByRole('button', { name: /^Area: / }).click()
+  const where = page.getByRole('dialog', { name: 'City or area' })
   await where.getByRole('button', { name: 'Use my location' }).click()
   await expect(where.getByText('Location unavailable. Please choose an area.')).toBeVisible()
   await where.getByRole('textbox', { name: 'City or area' }).fill('Tiong Bahru')

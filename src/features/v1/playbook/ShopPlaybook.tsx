@@ -74,7 +74,7 @@ export function PlaybookEntry() {
   )
 }
 
-function PlaybookSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function PlaybookSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const t = usePlaybookCopy()
   const titleId = useId()
   const ws = useWorkspace()

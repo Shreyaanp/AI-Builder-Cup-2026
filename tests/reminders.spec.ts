@@ -146,6 +146,8 @@ test.describe('owner reminders on a phone', () => {
         }) => {
           await page.setViewportSize({ width, height: 844 })
           const state = await setup(page)
+          // Look is one row on You now; its three choices open underneath (simplify batch 3).
+          await page.getByRole('button', { name: /^Look/ }).click()
           await page
             .getByRole('button', { name: theme === 'dark' ? 'Dark' : 'Light', exact: true })
             .click()

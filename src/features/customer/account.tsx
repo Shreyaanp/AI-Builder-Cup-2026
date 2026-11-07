@@ -4,6 +4,8 @@ import type { Auth } from 'firebase/auth'
 import { upgradeGoogle } from '../../auth/upgradeGoogle'
 import { firebaseAppName } from '../../auth/appSide'
 import { clearSession, frontDoor } from '../../auth/clearSession'
+import type { FarewellReason } from '../../auth/farewellNote'
+import { loadBootstrap } from '../../api/appConfig'
 
 export type { Profile } from './types'
 import type { Me, Profile } from './types'
@@ -15,13 +17,20 @@ import type { Me, Profile } from './types'
  */
 export interface CustomerAccount {
   status: 'loading' | 'signed-out' | 'guest' | 'signed-in'
-  mode: 'local' | 'firebase'
+  /** 'pending' until the server's configuration is read: never shown as a local preview (A-5). */
+  mode: 'pending' | 'local' | 'firebase'
   name: string
   profile: Profile | null
   /** Why sign-in failed; the sign-in sheet says it in the viewer's language. */
   error: '' | 'unavailable' | 'unfinished'
   signIn: () => Promise<boolean>
-  signOut: () => Promise<void>
+  /** Read the sign-in configuration again after it failed ('unavailable'). */
+  retry: () => void
+  /**
+   * `data-deleted` after "Delete my data". With `orIfItFails`, a failed sign-out still clears
+   * this phone's customer data, and the front door says that reason instead.
+   */
+  signOut: (reason?: FarewellReason, options?: { orIfItFails?: FarewellReason }) => Promise<void>
   /** Same-origin fetch with the customer's credentials. Throws `Error(status)` on failure. */
   api: <T>(path: string, init?: RequestInit) => Promise<T>
   /** The same credentials on a raw response (live streams). */
@@ -58,7 +67,7 @@ type Firebase = { auth: Auth; signIn: () => Promise<void>; signOut: () => Promis
 
 export function CustomerAccountProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<CustomerAccount['status']>('loading')
-  const [mode, setMode] = useState<CustomerAccount['mode']>('local')
+  const [mode, setMode] = useState<CustomerAccount['mode']>('pending')
   const [name, setName] = useState('')
   const [profile, setProfile] = useState<Profile | null>(null)
   const [error, setError] = useState<'' | 'unavailable' | 'unfinished'>('')
@@ -66,6 +75,7 @@ export function CustomerAccountProvider({ children }: { children: ReactNode }) {
   const [unread, setUnread] = useState(0)
   const firebase = useRef<Firebase | null>(null)
   const ending = useRef(false)
+  const [attempt, setAttempt] = useState(0)
 
   const raw = useCallback(async (path: string, init: RequestInit = {}) => {
     const headers = new Headers(init.headers)
@@ -124,23 +134,18 @@ export function CustomerAccountProvider({ children }: { children: ReactNode }) {
     let unsubscribe: (() => void) | undefined
     async function connect() {
       try {
-        const response = await fetch('/api/v1/bootstrap', {
-          signal: abort.signal,
-          credentials: 'same-origin',
-        })
-        const value = (await response.json()) as {
-          auth_mode?: string
-          firebase?: Record<string, string>
-          features?: { guest_customer?: boolean }
-        }
+        // Shared with analytics and maps, tried again when busy or failing (A-4, A-5).
+        const value = await loadBootstrap()
         if (abort.signal.aborted) return
-        if (value.auth_mode !== 'firebase' || !value.firebase) {
+        setError('')
+        if (value.auth_mode === 'local') {
           setMode('local')
           if (value.features?.guest_customer)
             await api('/api/v1/customer/guest', { method: 'POST' })
           await load()
           return
         }
+        if (value.auth_mode !== 'firebase' || !value.firebase) throw new Error('config')
         setMode('firebase')
         const config = value.firebase
         const [appSdk, authSdk] = await Promise.all([
@@ -185,11 +190,21 @@ export function CustomerAccountProvider({ children }: { children: ReactNode }) {
       abort.abort()
       unsubscribe?.()
     }
-  }, [load, api])
+  }, [load, api, attempt])
+
+  const retry = useCallback(() => {
+    setError('')
+    setStatus('loading')
+    setAttempt((n) => n + 1)
+  }, [])
 
   const signIn = useCallback(async () => {
     setError('')
     try {
+      if (mode === 'pending') {
+        setError('unavailable')
+        return false
+      }
       if (mode === 'firebase') {
         await firebase.current?.signIn()
         await load()
@@ -209,24 +224,33 @@ export function CustomerAccountProvider({ children }: { children: ReactNode }) {
     }
   }, [api, load, mode])
 
-  const signOut = useCallback(async () => {
-    ending.current = true
-    try {
-      if (mode === 'firebase') await firebase.current?.signOut()
-      else await api('/api/v1/customer/session', { method: 'DELETE' })
-    } catch {
-      ending.current = false
-      setError('unfinished')
-      return
-    }
-    await clearSession('customer')
-    setProfile(null)
-    setDeviceFollows([])
-    setName('')
-    setUnread(0)
-    setStatus('signed-out')
-    frontDoor('customer')
-  }, [api, mode])
+  const signOut = useCallback(
+    async (
+      reason: FarewellReason = 'signed-out',
+      { orIfItFails }: { orIfItFails?: FarewellReason } = {},
+    ) => {
+      ending.current = true
+      try {
+        if (mode === 'firebase') await firebase.current?.signOut()
+        else await api('/api/v1/customer/session', { method: 'DELETE' })
+      } catch {
+        if (!orIfItFails) {
+          ending.current = false
+          setError('unfinished')
+          return
+        }
+        reason = orIfItFails
+      }
+      await clearSession('customer')
+      setProfile(null)
+      setDeviceFollows([])
+      setName('')
+      setUnread(0)
+      setStatus('signed-out')
+      frontDoor('customer', reason)
+    },
+    [api, mode],
+  )
 
   const refreshUnread = useCallback(() => {
     if (status !== 'signed-in' && status !== 'guest') return
@@ -278,6 +302,7 @@ export function CustomerAccountProvider({ children }: { children: ReactNode }) {
       profile,
       error,
       signIn,
+      retry,
       signOut,
       api,
       raw,
@@ -294,6 +319,7 @@ export function CustomerAccountProvider({ children }: { children: ReactNode }) {
       profile,
       error,
       signIn,
+      retry,
       signOut,
       api,
       raw,

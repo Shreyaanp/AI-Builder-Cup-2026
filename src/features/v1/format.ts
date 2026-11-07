@@ -119,6 +119,17 @@ export function formatPrice(
     .join('')
 }
 
+/**
+ * A shop-page price the way a shop writes it: rupees without ".00" when the amount is whole
+ * (₹20, ₹1,800), so the menu agrees with the shop's art. Other currencies keep their cents.
+ */
+export function formatShopPrice(minor: number, currency: string, locale?: string): string {
+  const major = toMajor(minor, currency)
+  return currency.toUpperCase() === 'INR' && Number.isInteger(major)
+    ? formatAmount(major, currency, locale)
+    : formatPrice(minor, currency, locale)
+}
+
 /** The page language (set from the app's language preference) when no locale is passed. */
 function appLanguage(): string | undefined {
   return typeof document === 'undefined' ? undefined : document.documentElement.lang || undefined

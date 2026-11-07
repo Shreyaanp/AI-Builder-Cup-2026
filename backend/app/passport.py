@@ -1040,8 +1040,9 @@ class PassportStore:
         self.docs.update("board", self.board_key(area, week), area, change)
 
     def leave_board(self, uid: str, area: str) -> None:
-        week = week_of(datetime.now(UTC).date())
-        self.post_board(uid, area, week, None)
+        # Remove every contributed week, including a shop's Monday while UTC is Sunday.
+        for week in self.get(uid).week_points.get(area, {}):
+            self.post_board(uid, area, week, None)
 
 
 def member_id(uid: str) -> str:

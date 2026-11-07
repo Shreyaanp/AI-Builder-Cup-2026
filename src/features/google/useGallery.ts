@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
+import { useDemoCopy } from '../frontdoors/strings'
 import { useWorkspace } from '../v1/workspaceContext'
+import { kindOf, type GalleryKind } from './galleryGroups'
 
 export const GALLERY_LIMIT = 12
 
@@ -9,8 +11,10 @@ export const GALLERY_LIMIT = 12
  */
 export function useGallery() {
   const ws = useWorkspace()
+  const demo = useDemoCopy()
   const shop = ws.active
   const ids = shop?.gallery ?? []
+  const kinds = Object.fromEntries(ids.map((id) => [id, kindOf(shop?.photo_kinds?.[id])]))
   const [urls, setUrls] = useState<Record<string, string>>({})
   const [busy, setBusy] = useState(false)
   const [failed, setFailed] = useState(false)
@@ -55,18 +59,22 @@ export function useGallery() {
     [],
   )
 
-  async function add(file: File) {
+  async function add(file: File, kind: GalleryKind = 'other') {
     if (!shop || busy) return
     setBusy(true)
     setFailed(false)
     try {
-      await ws.api(`/businesses/${encodeURIComponent(shop.id)}/gallery`, {
-        method: 'POST',
-        body: file,
-        headers: { 'Content-Type': file.type || 'image/jpeg' },
-        signal: AbortSignal.timeout(150_000),
-      })
+      const added = await ws.api<{ sample?: boolean }>(
+        `/businesses/${encodeURIComponent(shop.id)}/gallery?kind=${kind}`,
+        {
+          method: 'POST',
+          body: file,
+          headers: { 'Content-Type': file.type || 'image/jpeg' },
+          signal: AbortSignal.timeout(150_000),
+        },
+      )
       await ws.reload()
+      if (added.sample) ws.notify(demo.samplePhoto)
     } catch {
       setFailed(true)
     } finally {
@@ -86,5 +94,44 @@ export function useGallery() {
     }
   }
 
-  return { ids, urls, busy, failed, add, remove, full: ids.length >= GALLERY_LIMIT }
+  /** The first photo is the cover customers see; this moves a photo to the front. */
+  async function makeCover(id: string) {
+    if (!shop) return
+    try {
+      await ws.api(`/businesses/${encodeURIComponent(shop.id)}/gallery/${id}/cover`, {
+        method: 'POST',
+      })
+      await ws.reload()
+    } catch {
+      setFailed(true)
+    }
+  }
+
+  /** Put a photo in another group (shop front, inside, menu, products, other). */
+  async function moveTo(id: string, kind: GalleryKind) {
+    if (!shop) return
+    try {
+      await ws.api(`/businesses/${encodeURIComponent(shop.id)}/gallery/${id}/kind`, {
+        method: 'POST',
+        body: JSON.stringify({ kind }),
+        headers: { 'Content-Type': 'application/json' },
+      })
+      await ws.reload()
+    } catch {
+      setFailed(true)
+    }
+  }
+
+  return {
+    ids,
+    kinds,
+    urls,
+    busy,
+    failed,
+    add,
+    remove,
+    makeCover,
+    moveTo,
+    full: ids.length >= GALLERY_LIMIT,
+  }
 }

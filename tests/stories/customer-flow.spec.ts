@@ -309,7 +309,8 @@ for (const mode of ['light', 'dark'] as const) {
       await capture('landing')
       await customer.getByRole('link', { name: 'Find places near me', exact: true }).first().click()
       // No setup wizard: the Ask page itself asks where, then gets out of the way.
-      const where = customer.getByRole('region', { name: 'Start with your neighbourhood' })
+      await customer.getByRole('button', { name: /^Area: / }).click()
+      const where = customer.getByRole('dialog', { name: 'City or area' })
       await where.getByRole('textbox', { name: 'City or area' }).fill('Bengaluru')
       await where.getByRole('textbox', { name: 'City or area' }).press('Enter')
       await expect(where).toHaveCount(0)

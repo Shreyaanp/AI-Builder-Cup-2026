@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useContext, useState } from 'react'
 import type { ReactNode } from 'react'
 import {
   Alert,
@@ -6,7 +6,6 @@ import {
   Box,
   Button,
   ButtonBase,
-  Chip,
   IconButton,
   List,
   ListItem,
@@ -17,54 +16,71 @@ import {
   Typography,
   useTheme,
 } from '@mui/material'
+import { visuallyHidden } from '@mui/utils'
 import {
   CheckCircle2,
   ChevronRight,
   Circle,
   Copy,
+  Ellipsis,
   ExternalLink,
-  Globe,
   Images,
   MessageSquare,
   Pencil,
-  Plus,
   Share2,
+  Stamp,
   Store,
   Trash2,
   UtensilsCrossed,
   ZapOff,
 } from 'lucide-react'
-import { formatPrice, shopCurrency } from './format'
 import { FactList } from './FactList'
-import { PendingCard } from './PendingCard'
 import { MenuSheet } from '../shop/MenuSheet'
-import { FreshnessCard } from '../sales/ShopInsights'
-import { ConnectTile } from '../connect/ConnectTile'
+import { ConnectRow } from '../connect/ConnectTile'
 import { Sheet } from './Sheet'
+import { AskHint } from './AskHint'
+import { ClosedTodaySwitch } from './TwoPaths'
 import { ShopQr } from './ShopQr'
 import { OwnerPerks } from '../passport/games/OwnerPerks'
 import { useUnread } from './useUnread'
-import { openNow, readiness } from './shopProgress'
+import { busyWindow, openNow, readiness } from './shopProgress'
 import { useCopy } from './strings'
 import { isServiceShop, useTabsCopy } from './tabsCopy'
-import { spanFor, tileGrid } from './tileSpan'
+import { RowGroup, ShopRow } from './ShopRow'
 import { ShopLocation } from './CurrentLocation'
 import { useWorkspace } from './workspaceContext'
 import { Messages } from '../inquiries/Messages'
-import { PlanTomorrow } from '../planning/PlanTomorrow'
-import { useCopy as usePlanCopy } from '../planning/strings'
 import { enterRise, shape } from '../../design/theme'
 import { useRewardCopy } from '../rewards/strings'
 import { HoursList } from '../shop/Hours'
 import { hasHours } from '../shop/hoursModel'
-import { CategoryGroups } from '../shop/CategoryGroups'
 
 import { MapsHandoff } from './MapsHandoff'
 import { shopZone } from '../../region/region'
 import { ShopIcon } from '../google/ShopIcon'
+import { GalleryEditor } from '../google/GalleryEditor'
+import { useGallery } from '../google/useGallery'
+import { useLocale } from '../../state/hooks'
+import { productName } from '../../i18n/productNames'
+import { MapCard } from './MapCard'
+import { ListTile } from './GrowList'
+import { TileLayoutContext } from './growLayout'
+import type { Proposal } from './api'
+
+/** How many menu items the busy-hours question goes through (menu order). */
+const SWEEP_ITEMS = 3
 
 export type ShopSheetKind =
-  'details' | 'menu' | 'soldOut' | 'customer' | 'messages' | 'plan' | 'readiness'
+  | 'details'
+  | 'menu'
+  | 'soldOut'
+  | 'customer'
+  | 'messages'
+  | 'readiness'
+  | 'photos'
+  | 'stamps'
+  /** The stamp card with its thank-you perks already open (the coach's "show my perks"). */
+  | 'perks'
 
 /** A glanceable tile: icon + label, one big value, a little supporting detail. */
 export function Tile({
@@ -77,6 +93,8 @@ export function Tile({
   onClick,
   compact = false,
   tour,
+  alert = false,
+  badge,
 }: {
   icon: ReactNode
   label: string
@@ -90,9 +108,30 @@ export function Tile({
   compact?: boolean
   /** Guided-tour anchor (data-tour). */
   tour?: string
+  /** Something to act on now, not a tool: in a Grow group it is not one of the row's names. */
+  alert?: boolean
+  /** A short live state on the More tools icon (Grow only). */
+  badge?: string
 }) {
   const roles = useTheme().material
   const columns = span ?? (wide ? 2 : 1)
+  // Grow draws the same tools as rows and a More tools grid (simplify batch 4a).
+  const layout = useContext(TileLayoutContext)
+  if (layout !== 'card')
+    return (
+      <ListTile
+        layout={layout}
+        icon={icon}
+        label={label}
+        value={value}
+        onClick={onClick}
+        tour={tour}
+        alert={alert}
+        badge={badge}
+      >
+        {children}
+      </ListTile>
+    )
   return (
     <ButtonBase
       onClick={onClick}
@@ -155,32 +194,25 @@ export function Supporting({ children }: { children: ReactNode }) {
 }
 
 /**
- * Shop: the customer page leads ("this is your page"), then what is on it (menu or services,
- * hours and address, photos, what customers ask). Also the desktop pane beside the coach.
+ * Shop: one card for the customer page (name, whether customers see it), one row per part of
+ * the shop with a single status, then the one primary action in the thumb zone. The quieter
+ * tools (stamp card, billing app) sit behind More on the same screen. Also the desktop pane
+ * beside the coach. What needs the owner (waiting customers, the daily menu question) lives on
+ * Coach Today, not here.
  */
 export function ShopOverview({ narrow = false }: { narrow?: boolean }) {
-  // The pane beside the coach skips the pending card: the coach shows it there.
-  const t = useCopy()
-  const ws = useWorkspace()
   const [sheet, setSheet] = useState<ShopSheetKind | null>(null)
   const { unread, refresh } = useUnread()
   return (
-    <Stack spacing={4}>
+    <Stack spacing={3}>
       <YourPage onSheet={setSheet} />
-      {!narrow && (
-        <PendingCard
-          compact
-          unread={unread}
-          onMessages={() => setSheet('messages')}
-          onAnswer={(fact) => ws.startCoachDraft(`${t.factNames[fact]}: `)}
-        />
-      )}
       <ShopTiles unread={unread} onSheet={setSheet} />
-      {!narrow && <FreshnessCard compact />}
+      <PageAction onSheet={setSheet} />
+      {!narrow && <AskHint id="sold_out" />}
       <ShopSheets
         kind={sheet}
         onClose={() => {
-          // Marking messages done changes the tile's count.
+          // Marking messages done changes the row's count.
           if (sheet === 'messages') refresh()
           setSheet(null)
         }}
@@ -189,7 +221,7 @@ export function ShopOverview({ narrow = false }: { narrow?: boolean }) {
   )
 }
 
-/** The customer-facing page, first: what customers see, and one primary "Share page". */
+/** The customer page, first: name, kind and one status line; a tap opens the page sheet. */
 function YourPage({ onSheet }: { onSheet: (kind: ShopSheetKind) => void }) {
   const t = useCopy()
   const tabs = useTabsCopy()
@@ -197,19 +229,9 @@ function YourPage({ onSheet }: { onSheet: (kind: ShopSheetKind) => void }) {
   const roles = useTheme().material
   const shop = ws.active
   if (!shop) return null
-  const url = ws.shareUrl
-  const live = shop.public && Boolean(url)
-  const summary = [shop.fields.category, shop.fields.location].filter(Boolean).join(' · ')
-  function share() {
-    if (!url || !shop) return
-    const data = { title: shop.fields.name, text: t.shareMessage(shop.fields.name), url }
-    if (navigator.share) void navigator.share(data).catch(() => undefined)
-    else
-      void navigator.clipboard
-        .writeText(url)
-        .then(() => ws.notify(t.linkCopied))
-        .catch(() => ws.notify(t.actionFailed))
-  }
+  const live = shop.public && Boolean(ws.shareUrl)
+  // The kind of shop only: the full address lives in Shop details.
+  const summary = shop.fields.category
   return (
     <Box
       component="section"
@@ -223,72 +245,114 @@ function YourPage({ onSheet }: { onSheet: (kind: ShopSheetKind) => void }) {
         ...enterRise,
       }}
     >
-      <Stack direction="row" sx={{ alignItems: 'center', gap: 2 }}>
-        <Box component="span" aria-hidden="true" sx={{ display: 'flex' }}>
-          <Globe size={20} />
-        </Box>
-        <Typography id="your-page-title" component="h2" variant="labelLarge" sx={{ flex: 1 }}>
-          {tabs.yourPage}
-        </Typography>
-        <Chip
-          size="small"
-          label={live ? t.shared : t.notShared}
-          sx={{ bgcolor: roles.surfaceContainerLowest, color: roles.onSurface }}
-        />
-      </Stack>
-      <Stack direction="row" sx={{ mt: 2, gap: 1, alignItems: 'flex-start' }}>
-        <Typography variant="titleLarge" component="p" sx={{ flex: 1, overflowWrap: 'anywhere' }}>
-          {shop.fields.name}
-        </Typography>
-        <Button
-          size="small"
-          color="inherit"
-          startIcon={<Pencil size={16} />}
-          aria-label={`${t.editProduct}: ${shop.fields.name}`}
-          onClick={() => ws.openEditor({ kind: 'business', fields: shop.fields, step: 'name' })}
-          sx={{ flexShrink: 0 }}
-        >
-          {t.editProduct}
-        </Button>
-      </Stack>
-      {summary && (
-        <Typography variant="bodyMedium" sx={{ mt: 0.5, overflowWrap: 'anywhere' }}>
-          {summary}
-        </Typography>
-      )}
-      <Typography variant="bodyMedium" sx={{ mt: 1 }}>
-        {live ? tabs.pageLive : tabs.pageOff}
-      </Typography>
-      <Stack direction="row" sx={{ mt: 3, gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
-        {live ? (
-          <Button
-            variant="contained"
-            disableFocusRipple
-            startIcon={<Share2 size={18} />}
-            onClick={share}
-          >
-            {tabs.sharePage}
-          </Button>
-        ) : (
-          <Button variant="contained" disableFocusRipple onClick={() => onSheet('customer')}>
-            {tabs.turnOnPage}
-          </Button>
-        )}
-        <Button
-          color="inherit"
-          disableFocusRipple
+      <Stack direction="row" sx={{ alignItems: 'flex-start', gap: 1 }}>
+        {/* The card opens the page sheet: the switch, link, QR code and sharing. */}
+        <ButtonBase
           aria-haspopup="dialog"
           onClick={() => onSheet('customer')}
-          sx={{ minHeight: 48 }}
+          sx={{
+            flex: 1,
+            minWidth: 0,
+            minHeight: 48,
+            display: 'block',
+            textAlign: 'start',
+            borderRadius: `${shape.sm}px`,
+            '&:focus-visible': { outline: `3px solid ${roles.primary}`, outlineOffset: 2 },
+          }}
         >
-          {t.customerPage}
-        </Button>
+          <Typography id="your-page-title" component="span" sx={visuallyHidden}>
+            {tabs.yourPage}
+          </Typography>
+          <Typography
+            component="span"
+            variant="titleLarge"
+            sx={{ display: 'block', overflowWrap: 'anywhere' }}
+          >
+            {shop.fields.name}
+          </Typography>
+          {summary && (
+            <Typography
+              component="span"
+              variant="bodyMedium"
+              sx={{ display: 'block', mt: 1, overflowWrap: 'anywhere' }}
+            >
+              {summary}
+            </Typography>
+          )}
+          <Stack component="span" direction="row" sx={{ mt: 1, gap: 2, alignItems: 'center' }}>
+            <Box
+              component="span"
+              aria-hidden="true"
+              sx={{
+                width: 8,
+                height: 8,
+                flexShrink: 0,
+                borderRadius: '50%',
+                bgcolor: live ? roles.primary : roles.outline,
+              }}
+            />
+            <Typography component="span" variant="bodyMedium">
+              {live ? tabs.pageLive : tabs.pageOff}
+            </Typography>
+          </Stack>
+        </ButtonBase>
+        <IconButton
+          color="inherit"
+          aria-label={`${t.editProduct}: ${shop.fields.name}`}
+          onClick={() => ws.openEditor({ kind: 'business', fields: shop.fields, step: 'name' })}
+          sx={{ width: 48, height: 48, flexShrink: 0 }}
+        >
+          <Pencil size={20} />
+        </IconButton>
       </Stack>
     </Box>
   )
 }
 
-/** Shop: a grid of tiles; each opens a bottom sheet with the full list and actions. */
+/** The page's one primary action, in the thumb zone below the rows: show it, then share it. */
+function PageAction({ onSheet }: { onSheet: (kind: ShopSheetKind) => void }) {
+  const t = useCopy()
+  const tabs = useTabsCopy()
+  const ws = useWorkspace()
+  const shop = ws.active
+  if (!shop) return null
+  const url = ws.shareUrl
+  function share() {
+    if (!url || !shop) return
+    const data = { title: shop.fields.name, text: t.shareMessage(shop.fields.name), url }
+    if (navigator.share) void navigator.share(data).catch(() => undefined)
+    else
+      void navigator.clipboard
+        .writeText(url)
+        .then(() => ws.notify(t.linkCopied))
+        .catch(() => ws.notify(t.actionFailed))
+  }
+  return shop.public && url ? (
+    <Button
+      fullWidth
+      variant="contained"
+      disableFocusRipple
+      startIcon={<Share2 size={18} />}
+      onClick={share}
+      sx={{ minHeight: 48 }}
+    >
+      {tabs.sharePage}
+    </Button>
+  ) : (
+    <Button
+      fullWidth
+      variant="contained"
+      disableFocusRipple
+      aria-haspopup="dialog"
+      onClick={() => onSheet('customer')}
+      sx={{ minHeight: 48 }}
+    >
+      {tabs.turnOnPage}
+    </Button>
+  )
+}
+
+/** Shop: one row per part of the shop; each opens a bottom sheet with the full list and actions. */
 export function ShopTiles({
   unread,
   onSheet,
@@ -297,116 +361,105 @@ export function ShopTiles({
   onSheet: (kind: ShopSheetKind) => void
 }) {
   const t = useCopy()
+  const locale = useLocale()
   const tabs = useTabsCopy()
   const ws = useWorkspace()
-  const roles = useTheme().material
+  const [more, setMore] = useState(false)
   const shop = ws.active
   if (!shop) return null
-  const currency = shopCurrency(shop)
   const open = openNow(
     shop.fields.hours,
     new Date(),
     shop.fields.weekly_hours,
     shopZone(shop.fields),
   )
+  // In the busy hours the row asks about the top items, one at a time (the old sweep card).
+  const sweep = busyWindow(shop.fields.busy_hours)
+    ? ws.products.slice(0, SWEEP_ITEMS).find((product) => product.available !== false)
+    : undefined
   const soldOutNames = ws.products
     .filter((product) => product.available === false)
-    .map((product) => product.name)
-  const soldOut = soldOutNames.length
-  const hoursValue =
-    open === null ? shop.fields.hours || t.fields.hours : open ? t.openNow : t.closedNow
-  const details =
-    [open === null ? '' : shop.fields.hours, shop.fields.location].filter(Boolean).join(' · ') ||
-    t.notProvided
+    .map((product) => productName(product.name, locale))
+  const hours =
+    [open === null ? '' : open ? t.openNow : t.closedNow, shop.fields.hours]
+      .filter(Boolean)
+      .join(' · ') || t.notProvided
   const photos = shop.gallery?.length ?? 0
   return (
-    // Content-sized grid: as many 168px+ columns as fit (2 on a phone, 3 at 600px, 4 on a
-    // desktop), each tile one or two columns wide by how much it shows, packed densely so no
-    // row is left with a hole while a smaller tile could fill it.
-    <Box data-testid="shop-tiles" sx={tileGrid}>
-      <Tile
-        // The whole row, its category groups side by side where they fit.
-        span={ws.products.length ? 'full' : 1}
-        tour="menu"
-        icon={<UtensilsCrossed size={20} />}
-        label={isServiceShop(shop.fields.category) ? tabs.services : t.menu}
-        value={ws.products.length ? t.itemCount(ws.products.length) : t.noItems}
-        onClick={() => onSheet('menu')}
-      >
-        {ws.products.length > 0 && (
-          <CategoryGroups products={ws.products} inline columns>
-            {(items) => (
-              <Stack component="span" spacing={1} sx={{ px: 2, pb: 1 }}>
-                {items.slice(0, 3).map((product) => (
-                  <Stack
-                    component="span"
-                    key={product.id ?? product.name}
-                    direction="row"
-                    sx={{ gap: 2, justifyContent: 'space-between' }}
-                  >
-                    <Typography component="span" variant="bodyMedium" noWrap sx={{ minWidth: 0 }}>
-                      {product.name}
-                      {/* Same item in two sizes (chai per cup and per pot): the unit tells them apart. */}
-                      {product.unit &&
-                        ws.products.filter((other) => other.name === product.name).length > 1 &&
-                        ` / ${product.unit}`}
-                    </Typography>
-                    <Typography
-                      component="span"
-                      variant="bodyMedium"
-                      sx={{ whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}
-                    >
-                      {product.available === false
-                        ? t.soldOut
-                        : formatPrice(product.price, currency)}
-                    </Typography>
-                  </Stack>
-                ))}
-              </Stack>
-            )}
-          </CategoryGroups>
-        )}
-        <Typography component="span" variant="labelLarge" sx={{ color: roles.primary }}>
-          {ws.products.length ? t.viewAll : t.addProduct}
-        </Typography>
-      </Tile>
-      <Tile
-        span={spanFor(t.soldOutCount(soldOut), soldOutNames.join(' · '))}
-        icon={<ZapOff size={20} />}
-        label={t.soldOutToday}
-        value={t.soldOutCount(soldOut)}
-        onClick={() => onSheet('soldOut')}
-      >
-        {soldOut > 0 && <Supporting>{soldOutNames.join(' · ')}</Supporting>}
-      </Tile>
-      <Tile
-        span={spanFor(hoursValue, details)}
-        icon={<Store size={20} />}
-        label={t.shopDetails}
-        value={hoursValue}
-        onClick={() => onSheet('details')}
-      >
-        <Supporting>{details}</Supporting>
-      </Tile>
-      <Tile
-        icon={<Images size={20} />}
-        label={tabs.photos}
-        value={photos ? tabs.photoCount(photos) : tabs.addPhotos}
-        onClick={() => ws.go('google')}
-      />
-      <Tile
-        icon={
-          <Badge badgeContent={unread ?? 0} color="primary" aria-hidden="true">
-            <MessageSquare size={20} />
-          </Badge>
-        }
-        label={t.messages}
-        value={unread === null ? '–' : t.unread(unread)}
-        onClick={() => onSheet('messages')}
-      />
-      <ConnectTile />
-    </Box>
+    <Stack spacing={2} data-testid="shop-tiles">
+      <RowGroup>
+        <ShopRow
+          tour="menu"
+          icon={<UtensilsCrossed size={20} />}
+          label={isServiceShop(shop.fields.category) ? tabs.services : t.menu}
+          value={ws.products.length ? t.itemCount(ws.products.length) : t.noItems}
+          onClick={() => onSheet('menu')}
+        />
+        <ShopRow
+          icon={<ZapOff size={20} />}
+          label={t.soldOut}
+          value={
+            sweep
+              ? t.sweepQuestion(productName(sweep.name, locale))
+              : soldOutNames.length
+                ? soldOutNames.join(' · ')
+                : t.soldOutCount(0)
+          }
+          onClick={() => onSheet('soldOut')}
+        />
+        <ShopRow
+          icon={
+            <Badge badgeContent={unread ?? 0} color="primary" aria-hidden="true">
+              <MessageSquare size={20} />
+            </Badge>
+          }
+          label={t.messages}
+          value={unread === null ? '–' : t.unread(unread)}
+          onClick={() => onSheet('messages')}
+        />
+        <ShopRow
+          icon={<Images size={20} />}
+          label={tabs.photos}
+          value={photos ? tabs.photoCount(photos) : tabs.addPhotos}
+          // O-3: the shop's own photos sheet (the Google guide may be switched off, as in the demo).
+          onClick={() => onSheet('photos')}
+        />
+        <ShopRow
+          icon={<Store size={20} />}
+          label={t.shopDetails}
+          value={hours}
+          onClick={() => onSheet('details')}
+        />
+        <ShopRow
+          icon={<Ellipsis size={20} />}
+          label={tabs.more}
+          value={more ? undefined : `${tabs.stampCard} · ${tabs.billingApp}`}
+          expanded={more}
+          controls="shop-more"
+          onClick={() => setMore((value) => !value)}
+        />
+      </RowGroup>
+      {more && (
+        <Box id="shop-more">
+          <RowGroup>
+            <ShopRow
+              icon={<Stamp size={20} />}
+              label={tabs.stampCard}
+              value={shop.fields.reward_text || tabs.perksOff}
+              onClick={() => onSheet('stamps')}
+            />
+            <ConnectRow />
+          </RowGroup>
+        </Box>
+      )}
+    </Stack>
   )
+}
+
+/** The Photos sheet's body: the gallery loads only while the sheet is open. */
+function ShopPhotos() {
+  const gallery = useGallery()
+  return <GalleryEditor gallery={gallery} />
 }
 
 /** Every My shop sheet. Also opened from coach suggestion chips. */
@@ -421,8 +474,9 @@ export function ShopSheets({
   menuFocus?: string | null
 }) {
   const t = useCopy()
+  const locale = useLocale()
   const rewards = useRewardCopy()
-  const plan = usePlanCopy()
+  const tabs = useTabsCopy()
   const ws = useWorkspace()
   const roles = useTheme().material
   // Keep the last sheet's content while it slides away.
@@ -449,15 +503,6 @@ export function ShopSheets({
       {t.editDetails}
     </Button>
   )
-  const addProduct = (
-    <Button
-      variant="contained"
-      startIcon={<Plus size={18} />}
-      onClick={then(() => ws.openEditor({ kind: 'product', product: null }))}
-    >
-      {t.addProduct}
-    </Button>
-  )
   const common = { open: kind !== null, onClose }
 
   switch (kind ?? last) {
@@ -466,9 +511,15 @@ export function ShopSheets({
         <Sheet
           {...common}
           titleId="details-sheet-title"
+          ask="closed_today"
           title={shop.fields.name}
           actions={editDetails}
         >
+          {kind === 'details' && (
+            <Box sx={{ mb: 4 }}>
+              <ClosedTodaySwitch onReview={onClose} />
+            </Box>
+          )}
           {kind === 'details' && (
             <Box sx={{ mb: 4 }}>
               <ShopIcon />
@@ -569,7 +620,7 @@ export function ShopSheets({
       return <MenuSheet {...common} focus={menuFocus} />
     case 'soldOut':
       return (
-        <Sheet {...common} titleId="soldout-sheet-title" title={t.soldOutToday}>
+        <Sheet {...common} titleId="soldout-sheet-title" ask="sold_out" title={t.soldOut}>
           <Typography variant="bodyMedium" color="text.secondary" sx={{ mb: 4 }}>
             {ws.products.length ? t.soldOutHint : t.productsEmpty}
           </Typography>
@@ -586,13 +637,17 @@ export function ShopSheets({
                         edge="end"
                         checked={available}
                         onChange={(_, checked) => void ws.setAvailability(product, checked)}
-                        slotProps={{ input: { 'aria-label': `${t.available}: ${product.name}` } }}
+                        slotProps={{
+                          input: {
+                            'aria-label': `${t.available}: ${productName(product.name, locale)}`,
+                          },
+                        }}
                       />
                     }
                     sx={{ minHeight: 56 }}
                   >
                     <ListItemText
-                      primary={product.name}
+                      primary={productName(product.name, locale)}
                       secondary={available ? t.available : t.soldOut}
                       slotProps={{
                         primary: { variant: 'bodyLarge' },
@@ -611,30 +666,45 @@ export function ShopSheets({
       )
     case 'customer':
       return (
-        <Sheet {...common} titleId="customer-sheet-title" title={t.customerPage}>
-          <CustomerPage />
+        <Sheet {...common} titleId="customer-sheet-title" ask="share" title={tabs.yourPage}>
+          <CustomerPage onReview={onClose} />
+        </Sheet>
+      )
+    case 'stamps':
+    case 'perks':
+      return (
+        <Sheet
+          {...common}
+          titleId="stamps-sheet-title"
+          ask="stamps"
+          title={tabs.stampCard}
+          actions={
+            <Button
+              variant="contained"
+              startIcon={<Pencil size={18} />}
+              onClick={then(() =>
+                ws.openEditor({ kind: 'business', fields: shop.fields, step: 'reward' }),
+              )}
+            >
+              {tabs.changeStampCard}
+            </Button>
+          }
+        >
+          {(kind === 'stamps' || kind === 'perks') && <StampCard perksOpen={kind === 'perks'} />}
+        </Sheet>
+      )
+    case 'photos':
+      return (
+        <Sheet {...common} titleId="photos-sheet-title" ask="photos" title={tabs.photos}>
+          {kind === 'photos' && <ShopPhotos />}
         </Sheet>
       )
     case 'messages':
       // Messages brings its own "Messages (n)" heading, which names the sheet.
       return (
-        <Sheet {...common} titleId="messages-title">
+        <Sheet {...common} titleId="messages-title" ask="messages">
+          {/* The owner's language lives in You → Language, not beside the conversation. */}
           <Messages key={`messages-${shop.id}`} businessId={shop.id} />
-        </Sheet>
-      )
-    case 'plan':
-      // Planning brings its own "Plan tomorrow" heading; it needs a saved product first.
-      return ws.products.some((product) => product.id) ? (
-        <Sheet {...common} titleId="plan-title">
-          <Box sx={{ pt: 2 }}>
-            <PlanTomorrow key={`plan-${shop.id}`} />
-          </Box>
-        </Sheet>
-      ) : (
-        <Sheet {...common} titleId="plan-sheet-title" title={plan.title} actions={addProduct}>
-          <Typography variant="bodyMedium" color="text.secondary">
-            {t.productsEmpty}
-          </Typography>
         </Sheet>
       )
     case 'readiness': {
@@ -652,6 +722,7 @@ export function ShopSheets({
         <Sheet
           {...common}
           titleId="readiness-sheet-title"
+          ask="google"
           title={t.readiness(done, total)}
           actions={
             <>
@@ -689,13 +760,35 @@ export function ShopSheets({
 }
 
 /** Customer page switch, link and share actions (moved from the old My shop page). */
-function CustomerPage() {
+function CustomerPage({ onReview }: { onReview: () => void }) {
   const t = useCopy()
   const ws = useWorkspace()
   const roles = useTheme().material
   const [busy, setBusy] = useState(false)
   const shop = ws.active
   if (!shop) return null
+  if (shop.fields.lat == null || shop.fields.lng == null)
+    return (
+      <MapCard
+        initial={null}
+        placeName={shop.fields.location}
+        done={null}
+        onConfirm={async (owner_location) => {
+          const proposal = await ws.api<Proposal>('/proposals', {
+            method: 'POST',
+            body: JSON.stringify({
+              kind: 'business',
+              business_id: shop.id,
+              revision: shop.revision,
+              business: shop.fields,
+              owner_location,
+            }),
+          })
+          onReview()
+          ws.review(proposal)
+        }}
+      />
+    )
   const url = ws.shareUrl
   return (
     <Box>
@@ -705,7 +798,7 @@ function CustomerPage() {
         </Alert>
       )}
       <Stack direction="row" sx={{ alignItems: 'center', gap: 2 }}>
-        <Typography variant="bodyMedium" color="text.secondary" sx={{ flex: 1 }}>
+        <Typography variant="bodySmall" color="text.secondary" sx={{ flex: 1 }}>
           {shop.public ? t.customerPageOn : t.customerPageOff}
         </Typography>
         <Switch
@@ -785,9 +878,46 @@ function CustomerPage() {
           </Box>
         </>
       )}
-      <Box sx={{ mt: 6 }}>
-        <OwnerPerks />
-      </Box>
+    </Box>
+  )
+}
+
+/** The stamp card (what a full card earns), then the smaller thank-you perks on request. */
+function StampCard({ perksOpen = false }: { perksOpen?: boolean }) {
+  const t = useCopy()
+  const tabs = useTabsCopy()
+  const rewards = useRewardCopy()
+  const ws = useWorkspace()
+  const [perks, setPerks] = useState(perksOpen)
+  const shop = ws.active
+  if (!shop) return null
+  const stamps = shop.fields.stamps_needed ?? 8
+  return (
+    <Box>
+      <Typography variant="labelLarge" color="text.secondary" sx={{ display: 'block' }}>
+        {rewards.reward}
+      </Typography>
+      <Typography variant="bodyLarge" sx={{ overflowWrap: 'anywhere' }}>
+        {shop.fields.reward_text || t.notProvided}
+      </Typography>
+      {shop.fields.reward_text && (
+        <Typography variant="bodyMedium" color="text.secondary">
+          {tabs.perksAfter(stamps)}
+        </Typography>
+      )}
+      <Button
+        aria-expanded={perks}
+        aria-controls="stamp-more-rewards"
+        onClick={() => setPerks((value) => !value)}
+        sx={{ mt: 4, minHeight: 48, px: 0 }}
+      >
+        {tabs.moreRewards}
+      </Button>
+      {perks && (
+        <Box id="stamp-more-rewards" sx={{ mt: 2 }}>
+          <OwnerPerks />
+        </Box>
+      )}
     </Box>
   )
 }

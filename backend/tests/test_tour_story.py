@@ -5,6 +5,7 @@ import json
 from collections import Counter
 from datetime import date, timedelta
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from fastapi import HTTPException
@@ -12,6 +13,7 @@ from fastapi.testclient import TestClient
 
 from app import supply_chain
 from app.community import Community, SqliteDocuments
+from app.demo_coach import public_demo_reply
 from app.demo_world import WorldGenerator, WorldRequest, ensure_world
 from app.forecast import ForecastService
 from app.merchant import BusinessFields, MerchantStore, ProposalRequest
@@ -25,6 +27,13 @@ from scripts.seed_tour_story import main
 from tests.test_photos import app, join  # noqa: F401
 
 DAY = date(2026, 10, 17)
+
+
+@pytest.fixture
+def seeded_day(monkeypatch) -> None:
+    # OB-206 (#557): the story is seeded for DAY, so the shop's "today" is DAY too. Reading
+    # the real clock left a week-old history that the forecast rightly refuses after 7 days.
+    monkeypatch.setattr(supply_chain, "shop_today", lambda _context: DAY)
 
 
 @pytest.fixture
@@ -74,6 +83,11 @@ def test_seed_is_idempotent_and_preserves_replies_rewards_and_stock(world) -> No
         assert store.public_shop(demo.id)["gallery"]
     bid = tour_id("owner", "bengaluru")
     inventory = store.inventory("owner", bid)
+    # OB-129: visible tour inquiries use names and clean messages, without fake email contacts.
+    visible_inquiries = store.inquiries("owner", bid)
+    assert {item.name for item in visible_inquiries} == {"Asha", "Wei", "Priya"}
+    assert all(not item.message.startswith("[Demo]") for item in visible_inquiries)
+    assert all(item.contact.endswith("@guest.invalid") for item in visible_inquiries)
     store.set_availability("owner", bid, inventory[0]["id"], False)
     inquiry = store.inquiries("owner", bid)[0]
     store.thread_action("owner", bid, inquiry.id, "", "post", "See you at five.")
@@ -145,6 +159,24 @@ async def test_every_feature_has_connected_records_and_truthful_forecasts(world)
         assert record.messages[-1].author == "owner" and record.messages[-1].kind == "demo"
     with pytest.raises(HTTPException):
         community.thread("stranger", threads[0]["bid"], threads[0]["iid"])
+
+
+def test_ob127_demo_supplier_coach_points_to_grow_supplies(world) -> None:
+    # OB-127: the demo coach points owners to the Grow tab that holds supplies. Simplify batch 2
+    # renamed the stale "Grow → Supplies" to the tiles owners see. A running-low message (what
+    # Buy stock → Find a supplier sends) points to that button and names the item (#633).
+    store, _ = world
+    uid = "public-demo-ob127"
+    bid, _ = seed_workspace(store, uid, "bengaluru", DAY)
+    ctx = SimpleNamespace(store=store, uid=uid, business_id=bid)
+
+    reply = public_demo_reply(ctx, "My masala chai is running low. Find suppliers.")
+
+    assert reply is not None
+    assert "suppliers near you for masala chai" in reply
+    assert "Next, open Grow → Buy stock → Find a supplier." in reply
+    assert "Grow → Supplies" not in reply
+    assert "Shop → Supplies" not in reply
 
 
 def test_reset_is_scoped_and_restores_only_demo_records(world) -> None:
@@ -445,7 +477,7 @@ def test_private_tour_stays_private_during_seeding_and_resumes_a_partial_seed(
         ("singapore", "Kopi powder", "Ah Huat Provision (Demo)"),
     ],
 )
-def test_tour_reorder_drafts_from_the_wholesaler(world, city, item, supplier) -> None:
+def test_tour_reorder_drafts_from_the_wholesaler(world, seeded_day, city, item, supplier) -> None:
     """#264: Reorder on the tour shop drafts the stocked supply, not the chai brewed from it."""
     store, community = world
     seed_story(store, community, owner_uid="owner", today=DAY)
@@ -544,8 +576,38 @@ def test_tour_chain_follows_one_order_on_seeded_records(app) -> None:  # noqa: F
         assert stranger.get(f"/api/v1/demo/chain/{bid}").status_code == 404
 
 
+def test_demo_chain_never_calls_the_paid_forecast_and_is_limited(app, monkeypatch) -> None:  # noqa: F811
+    """OB-232: the tour chain reads seeded records with the weekday average, and is rate limited."""
+    from unittest.mock import AsyncMock, MagicMock
+
+    from app import demo_workspace
+
+    paid = MagicMock()
+    paid.query = AsyncMock(side_effect=AssertionError("paid forecast called"))
+    limited: list[list[tuple[str, str]]] = []
+    real = demo_workspace.enforce_limits
+
+    async def spy(request, subjects, **kwargs):
+        limited.append(list(subjects))
+        return await real(request, subjects, **kwargs)
+
+    monkeypatch.setattr(demo_workspace, "enforce_limits", spy)
+    with TestClient(app) as client:
+        join(client)
+        bid = client.post("/api/v1/demo/workspace?zone=Asia/Kolkata").json()["business_id"]
+        settings = app.state.forecaster.settings.model_copy(update={"forecast_backend": "bigquery"})
+        app.state.forecaster = ForecastService(settings, client=paid)
+        limited.clear()
+        response = client.get(f"/api/v1/demo/chain/{bid}")
+        assert response.status_code == 200, response.text
+    assert paid.query.await_count == 0
+    assert any(subject[0] == "forecast" for call in limited for subject in call)
+
+
 @pytest.mark.parametrize("city", CENTRES)
-async def test_today_reorder_on_the_tour_shop_drafts_from_its_wholesaler(world, city) -> None:
+async def test_today_reorder_on_the_tour_shop_drafts_from_its_wholesaler(
+    world, seeded_day, city
+) -> None:
     # #264: the Today card's item is a drink sold by the cup; its wholesaler sells the
     # ingredient by the kg. The draft orders that ingredient instead of finding no supplier.
     from app.coordinator import DEMO_OWNER_UID, SupplierGenerator

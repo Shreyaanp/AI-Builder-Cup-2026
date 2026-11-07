@@ -3,12 +3,7 @@ import { ApiError, type Proposal } from '../v1/api'
 import { useWorkspace } from '../v1/workspaceContext'
 import { useIoCopy } from './ioCopy'
 import type { Board, IoDocument, IoOrder } from './ioTypes'
-
-/** Every supply screen (Today, the sheet, Close the day, chat cards) refreshes together. */
-const CHANGED = 'chalkboard:supply-changed'
-export function supplyChanged() {
-  window.dispatchEvent(new Event(CHANGED))
-}
+import { supplyBus, supplyChanged } from './supplyEvents'
 
 /** The supply board of the active shop: loading, error with retry, and refresh. */
 export function useBoard(open = true) {
@@ -34,10 +29,10 @@ export function useBoard(open = true) {
     if (!open) return
     const first = window.setTimeout(() => void refresh(), 0)
     const again = () => void refresh()
-    window.addEventListener(CHANGED, again)
+    supplyBus.addEventListener('changed', again)
     return () => {
       window.clearTimeout(first)
-      window.removeEventListener(CHANGED, again)
+      supplyBus.removeEventListener('changed', again)
     }
   }, [open, refresh])
   const mine = state?.id === activeId ? state : null

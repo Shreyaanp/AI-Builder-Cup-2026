@@ -13,6 +13,8 @@ export type TodayCopy = {
   allSet: string
   pill: (count: number) => string
   hide: string
+  /** The disclosure for rows after the first three: nothing drops off Coach. */
+  more: (count: number) => string
   waiting: (count: number) => string
   reply: string
   sameMenu: (food: boolean) => string
@@ -21,7 +23,8 @@ export type TodayCopy = {
   low: (item: string, left: number) => string
   order: string
   orderDraft: (item: string) => string
-  soldOut: (item: string) => string
+  /** `feminine`: Hindi grammar for the item's name (चीनी खत्म हो गई). */
+  soldOut: (item: string, feminine?: boolean) => string
   soldOutMany: (count: number) => string
   backInStock: string
   see: string
@@ -44,6 +47,7 @@ export type TodayCopy = {
   forecast: (quantity: string, item: string) => string
   busy: (hours: string) => string
   howYesterday: string
+  howToday: string
   festival: (name: string, days: number) => string
   rain: (percent: number) => string
   busiest: (weekday: string, count: string, item: string) => string
@@ -62,6 +66,7 @@ const copy: Record<Locale, TodayCopy> = {
     allSet: 'All set for today',
     pill: (n) => plural(n, '1 thing needs you', `${n} things need you`),
     hide: 'Hide',
+    more: (n) => plural(n, '1 more thing', `${n} more things`),
     waiting: (n) => plural(n, '1 customer is waiting', `${n} customers are waiting`),
     reply: 'Reply',
     sameMenu: (food) => (food ? 'Still the same menu today?' : 'Still the same items today?'),
@@ -93,9 +98,10 @@ const copy: Record<Locale, TodayCopy> = {
     forecast: (q, item) => `Today: about ${q} ${item}`,
     busy: (hours) => `busiest ${hours}`,
     howYesterday: 'How did yesterday go?',
+    howToday: 'How did today go?',
     festival: (name, days) =>
       days === 0 ? `${name} is today: busy day ahead` : `${name} in ${days} days: plan your stock`,
-    rain: (p) => `Rain likely today (${p}%): plan your prep`,
+    rain: (p) => `Rain likely today (${p}%)`,
     busiest: (weekday, n, item) => `Usually your busiest day: ${n} ${item} last ${weekday}`,
     festivals: {
       diwali: 'Diwali',
@@ -116,6 +122,7 @@ const copy: Record<Locale, TodayCopy> = {
     allSet: 'आज के लिए सब तैयार है',
     pill: (n) => `${n} काम आपका इंतज़ार कर रहे हैं`,
     hide: 'छिपाएँ',
+    more: (n) => `${n} और काम`,
     waiting: (n) => `${n} ग्राहक इंतज़ार कर रहे हैं`,
     reply: 'जवाब दें',
     sameMenu: (food) => (food ? 'आज भी वही मेन्यू है?' : 'आज भी वही सामान है?'),
@@ -124,7 +131,7 @@ const copy: Record<Locale, TodayCopy> = {
     low: (item, left) => `${item}: सिर्फ़ ${left} बचे`,
     order: 'ऑर्डर करें',
     orderDraft: (item) => `और ${item} ऑर्डर करो`,
-    soldOut: (item) => `${item} खत्म हो गया`,
+    soldOut: (item, feminine) => `${item} खत्म हो ${feminine ? 'गई' : 'गया'}`,
     soldOutMany: (n) => `${n} चीज़ें खत्म हैं`,
     backInStock: 'फिर से उपलब्ध',
     see: 'देखें',
@@ -147,11 +154,12 @@ const copy: Record<Locale, TodayCopy> = {
     forecast: (q, item) => `आज: लगभग ${q} ${item}`,
     busy: (hours) => `सबसे व्यस्त ${hours}`,
     howYesterday: 'कल का दिन कैसा रहा?',
+    howToday: 'आज का दिन कैसा रहा?',
     festival: (name, days) =>
       days === 0
         ? `आज ${name} है: व्यस्त दिन होगा`
         : `${days} दिन में ${name}: स्टॉक की तैयारी करें`,
-    rain: (p) => `आज बारिश की संभावना (${p}%): तैयारी उसी हिसाब से करें`,
+    rain: (p) => `आज बारिश की संभावना (${p}%)`,
     busiest: (weekday, n, item) => `आम तौर पर आपका सबसे व्यस्त दिन: पिछले ${weekday} ${n} ${item}`,
     festivals: {
       diwali: 'दिवाली',
@@ -172,6 +180,7 @@ const copy: Record<Locale, TodayCopy> = {
     allSet: 'আজকের জন্য সব ঠিক আছে',
     pill: (n) => `${n}টি কাজ আপনার অপেক্ষায়`,
     hide: 'লুকান',
+    more: (n) => `আরও ${n}টি কাজ`,
     waiting: (n) => `${n} জন গ্রাহক অপেক্ষা করছেন`,
     reply: 'উত্তর দিন',
     sameMenu: (food) => (food ? 'আজও কি একই মেনু?' : 'আজও কি একই জিনিস?'),
@@ -203,6 +212,7 @@ const copy: Record<Locale, TodayCopy> = {
     forecast: (q, item) => `আজ: প্রায় ${q} ${item}`,
     busy: (hours) => `সবচেয়ে ব্যস্ত ${hours}`,
     howYesterday: 'গতকাল কেমন গেল?',
+    howToday: 'আজ কেমন গেল?',
     festival: (name, days) =>
       days === 0 ? `আজ ${name}: ব্যস্ত দিন` : `${days} দিন পরে ${name}: স্টকের পরিকল্পনা করুন`,
     rain: (p) => `আজ বৃষ্টির সম্ভাবনা (${p}%): সেই মতো প্রস্তুতি নিন`,
@@ -226,6 +236,7 @@ const copy: Record<Locale, TodayCopy> = {
     allSet: 'ఈరోజుకి అంతా సిద్ధం',
     pill: (n) => `${n} పనులు మీ కోసం`,
     hide: 'దాచు',
+    more: (n) => `ఇంకా ${n} పనులు`,
     waiting: (n) => `${n} మంది కస్టమర్లు ఎదురుచూస్తున్నారు`,
     reply: 'జవాబివ్వండి',
     sameMenu: (food) => (food ? 'ఈరోజూ అదే మెనూనా?' : 'ఈరోజూ అవే వస్తువులా?'),
@@ -257,6 +268,7 @@ const copy: Record<Locale, TodayCopy> = {
     forecast: (q, item) => `ఈరోజు: సుమారు ${q} ${item}`,
     busy: (hours) => `ఎక్కువ రద్దీ ${hours}`,
     howYesterday: 'నిన్న ఎలా జరిగింది?',
+    howToday: 'ఈరోజు ఎలా జరిగింది?',
     festival: (name, days) =>
       days === 0 ? `ఈరోజు ${name}: రద్దీ రోజు` : `${days} రోజుల్లో ${name}: స్టాక్ ప్లాన్ చేయండి`,
     rain: (p) => `ఈరోజు వర్షం పడే అవకాశం (${p}%): దానికి తగ్గట్టు సిద్ధం అవ్వండి`,
@@ -280,6 +292,7 @@ const copy: Record<Locale, TodayCopy> = {
     allSet: 'आजसाठी सगळे तयार आहे',
     pill: (n) => `${n} कामे तुमची वाट पाहत आहेत`,
     hide: 'लपवा',
+    more: (n) => `आणखी ${n} कामे`,
     waiting: (n) => `${n} ग्राहक वाट पाहत आहेत`,
     reply: 'उत्तर द्या',
     sameMenu: (food) => (food ? 'आजही तोच मेन्यू आहे?' : 'आजही तेच सामान आहे?'),
@@ -311,6 +324,7 @@ const copy: Record<Locale, TodayCopy> = {
     forecast: (q, item) => `आज: सुमारे ${q} ${item}`,
     busy: (hours) => `सर्वात गर्दी ${hours}`,
     howYesterday: 'काल कसा गेला?',
+    howToday: 'आज कसा गेला?',
     festival: (name, days) =>
       days === 0 ? `आज ${name}: गर्दीचा दिवस` : `${days} दिवसांत ${name}: स्टॉकची तयारी करा`,
     rain: (p) => `आज पावसाची शक्यता (${p}%): त्यानुसार तयारी करा`,
@@ -335,6 +349,7 @@ const copy: Record<Locale, TodayCopy> = {
     allSet: 'ಇಂದಿಗೆ ಎಲ್ಲ ಸಿದ್ಧ',
     pill: (n) => `${n} ಕೆಲಸಗಳು ನಿಮಗಾಗಿ`,
     hide: 'ಮರೆಮಾಡಿ',
+    more: (n) => `ಇನ್ನೂ ${n} ಕೆಲಸಗಳು`,
     waiting: (n) => `${n} ಗ್ರಾಹಕರು ಕಾಯುತ್ತಿದ್ದಾರೆ`,
     reply: 'ಉತ್ತರಿಸಿ',
     sameMenu: (food) => (food ? 'ಇಂದೂ ಅದೇ ಮೆನುವೇ?' : 'ಇಂದೂ ಅದೇ ವಸ್ತುಗಳೇ?'),
@@ -366,6 +381,7 @@ const copy: Record<Locale, TodayCopy> = {
     forecast: (q, item) => `ಇಂದು: ಸುಮಾರು ${q} ${item}`,
     busy: (hours) => `ಹೆಚ್ಚು ಜನಸಂದಣಿ ${hours}`,
     howYesterday: 'ನಿನ್ನೆ ಹೇಗಿತ್ತು?',
+    howToday: 'ಇಂದು ಹೇಗಿತ್ತು?',
     festival: (name, days) =>
       days === 0 ? `ಇಂದು ${name}: ಜನಸಂದಣಿಯ ದಿನ` : `${days} ದಿನಗಳಲ್ಲಿ ${name}: ಸ್ಟಾಕ್ ಯೋಜಿಸಿ`,
     rain: (p) => `ಇಂದು ಮಳೆಯ ಸಾಧ್ಯತೆ (${p}%): ಅದರಂತೆ ತಯಾರಾಗಿ`,
@@ -390,6 +406,7 @@ const copy: Record<Locale, TodayCopy> = {
     allSet: '今天一切就绪',
     pill: (n) => `${n} 件事需要你`,
     hide: '收起',
+    more: (n) => `还有 ${n} 件事`,
     waiting: (n) => `${n} 位顾客在等回复`,
     reply: '回复',
     sameMenu: (food) => (food ? '今天菜单还一样吗？' : '今天商品还一样吗？'),
@@ -421,6 +438,7 @@ const copy: Record<Locale, TodayCopy> = {
     forecast: (q, item) => `今天：约 ${q} ${item}`,
     busy: (hours) => `最忙 ${hours}`,
     howYesterday: '昨天生意怎么样？',
+    howToday: '今天生意怎么样？',
     festival: (name, days) =>
       days === 0 ? `今天是${name}：会很忙` : `${days} 天后是${name}：提前备货`,
     rain: (p) => `今天可能下雨（${p}%）：按此准备`,
@@ -444,6 +462,7 @@ const copy: Record<Locale, TodayCopy> = {
     allSet: 'Semua sedia untuk hari ini',
     pill: (n) => `${n} perkara perlukan anda`,
     hide: 'Sembunyi',
+    more: (n) => `${n} perkara lagi`,
     waiting: (n) => `${n} pelanggan sedang menunggu`,
     reply: 'Balas',
     sameMenu: (food) => (food ? 'Menu sama hari ini?' : 'Barang sama hari ini?'),
@@ -475,6 +494,7 @@ const copy: Record<Locale, TodayCopy> = {
     forecast: (q, item) => `Hari ini: kira-kira ${q} ${item}`,
     busy: (hours) => `paling sibuk ${hours}`,
     howYesterday: 'Bagaimana semalam?',
+    howToday: 'Bagaimana hari ini?',
     festival: (name, days) =>
       days === 0 ? `${name} hari ini: hari sibuk` : `${name} dalam ${days} hari: rancang stok`,
     rain: (p) => `Mungkin hujan hari ini (${p}%): rancang persediaan`,
@@ -498,6 +518,7 @@ const copy: Record<Locale, TodayCopy> = {
     allSet: 'இன்றைக்கு எல்லாம் தயார்',
     pill: (n) => `${n} வேலைகள் உங்களுக்காக`,
     hide: 'மறை',
+    more: (n) => `இன்னும் ${n} வேலைகள்`,
     waiting: (n) => `${n} வாடிக்கையாளர்கள் காத்திருக்கிறார்கள்`,
     reply: 'பதில் சொல்லுங்கள்',
     sameMenu: (food) => (food ? 'இன்றும் அதே மெனுவா?' : 'இன்றும் அதே பொருட்களா?'),
@@ -529,6 +550,7 @@ const copy: Record<Locale, TodayCopy> = {
     forecast: (q, item) => `இன்று: சுமார் ${q} ${item}`,
     busy: (hours) => `அதிக கூட்டம் ${hours}`,
     howYesterday: 'நேற்று எப்படி இருந்தது?',
+    howToday: 'இன்று எப்படி இருந்தது?',
     festival: (name, days) =>
       days === 0
         ? `இன்று ${name}: கூட்டமான நாள்`
@@ -554,6 +576,7 @@ const copy: Record<Locale, TodayCopy> = {
     allSet: '今日は準備完了です',
     pill: (n) => `対応が必要なこと ${n} 件`,
     hide: '閉じる',
+    more: (n) => `ほかに${n}件`,
     waiting: (n) => `${n} 人のお客様が返信待ち`,
     reply: '返信する',
     sameMenu: (food) => (food ? '今日もメニューは同じ？' : '今日も商品は同じ？'),
@@ -585,6 +608,7 @@ const copy: Record<Locale, TodayCopy> = {
     forecast: (q, item) => `今日：${item} 約 ${q}`,
     busy: (hours) => `ピーク ${hours}`,
     howYesterday: '昨日はどうだった？',
+    howToday: '今日はどうだった？',
     festival: (name, days) =>
       days === 0
         ? `今日は${name}：忙しくなりそう`
@@ -610,6 +634,7 @@ const copy: Record<Locale, TodayCopy> = {
     allSet: '오늘은 모두 준비됐어요',
     pill: (n) => `할 일 ${n}개`,
     hide: '접기',
+    more: (n) => `${n}개 더 보기`,
     waiting: (n) => `고객 ${n}명이 기다리고 있어요`,
     reply: '답장하기',
     sameMenu: (food) => (food ? '오늘도 메뉴가 같나요?' : '오늘도 상품이 같나요?'),
@@ -641,6 +666,7 @@ const copy: Record<Locale, TodayCopy> = {
     forecast: (q, item) => `오늘: ${item} 약 ${q}`,
     busy: (hours) => `가장 바쁜 시간 ${hours}`,
     howYesterday: '어제 장사 어땠어?',
+    howToday: '오늘 장사 어땠어?',
     festival: (name, days) =>
       days === 0 ? `오늘은 ${name}: 바쁜 날이에요` : `${name}까지 ${days}일: 재고를 준비하세요`,
     rain: (p) => `오늘 비 소식 (${p}%): 준비를 조절하세요`,
@@ -664,6 +690,7 @@ const copy: Record<Locale, TodayCopy> = {
     allSet: 'Semua beres untuk hari ini',
     pill: (n) => `${n} hal perlu Anda`,
     hide: 'Sembunyikan',
+    more: (n) => `${n} hal lagi`,
     waiting: (n) => `${n} pelanggan menunggu`,
     reply: 'Balas',
     sameMenu: (food) => (food ? 'Menu hari ini masih sama?' : 'Barang hari ini masih sama?'),
@@ -695,6 +722,7 @@ const copy: Record<Locale, TodayCopy> = {
     forecast: (q, item) => `Hari ini: sekitar ${q} ${item}`,
     busy: (hours) => `tersibuk ${hours}`,
     howYesterday: 'Bagaimana penjualan kemarin?',
+    howToday: 'Bagaimana penjualan hari ini?',
     festival: (name, days) =>
       days === 0
         ? `${name} hari ini: hari yang ramai`
@@ -720,6 +748,7 @@ const copy: Record<Locale, TodayCopy> = {
     allSet: 'วันนี้พร้อมหมดแล้ว',
     pill: (n) => `มี ${n} เรื่องรอคุณ`,
     hide: 'ซ่อน',
+    more: (n) => `อีก ${n} เรื่อง`,
     waiting: (n) => `ลูกค้า ${n} คนรอคำตอบ`,
     reply: 'ตอบ',
     sameMenu: (food) => (food ? 'วันนี้เมนูเหมือนเดิมไหม' : 'วันนี้สินค้าเหมือนเดิมไหม'),
@@ -751,6 +780,7 @@ const copy: Record<Locale, TodayCopy> = {
     forecast: (q, item) => `วันนี้: ${item} ประมาณ ${q}`,
     busy: (hours) => `ยุ่งสุด ${hours}`,
     howYesterday: 'เมื่อวานขายเป็นยังไงบ้าง',
+    howToday: 'วันนี้ขายเป็นยังไงบ้าง',
     festival: (name, days) =>
       days === 0 ? `วันนี้${name}: จะยุ่งทั้งวัน` : `อีก ${days} วันถึง${name}: วางแผนสต็อก`,
     rain: (p) => `วันนี้ฝนอาจตก (${p}%): เตรียมของให้พอดี`,
@@ -774,6 +804,7 @@ const copy: Record<Locale, TodayCopy> = {
     allSet: 'Hôm nay mọi thứ đã sẵn sàng',
     pill: (n) => `${n} việc cần bạn`,
     hide: 'Ẩn',
+    more: (n) => `Thêm ${n} việc`,
     waiting: (n) => `${n} khách đang chờ`,
     reply: 'Trả lời',
     sameMenu: (food) => (food ? 'Hôm nay thực đơn vẫn vậy?' : 'Hôm nay hàng vẫn vậy?'),
@@ -805,6 +836,7 @@ const copy: Record<Locale, TodayCopy> = {
     forecast: (q, item) => `Hôm nay: khoảng ${q} ${item}`,
     busy: (hours) => `đông nhất ${hours}`,
     howYesterday: 'Hôm qua bán thế nào?',
+    howToday: 'Hôm nay bán thế nào?',
     festival: (name, days) =>
       days === 0
         ? `Hôm nay là ${name}: ngày đông khách`
@@ -831,6 +863,7 @@ const copy: Record<Locale, TodayCopy> = {
     allSet: 'Handa na ang lahat ngayong araw',
     pill: (n) => `${n} bagay ang kailangan ka`,
     hide: 'Itago',
+    more: (n) => `${n} pang bagay`,
     waiting: (n) => `${n} customer ang naghihintay`,
     reply: 'Sumagot',
     sameMenu: (food) => (food ? 'Pareho pa rin ba ang menu?' : 'Pareho pa rin ba ang paninda?'),
@@ -862,6 +895,7 @@ const copy: Record<Locale, TodayCopy> = {
     forecast: (q, item) => `Ngayon: mga ${q} ${item}`,
     busy: (hours) => `pinakaabala ${hours}`,
     howYesterday: 'Kumusta ang benta kahapon?',
+    howToday: 'Kumusta ang benta ngayon?',
     festival: (name, days) =>
       days === 0
         ? `${name} ngayon: abalang araw`

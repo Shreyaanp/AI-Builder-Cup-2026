@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { enter, localOnly, seedShop } from './stories/support.js'
+import { showInGrow } from './support/grow.js'
 
 test.describe.configure({ timeout: 120_000 })
 
@@ -34,7 +35,7 @@ test('owner Today, Shop, Supply, Grow and You fit a 1280px desktop', async ({ pa
   }
 
   await page.getByRole('button', { name: 'Grow', exact: true }).click()
-  await page.locator('[data-tour="supply"]').click()
+  await (await showInGrow(page, page.locator('[data-tour="supply"]'))).click()
   const supply = page.getByRole('dialog')
   await expect(supply).toBeVisible()
   await expectDesktopLayout(page, supply)

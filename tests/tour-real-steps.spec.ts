@@ -11,7 +11,8 @@ const SIZES = {
 }
 
 // The anchor each step lights, in order.
-const TARGETS = ['today', 'today-supply', 'reorder', 'forecast', 'menu', 'closeday', 'composer']
+// Simplify batch 5: the prep step lights Grow's "How much to make" row (data-tour="prep").
+const TARGETS = ['today', 'today-supply', 'reorder', 'menu', 'prep', 'closeday', 'composer']
 
 interface Rect {
   top: number
@@ -40,7 +41,7 @@ for (const [size, viewport] of Object.entries(SIZES)) {
     )
     await page.setViewportSize(viewport)
     await page.goto('/demo')
-    await expect(page.getByText('Demo shop - nothing here is real', { exact: true })).toBeVisible({
+    await expect(page.getByText('Demo shop · sample data', { exact: true })).toBeVisible({
       timeout: 30_000,
     })
     await page.getByRole('dialog').getByRole('button', { name: 'Take the tour' }).click()

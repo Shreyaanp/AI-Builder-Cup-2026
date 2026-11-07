@@ -4,6 +4,7 @@ from fastapi.testclient import TestClient
 from app.coordinator import MerchantContext, ProductInput, current, propose_products
 from app.merchant import BusinessFields, MerchantRepository, ProductFields, ProposalRequest
 from app.product_categories import suggest_category
+from tests.pins import SHOP_PIN
 from tests.test_imports import make_shop
 from tests.test_imports import upload as import_menu
 from tests.test_photos import app, join, jpeg  # noqa: F401
@@ -17,7 +18,7 @@ def test_categories_persist_in_both_adapters_and_coach_preserves_them(store: Mer
         "owner",
         ProposalRequest(
             kind="business",
-            business=BusinessFields(name="Katong Kopi"),
+            business=BusinessFields(name="Katong Kopi", **SHOP_PIN),
             products=[ProductFields(name="Kopi", category="drinks", price=180, available=False)],
         ),
     )

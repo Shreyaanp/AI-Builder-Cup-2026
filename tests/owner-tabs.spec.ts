@@ -1,6 +1,7 @@
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
 import { enter, localOnly, seedShop, share } from './stories/support.js'
+import { growTool } from './support/grow.js'
 
 // Owner tabs (16 Oct): Coach, Shop (customer page first), Grow (every owner tool as a card) and
 // You (settings, verify, privacy). Evidence: docs/stories/tabs-*.png, phone and desktop, both themes.
@@ -38,35 +39,39 @@ for (const scheme of ['light', 'dark'] as const) {
     await expect(page.getByRole('dialog')).toHaveCount(0)
     // The app keeps its own Look setting (You → Look), separate from the system scheme.
     await page.getByRole('button', { name: 'You', exact: true }).click()
+    await page.getByRole('button', { name: /^Look/ }).click()
     await page
       .getByRole('button', { name: scheme === 'dark' ? 'Dark' : 'Light', exact: true })
       .click()
 
-    // Shop leads with the customer page and one primary "Share page"; the tools moved to Grow.
+    // Shop leads with the customer page; its one primary "Share page" sits in the thumb zone
+    // below the rows (simplify batch 3). The tools moved to Grow.
     await page.getByRole('button', { name: 'Shop', exact: true }).click()
-    const yourPage = page.getByRole('region', { name: 'This is your page' })
-    await expect(yourPage.getByRole('button', { name: 'Share page' })).toBeInViewport()
+    await expect(page.getByRole('region', { name: 'Your shop page' })).toBeVisible()
+    await expect(
+      page.locator('section[aria-label="Shop"]').getByRole('button', { name: 'Share page' }),
+    ).toBeInViewport()
     await expect(page.getByRole('button', { name: /^Menu/ })).toBeVisible()
     await expect(page.locator('[data-tour="closeday"]')).toHaveCount(0)
     await expect(page.locator('[data-tour="prep"]')).toHaveCount(0)
     await axe(page)
     await capture(page, 'shop', isMobile, scheme)
 
-    // Grow: each tool a card with its live status; Get on Google opens the guided flow.
+    // Grow: each row and More tools icon by its name (batch 4a); How much to make holds the
+    // prep plan and its numbers, Buy stock the orders (batch 4b). Get on Google opens the
+    // guided flow.
     await page.getByRole('button', { name: 'Grow', exact: true }).click()
     for (const card of [
-      /^Prep plan/,
+      /^How much to make/,
       /^Close the day/,
-      /^Orders/,
-      /^Plan tomorrow/,
+      /^Buy stock/,
       /^Rescue deals/,
       /^Get on Google/,
       /^Stamps & perks/,
-      // Release 2: payment links and rides, purchase orders.
+      // Release 2: payment links and rides.
       /^Payments & rides/,
-      /^Purchase orders/,
     ])
-      await expect(page.getByRole('button', { name: card })).toBeVisible()
+      await expect(await growTool(page, card)).toBeVisible()
     // Connecting a POS lives on Shop, not Grow.
     await expect(page.getByRole('button', { name: /POS/ })).toHaveCount(0)
     await axe(page)

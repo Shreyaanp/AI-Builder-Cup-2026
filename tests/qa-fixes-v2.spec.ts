@@ -1,3 +1,4 @@
+import { saveCloseDay } from './closeDaySupport.js'
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Locator, type Page } from '@playwright/test'
 import { enter, image, localOnly, seedShop } from './stories/support.js'
@@ -5,6 +6,7 @@ import { FIRST_QUESTION } from './newShopTopics.js'
 import { LOCALES } from '../src/i18n/locales.js'
 import { formatPrice } from '../src/features/v1/format.js'
 import { formatMoneyText } from '../src/features/inquiries/formatMoneyText.js'
+import { startNewShop } from './support/newShop.js'
 
 test.use({ reducedMotion: 'reduce' })
 test.setTimeout(120_000)
@@ -53,7 +55,7 @@ for (const appearance of ['light', 'dark'] as const) {
 
     test(`onboarding action row stays reachable (${appearance})`, async ({ page }, info) => {
       await enter(page)
-      await page.getByRole('banner').getByRole('button', { name: 'Add shop details' }).click()
+      await startNewShop(page)
       await page.getByRole('button', { name: 'Let’s begin' }).click()
       await expect(page.getByRole('log')).toContainText(FIRST_QUESTION)
       const card = page.getByTestId('shop-so-far')
@@ -286,10 +288,10 @@ for (const appearance of ['light', 'dark'] as const) {
       await page.getByRole('button', { name: 'Grow', exact: true }).click()
       await page.getByRole('button', { name: /^Close the day/ }).click()
       const dialog = page.getByRole('dialog', { name: 'Close the day' })
-      await dialog.getByRole('button', { name: /Till or POS report/ }).click()
+      await dialog.getByRole('button', { name: /Sales slip or notebook/ }).click()
       await dialog.locator('input[type=file]').setInputFiles(await image(page))
       await expect(dialog.getByTestId('close-day-trouble')).toBeVisible()
-      const close = dialog.getByRole('button', { name: 'Close', exact: true })
+      const close = dialog.getByRole('button', { name: 'Not now', exact: true })
       await withinViewport(page, close)
       await page.screenshot({ path: info.outputPath('close-day-failed-photo.png') })
       await close.click()
@@ -315,15 +317,15 @@ for (const appearance of ['light', 'dark'] as const) {
       await page.getByRole('button', { name: 'Grow', exact: true }).click()
       await page.getByRole('button', { name: /^Close the day/ }).click()
       const dialog = page.getByRole('dialog', { name: 'Close the day' })
-      await dialog.getByRole('button', { name: /Till or POS report/ }).click()
+      await dialog.getByRole('button', { name: /Sales slip or notebook/ }).click()
       await dialog.locator('input[type=file]').setInputFiles(await image(page))
-      await dialog.getByRole('button', { name: 'Review (1 lines)', exact: true }).click()
-      await expect(dialog).toContainText(/(?:INR\s*|₹)10\.00/)
+      await dialog.getByRole('button', { name: 'Review (1 line)', exact: true }).click()
+      await expect(dialog).toContainText(/(?:INR\s*|₹)10(?![.\d])/)
       await expect(dialog).not.toContainText('$')
       await page.screenshot({ path: info.outputPath('close-day-inr.png') })
-      await dialog.getByRole('button', { name: 'Save day', exact: true }).click()
+      await saveCloseDay(dialog)
       await expect(dialog).toContainText('Day closed')
-      await expect(dialog).toContainText(/(?:INR\s*|₹)10\.00/)
+      await expect(dialog).toContainText(/(?:INR\s*|₹)10(?![.\d])/)
       await dialog.getByRole('button', { name: 'Done', exact: true }).click()
       await expect(dialog).toHaveCount(0)
       await page.getByRole('button', { name: 'Coach', exact: true }).click()

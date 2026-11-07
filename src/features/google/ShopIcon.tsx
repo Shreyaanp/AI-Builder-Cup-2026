@@ -63,7 +63,9 @@ export function ShopIcon() {
   const roles = useTheme().material
   const [busy, setBusy] = useState<'make' | 'save' | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [url, setUrl] = useState<string | null>(null)
+  // The picture is kept with its icon id: after a replace the old (already revoked) address must
+  // never be drawn for the new icon while that one loads.
+  const [loaded, setLoaded] = useState<{ id: string; url: string } | null>(null)
   const file = useRef<HTMLInputElement>(null)
   const icon = shop?.icon ?? null
   const base = shop ? `/businesses/${encodeURIComponent(shop.id)}/icon` : ''
@@ -78,9 +80,9 @@ export function ShopIcon() {
       .then((blob) => {
         if (abort.signal.aborted) return
         made = URL.createObjectURL(blob)
-        setUrl(made)
+        setLoaded({ id: icon, url: made })
       })
-      .catch(() => setUrl(null))
+      .catch(() => setLoaded(null))
     return () => {
       abort.abort()
       if (made) URL.revokeObjectURL(made)
@@ -89,6 +91,7 @@ export function ShopIcon() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shop?.id, icon])
 
+  const url = loaded && loaded.id === icon ? loaded.url : null
   if (!shop) return null
 
   async function run(kind: 'make' | 'save', work: () => Promise<unknown>) {

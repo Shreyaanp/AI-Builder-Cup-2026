@@ -1,3 +1,4 @@
+import { AppHeader } from '../../design/AppHeader'
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { Button, CssBaseline, ThemeProvider, Typography, useTheme } from '@mui/material'
 import type { Theme } from '@mui/material'
@@ -15,10 +16,11 @@ import {
 import { LOCALE_NAMES, LOCALES } from '../../i18n/locales'
 import { BrandLogo } from '../../design/BrandLogo'
 import { LanguagePicker } from './LanguagePicker'
+import { useBusinessLink } from './businessLink'
+import { AppearanceToggle } from './AppearanceToggle'
 import { useDemoCopy, useFrontCopy, useStoryCopy } from './strings'
 import './landing.css'
 
-const businessUrl = 'https://business.chalkboard.shreyaan.work'
 const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches
 // The same semantic roles and appearance as the app, including a remembered dark theme.
 const brandVars = (roles: Theme['material'], mode: Theme['palette']['mode']) =>
@@ -207,6 +209,7 @@ function StoryScreen({ step }: { step: number }) {
 }
 
 export default function Marketing() {
+  const businessLink = useBusinessLink()
   const theme = useTheme()
   const t = useFrontCopy()
   const demo = useDemoCopy()
@@ -244,7 +247,7 @@ export default function Marketing() {
         <a className="lp-skip" href="#main">
           {t.skip}
         </a>
-        <header className="lp-nav">
+        <AppHeader className="lp-nav">
           <BrandLogo href="/" />
           <nav aria-label="Chalkboard">
             <LanguagePicker variant="nav" />
@@ -254,13 +257,14 @@ export default function Marketing() {
             <Button
               className="lp-nav-business"
               variant="outlined"
-              href={businessUrl}
+              href={businessLink()}
               endIcon={<ArrowUpRight size={16} />}
             >
               {t.business}
             </Button>
+            <AppearanceToggle inline />
           </nav>
-        </header>
+        </AppHeader>
 
         <main id="main">
           {/* Hero: wireframe grid, morphing M3 shapes, a phone that talks. */}
@@ -288,12 +292,12 @@ export default function Marketing() {
                   className="lp-cta-business"
                   variant="outlined"
                   size="large"
-                  href={businessUrl}
+                  href={businessLink()}
                   endIcon={<ArrowUpRight size={18} />}
                 >
                   {t.business}
                 </Button>
-                <Button variant="text" size="large" href={businessUrl + '/demo'}>
+                <Button variant="text" size="large" href={businessLink('/demo')}>
                   {demo.tryDemo}
                 </Button>
               </div>
@@ -307,7 +311,9 @@ export default function Marketing() {
                   </div>
                   <div className="lp-bubble coach delay">{s.bubbleCoach}</div>
                   <div className="lp-review delay2">
-                    <small>{s.checkBeforeSaving}</small>
+                    <Typography component="small" variant="bodyMedium">
+                      {s.checkBeforeSaving}
+                    </Typography>
                     <strong>
                       {s.item1} · {s.priceNew} / cup
                     </strong>
@@ -500,7 +506,7 @@ export default function Marketing() {
               {t.ctaTitle}
             </Typography>
             <div className="lp-cta">
-              <Button variant="contained" size="large" href={businessUrl}>
+              <Button variant="contained" size="large" href={businessLink()}>
                 {t.business}
               </Button>
               <Button variant="outlined" size="large" href="/explore/">

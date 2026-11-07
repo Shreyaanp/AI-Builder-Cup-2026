@@ -12,15 +12,16 @@ import {
 import { visuallyHidden } from '@mui/utils'
 import { gsap } from 'gsap'
 import { Clock, Leaf, LocateFixed, MapPin, MessageCircle, Store } from 'lucide-react'
-import { dealIn, useChalkTimeline } from '../../design/chalkMotion'
+import { dealIn, hits, useChalkTimeline } from '../../design/chalkMotion'
 import { chalkDust } from '../../design/chalkboard'
-import { HAND_FONT } from '../../design/theme'
+import { HAND_FONT, HAND_SIZE } from '../../design/theme'
 import { useLocale } from '../../state/hooks'
 import { chatPath, go } from '../customer/paths'
 import { ensureDemoWorld } from '../discover/demoWorld'
 import { fill, usePassportCopy } from '../passport/copy'
+import { CollectionEmptyState } from '../customer/CollectionEmptyState'
 import { usePassport } from '../passport/store'
-import { formatPrice } from '../v1/format'
+import { formatShopPrice } from '../v1/format'
 import { useOnline } from '../v1/useOnline'
 import { phoneArea } from '../../region/region'
 import { useRescueCopy } from './copy'
@@ -180,34 +181,47 @@ export function RescueScreen() {
         px: 4,
         pt: 1,
         pb: 'calc(120px + env(safe-area-inset-bottom))',
-        minHeight: '100dvh',
+        // The app bar is 64px plus its 1px border: the empty state's action ends above the nav.
+        minHeight: 'calc(100dvh - 65px - env(safe-area-inset-top, 0px))',
+        display: 'flex',
+        flexDirection: 'column',
       }}
     >
-      <Stack direction="row" sx={{ alignItems: 'center', gap: 2, minHeight: 56 }}>
+      {/* The same place chip as the Ask header: one neighbourhood on every tab (A-30). */}
+      <Stack direction="row" sx={{ alignItems: 'center', gap: 2, minHeight: 56, flexWrap: 'wrap' }}>
         <Typography
           component="h1"
-          sx={{ fontFamily: HAND_FONT, fontWeight: 700, fontSize: 38, lineHeight: 1.1 }}
+          sx={{ fontFamily: HAND_FONT, fontWeight: 700, fontSize: HAND_SIZE, lineHeight: 1.1 }}
         >
           {t.title}
         </Typography>
+        <Chip
+          icon={<MapPin size={16} aria-hidden="true" />}
+          label={place.label}
+          sx={{ maxWidth: '100%', bgcolor: roles.surfaceContainerLow, color: roles.onSurface }}
+        />
       </Stack>
-      <Typography variant="bodyLarge" sx={{ color: roles.onSurfaceVariant }}>
-        {fill(t.lead, { place: place.label })}
-      </Typography>
+      {/* With nothing to show, the empty state below says it; otherwise it says it here. */}
+      {live.length > 0 && (
+        <Typography variant="bodyLarge" sx={{ color: roles.onSurfaceVariant }}>
+          {fill(t.lead, { place: place.label })}
+        </Typography>
+      )}
       <Button
         size="small"
         startIcon={<LocateFixed size={18} />}
         onClick={locate}
         disabled={locating}
-        sx={{ mt: 1, ml: -1 }}
+        sx={{ mt: 1, ml: -4, alignSelf: 'flex-start' }}
       >
         {locating ? t.locating : t.useLocation}
       </Button>
-      <Stack spacing={5} sx={{ mt: 3 }}>
+      <Stack spacing={5} sx={{ mt: 3, flex: 1 }}>
         <Impact place={place} />
         {myHolds.length > 0 && <Holds holds={myHolds} now={now} />}
         {!online && <Alert severity="info">{t.offline}</Alert>}
-        <RescueMap center={place} rows={live} now={now} onPick={pick} />
+        {/* No pins to draw: an empty radar says nothing, so the page leads with the next step. */}
+        {live.length > 0 && <RescueMap center={place} rows={live} now={now} onPick={pick} />}
         {status === 'error' && !rows ? (
           <Alert
             severity="error"
@@ -223,12 +237,23 @@ export function RescueScreen() {
             <LinearProgress aria-label={t.loading} />
           </Box>
         ) : (
-          <Box component="section" aria-labelledby="rescue-list-title">
-            <Typography id="rescue-list-title" component="h2" variant="titleLarge" sx={{ mb: 2 }}>
-              {t.listTitle}
-            </Typography>
+          <Box
+            component="section"
+            aria-labelledby="rescue-list-title"
+            sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}
+          >
+            {live.length > 0 && (
+              <Typography
+                id="rescue-list-title"
+                component="h2"
+                variant="titleMedium"
+                sx={{ mb: 2, fontWeight: 700 }}
+              >
+                {t.listTitle}
+              </Typography>
+            )}
             {live.length === 0 ? (
-              <EmptyState />
+              <EmptyState place={place} />
             ) : (
               <Stack component="ul" spacing={3} sx={{ listStyle: 'none', m: 0, p: 0 }}>
                 {live.map((row, index) => (
@@ -262,23 +287,15 @@ export function RescueScreen() {
   )
 }
 
-function EmptyState() {
+/** Leads with what Rescue is, then when to look, and one clear next step above the navigation. */
+function EmptyState({ place }: { place: Place }) {
   const t = useRescueCopy()
-  const theme = useTheme()
   return (
-    <Box
-      sx={{
-        p: 5,
-        borderRadius: '20px',
-        border: `2px dashed ${theme.material.outlineVariant}`,
-        textAlign: 'center',
-      }}
-    >
-      <Box aria-hidden="true" sx={{ color: theme.chalk.coral.main, mb: 2 }}>
-        <Leaf size={36} />
-      </Box>
-      <Typography variant="bodyLarge">{t.empty}</Typography>
-    </Box>
+    <CollectionEmptyState
+      title={fill(t.lead, { place: place.label })}
+      body={t.empty}
+      icon={<Leaf size={40} />}
+    />
   )
 }
 
@@ -297,12 +314,9 @@ function Impact({ place }: { place: Place }) {
   useChalkTimeline(
     scope,
     (root) => {
-      gsap.from(root.querySelector('.impact-leaf'), {
-        scale: 0.3,
-        rotate: -30,
-        duration: 0.6,
-        ease: 'back.out(2)',
-      })
+      const leaf = hits(root, '.impact-leaf')
+      if (leaf.length)
+        gsap.from(leaf, { scale: 0.3, rotate: -30, duration: 0.6, ease: 'back.out(2)' })
       const counter = root.querySelector('.impact-count')
       if (!counter || !meals) return
       const value = { n: 0 }
@@ -317,9 +331,10 @@ function Impact({ place }: { place: Place }) {
         },
       })
     },
-    [meals],
+    [meals, view != null],
   )
-  if (!view) return null
+  // Zero meals is not news: the card appears with the first rescue (A-30).
+  if (!view || meals === 0) return null
   return (
     <Box
       ref={scope}
@@ -356,7 +371,7 @@ function Impact({ place }: { place: Place }) {
             {fill(p.co2, { kg: new Intl.NumberFormat(locale).format(view.impact.co2_kg) })}
             {Object.entries(view.impact.saved).map(
               ([currency, minor]) =>
-                ` · ${fill(p.moneySaved, { amount: formatPrice(minor, currency, locale) })}`,
+                ` · ${fill(p.moneySaved, { amount: formatShopPrice(minor, currency, locale) })}`,
             )}
           </Typography>
         )}
@@ -376,7 +391,7 @@ function Holds({ holds, now }: { holds: Hold[]; now: number }) {
   const roles = theme.material
   return (
     <Box component="section" aria-labelledby="rescue-holds-title">
-      <Typography id="rescue-holds-title" component="h2" variant="titleLarge" sx={{ mb: 2 }}>
+      <Typography id="rescue-holds-title" component="h2" variant="titleMedium" sx={{ mb: 2 }}>
         {t.holdsTitle}
       </Typography>
       <Stack spacing={2}>
@@ -408,7 +423,7 @@ function Holds({ holds, now }: { holds: Hold[]; now: number }) {
             <Button
               size="small"
               startIcon={<MessageCircle size={18} />}
-              sx={{ mt: 1, ml: -1 }}
+              sx={{ mt: 1, ml: -4 }}
               onClick={() => go(chatPath(hold.shop, hold.thread))}
             >
               {t.openChat}
@@ -462,20 +477,19 @@ function RescueMap({
   useChalkTimeline(
     scope,
     (root) => {
-      gsap.from(root.querySelectorAll('.rescue-ring'), {
-        attr: { r: 0 },
-        duration: 0.7,
-        stagger: 0.12,
-        ease: 'power2.out',
-      })
-      gsap.from(root.querySelectorAll('.rescue-pin'), {
-        scale: 0,
-        opacity: 0,
-        duration: 0.4,
-        stagger: 0.08,
-        delay: 0.25,
-        ease: 'back.out(2.5)',
-      })
+      const rings = hits(root, '.rescue-ring')
+      if (rings.length)
+        gsap.from(rings, { attr: { r: 0 }, duration: 0.7, stagger: 0.12, ease: 'power2.out' })
+      const pinEls = hits(root, '.rescue-pin')
+      if (pinEls.length)
+        gsap.from(pinEls, {
+          scale: 0,
+          opacity: 0,
+          duration: 0.4,
+          stagger: 0.08,
+          delay: 0.25,
+          ease: 'back.out(2.5)',
+        })
     },
     [pinKey],
   )
@@ -704,17 +718,22 @@ function DealCard({
           >
             <Typography
               component="p"
-              variant="titleLarge"
+              variant="titleMedium"
               sx={{ flex: 1, minWidth: 0, overflowWrap: 'anywhere' }}
             >
               {item.name}
             </Typography>
             <Typography
               component="p"
-              variant="titleLarge"
-              sx={{ fontFamily: HAND_FONT, fontWeight: 700, color: coral.main, fontSize: 28 }}
+              variant="titleMedium"
+              sx={{
+                fontFamily: HAND_FONT,
+                fontWeight: 700,
+                color: coral.main,
+                fontSize: HAND_SIZE,
+              }}
             >
-              {formatPrice(item.price, deal.currency, locale)}
+              {formatShopPrice(item.price, deal.currency, locale)}
             </Typography>
             <Typography
               variant="bodyMedium"
@@ -722,9 +741,9 @@ function DealCard({
             >
               {/* Struck through for the eye; said in words ("Was ₹25") for a screen reader. */}
               <Box component="span" sx={visuallyHidden}>
-                {fill(t.was, { price: formatPrice(item.was, deal.currency, locale) })}
+                {fill(t.was, { price: formatShopPrice(item.was, deal.currency, locale) })}
               </Box>
-              <span aria-hidden="true">{formatPrice(item.was, deal.currency, locale)}</span>
+              <span aria-hidden="true">{formatShopPrice(item.was, deal.currency, locale)}</span>
             </Typography>
           </Stack>
         ))}

@@ -7,7 +7,7 @@ from starlette.responses import JSONResponse
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from .limits import JSON_BODY_BYTES
-from .region import client_country
+from .region import client_country, client_language_country
 from .shop_time import client_timezone, valid_timezone
 
 # Browsers ignore HSTS over plain http, so local dev is unaffected. The popup sign-in needs
@@ -28,7 +28,9 @@ def language_country(header: str | None) -> str | None:
         region = next((bit for bit in tag.split("-")[1:] if len(bit) == 2 and bit.isalpha()), None)
         if region:
             return region.upper()
-    return None
+    # A language without a region is a last resort, after actual phone country signals.
+    first = (header or "").split(",", 1)[0].split(";", 1)[0].strip().lower()
+    return "IN" if first == "hi" else None
 
 
 class RequestBoundary:
@@ -60,6 +62,7 @@ class RequestBoundary:
         headers = Headers(scope=scope)
         client_timezone.set(valid_timezone(headers.get("x-client-timezone")))
         client_country.set(language_country(headers.get("accept-language")))
+        client_language_country.set(language_country(headers.get("x-app-language")))
         origin = headers.get("origin")
         if origin and origin not in self.allowed_origins:
             await reject("ORIGIN_BLOCKED", 403)
@@ -75,6 +78,11 @@ class RequestBoundary:
             if (
                 path in {"/api/v1/photos", "/api/v1/photos/classify"}
                 or path.endswith("/import")
+                # The demo's menu photos get the same bounded stream (its sample read, O-1).
+                or (
+                    path.startswith("/api/v1/demo/sessions/")
+                    and path.endswith(("/api/photos", "/api/photos/classify"))
+                )
                 # Close the day photos and shop gallery photos: real phone photos are megabytes,
                 # far over the JSON limit (they were rejected with 413 before reaching the route).
                 or (path.startswith("/api/v1/businesses/") and path.endswith("/day/read"))

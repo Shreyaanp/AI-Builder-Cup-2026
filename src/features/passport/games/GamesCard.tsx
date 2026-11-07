@@ -19,7 +19,8 @@ export function NextRewardLine({ view }: { view: PassportView }) {
   const theme = useTheme()
   const tone = theme.chalk.mint
   const next = view.games?.next_reward
-  if (!next) return null
+  // The next level is the points card's own line: say it once (A-29).
+  if (!next || (next.kind !== 'card' && next.kind !== 'set')) return null
   const number = (n: number) => new Intl.NumberFormat(locale).format(n)
   const text = nextRewardText(next, view, t, p, number)
   if (!text) return null

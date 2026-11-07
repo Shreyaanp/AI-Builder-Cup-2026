@@ -99,16 +99,24 @@ async def demo_customer(
 async def demo_chain(business_id: str, request: Request) -> dict[str, Any]:
     """The tour's order story on the owner's own tour shop: seeded demo records, read only."""
     from . import supply_chain
+    from .forecast import ForecastService
     from .supply_routes import forecaster
     from .tour_chain import story, tour_city
 
     uid = await owner(request)
+    await enforce_limits(request, [("forecast", uid)])
     tour_city(uid, business_id)
     service = store(request)
     context = await anyio.to_thread.run_sync(service.context, uid, business_id)
     history = await anyio.to_thread.run_sync(service.sales_history, uid, business_id)
     today = supply_chain.shop_today(context)
-    forecast = await forecaster(request).forecast(history, today, context["inventory"])
+    # Demo records never need the paid model: always the plain weekday average.
+    settings = forecaster(request).settings.model_copy(
+        update={"forecast_backend": "weekday_average"}
+    )
+    forecast = await ForecastService(settings, client=object()).forecast(
+        history, today, context["inventory"]
+    )
     return await anyio.to_thread.run_sync(
         story, service, uid, business_id, forecast.model_dump(mode="json"), today
     )

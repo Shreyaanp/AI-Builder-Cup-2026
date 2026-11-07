@@ -1,5 +1,6 @@
 import type { Locale } from '../../i18n/locales'
 import { useLocale } from '../../state/hooks'
+import { closeDayCopy } from '../closeday/strings'
 
 export const english = {
   guideTitle: 'Talk to your coach',
@@ -96,6 +97,9 @@ export const translations = Object.fromEntries(
     return [locale, Object.fromEntries(keys.map((key, index) => [key, cells[index]]))]
   }),
 ) as Record<Exclude<Locale, 'en'>, ToolCopy>
-export const toolCopy = (locale: Locale): ToolCopy =>
-  locale === 'en' ? english : translations[locale]
+export const toolCopy = (locale: Locale): ToolCopy => ({
+  ...(locale === 'en' ? english : translations[locale]),
+  closeJob: closeDayCopy(locale).title,
+  closePrompt: closeDayCopy(locale).title,
+})
 export const useToolCopy = () => toolCopy(useLocale())

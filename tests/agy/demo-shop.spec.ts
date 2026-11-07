@@ -2,17 +2,16 @@ import { expect, test } from '@playwright/test'
 import { localOnly } from '../stories/support.js'
 
 test.use({
-  viewport: { width: 390, height: 844 },
   reducedMotion: 'reduce',
-  hasTouch: true,
 })
 
 test.beforeEach(async ({ page }) => {
   await localOnly(page)
+  if (test.info().project.name === 'phone') await page.setViewportSize({ width: 390, height: 844 })
 })
 
-test.describe('Try the demo shop flow on phone (390px)', () => {
-  test('unauthenticated visitor opens /demo, inspects demo shop, browses shops, and exits demo', async ({
+test.describe('Try the demo shop flow', () => {
+  test('OB-118 / OB-137: unauthenticated visitor opens /demo, browses a demo shop, and exits demo', async ({
     page,
   }) => {
     test.setTimeout(90_000)
@@ -35,7 +34,7 @@ test.describe('Try the demo shop flow on phone (390px)', () => {
     await page.goto('/demo')
 
     // 1. Labelled demo banner
-    const banner = 'Demo shop - nothing here is real'
+    const banner = 'Demo shop · sample data'
     await expect(page.getByText(banner, { exact: true })).toBeVisible({ timeout: 30_000 })
     await expect(page).toHaveURL(/\/demo$/)
 
@@ -49,14 +48,18 @@ test.describe('Try the demo shop flow on phone (390px)', () => {
     for (const id of ['coach', 'shop', 'grow', 'you'])
       await expect(page.locator(`[data-tour="nav-${id}"]`)).toBeVisible()
 
-    // 4. Browse shops link in demo mode
-    const browseLink = page.getByRole('link', { name: 'Browse shops', exact: true })
-    await expect(browseLink).toBeVisible()
-    await browseLink.click()
+    // 4. Browse shops in demo mode: in the shop switcher (simplify batch 5)
+    await page.getByRole('button', { name: /^Choose shop/ }).click()
+    await page.getByRole('menuitem', { name: 'Browse shops', exact: true }).click()
 
     // Demo browse shows shops
     await expect(page.locator('main a').first()).toBeVisible({ timeout: 15_000 })
-    await page.locator('main a').first().click()
+    // Guided steps precede the shop cards and can lead outside the demo session. Choose an actual
+    // demo shop so this flow remains in DemoApp, where the Exit demo control is available.
+    const demoShop = page.locator('main a[href^="/explore/demo/"]').first()
+    await expect(demoShop).toBeVisible({ timeout: 15_000 })
+    await demoShop.click()
+    await expect(page).toHaveURL(/\/explore\/demo\/demo-[a-z0-9-]+\/?$/)
 
     // Demo shop detail page opens with hero banner
     await expect(page.getByTestId('shop-hero-banner')).toBeVisible({ timeout: 15_000 })
@@ -67,8 +70,26 @@ test.describe('Try the demo shop flow on phone (390px)', () => {
       true,
     )
 
-    // 6. Exit demo button
-    await page.getByRole('button', { name: 'Exit demo', exact: true }).click()
+    // 6. OB-118: the shared demo header must provide an accessible way out of shop details.
+    const exit = page.getByRole('button', { name: 'Exit demo', exact: true })
+    await expect(exit).toBeVisible()
+    await expect(exit).toBeEnabled()
+    expect(unauthorizedCalls).toEqual([])
+    const deleted = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'DELETE' &&
+        /^\/api\/v1\/demo\/sessions\/[^/]+$/.test(new URL(response.url()).pathname),
+    )
+    if (test.info().project.name === 'desktop') {
+      await exit.focus()
+      await expect(exit).toBeFocused()
+      await page.keyboard.press('Enter')
+    } else await exit.click()
+    expect((await deleted).ok()).toBe(true)
     await expect(page).toHaveURL(/\/explore\/$/)
+    expect(
+      await page.evaluate(() => sessionStorage.getItem('chalkboard.demo.session') === null),
+    ).toBe(true)
+    await expect(page.getByRole('button', { name: 'Exit demo', exact: true })).toHaveCount(0)
   })
 })

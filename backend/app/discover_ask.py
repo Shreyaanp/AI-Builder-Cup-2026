@@ -8,6 +8,7 @@ or price; every result comes from a shop's own data or from Google.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import re
 import time
@@ -29,10 +30,12 @@ from .discover import (
     DiscoveryPlace,
     MapsService,
     TopItem,
+    consumer_shop,
     distance,
     open_now,
 )
 from .gemini_schema import gemini_schema, parse_reply
+from .latin_names import names_any, spelled_any
 from .limits import client_ip, enforce_limits
 from .maps_grounding import AreaAnswer, AreaGrounding, is_area_question
 from .merchant import MerchantRepository
@@ -67,6 +70,9 @@ STOP = set(
     "a an the i im i'm me my we want need looking for find some any near nearby around here "
     "please today now open cheap cheapest budget good best place places shop shops store under "
     "below less than with without and or to of in at on get buy something".split()
+    # Question and money words: "Where can I get masala chai under 30 rupees?" asks for chai.
+    + "where what which who how can could is are there do does sell sells have has "
+    "rupee rupees rs inr dollar dollars".split()
     # Hindi filler words (a keyword search, not a translation).
     + "पास में मुझे हमें चाहिए है हैं की का के को से कम कहाँ कोई अभी यहाँ आसपास आस अच्छी "
     "अच्छा अच्छे सस्ती सस्ता सस्ते दुकान दुकानें वाली वाला वाले कुछ और खुली खुला रुपये रुपए "
@@ -132,6 +138,12 @@ class Pick(DiscoveryPlace):
     because: Because | None = None
     why: str | None = None
     _components: Components = PrivateAttr(default_factory=Components)
+    # How directly this shop answers the words asked (0: an item named for them; 1: an item close
+    # in meaning, or the shop's name or kind; 2: the shop as a whole is close in meaning). Every
+    # ordering ranks by it first: "cheapest" and "nearest" never put a weaker match on top.
+    _tier: int = PrivateAttr(default=0)
+    # Its headline price answers the question (a matched item, or any item when no words).
+    _priced: bool = PrivateAttr(default=True)
 
 
 class Anchor(BaseModel):
@@ -322,8 +334,11 @@ CHEAPER = re.compile(
     r"|सस्ता|सस्ते|सस्ती|更便宜|便宜|murah|より安い|安い|더 싼|ถูกกว่า|rẻ hơn|mas mura|மலிவ"
 )
 CLOSER = re.compile(
-    r"\b(closer|nearer|nearest|walking distance|walkable)\b|पास में|更近|近く|더 가까"
+    r"\b(closer|nearer|nearest|closest|walking distance|walkable)\b|पास में|更近|近く|더 가까"
 )
+# "Coffee near me": nearest first, unless the customer also asked for it cheaper ("cheap
+# breakfast near me" stays cheapest first; "near me" there only says where).
+NEARBY = re.compile(r"\b(near me|nearby|close by)\b|आसपास")
 TRANSIT = re.compile(r"\b(mrt|lrt|bts|mtr|metro|subway|station|train)\b|मेट्रो|地铁|駅|역|สถานี")
 OPEN = re.compile(r"\b(open now|open|still open|right now)\b|अभी खुल|营业|buka|営業|영업|เปิด|mở")
 DEALS = re.compile(
@@ -368,6 +383,8 @@ def refine(text: str, intent: Intent) -> Intent:
     if CHEAPER.search(text):
         intent.sort = "price"
     if CLOSER.search(text):
+        intent.sort = "distance"
+    elif NEARBY.search(text) and intent.sort == "best":
         intent.sort = "distance"
     if TRANSIT.search(text):
         intent.near = "transit"
@@ -421,19 +438,61 @@ PRICE_LEVELS = {
 
 
 def min_price(pick: Pick) -> int:
-    prices = [p.price for p in (pick.matched or pick.items) if p.available]
-    if pick.deal is not None:
-        prices.append(pick.deal.price)
-    return min(prices) if prices else 1 << 40
+    """The card/map headline price; a separate rescue must not change its ordering."""
+    return next((p.price for p in (pick.matched or pick.items) if p.available), 1 << 40)
 
 
 def ranking(intent: Intent, anchor: Anchor | None) -> Callable[[Pick], tuple[float, ...]]:
-    """Best match first, unless the conversation asked for cheaper or closer."""
+    """Relevance first, then the best match, unless the conversation asked for cheaper or closer.
+
+    "Cheapest masala chai" orders the shops that sell chai by the chai's price; a shop matched
+    only loosely (or without a priced match) never wins on the price of something else."""
     if intent.sort == "price":
-        return lambda p: (min_price(p), p.distance_m)
+        return lambda p: (
+            p._tier,
+            0 if p._priced else 1,
+            min_price(p) if p._priced else 0,
+            p.distance_m,
+        )
     if intent.sort == "distance" or anchor is not None:
-        return lambda p: (p.distance_m, -p.score)
-    return lambda p: (-p.score, p.distance_m)
+        return lambda p: (p._tier, p.distance_m, -p.score)
+    return lambda p: (p._tier, -p.score, p.distance_m)
+
+
+def asks_for_something(intent: Intent) -> bool:
+    """A subject (words or a kind of shop) or a filter to list by ("open now", "deals"). Without
+    either (a query that reads as nothing, e.g. "asdkjh qwe"), the honest answer is no match."""
+    return bool(
+        intent.keywords
+        or intent.category
+        or intent.max_price is not None
+        or intent.open_now
+        or intent.deals
+        or intent.locally_made
+        or intent.vegetarian
+        or intent.halal
+        or intent.near
+        or intent.sort != "best"
+    )
+
+
+def literal_anchor(shops: list[dict[str, Any]], words: list[str]) -> bool:
+    """Whether any shop here names what was asked: an available item, or its name or kind.
+
+    Meaning alone ranks loosely (unrelated texts still score well with real embeddings), so a
+    search nothing here names keeps the strict meaning thresholds: "pharmacy" never matches salt.
+    """
+    if not words:
+        return False
+    for shop in shops:
+        shop_text = f"{shop['name']} {shop['category']}".casefold()
+        if any(word.casefold() in shop_text for word in words if word):
+            return True
+        if names_any(words, shop["name"]):
+            return True
+        if any(p["available"] and item_matches(p, words) for p in shop["products"]):
+            return True
+    return False
 
 
 LOCALLY_MADE = re.compile(
@@ -452,7 +511,8 @@ def keyword_intent(q: str) -> Intent:
     text = q.casefold()
     budget = re.search(r"(?:under|below|less than|max|<)\s*\D{0,3}(\d+(?:[.,]\d+)?)", text)
     budget = budget or re.search(r"(\d+(?:[.,]\d+)?)\s*(?:₹|रुपये|रुपए|रु)?\s*(?:से कम|के अंदर|तक)", text)
-    words = [w for w in words_of(text) if w not in STOP and len(w) > 1]
+    # A number is the budget ("under 30"), never a word to match.
+    words = [w for w in words_of(text) if w not in STOP and len(w) > 1 and not w.isdigit()]
     if re.search(r"egg[ -]?free|without eggs?|बिना अंडे", text):
         words.insert(0, "eggless")
     category = next(
@@ -497,6 +557,7 @@ async def ai_intent(request: Request, body: AskRequest) -> Intent | None:
                 client,
                 settings,
                 "search",
+                lite=True,
                 contents=PROMPT.format(
                     categories=", ".join(GENERIC["category"]),
                     language=written_language(body.language),
@@ -524,9 +585,16 @@ async def ai_intent(request: Request, body: AskRequest) -> Intent | None:
     return parsed if isinstance(parsed, Intent) else None
 
 
-def item_matches(item: dict[str, Any], words: list[str]) -> bool:
+def item_matches(item: dict[str, Any], words: list[str], by_sound: bool = True) -> bool:
+    """Whether the item is named by these words: in its own letters, spelled in Latin letters
+    ('dosa' for 'डोसा'), or (by_sound) as it sounds ('samosa' for 'समोसा', OB-170)."""
     text = f"{item.get('name', '')} {item.get('category', '')}".casefold()
-    return any(word.casefold() in text or text in word.casefold() for word in words if word)
+    name = str(item.get("name") or "")
+    return (
+        any(word.casefold() in text or text in word.casefold() for word in words if word)
+        or spelled_any(words, name)
+        or (by_sound and names_any(words, name))
+    )
 
 
 def search_engine(request: Request) -> SearchEngine:
@@ -544,6 +612,7 @@ def shop_pick(
     lng: float,
     meaning: Relevance | None = None,
     recall: float = ITEM_RECALL,
+    shop_recall: float = SHOP_RECALL,
 ) -> Pick | None:
     """Match a shared Chalkboard shop against the intent using only its own data: its words
     first, then (search engine) its meaning. Filters are never relaxed by meaning."""
@@ -571,12 +640,14 @@ def shop_pick(
     meaning = meaning or Relevance()
     products = [p for p in shop["products"] if p["available"]]
     matched = [p for p in products if item_matches(p, words)] if words else []
-    by_words = bool(matched)
-    if words and not matched:
-        # "Something sweet" finds the pandan cake: items close in meaning, best first.
-        matched = sorted(
-            (p for p in products if meaning.items.get(p["name"], 0.0) >= recall),
-            key=lambda p: -meaning.items.get(p["name"], 0.0),
+    # A name matched only by its sound ranks with a shop-name hit, below a real spelling: 'bread'
+    # puts the bread shop first, never a 'ब्रेड' that merely sounds like it (OB-170).
+    by_words = any(item_matches(p, words, by_sound=False) for p in matched)
+    by_sound = bool(matched) and not by_words
+    if words:
+        # Include synonyms even alongside literal matches (bread: loaf AND croissant).
+        matched.extend(
+            p for p in products if p not in matched and meaning.items.get(p["name"], 0.0) >= recall
         )
     if limit is not None:
         matched = (
@@ -584,13 +655,21 @@ def shop_pick(
             if words
             else [p for p in products if p["price"] <= limit]
         )
+    # The headline is the cheapest item named for what was asked ("cake": the chocolate cake, never
+    # a cheaper cookie close in meaning); else the cheapest close match (bread: the croissant).
+    # Chosen before capping the menu.
+    named = {p["name"] for p in matched if item_matches({"name": p["name"]}, words)}
+    matched.sort(key=lambda p: (p["name"] not in named, p["price"]))
+    if intent.sort == "price":
+        products.sort(key=lambda p: p["price"])
     shop_text = f"{shop['name']} {shop['category']}".casefold()
     category_hit = bool(intent.category) and any(
         term in shop_text for term in CATEGORIES.get(intent.category, ((), ()))[1]
     )
-    name_hit = any(word.casefold() in shop_text for word in words)
+    # 'chinku jiya' names 'चिंकू जिया': a name in any script is also found by its sound (OB-170).
+    name_hit = any(word.casefold() in shop_text for word in words) or names_any(words, shop["name"])
     # A shop close in meaning counts only without a budget (a budget needs a priced item).
-    meaning_hit = limit is None and meaning.shop >= SHOP_RECALL
+    meaning_hit = limit is None and meaning.shop >= shop_recall
     if words and not (matched or name_hit or category_hit or meaning_hit):
         return None
     if not words and intent.category and not category_hit:
@@ -598,7 +677,11 @@ def shop_pick(
     d = distance(lat, lng, shop["lat"], shop["lng"])
     components = Components(
         semantic=meaning.best,
-        keyword=(1.0 if by_words else 0.6 if name_hit or category_hit else 0.0) if words else 0.5,
+        keyword=(
+            (1.0 if by_words else 0.6 if by_sound or name_hit or category_hit else 0.0)
+            if words
+            else 0.5
+        ),
         distance_m=d,
         open_now=is_open,
         price_fit=1.0 if limit is not None and matched else None,
@@ -621,7 +704,9 @@ def shop_pick(
             if shop.get("gallery")
             else None
         ),
-        items=[TopItem(**p) for p in shop["products"][:3]],
+        items=[
+            TopItem(**p) for p in (products if intent.sort == "price" else shop["products"])[:3]
+        ],
         sold_out=[p["name"] for p in shop["products"] if not p["available"]],
         halal=facts.get("halal") in {"yes", "muslim_owned"} if facts.get("halal") else None,
         locally_made=bool(facts.get("locally_made")),
@@ -629,6 +714,8 @@ def shop_pick(
         score=blend(components),
     )
     pick._components = components
+    pick._tier = 0 if not words or by_words else 1 if matched or name_hit or category_hit else 2
+    pick._priced = bool(matched) or not words
     return pick
 
 
@@ -679,6 +766,7 @@ async def ai_intent_stream(request: Request, body: AskRequest) -> AsyncIterator[
                 client,
                 settings,
                 "search",
+                lite=True,
                 contents=PROMPT.format(
                     categories=", ".join(GENERIC["category"]),
                     language=written_language(body.language),
@@ -720,13 +808,16 @@ async def ai_intent_stream(request: Request, body: AskRequest) -> AsyncIterator[
 
 def resolve_intent_refinements(body: AskRequest, raw_intent: Intent) -> Intent:
     intent = raw_intent
+    # A chip says exactly what it refines (body.refine). Its label ("Open now nearby", in any
+    # language) is never a new subject and never re-read for other refinements: tapping "Open
+    # now nearby" after "cheapest masala chai" keeps cheapest first.
+    text = "" if body.refine else body.q
     if body.refine:
-        # A chip only refines: its label (any language) is never a new subject.
-        intent = intent.model_copy(update={"keywords": [], "category": ""})
+        intent = intent.model_copy(
+            update={"keywords": [], "category": "", "sort": "best", "near": "", "deals": False}
+        )
     intent = (
-        follow_up(body.q, body.context, intent)
-        if body.context
-        else refine(body.q.casefold(), intent)
+        follow_up(text, body.context, intent) if body.context else refine(text.casefold(), intent)
     )
     if body.refine in {"price", "distance"}:
         intent.sort = "price" if body.refine == "price" else "distance"
@@ -769,15 +860,22 @@ async def match_local_shops(
     radius: int,
     repository: MerchantRepository | None,
     explain: bool = True,
+    shared: list[dict[str, Any]] | None = None,
 ) -> tuple[list[Pick], list[Pick], Personal | None, list[dict[str, Any]]]:
     """Our shops for this intent, ranked by the search engine. The instant answer skips the
     written "why" lines (a Gemini call) so it is never held up by them."""
-    shops = await anyio.to_thread.run_sync(repository.shared_shops) if repository else []
+    if shared is not None:
+        shops = shared
+    else:
+        shops = await anyio.to_thread.run_sync(repository.shared_shops) if repository else []
     in_sg = 1.15 <= lat <= 1.48 and 103.6 <= lng <= 104.1
     in_india = 6.5 <= lat <= 37.5 and 68.0 <= lng <= 97.5
     reachable: list[dict[str, Any]] = []
     for shop in shops:
         if shop["lat"] is None or shop["lng"] is None:
+            continue
+        # Wholesalers sell to shops (sourcing), never in a customer's answer.
+        if not consumer_shop(shop):
             continue
         # Singapore demo shops only when browsing Singapore
         is_sg_shop = shop.get("demo") and (
@@ -799,14 +897,20 @@ async def match_local_shops(
         if distance(lat, lng, shop["lat"], shop["lng"]) > radius:
             continue
         reachable.append(shop)
+    if not asks_for_something(intent):
+        reachable = []
     engine = search_engine(request)
     wanted = " ".join(intent.keywords) or (body.q if not body.refine else "")
     meaning = await anyio.to_thread.run_sync(engine.relevance, wanted, reachable) if wanted else {}
-    recall = item_recall(meaning)
+    # Items a little below the usual bar count only beside a real match nearby (bread: the
+    # croissant next to the loaf). With nothing here named for the words, meaning must be strong.
+    anchored = literal_anchor(reachable, intent.keywords)
+    recall = item_recall(meaning) if anchored else ITEM_RECALL
+    shop_recall = SHOP_RECALL if anchored else max(SHOP_RECALL, ITEM_RECALL)
     picks: list[Pick] = []
     seen_pick_names: set[str] = set()
     for shop in reachable:
-        pick = shop_pick(shop, intent, lat, lng, meaning.get(shop["id"]), recall)
+        pick = shop_pick(shop, intent, lat, lng, meaning.get(shop["id"]), recall, shop_recall)
         if pick is None:
             continue
         base_name = norm_name(pick.name)
@@ -874,6 +978,9 @@ async def match_local_shops(
         )
     picks.sort(key=ranking(intent, anchor))
     for_you.sort(key=ranking(intent, anchor))
+    if intent.sort == "price":
+        # Cheapest first applies to the whole list, including personal picks.
+        for_you = []
     return picks, for_you, personal, shops
 
 
@@ -888,7 +995,11 @@ async def query_google_places(
 ) -> list[Pick]:
     query = " ".join(intent.keywords) or query_text
     try:
-        google = [] if intent.deals else await maps.places(lat, lng, radius, query, intent.category)
+        google = (
+            []
+            if intent.deals or not asks_for_something(intent)
+            else await maps.places(lat, lng, radius, query, intent.category)
+        )
     except HTTPException:
         google = []
     others: list[Pick] = []
@@ -1095,9 +1206,14 @@ async def ask(body: AskRequest, request: Request) -> Any:
     if is_stream:
 
         async def stream_generator() -> AsyncIterator[ServerSentEvent]:
+            # One read of the shared shops serves the command check, the instant answer and the
+            # complete one (it was three Firestore sweeps; OB-97).
+            shared: list[dict[str, Any]] = (
+                await anyio.to_thread.run_sync(repository.shared_shops) if repository else []
+            )
+
             # Step 1: Commands need no model
             if repository is not None:
-                shared = await anyio.to_thread.run_sync(repository.shared_shops)
                 command = customer_command(body.q, shared, body.lat, body.lng, body.radius)
                 if command is not None:
                     resp = AskResponse(
@@ -1119,63 +1235,138 @@ async def ask(body: AskRequest, request: Request) -> Any:
             lat, lng = (anchor.lat, anchor.lng) if anchor else (body.lat, body.lng)
             radius = min(body.radius, 1000) if anchor else body.radius
 
-            picks, for_you, personal, shops = await match_local_shops(
-                request, body, kw_intent, anchor, lat, lng, radius, repository, explain=False
+            # The places lookup for the first reading starts now, beside the model call.
+            places_task = asyncio.create_task(
+                query_google_places(maps, kw_intent, lat, lng, radius, body.q, anchor)
             )
-            instant_groups = await localize_picks(
-                request, body.language, assemble_groups(for_you, picks, []), wait=False
-            )
-            instant_resp = AskResponse(
-                intent=kw_intent,
-                mode="keywords",
-                groups=instant_groups,
-                personal=personal,
-                anchor=anchor,
-                engine=search_engine(request).mode,
-            )
-            yield ServerSentEvent(data=instant_resp.model_dump_json(), event="instant")
 
-            # Step 3: Stream Gemini words if enabled
-            ai_intent_result: Intent | None = None
-            settings = request.app.state.v1_settings
-            if settings.coach_mode == "gemini":
-                async for item in ai_intent_stream(request, body):
-                    if isinstance(item, str):
-                        yield ServerSentEvent(data=json.dumps({"text": item}), event="delta")
-                    elif isinstance(item, Intent):
-                        ai_intent_result = item
-
-            final_intent = resolve_intent_refinements(body, ai_intent_result or kw_intent)
-            mode: Literal["ai", "keywords"] = "ai" if ai_intent_result else "keywords"
-
-            # Re-score picks if ai_intent provided different keywords or category
-            if ai_intent_result and (
-                ai_intent_result.keywords != kw_intent.keywords
-                or ai_intent_result.category != kw_intent.category
-            ):
+            try:
                 picks, for_you, personal, shops = await match_local_shops(
-                    request, body, final_intent, anchor, lat, lng, radius, repository
+                    request,
+                    body,
+                    kw_intent,
+                    anchor,
+                    lat,
+                    lng,
+                    radius,
+                    repository,
+                    explain=False,
+                    shared=shared,
                 )
-            else:
-                await explain_picks(search_engine(request), for_you, body.language)
+                instant_groups = await localize_picks(
+                    request, body.language, assemble_groups(for_you, picks, []), wait=False
+                )
+                instant_resp = AskResponse(
+                    intent=kw_intent,
+                    mode="keywords",
+                    groups=instant_groups,
+                    personal=personal,
+                    anchor=anchor,
+                    engine=search_engine(request).mode,
+                )
+                yield ServerSentEvent(data=instant_resp.model_dump_json(), event="instant")
 
-            others = await query_google_places(maps, final_intent, lat, lng, radius, body.q, anchor)
-            await record_demand(request, repository, maps, final_intent, body, shops, others)
-            area = await area_answer(request, body, final_intent, maps)
+                # Step 3: Stream Gemini words (if enabled) while the places lookup finishes.
+                ai_intent_result: Intent | None = None
+                early_others: list[Pick] | None = None
+                events: asyncio.Queue[tuple[str, Any]] = asyncio.Queue()
+                settings = request.app.state.v1_settings
 
-            final_groups = await localize_picks(
-                request, body.language, assemble_groups(for_you, picks, others), wait=True
-            )
-            final_resp = AskResponse(
-                intent=final_intent,
-                mode=mode,
-                groups=final_groups,
-                personal=personal,
-                anchor=anchor,
-                area=area,
-                engine=search_engine(request).mode,
-            )
-            yield ServerSentEvent(data=final_resp.model_dump_json(), event="complete")
+                async def read_model() -> None:
+                    try:
+                        if settings.coach_mode == "gemini":
+                            async for item in ai_intent_stream(request, body):
+                                kind = "intent" if isinstance(item, Intent) else "text"
+                                await events.put((kind, item))
+                    finally:
+                        await events.put(("model_done", None))
+
+                async def read_places() -> None:
+                    try:
+                        await events.put(("places", await places_task))
+                    except Exception:  # noqa: BLE001 - the final step asks again
+                        await events.put(("places", None))
+
+                watchers = [asyncio.create_task(read_model()), asyncio.create_task(read_places())]
+                try:
+                    while True:
+                        kind, item = await events.get()
+                        if kind == "text":
+                            yield ServerSentEvent(data=json.dumps({"text": item}), event="delta")
+                        elif kind == "intent":
+                            ai_intent_result = item
+                        elif kind == "places":
+                            early_others = item
+                            if item:
+                                early = await localize_picks(
+                                    request,
+                                    body.language,
+                                    assemble_groups(for_you, picks, item),
+                                    wait=False,
+                                )
+                                yield ServerSentEvent(
+                                    data=instant_resp.model_copy(
+                                        update={"groups": early}
+                                    ).model_dump_json(),
+                                    event="instant",
+                                )
+                        else:
+                            break
+                finally:
+                    for watcher in watchers:
+                        watcher.cancel()
+
+                final_intent = resolve_intent_refinements(body, ai_intent_result or kw_intent)
+                mode: Literal["ai", "keywords"] = "ai" if ai_intent_result else "keywords"
+
+                # Re-score picks if ai_intent provided different keywords or category
+                if ai_intent_result and (
+                    ai_intent_result.keywords != kw_intent.keywords
+                    or ai_intent_result.category != kw_intent.category
+                ):
+                    picks, for_you, personal, shops = await match_local_shops(
+                        request,
+                        body,
+                        final_intent,
+                        anchor,
+                        lat,
+                        lng,
+                        radius,
+                        repository,
+                        shared=shared,
+                    )
+                else:
+                    await explain_picks(search_engine(request), for_you, body.language)
+
+                same_search = early_others is not None and all(
+                    getattr(final_intent, field) == getattr(kw_intent, field)
+                    for field in ("keywords", "category", "deals", "open_now", "sort")
+                )
+                if same_search:
+                    area = await area_answer(request, body, final_intent, maps)
+                    others = early_others or []
+                else:
+                    others, area = await asyncio.gather(
+                        query_google_places(maps, final_intent, lat, lng, radius, body.q, anchor),
+                        area_answer(request, body, final_intent, maps),
+                    )
+                await record_demand(request, repository, maps, final_intent, body, shops, others)
+
+                final_groups = await localize_picks(
+                    request, body.language, assemble_groups(for_you, picks, others), wait=True
+                )
+                final_resp = AskResponse(
+                    intent=final_intent,
+                    mode=mode,
+                    groups=final_groups,
+                    personal=personal,
+                    anchor=anchor,
+                    area=area,
+                    engine=search_engine(request).mode,
+                )
+                yield ServerSentEvent(data=final_resp.model_dump_json(), event="complete")
+            finally:
+                places_task.cancel()
 
         return EventSourceResponse(
             stream_generator(),
@@ -1245,7 +1436,7 @@ async def suggest(
         for shop in shops
         if shop.get("lat") is not None
         and shop.get("lng") is not None
-        and not shop.get("supplier")
+        and consumer_shop(shop)
         and distance(lat, lng, shop["lat"], shop["lng"]) <= 2000
     ]
     # The item names most shops nearby sell today: one vote per shop, short names only.
@@ -1326,7 +1517,7 @@ async def similar(
         for s in shops
         if s.get("lat") is not None
         and s.get("lng") is not None
-        and not s.get("supplier")
+        and consumer_shop(s)
         and distance(lat, lng, s["lat"], s["lng"]) <= radius
     ]
     engine = search_engine(request)
@@ -1362,4 +1553,12 @@ async def similar(
             )
         )
     places.sort(key=lambda pair: -pair[0])
-    return SimilarResponse(places=[p for _, p in places], source=source, engine=engine.mode)
+    # One entry per shop: a shop seeded twice (its "(Tour)" and "(Demo)" copies) shows once, as
+    # its closest match, and never beside the shop being viewed.
+    seen = {norm_name(anchor["name"])}
+    unique: list[SimilarPlace] = []
+    for _, place in places:
+        if (key := norm_name(place.name)) not in seen:
+            seen.add(key)
+            unique.append(place)
+    return SimilarResponse(places=unique, source=source, engine=engine.mode)

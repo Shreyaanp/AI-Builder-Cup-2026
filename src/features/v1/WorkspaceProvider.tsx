@@ -1,19 +1,24 @@
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
-import { Button, IconButton, Snackbar, useTheme } from '@mui/material'
+import { Button, IconButton, Snackbar, useMediaQuery, useTheme } from '@mui/material'
 import { X } from 'lucide-react'
 import { canOfferInstall, offerInstall, rememberInstallDeclined } from '../../app/pwa'
 import { useCopy } from './strings'
+import { newlySoldOut, useSoldOutUndoCopy } from './soldOutUndo'
 import type { Api, Business, Me, Product, Proposal } from './api'
 import { WorkspaceContext } from './workspaceContext'
 import type { Destination, Editor, NewShopPhase, Workspace } from './workspaceContext'
-import { ReviewDialog } from './ReviewDialog'
-import { BusinessDialog, ProductDialog } from './EditDialogs'
+import { OnceOpened } from '../../app/OnceOpened'
+import { BusinessDialog, ProductDialog, ReviewDialog } from './workspaceDeferred'
+import { PendingDialog } from './PendingDialog'
+import { windowClass } from '../../design/theme'
 import { customerShopLink, safeCustomerOrigin } from '../../app/router'
 import { overlayHandled } from './backStack'
 import { track } from '../../app/analytics'
 import { tabFromUrl } from './workspaceContext'
 import { carried, entryState, pushEntry, replaceEntry, restoreScroll } from '../../app/history'
+import { useIdentity } from '../../auth/useIdentity'
+import { clearOnboardingDraft, readOnboardingDraft, saveOnboardingDraft } from './onboardingDraft'
 
 const FaceDialog = lazy(() => import('./FaceDialog').then((m) => ({ default: m.FaceDialog })))
 
@@ -31,26 +36,41 @@ export function WorkspaceProvider({
   me,
   children,
   readOnlyMessage,
+  onStartOwnShop,
 }: {
   api: Api
   me: Me
   children: ReactNode
+  /** The public demo: the note shown for the few things that would touch the real world. */
   readOnlyMessage?: string
+  /** The public demo: a new shop is the visitor's own, outside the demo. */
+  onStartOwnShop?: () => void
 }) {
   const t = useCopy()
+  const { scope } = useIdentity()
   const theme = useTheme()
   const [installOffer, setInstallOffer] = useState(false)
   const [businesses, setBusinesses] = useState<Business[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
-  const [activeId, setActiveId] = useState<string | null>(null)
-  // A reload inside the flow starts it again from the welcome (drafts are never stored).
+  const [activeId, setActiveId] = useState<string | null>(() =>
+    new URLSearchParams(location.search).get('step') === 'ready'
+      ? readOnboardingDraft<string>(scope, 'ready')
+      : null,
+  )
+  // Restore the unfinished step; account-scoped tab drafts recover unsent edits.
   const [creatingShop, setCreatingShop] = useState(
     location.pathname === '/new-shop' &&
       new URLSearchParams(location.search).get('step') !== 'ready',
   )
-  const [newShopPhase, setNewShopPhase] = useState<NewShopPhase>('hero')
-  const [shopReady, setShopReady] = useState(false)
+  const [newShopPhase, setNewShopPhase] = useState<NewShopPhase>(() => {
+    const step = new URLSearchParams(location.search).get('step')
+    return step === 'manual' || step === 'review' ? 'manual' : step === 'chat' ? 'chat' : 'hero'
+  })
+  const [shopReady, setShopReady] = useState(
+    location.pathname === '/new-shop' &&
+      new URLSearchParams(location.search).get('step') === 'ready',
+  )
   // Inventory is tagged with its shop so a switch never shows another shop's products.
   const [inventory, setInventory] = useState<{ bid: string | null; items: Product[] }>({
     bid: null,
@@ -100,6 +120,9 @@ export function WorkspaceProvider({
     return () => window.removeEventListener('popstate', restore)
   }, [])
   const [toast, setToast] = useState('')
+  // Items a confirmed change just marked sold out: the saved note offers Undo (OB-261).
+  const [undoSoldOut, setUndoSoldOut] = useState<string[]>([])
+  const undoCopy = useSoldOutUndoCopy()
   const [photoPending, setPhotoPending] = useState(false)
   const consumePhotoRequest = useCallback(() => setPhotoPending(false), [])
   // A chat starter from another screen (e.g. My shop's "Customers ask" card).
@@ -113,6 +136,9 @@ export function WorkspaceProvider({
   const [faceLoaded, setFaceLoaded] = useState(false)
   if (faceOpen && !faceLoaded) setFaceLoaded(true)
   const [editor, setEditor] = useState<Editor>({ kind: 'none' })
+  // The edit dialogs' code is deferred (OB-165): until it lands, a placeholder answers the tap.
+  const closeEditor = useCallback(() => setEditor({ kind: 'none' }), [])
+  const compact = useMediaQuery(`(max-width:${windowClass.medium - 1}px)`)
   const [speakReplies, setSpeak] = useState(readSpeak)
   const [customerOrigin, setCustomerOrigin] = useState<string | null>(null)
   useEffect(() => {
@@ -150,7 +176,9 @@ export function WorkspaceProvider({
       .then((items) => {
         if (abort.signal.aborted) return
         setBusinesses(items)
-        setActiveId(items[0]?.id ?? null)
+        setActiveId((current) =>
+          items.some((item) => item.id === current) ? current : (items[0]?.id ?? null),
+        )
       })
       // A failed load must not look like an empty workspace (owners would recreate shops).
       .catch(() => {
@@ -175,8 +203,8 @@ export function WorkspaceProvider({
   }, [activeId, api])
 
   const setAvailability = useCallback(
-    async (product: Product, available: boolean) => {
-      if (!activeId || !product.id) return
+    async (product: Product, available: boolean): Promise<boolean> => {
+      if (!activeId || !product.id) return false
       // Optimistic: the switch moves at once; a failure restores the saved state.
       setInventory((current) => ({
         ...current,
@@ -190,6 +218,7 @@ export function WorkspaceProvider({
           body: JSON.stringify({ available }),
         })
         await reload()
+        return true
       } catch {
         setInventory((current) => ({
           ...current,
@@ -198,6 +227,7 @@ export function WorkspaceProvider({
           ),
         }))
         setToast(t.actionFailed)
+        return false
       }
     },
     [activeId, api, reload, t.actionFailed],
@@ -216,10 +246,6 @@ export function WorkspaceProvider({
   )
   const setShared = useCallback(
     async (shared: boolean) => {
-      if (readOnlyMessage) {
-        setToast(readOnlyMessage)
-        return
-      }
       if (!activeId) return
       await api(`/businesses/${activeId}/share`, {
         method: 'POST',
@@ -227,7 +253,7 @@ export function WorkspaceProvider({
       })
       await reload()
     },
-    [activeId, api, reload, readOnlyMessage],
+    [activeId, api, reload],
   )
 
   const value = useMemo<Workspace>(
@@ -258,7 +284,7 @@ export function WorkspaceProvider({
       dismissNewShopReady: () => setShopReady(false),
       startNewShop: () => {
         if (readOnlyMessage) {
-          setToast(readOnlyMessage)
+          onStartOwnShop?.()
           return
         }
         track('onboarding_started')
@@ -274,6 +300,8 @@ export function WorkspaceProvider({
       },
       finishNewShop: async (businessId) => {
         await reload()
+        clearOnboardingDraft(scope)
+        saveOnboardingDraft(scope, 'ready', businessId)
         setActiveId(businessId)
         setCreatingShop(false)
         setShopReady(true)
@@ -307,16 +335,18 @@ export function WorkspaceProvider({
       reload,
       setAvailability,
       setShared,
-      shareUrl: activeId && customerOrigin ? customerShopLink(activeId, customerOrigin) : null,
+      // A sandbox shop has no public page; its link opens the demo's customer side.
+      shareUrl:
+        activeId && customerOrigin
+          ? readOnlyMessage
+            ? `${customerOrigin}/explore/demo`
+            : customerShopLink(activeId, customerOrigin)
+          : null,
       review: setProposal,
       savedProposals,
       confirm,
       notify: setToast,
       requestPhoto: () => {
-        if (readOnlyMessage) {
-          setToast(readOnlyMessage)
-          return
-        }
         setDestination('coach')
         setPhotoPending(true)
       },
@@ -339,7 +369,9 @@ export function WorkspaceProvider({
     }),
     [
       api,
+      scope,
       readOnlyMessage,
+      onStartOwnShop,
       customerOrigin,
       me,
       businesses,
@@ -372,23 +404,30 @@ export function WorkspaceProvider({
   return (
     <WorkspaceContext value={value}>
       {children}
-      <ReviewDialog
-        proposal={proposal}
-        onClose={() => setProposal(null)}
-        onSaved={async (businessId) => {
-          const isNew = !businesses.some((shop) => shop.id === businessId)
-          const saved = proposal?.id
-          if (saved) setSavedProposals((ids) => [...ids, saved].slice(-40))
-          setProposal(null)
-          await reload()
-          setActiveId(businessId)
-          if (isNew) setDestination('coach')
-          await loadProducts(businessId).catch(() => undefined)
-          // Offer installation only after useful progress, never up front.
-          if (!isNew && canOfferInstall()) setInstallOffer(true)
-          else setToast(t.saved)
-        }}
-      />
+      <OnceOpened open={proposal !== null} onClose={() => setProposal(null)}>
+        <ReviewDialog
+          proposal={proposal}
+          onClose={() => setProposal(null)}
+          onSaved={async (businessId) => {
+            const isNew = !businesses.some((shop) => shop.id === businessId)
+            const saved = proposal?.id
+            const soldOut = newlySoldOut(
+              proposal,
+              inventory.bid === businessId ? inventory.items : [],
+            )
+            if (saved) setSavedProposals((ids) => [...ids, saved].slice(-40))
+            setProposal(null)
+            await reload()
+            setActiveId(businessId)
+            if (isNew) setDestination('coach')
+            await loadProducts(businessId).catch(() => undefined)
+            // Offer installation only after useful progress, never up front.
+            if (soldOut.length) setUndoSoldOut(soldOut)
+            else if (!isNew && canOfferInstall()) setInstallOffer(true)
+            else setToast(t.saved)
+          }}
+        />
+      </OnceOpened>
       <Snackbar
         open={installOffer}
         message={t.install}
@@ -424,8 +463,32 @@ export function WorkspaceProvider({
           </>
         }
       />
-      <BusinessDialog />
-      <ProductDialog />
+      {value.editor.kind === 'business' && (
+        <Suspense
+          fallback={
+            <PendingDialog
+              title={value.editor.fields ? t.editDetails : t.newShop}
+              fullScreen
+              onClose={closeEditor}
+            />
+          }
+        >
+          <BusinessDialog />
+        </Suspense>
+      )}
+      {value.editor.kind === 'product' && (
+        <Suspense
+          fallback={
+            <PendingDialog
+              title={value.editor.product ? t.editProduct : t.addProduct}
+              fullScreen={compact}
+              onClose={closeEditor}
+            />
+          }
+        >
+          <ProductDialog />
+        </Suspense>
+      )}
       {value.active && faceLoaded && (
         <Suspense fallback={null}>
           <FaceDialog
@@ -437,6 +500,33 @@ export function WorkspaceProvider({
           />
         </Suspense>
       )}
+      <Snackbar
+        open={undoSoldOut.length > 0}
+        message={undoCopy.soldOut(undoCopy.names(undoSoldOut))}
+        autoHideDuration={8000}
+        onClose={(_, reason) => {
+          if (reason !== 'clickaway') setUndoSoldOut([])
+        }}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        sx={{ bottom: { xs: 'calc(96px + env(safe-area-inset-bottom))', sm: 24 } }}
+        action={
+          <Button
+            color="inherit"
+            onClick={() => {
+              const names = undoSoldOut
+              setUndoSoldOut([])
+              const items = inventory.items.filter((item) => names.includes(item.name))
+              void Promise.all(items.map((item) => setAvailability(item, true))).then((done) => {
+                if (done.length && done.every(Boolean))
+                  setToast(undoCopy.back(undoCopy.names(names)))
+              })
+            }}
+            sx={{ color: theme.material.inversePrimary, minHeight: 48 }}
+          >
+            {undoCopy.undo}
+          </Button>
+        }
+      />
       <Snackbar
         open={Boolean(toast)}
         message={toast}

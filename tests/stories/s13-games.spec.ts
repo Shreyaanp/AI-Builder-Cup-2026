@@ -1,6 +1,7 @@
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Browser, type Page } from '@playwright/test'
 import { enter, localOnly, phone, shareSigned, collectStamp } from './support.js'
+import { shopMore } from '../support/shopMore.js'
 
 /**
  * S13 · The passport games. An owner sets a scratch-card prize
@@ -101,10 +102,20 @@ function recorder(mode: Mode) {
 async function ownerSetsPerks(page: Page, mode: Mode, name: string) {
   await localOnly(page)
   await enter(page)
-  const at = { lat: 12.3 + Math.random() * 0.4, lng: 76.2 + Math.random() * 0.4 }
+  // The neighbourhood goal is one weekly tally per ~5 km cell, so a walk that shares a cell with
+  // another counts its visits too ("2 of 100"). Each mode gets its own part of rural Karnataka,
+  // away from S8's pins (12.3–12.7, 76.2–76.6), with about 250 cells to land in.
+  const west = mode === 'light' ? 75.0 : 75.6
+  const at = { lat: 13.2 + Math.random() * 0.8, lng: west + Math.random() * 0.6 }
   await seedChaiStall(page, name, at)
   const { qr } = await shareSigned(page)
-  // The Customer page sheet holds the owner's thank-you perks: calm fields, one save.
+  // Shop → More → Stamp card → More rewards holds the owner's thank-you perks: calm fields, one
+  // save (simplify batch 3; they used to sit in the Customer page sheet).
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await shopMore(page)
+  await page.getByRole('button', { name: /^Stamp card/ }).click()
+  await page.getByRole('button', { name: 'More rewards', exact: true }).click()
   const perks = page.getByRole('region', { name: 'Thank-you perks' })
   await perks.scrollIntoViewIfNeeded()
   await perks.getByLabel('A scratch-card prize').fill('Free bun maska with any chai')
@@ -224,6 +235,9 @@ async function walk(customer: Page, qr: string, name: string, mode: Mode) {
     await expect(coop.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '1')
     await expect(coop).toContainText('Your visits: 1')
     await expect(coop).toContainText('100 visits')
+    // OB-77: keep the help label on one line beside the goal title and demo chip.
+    const howButton = coop.getByRole('button', { name: 'How it works: Neighbourhood goal' })
+    await expect(howButton).toHaveCSS('white-space', 'nowrap')
     await coop.scrollIntoViewIfNeeded()
     await evidence(customer, '5-coop')
     await sets.scrollIntoViewIfNeeded()
@@ -232,6 +246,8 @@ async function walk(customer: Page, qr: string, name: string, mode: Mode) {
   await test.step('5 · the streak: freeze next week ahead of a trip', async () => {
     const run = customer.getByRole('region', { name: 'Weekly streak: 1' })
     await run.scrollIntoViewIfNeeded()
+    // OB-75: English uses the singular unit for a one-week streak.
+    await expect(run.getByText('week', { exact: true })).toBeVisible()
     await expect(run.getByRole('img', { name: 'Freezes: 1' })).toBeVisible()
     await run.getByRole('button', { name: 'Freeze next week' }).click()
     await expect(run.getByRole('status')).toHaveText('Next week is frozen. Enjoy the break!')

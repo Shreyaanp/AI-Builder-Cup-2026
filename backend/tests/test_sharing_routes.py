@@ -7,6 +7,7 @@ from google.adk.sessions import InMemorySessionService
 
 from app.main import create_app
 from app.settings import Settings
+from tests.pins import OWNER_PIN, SHOP_PIN
 from tests.test_merchant_routes import approve
 from tests.test_photos import join, jpeg, upload
 
@@ -35,6 +36,7 @@ def create_shop(client: TestClient) -> tuple[str, str]:
         "/api/v1/proposals",
         json={
             "kind": "business",
+            **OWNER_PIN,
             "business": {"name": "Test Tea Stall"},
             "products": [{"name": "Chai", "price": 1500, "unit": "cup", "stock": 10}],
         },
@@ -62,8 +64,8 @@ def test_public_shop_requires_sharing_but_no_workspace(app) -> None:
             response = customer.get(f"/api/v1/public/shops/{bid}")
             assert response.status_code == 200
             assert response.json() == {
-                "lat": None,
-                "lng": None,
+                # OB-168: a shared shop always has the owner's pin.
+                **SHOP_PIN,
                 "place_id": None,
                 "timezone": "Asia/Singapore",
                 "id": bid,

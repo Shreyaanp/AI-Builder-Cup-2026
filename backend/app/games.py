@@ -16,7 +16,7 @@ import hashlib
 import secrets
 import time
 from collections.abc import Callable
-from datetime import UTC, date, datetime, timedelta
+from datetime import date, timedelta
 from typing import Any, Literal
 
 from pydantic import BaseModel
@@ -28,6 +28,7 @@ from .passport import (
     StampRecord,
     WonPerk,
     is_food,
+    local_now,
     makes_own,
     member_id,
     monday_of,
@@ -116,8 +117,11 @@ def issue_scratch(
     return ticket
 
 
-def reveal(state: PassportState, ticket_id: str, now: float) -> ScratchTicket | None:
-    """Scratching applies the prize once; scratching again shows the same result."""
+def reveal(
+    state: PassportState, ticket_id: str, now: float, zone: str = "UTC"
+) -> ScratchTicket | None:
+    """Scratching applies the prize once; scratching again shows the same result. `zone` is the
+    ticket shop's timezone: a freeze counts for the week it is scratched in there."""
     ticket = next((t for t in state.scratch if t.id == ticket_id), None)
     if ticket is None or ticket.revealed:
         return ticket
@@ -128,7 +132,9 @@ def reveal(state: PassportState, ticket_id: str, now: float) -> ScratchTicket | 
     else:
         state.points += points
     if ticket.prize == "freeze":
-        week = week_of(datetime.fromtimestamp(now, UTC).date())
+        # Credited to the shop-local week of the scratch itself, never back-dated to the
+        # visit: a streak replays freeze_wins, so an old ticket must not rewrite past weeks.
+        week = week_of(local_now(zone, now).date())
         state.freeze_wins = [*state.freeze_wins, week][-20:]
     if ticket.prize == "perk" and ticket.perk_text:
         state.won_perks = [

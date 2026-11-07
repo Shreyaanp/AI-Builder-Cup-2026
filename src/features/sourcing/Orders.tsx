@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import {
   Badge,
@@ -9,6 +9,7 @@ import {
   ListItem,
   ListItemButton,
   ListItemText,
+  Skeleton,
   Stack,
   TextField,
   Typography,
@@ -16,61 +17,24 @@ import {
 } from '@mui/material'
 import { ArrowLeft, ArrowUp, PackageCheck, Truck } from 'lucide-react'
 import { useLocale } from '../../state/hooks'
+import { productName } from '../../i18n/productNames'
 import { enterRise, shape } from '../../design/theme'
-import { formatPrice } from '../v1/format'
+import { formatShopPrice } from '../v1/format'
 import { formatMoneyText } from '../inquiries/formatMoneyText'
 import { Sheet } from '../v1/Sheet'
-import { Supporting, Tile } from '../v1/ShopTiles'
+import { FindSupplier } from '../v1/TwoPaths'
 import { useWorkspace } from '../v1/workspaceContext'
-import { useSourcingCopy } from './copy'
+import { ConfirmUndo } from '../supply/ConfirmUndo'
+import { useOrderUnit } from '../supply/supplyData'
+import { supplyChanged } from '../supply/supplyEvents'
+import { useOrderChangeCopy } from '../supply/orderChangeCopy'
+import { useOrdersLoadFailedCopy, useSourcingCopy } from './copy'
 import { deliveryLabel, useOrders, useReceiveOrder } from './orderData'
 import { DemoChip, StatusChip } from './SourcingCards'
 import type { Order } from './types'
-import { track } from '../../app/analytics'
+import type { Drill } from '../supply/Supply'
 
 const OPEN = new Set(['sent', 'needs_reply', 'confirmed'])
-
-/** My shop: the Orders tile, opening the Orders sheet. */
-export function OrdersTile() {
-  const s = useSourcingCopy()
-  const [open, setOpen] = useState(false)
-  const { orders, refresh } = useOrders(false)
-  const active = (orders ?? []).filter((order) => OPEN.has(order.status))
-  const unread = (orders ?? []).filter((order) => order.unread).length
-  const latest = orders?.[0]
-  return (
-    <>
-      <Tile
-        tour="orders"
-        icon={
-          <Badge badgeContent={unread} color="primary" aria-hidden="true">
-            <Truck size={20} />
-          </Badge>
-        }
-        label={s.orders}
-        value={orders === null ? '–' : s.ordersValue(active.length)}
-        onClick={() => {
-          track('purchase_orders_opened')
-          setOpen(true)
-        }}
-      >
-        {latest && (
-          <Supporting>
-            {latest.supplier.name} · {s.status[latest.status]}
-          </Supporting>
-        )}
-      </Tile>
-      <OrdersSheet
-        open={open}
-        onClose={() => {
-          setOpen(false)
-          void refresh()
-        }}
-        onChanged={() => void refresh()}
-      />
-    </>
-  )
-}
 
 /** The list of orders, or one supplier conversation when `orderId` is set. */
 export function OrdersSheet({
@@ -86,8 +50,6 @@ export function OrdersSheet({
   onChanged?: () => void
 }) {
   const s = useSourcingCopy()
-  const locale = useLocale()
-  const roles = useTheme().material
   const { orders, refresh } = useOrders(open)
   const [picked, setPicked] = useState<string | null>(null)
   // Opening on one order (from the chat) shows its thread first.
@@ -97,6 +59,30 @@ export function OrdersSheet({
     setPicked(orderId)
   }
   const selected = orders?.find((order) => order.id === picked) ?? null
+  // Opened on one order before the list arrives: hold its place instead of flashing the list
+  // and its search field, which a quick tap or typed word would land in by mistake.
+  // The sheet can stay mounted with an older list, so wait for a fetch that started after this
+  // open, not just for any list; fall back to the list only once that fetch has come back.
+  const [fetched, setFetched] = useState<'pending' | 'ok' | 'failed'>('pending')
+  const [attempt, setAttempt] = useState(0)
+  useEffect(() => {
+    if (!open) return
+    let current = true
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- a new open starts a new wait
+    setFetched('pending')
+    void refresh().then((ok) => {
+      if (current) setFetched(ok ? 'ok' : 'failed')
+    })
+    return () => {
+      current = false
+    }
+  }, [open, orderId, attempt, refresh])
+  const waitingOnPicked = picked !== null && !selected
+  const loadingPicked = waitingOnPicked && fetched === 'pending'
+  const loadFailed = waitingOnPicked && fetched === 'failed'
+  const failedCopy = useOrdersLoadFailedCopy()
+  // Stable, because the thread re-runs its effect when this changes.
+  const reload = useCallback(async () => void (await refresh()), [refresh])
   const receiveOrder = useReceiveOrder()
   function close() {
     setPicked(null)
@@ -108,6 +94,7 @@ export function OrdersSheet({
       open={open}
       onClose={close}
       titleId="orders-sheet-title"
+      ask="suppliers"
       title={
         selected ? (
           <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
@@ -124,11 +111,35 @@ export function OrdersSheet({
         )
       }
     >
-      {selected ? (
+      {/* Always a screen way in, beside "tell the coach" (simplify batch 2). */}
+      {!selected && !loadingPicked && !loadFailed && (
+        <Box sx={{ mb: 4 }}>
+          <FindSupplier onStart={close} />
+        </Box>
+      )}
+      {loadingPicked ? (
+        <Stack spacing={2} aria-busy="true">
+          <Skeleton variant="rounded" height={120} />
+          <Skeleton variant="rounded" height={56} />
+        </Stack>
+      ) : loadFailed ? (
+        <Stack spacing={2} role="alert" sx={{ alignItems: 'flex-start' }}>
+          <Typography variant="bodyLarge">{failedCopy.text}</Typography>
+          <Button
+            variant="outlined"
+            onClick={() => {
+              setFetched('pending')
+              setAttempt((n) => n + 1)
+            }}
+          >
+            {failedCopy.retry}
+          </Button>
+        </Stack>
+      ) : selected ? (
         <Thread
           key={selected.id}
           order={selected}
-          onChange={refresh}
+          onChange={reload}
           onReceived={(order) => {
             // The stock review is its own dialog; close this sheet first so modals never stack.
             close()
@@ -140,67 +151,130 @@ export function OrdersSheet({
           {s.ordersEmpty}
         </Typography>
       ) : (
-        <List disablePadding sx={{ display: 'grid', gap: 2 }}>
-          {(orders ?? []).map((order, index) => (
-            <ListItem key={order.id} disablePadding>
-              <ListItemButton
-                component="button"
-                onClick={() => setPicked(order.id)}
-                sx={{
-                  borderRadius: `${shape.lg}px`,
-                  bgcolor: roles.surfaceContainer,
-                  alignItems: 'flex-start',
-                  gap: 3,
-                  py: 3,
-                  width: '100%',
-                  textAlign: 'start',
-                  ...enterRise,
-                  animationDelay: `${index * 50}ms`,
-                }}
-              >
-                <Badge
-                  variant="dot"
-                  color="primary"
-                  invisible={!order.unread}
-                  sx={{ mt: 1 }}
-                  aria-hidden="true"
-                >
-                  <Truck size={20} color={roles.primary} />
-                </Badge>
-                <ListItemText
-                  primary={
-                    <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
-                      <Box
-                        component="span"
-                        sx={{ flex: 1, minWidth: 0, fontWeight: order.unread ? 700 : 500 }}
-                      >
-                        {order.supplier.name}
-                      </Box>
-                      <StatusChip status={order.status} />
-                    </Stack>
-                  }
-                  secondary={
-                    <>
-                      {order.lines
-                        .map((line) => `${line.quantity} ${line.unit} ${line.name}`)
-                        .join(', ')}
-                      <Box component="span" sx={{ display: 'block' }}>
-                        {formatPrice(order.total, order.currency, locale)} ·{' '}
-                        {deliveryLabel(order, locale)}
-                      </Box>
-                    </>
-                  }
-                  slotProps={{
-                    primary: { component: 'div' },
-                    secondary: { component: 'div' },
-                  }}
-                />
-              </ListItemButton>
-            </ListItem>
-          ))}
-        </List>
+        <OrderList orders={orders ?? []} onPick={setPicked} />
       )}
     </Sheet>
+  )
+}
+
+/** Orders to suppliers found in the chat, newest first: supplier, status, lines, total. */
+function OrderList({ orders, onPick }: { orders: Order[]; onPick: (id: string) => void }) {
+  const locale = useLocale()
+  const unit = useOrderUnit()
+  const roles = useTheme().material
+  return (
+    <List disablePadding sx={{ display: 'grid', gap: 2 }}>
+      {(orders ?? []).map((order, index) => (
+        <ListItem key={order.id} disablePadding>
+          <ListItemButton
+            component="button"
+            onClick={() => onPick(order.id)}
+            sx={{
+              borderRadius: `${shape.lg}px`,
+              bgcolor: roles.surfaceContainer,
+              alignItems: 'flex-start',
+              gap: 3,
+              py: 3,
+              width: '100%',
+              textAlign: 'start',
+              ...enterRise,
+              animationDelay: `${index * 50}ms`,
+            }}
+          >
+            <Badge
+              variant="dot"
+              color="primary"
+              invisible={!order.unread}
+              sx={{ mt: 1 }}
+              aria-hidden="true"
+            >
+              <Truck size={20} color={roles.primary} />
+            </Badge>
+            <ListItemText
+              primary={
+                <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
+                  <Box
+                    component="span"
+                    sx={{ flex: 1, minWidth: 0, fontWeight: order.unread ? 700 : 500 }}
+                  >
+                    {order.supplier.name}
+                  </Box>
+                  <StatusChip status={order.status} />
+                </Stack>
+              }
+              secondary={
+                <>
+                  {order.lines
+                    .map(
+                      (line) =>
+                        `${line.quantity} ${unit(line.unit)} ${productName(line.name, locale)}`,
+                    )
+                    .join(', ')}
+                  <Box component="span" sx={{ display: 'block' }}>
+                    {formatShopPrice(order.total, order.currency, locale)} ·{' '}
+                    {deliveryLabel(order, locale)}
+                  </Box>
+                </>
+              }
+              slotProps={{
+                primary: { component: 'div' },
+                secondary: { component: 'div' },
+              }}
+            />
+          </ListItemButton>
+        </ListItem>
+      ))}
+    </List>
+  )
+}
+
+/**
+ * Buy stock (simplify batch 4b): the orders to suppliers found in the chat (what was the Orders
+ * sheet). One conversation opens in place; `onDrill` tells the sheet, which shows the way back.
+ */
+export function SupplierOrders({
+  orders,
+  refresh,
+  onDrill,
+  onLeave,
+}: {
+  orders: Order[]
+  refresh: () => Promise<boolean>
+  onDrill: (drill: Drill) => void
+  /** The sheet closes (the stock review after "Mark as received" is its own dialog). */
+  onLeave: () => void
+}) {
+  const s = useSourcingCopy()
+  const [picked, setPicked] = useState<string | null>(null)
+  const selected = orders.find((order) => order.id === picked) ?? null
+  const name = selected?.supplier.name ?? ''
+  const reload = useCallback(async () => void (await refresh()), [refresh])
+  const receiveOrder = useReceiveOrder()
+  useEffect(() => {
+    onDrill(name ? { from: 'orders', title: name, back: () => setPicked(null) } : null)
+  }, [name, onDrill])
+  useEffect(() => () => onDrill(null), [onDrill])
+  if (selected)
+    return (
+      <Thread
+        key={selected.id}
+        order={selected}
+        onChange={reload}
+        onReceived={(order) => {
+          // The stock review is its own dialog; close this sheet first so modals never stack.
+          onLeave()
+          void receiveOrder(order).then(() => void refresh())
+        }}
+      />
+    )
+  if (!orders.length) return null
+  return (
+    <Stack component="section" aria-label={s.orders} spacing={2}>
+      <Typography variant="titleMedium" component="h3">
+        {s.orders}
+      </Typography>
+      <OrderList orders={orders} onPick={setPicked} />
+    </Stack>
   )
 }
 
@@ -256,7 +330,7 @@ function Thread({
       <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
         <StatusChip status={order.status} />
         <Typography variant="bodyMedium" color="text.secondary" sx={{ flex: 1 }}>
-          {formatPrice(order.total, order.currency, locale)} · {deliveryLabel(order, locale)}
+          {formatShopPrice(order.total, order.currency, locale)} · {deliveryLabel(order, locale)}
         </Typography>
       </Stack>
       <Stack component="ol" spacing={2} sx={{ listStyle: 'none', m: 0, p: 0 }} aria-live="polite">
@@ -326,6 +400,7 @@ function Thread({
           {s.markReceived}
         </Button>
       )}
+      {OPEN.has(order.status) && <ChangeSentOrder order={order} base={base} onChange={onChange} />}
       {!closed && (
         <Box
           component="form"
@@ -362,6 +437,117 @@ function Thread({
         <Button disabled sx={{ alignSelf: 'flex-start' }}>
           {s.status[order.status]}
         </Button>
+      )}
+    </Stack>
+  )
+}
+
+// What the supplier reads when the owner cancels (backend sourcing.CANCEL_TEXT, in English like
+// every supplier message).
+const CANCEL_TEXT = 'Sorry, please cancel this order.'
+
+/** A sent order: change its quantities or cancel it, the supplier told each time (OB-225). */
+function ChangeSentOrder({
+  order,
+  base,
+  onChange,
+}: {
+  order: Order
+  base: string
+  onChange: () => Promise<void>
+}) {
+  const { api } = useWorkspace()
+  const c = useOrderChangeCopy()
+  const [mode, setMode] = useState<'idle' | 'cancel' | 'change'>('idle')
+  const [error, setError] = useState('')
+  const [amounts, setAmounts] = useState<string[]>([])
+  // A supplier reply can land during the undo countdown; the request uses the newest version.
+  const version = useRef(order.version)
+  useEffect(() => {
+    version.current = order.version
+  }, [order.version])
+  const lines = order.lines
+    .map((line, index) => ({ line, index }))
+    .filter(({ line }) => line.price !== null)
+  const changed = lines
+    .map(({ line, index }) => ({
+      line: index,
+      quantity: Number(amounts[index]),
+      was: line.quantity,
+    }))
+    .filter((row) => row.quantity !== row.was)
+  const valid = changed.length > 0 && changed.every((row) => row.quantity > 0)
+  async function run(path: 'cancel' | 'change', body: object) {
+    setError('')
+    try {
+      await api(`${base}/${path}`, {
+        method: 'POST',
+        body: JSON.stringify({ version: version.current, ...body }),
+      })
+      setMode('idle')
+      supplyChanged()
+    } catch {
+      setError(c.failed)
+    }
+    await onChange()
+  }
+  return (
+    <Stack spacing={2}>
+      {mode === 'idle' ? (
+        <Stack direction="row" sx={{ flexWrap: 'wrap', columnGap: 2, rowGap: 1 }}>
+          <Button
+            onClick={() => {
+              setAmounts(order.lines.map((line) => String(line.quantity)))
+              setMode('change')
+            }}
+            sx={{ minHeight: 48 }}
+          >
+            {c.changeQuantity}
+          </Button>
+          <Button color="error" onClick={() => setMode('cancel')} sx={{ minHeight: 48 }}>
+            {c.cancelOrder}
+          </Button>
+        </Stack>
+      ) : mode === 'cancel' ? (
+        <ConfirmUndo
+          ask={c.cancelAsk(order.supplier.name, CANCEL_TEXT)}
+          confirm={c.sendCancel}
+          counting={c.sendingIn}
+          danger
+          onKeep={() => setMode('idle')}
+          onRun={() => run('cancel', {})}
+        />
+      ) : (
+        <ConfirmUndo
+          ask={c.changeAsk(order.supplier.name)}
+          confirm={c.sendChange}
+          counting={c.sendingIn}
+          disabled={!valid}
+          onKeep={() => setMode('idle')}
+          onRun={() =>
+            run('change', { lines: changed.map(({ line, quantity }) => ({ line, quantity })) })
+          }
+        >
+          {lines.map(({ line, index }) => (
+            <TextField
+              key={index}
+              type="number"
+              label={c.quantityOf(line.name, line.unit)}
+              value={amounts[index]}
+              onChange={(event) =>
+                setAmounts((known) =>
+                  known.map((value, i) => (i === index ? event.target.value : value)),
+                )
+              }
+              slotProps={{ htmlInput: { min: 0, step: 'any', inputMode: 'decimal' } }}
+            />
+          ))}
+        </ConfirmUndo>
+      )}
+      {error && (
+        <Typography role="alert" variant="bodyMedium" color="error">
+          {error}
+        </Typography>
       )}
     </Stack>
   )

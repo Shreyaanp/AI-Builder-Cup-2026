@@ -162,7 +162,7 @@ for (const scheme of ['light', 'dark'] as const)
     }
   })
 
-test('the keyboard never covers the composer; the nav steps aside while typing', async ({
+test('OB-151 the keyboard never covers the composer; the nav steps aside while typing', async ({
   page,
   isMobile,
 }) => {
@@ -170,11 +170,13 @@ test('the keyboard never covers the composer; the nav steps aside while typing',
   await open(page)
   const { width, height } = page.viewportSize()!
   await composer(page).tap()
-  await expect(page.locator('html')).toHaveAttribute('data-typing', '')
-  await expect(page.getByRole('navigation', { name: /./ }).last()).toBeHidden()
+  await expect(page.locator('html')).not.toHaveAttribute('data-typing', '')
+  await expect(page.getByRole('navigation', { name: /./ }).last()).toBeVisible()
   // An on-screen keyboard takes about 45% of the screen (resizes-content).
   const keyboardTop = Math.round(height * 0.55)
   await page.setViewportSize({ width, height: keyboardTop })
+  await expect(page.locator('html')).toHaveAttribute('data-typing', '')
+  await expect(page.getByRole('navigation', { name: /./ }).last()).toBeHidden()
   await expect(composer(page)).toBeInViewport({ ratio: 1 })
   const box = (await page.getByRole('search').boundingBox())!
   expect(box.y + box.height).toBeLessThanOrEqual(keyboardTop)

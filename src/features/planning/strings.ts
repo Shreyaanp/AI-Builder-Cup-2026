@@ -37,8 +37,6 @@ const en = {
   confirm: 'Confirm and save exact proposal',
   cancel: 'Cancel review',
   review: 'Check before saving',
-  private:
-    'Private planning note only. Google publishing is not connected. Stock, prices and your public page are unchanged.',
   saved: 'Saved private plan',
   stale: 'Stale plan — recalculate before using',
   error: 'Could not load or save planning. Retry; your inputs are preserved.',
@@ -89,8 +87,6 @@ export const planningTranslations: Record<Locale, typeof en> = {
     confirm: 'ठीक इसी प्रस्ताव की पुष्टि करके सहेजें',
     cancel: 'जाँच रद्द करें',
     review: 'सहेजने से पहले जाँचें',
-    private:
-      'सिर्फ़ निजी योजना का नोट। Google प्रकाशन जुड़ा नहीं है। स्टॉक, दाम और सार्वजनिक पेज नहीं बदलेंगे।',
     saved: 'निजी योजना सहेजी गई',
     stale: 'पुरानी योजना — इस्तेमाल से पहले फिर गणना करें',
     error: 'योजना लोड या सहेज नहीं पाए। फिर कोशिश करें; भरी जानकारी सुरक्षित है।',
@@ -138,8 +134,6 @@ export const planningTranslations: Record<Locale, typeof en> = {
     confirm: 'ঠিক এই প্রস্তাব নিশ্চিত করে সেভ করুন',
     cancel: 'যাচাই বাতিল করুন',
     review: 'সেভ করার আগে যাচাই করুন',
-    private:
-      'শুধু ব্যক্তিগত পরিকল্পনার নোট। Google প্রকাশ যুক্ত নয়। মজুত, দাম ও প্রকাশ্য পেজ বদলাবে না।',
     saved: 'ব্যক্তিগত পরিকল্পনা সেভ হয়েছে',
     stale: 'পুরনো পরিকল্পনা — ব্যবহারের আগে আবার হিসাব করুন',
     error: 'পরিকল্পনা লোড বা সেভ হয়নি। আবার চেষ্টা করুন; লেখা তথ্য রাখা আছে।',
@@ -188,8 +182,6 @@ export const planningTranslations: Record<Locale, typeof en> = {
     confirm: 'ఇదే ప్రతిపాదన నిర్ధారించి సేవ్ చేయండి',
     cancel: 'సమీక్ష రద్దు చేయండి',
     review: 'సేవ్ చేసే ముందు చూడండి',
-    private:
-      'వ్యక్తిగత ప్రణాళిక గమనిక మాత్రమే. Google ప్రచురణ కనెక్ట్ కాలేదు. స్టాక్, ధరలు, పబ్లిక్ పేజీ మారవు.',
     saved: 'వ్యక్తిగత ప్రణాళిక సేవ్ అయింది',
     stale: 'పాత ప్రణాళిక — వాడే ముందు మళ్లీ లెక్కించండి',
     error: 'ప్రణాళిక లోడ్ లేదా సేవ్ కాలేదు. మళ్లీ ప్రయత్నించండి; మీ ఇన్‌పుట్లు భద్రం.',
@@ -237,8 +229,6 @@ export const planningTranslations: Record<Locale, typeof en> = {
     confirm: 'नेमक्या याच प्रस्तावाची खात्री करून जतन करा',
     cancel: 'तपासणी रद्द करा',
     review: 'जतन करण्यापूर्वी तपासा',
-    private:
-      'फक्त खाजगी नियोजन नोंद. Google प्रकाशन जोडलेले नाही. साठा, दर आणि सार्वजनिक पेज बदलत नाहीत.',
     saved: 'खाजगी बेत जतन केला',
     stale: 'जुना बेत — वापरण्यापूर्वी पुन्हा गणना करा',
     error: 'बेत लोड किंवा जतन झाला नाही. पुन्हा प्रयत्न करा; भरलेली माहिती सुरक्षित आहे.',
@@ -287,8 +277,6 @@ export const planningTranslations: Record<Locale, typeof en> = {
     confirm: 'ಇದೇ ಪ್ರಸ್ತಾವ ದೃಢಪಡಿಸಿ ಉಳಿಸಿ',
     cancel: 'ಪರಿಶೀಲನೆ ರದ್ದುಮಾಡಿ',
     review: 'ಉಳಿಸುವ ಮೊದಲು ಪರಿಶೀಲಿಸಿ',
-    private:
-      'ಖಾಸಗಿ ಯೋಜನೆಯ ಟಿಪ್ಪಣಿ ಮಾತ್ರ. Google ಪ್ರಕಟಣೆ ಸಂಪರ್ಕಿಸಿಲ್ಲ. ದಾಸ್ತಾನು, ಬೆಲೆ ಮತ್ತು ಸಾರ್ವಜನಿಕ ಪೇಜ್ ಬದಲಾಗುವುದಿಲ್ಲ.',
     saved: 'ಖಾಸಗಿ ಯೋಜನೆ ಉಳಿಸಲಾಗಿದೆ',
     stale: 'ಹಳೆಯ ಯೋಜನೆ — ಬಳಸುವ ಮೊದಲು ಮತ್ತೆ ಲೆಕ್ಕಿಸಿ',
     error: 'ಯೋಜನೆ ಲೋಡ್ ಅಥವಾ ಉಳಿಸಲಾಗಲಿಲ್ಲ. ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ; ನಮೂದು ಉಳಿದಿದೆ.',
@@ -337,7 +325,6 @@ export const planningTranslations: Record<Locale, typeof en> = {
     confirm: '确认并保存此方案',
     cancel: '取消核对',
     review: '保存前请核对',
-    private: '仅为私人规划记录。未连接 Google 发布。库存、价格和公开页面不变。',
     saved: '私人计划已保存',
     stale: '计划已过时，使用前请重新计算',
     error: '无法加载或保存计划。请重试，输入已保留。',
@@ -391,8 +378,6 @@ export const planningTranslations: Record<Locale, typeof en> = {
     confirm: 'Sahkan dan simpan cadangan tepat',
     cancel: 'Batal semakan',
     review: 'Semak sebelum simpan',
-    private:
-      'Nota perancangan peribadi sahaja. Penerbitan Google tidak disambung. Stok, harga dan halaman awam tidak berubah.',
     saved: 'Pelan peribadi disimpan',
     stale: 'Pelan lapuk — kira semula sebelum guna',
     error: 'Perancangan gagal dimuatkan atau disimpan. Cuba lagi; input dikekalkan.',
@@ -447,8 +432,6 @@ export const planningTranslations: Record<Locale, typeof en> = {
     confirm: 'இந்த முன்மொழிவை உறுதிசெய்து சேமியுங்கள்',
     cancel: 'சரிபார்ப்பை ரத்துசெய்யுங்கள்',
     review: 'சேமிக்கும் முன் சரிபாருங்கள்',
-    private:
-      'தனிப்பட்ட திட்டக் குறிப்பு மட்டுமே. Google வெளியீடு இணைக்கப்படவில்லை. இருப்பு, விலை, பொதுப் பக்கம் மாறாது.',
     saved: 'தனிப்பட்ட திட்டம் சேமிக்கப்பட்டது',
     stale: 'திட்டம் பழையது — பயன்படுத்தும் முன் மீண்டும் கணக்கிடுங்கள்',
     error:
@@ -502,8 +485,6 @@ export const planningTranslations: Record<Locale, typeof en> = {
     confirm: 'この提案を確認して保存',
     cancel: '確認をキャンセル',
     review: '保存前に確認',
-    private:
-      '個人用の計画メモです。Google への公開は未接続です。在庫、価格、公開ページは変わりません。',
     saved: '個人用の計画を保存しました',
     stale: '古い計画です。使用前に再計算してください',
     error: '計画を読み込むか保存できませんでした。入力は残っています。再試行してください。',
@@ -556,8 +537,6 @@ export const planningTranslations: Record<Locale, typeof en> = {
     confirm: '이 제안을 확인하고 저장',
     cancel: '검토 취소',
     review: '저장 전에 확인해요',
-    private:
-      '개인 계획 메모예요. Google 게시 기능은 연결되지 않았어요. 재고, 가격, 공개 페이지는 유지돼요.',
     saved: '개인 계획을 저장했어요',
     stale: '계획이 오래됐어요. 사용 전에 다시 계산해 주세요',
     error: '계획을 불러오거나 저장하지 못했어요. 입력은 보관되니 다시 시도해 주세요.',
@@ -611,8 +590,6 @@ export const planningTranslations: Record<Locale, typeof en> = {
     confirm: 'Konfirmasi dan simpan usulan ini',
     cancel: 'Batal tinjauan',
     review: 'Periksa sebelum menyimpan',
-    private:
-      'Hanya catatan rencana pribadi. Publikasi Google tidak terhubung. Stok, harga, dan halaman publik tidak berubah.',
     saved: 'Rencana pribadi tersimpan',
     stale: 'Rencana usang — hitung ulang sebelum digunakan',
     error: 'Rencana gagal dimuat atau disimpan. Coba lagi; masukan tetap ada.',
@@ -664,8 +641,6 @@ export const planningTranslations: Record<Locale, typeof en> = {
     confirm: 'ยืนยันและบันทึกข้อเสนอนี้',
     cancel: 'ยกเลิกการตรวจ',
     review: 'ตรวจก่อนบันทึก',
-    private:
-      'เป็นบันทึกวางแผนส่วนตัว ยังไม่เชื่อมการเผยแพร่ Google สต็อก ราคา และหน้าสาธารณะไม่เปลี่ยน',
     saved: 'บันทึกแผนส่วนตัวแล้ว',
     stale: 'แผนเก่าแล้ว คำนวณใหม่ก่อนใช้',
     error: 'โหลดหรือบันทึกแผนไม่ได้ ลองอีกครั้ง ข้อมูลที่กรอกยังอยู่',
@@ -717,8 +692,6 @@ export const planningTranslations: Record<Locale, typeof en> = {
     confirm: 'Xác nhận và lưu đề xuất này',
     cancel: 'Hủy kiểm tra',
     review: 'Kiểm tra trước khi lưu',
-    private:
-      'Chỉ là ghi chú kế hoạch riêng. Chưa kết nối đăng lên Google. Tồn kho, giá và trang công khai không đổi.',
     saved: 'Đã lưu kế hoạch riêng',
     stale: 'Kế hoạch đã cũ — tính lại trước khi dùng',
     error: 'Không tải hoặc lưu được kế hoạch. Hãy thử lại; dữ liệu nhập vẫn còn.',
@@ -773,8 +746,6 @@ export const planningTranslations: Record<Locale, typeof en> = {
     confirm: 'Kumpirmahin at i-save ang mungkahing ito',
     cancel: 'Kanselahin ang pagsusuri',
     review: 'Suriin bago i-save',
-    private:
-      'Pribadong tala ng plano lang. Hindi konektado ang Google publishing. Hindi babaguhin ang stock, presyo at pampublikong pahina.',
     saved: 'Na-save ang pribadong plano',
     stale: 'Luma na ang plano — kalkulahin muli bago gamitin',
     error: 'Hindi ma-load o ma-save ang plano. Subukan muli; nandito pa ang mga inilagay mo.',

@@ -72,9 +72,10 @@ def test_demo_seed_is_idempotent_and_labelled(store: MerchantRepository) -> None
         assert len({r["date"] for r in history}) == 42
         assert store.inquiries("demo-owner", demo.id) == inquiries[demo.id]
         assert len(inquiries[demo.id]) == 3
-        assert all(
-            i.name.startswith("Demo") and i.message.startswith("[Demo]") for i in inquiries[demo.id]
-        )
+        # OB-129: demo fixtures use a person name and plain message; UI marks the session once.
+        assert all(i.name in {"Asha", "Wei", "Priya"} for i in inquiries[demo.id])
+        assert all(not i.message.startswith("[Demo]") for i in inquiries[demo.id])
+        assert all(i.contact.endswith("@guest.invalid") for i in inquiries[demo.id])
 
 
 def test_demo_seed_resets_owner_changes_and_keeps_product_ids(store: MerchantRepository) -> None:

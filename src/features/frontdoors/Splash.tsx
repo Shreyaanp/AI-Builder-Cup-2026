@@ -3,6 +3,7 @@ import { Alert, Box, Button, Typography, useTheme } from '@mui/material'
 import type { Locale } from '../../i18n/locales'
 import { useLocale } from '../../state/hooks'
 import { useFrontCopy } from './strings'
+import { BrandLogo } from '../../design/BrandLogo'
 
 const LOAD_TIMEOUT_MS = 15_000
 const failedCopy: Record<Locale, { message: string; retry: string }> = {
@@ -96,20 +97,15 @@ export function BrandSplash({
         },
       }}
     >
+      {/* The same logo as every header (the tilted chalk tile and the name), not a second mark. */}
       <Box
-        component="img"
-        src={business ? '/icons/business.svg' : '/icons/customer.svg'}
-        width={80}
-        height={80}
-        alt=""
         sx={{
           animation: 'chalkMark 800ms ease-out both',
           '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
         }}
-      />
-      <Typography variant="titleLarge" translate="no">
-        {business ? 'Chalkboard Business' : 'Chalkboard'}
-      </Typography>
+      >
+        <BrandLogo name={business ? 'Chalkboard Business' : 'Chalkboard'} />
+      </Box>
       {hasFailed ? (
         <Alert
           severity="error"

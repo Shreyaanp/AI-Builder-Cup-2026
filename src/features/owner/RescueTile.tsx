@@ -17,11 +17,12 @@ import { shape } from '../../design/theme'
 import { useLocale } from '../../state/hooks'
 import { countdown, useNow } from '../rescue/holds'
 import { ApiError } from '../v1/api'
-import { formatPrice, shopCurrency } from '../v1/format'
+import { formatShopPrice, shopCurrency } from '../v1/format'
 import { Sheet } from '../v1/Sheet'
 import { Supporting, Tile } from '../v1/ShopTiles'
 import { useCopy } from '../v1/strings'
 import { useWorkspace } from '../v1/workspaceContext'
+import { useGrowCopy } from '../v1/growCopy'
 import { useTabsCopy } from '../v1/tabsCopy'
 import { useNextStepsCopy } from '../v1/nextStepsCopy'
 import { fill, useOwnerCopy } from './copy'
@@ -57,6 +58,7 @@ function useDeals(bid: string) {
 export function RescueTile({ label }: { label?: string } = {}) {
   const t = useOwnerCopy()
   const tabs = useTabsCopy()
+  const grow = useGrowCopy()
   const locale = useLocale()
   const theme = useTheme()
   const ws = useWorkspace()
@@ -80,6 +82,7 @@ export function RescueTile({ label }: { label?: string } = {}) {
             : t.rescueIdle
         }
         onClick={() => setOpen(true)}
+        badge={first ? grow.live : undefined}
       >
         <Supporting>{first ? fill(t.rescueLiveHint, { left, qty }) : t.rescueIdleHint}</Supporting>
       </Tile>
@@ -124,6 +127,7 @@ function RescueSheet({
       open={open}
       onClose={onClose}
       titleId="rescue-sheet-title"
+      ask="rescue"
       title={t.rescueTitle}
       keepMounted={false}
     >
@@ -144,7 +148,7 @@ function RescueSheet({
           (ws.products.length === 0 ? (
             <NoItems onClose={onClose} />
           ) : (
-            <NewRescue used={used} onSent={onChanged} />
+            <NewRescue used={used} onSent={onChanged} onClose={onClose} />
           ))}
         {earlier.length > 0 && (
           <Box component="section" aria-labelledby="rescue-earlier-title">
@@ -215,8 +219,8 @@ function LiveDeal({ deal, now, onEnded }: { deal: Deal; now: number; onEnded: ()
           </Typography>
           <Typography variant="bodyMedium" sx={{ fontVariantNumeric: 'tabular-nums' }}>
             {fill(t.priceLine, {
-              was: formatPrice(item.was, deal.currency, locale),
-              price: formatPrice(item.price, deal.currency, locale),
+              was: formatShopPrice(item.was, deal.currency, locale),
+              price: formatShopPrice(item.price, deal.currency, locale),
             })}
           </Typography>
         </Stack>
@@ -260,7 +264,15 @@ function NoItems({ onClose }: { onClose: () => void }) {
   )
 }
 
-function NewRescue({ used, onSent }: { used: Set<string>; onSent: () => void }) {
+function NewRescue({
+  used,
+  onSent,
+  onClose,
+}: {
+  used: Set<string>
+  onSent: () => void
+  onClose: () => void
+}) {
   const t = useOwnerCopy()
   const v1 = useCopy()
   const locale = useLocale()
@@ -372,8 +384,8 @@ function NewRescue({ used, onSent }: { used: Set<string>; onSent: () => void }) 
                 </Typography>
                 <Typography variant="bodySmall" color="text.secondary">
                   {fill(t.priceLine, {
-                    was: formatPrice(was, currency, locale),
-                    price: formatPrice(price(was), currency, locale),
+                    was: formatShopPrice(was, currency, locale),
+                    price: formatShopPrice(price(was), currency, locale),
                   })}
                 </Typography>
               </Box>
@@ -467,6 +479,15 @@ function NewRescue({ used, onSent }: { used: Set<string>; onSent: () => void }) 
       {noHours && (
         <Alert severity="info" sx={{ mt: 3 }}>
           {t.needHours}
+          <Button
+            sx={{ display: 'flex', minHeight: 48, mt: 1 }}
+            onClick={() => {
+              onClose()
+              ws.openEditor({ kind: 'business', fields: shop.fields, step: 'hours' })
+            }}
+          >
+            {v1.editDetails}
+          </Button>
         </Alert>
       )}
       {error && (

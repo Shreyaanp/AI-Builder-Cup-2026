@@ -279,6 +279,7 @@ class CoopView(BaseModel):
     total: int
     demo_visits: int  # generated neighbours' visits included in total (demo areas only)
     you: int
+    helped: bool  # this account has a share in the shared tally, so it may collect the bonus
     helpers: int
     reached: bool
     claimed: bool
@@ -476,6 +477,47 @@ async def nearby_shops(request: Request, lat: float | None, lng: float | None) -
     return [s for d, s in sorted(near, key=lambda pair: pair[0]) if d <= NEARBY_M]
 
 
+async def home_today(
+    request: Request,
+    state: PassportState,
+    timezone: str,
+    known_shops: list[dict[str, Any]] | None = None,
+) -> date:
+    """The customer's streak and quest day: their home area's shop-local day, else the phone's."""
+    latest = next((s for s in state.stamps if s.area), None)
+    if latest:
+        return await area_today(request, state, latest.area, known_shops)
+    return local_now(timezone, time.time()).date()
+
+
+async def area_today(
+    request: Request,
+    state: PassportState,
+    area: str,
+    known_shops: list[dict[str, Any]] | None = None,
+) -> date:
+    """Shared area weeks follow its shops, never the server or visiting phone's clock."""
+    known = {s["id"]: s for s in known_shops or []}
+    bids = [s.shop_id for s in state.stamps if s.area == area]
+    bids += [bid for bid, progress in state.shops.items() if progress.area == area]
+    for bid in dict.fromkeys(bids):
+        shop = known.get(bid)
+        if shop is None:
+            shop = await anyio.to_thread.run_sync(store(request).public_shop, bid)
+        if shop and shop_area(shop) == area:
+            return local_now(shop_zone(shop), time.time()).date()
+    for shop in known.values():
+        if shop_area(shop) == area:
+            return local_now(shop_zone(shop), time.time()).date()
+    if area:
+        # A directly opened board can have neither a visit nor a location fix yet.
+        shared_shops = await anyio.to_thread.run_sync(store(request).shared_shops)
+        for shop in shared_shops:
+            if shop_area(shop) == area:
+                return local_now(shop_zone(shop), time.time()).date()
+    return local_now("UTC", time.time()).date()
+
+
 def quest_views(state: PassportState, today: date, nearby: list[dict[str, Any]]) -> list[Quest]:
     countries = {c for s in nearby if (c := shop_country(s))} | {
         s.country for s in state.shops.values() if s.country
@@ -590,10 +632,10 @@ def set_views(
 async def coop_view(
     request: Request,
     state: PassportState,
-    today: date,
     nearby: list[dict[str, Any]],
     lat: float | None,
     lng: float | None,
+    shops: list[dict[str, Any]],
 ) -> CoopView | None:
     """This week's shared goal for the customer's own area (their latest stamp, else here)."""
     latest = next((s for s in state.stamps if s.area), None)
@@ -608,13 +650,24 @@ async def coop_view(
         demo = all(s.get("demo") for s in local)
     else:
         return None
+    today = await area_today(request, state, area, shops + nearby)
     week = week_of(today)
     data = await anyio.to_thread.run_sync(coops(request).get, area, week)
-    real = int(data.get("visits", 0))
+    key = coop_key(area, week)
+    # The passport's own stamps this week in this area are this customer's visits, so the goal
+    # agrees with the weekly quest (a phone-only passport never wrote to the shared tally).
+    mine = max(
+        state.coop_helped.get(key, 0),
+        sum(
+            1
+            for s in state.stamps
+            if s.area == area and s.week == week and s.kind in ("visit", "first")
+        ),
+    )
+    real = max(int(data.get("visits", 0)), mine)
     generated = demo_coop_visits(area, week, today) if demo else 0
     goal = COOP_GOAL_DEMO if demo else COOP_GOAL
     total = real + generated
-    key = coop_key(area, week)
     return CoopView(
         area=area,
         area_name=name,
@@ -623,7 +676,8 @@ async def coop_view(
         goal=goal,
         total=total,
         demo_visits=generated,
-        you=state.coop_helped.get(key, 0),
+        you=mine,
+        helped=state.coop_helped.get(key, 0) > 0,
         helpers=len(data.get("helpers", {})),
         reached=total >= goal,
         claimed=key in state.coop_claimed,
@@ -709,12 +763,12 @@ async def build_view(
     uid: str | None = None,
 ) -> PassportView:
     now = time.time()
-    today = local_now(timezone, now).date()
     level = state.level
     upcoming = next_level(level)
     reqs = requirements(state, upcoming) if upcoming else []
     nearby = await nearby_shops(request, lat, lng)
     data = await recent_shops(request, state)
+    today = await home_today(request, state, timezone, nearby + list(data.values()))
     shops = [
         shop_stamp(bid, p, data.get(bid) or {})
         for bid, p in sorted(state.shops.items(), key=lambda kv: kv[1].days[-1:], reverse=True)
@@ -752,7 +806,7 @@ async def build_view(
     games = GamesView(
         scratch=[scratch_view(t) for t in state.scratch if not t.revealed][:5],
         sets=sets,
-        coop=await coop_view(request, state, today, nearby, lat, lng),
+        coop=await coop_view(request, state, nearby, lat, lng, list(data.values())),
         won_perks=state.won_perks[:20],
         next_reward=reward,
         # Gentle and rare: from Friday, only while a streak runs and this week has no visit.
@@ -792,12 +846,10 @@ async def post_board(request: Request, principal: Principal, state: PassportStat
     if principal.guest or not state.leaderboard or flagged(state, time.time()):
         return
     service = passports(request)
-    week = week_of(local_now("UTC", time.time()).date())
-    stamps_by_area: dict[str, int] = {}
-    for record in state.stamps:
-        if record.week == week and record.area:
-            stamps_by_area[record.area] = stamps_by_area.get(record.area, 0) + 1
+    # One cached read of the shared shops serves every area, not one uncached read per area.
+    shared = await anyio.to_thread.run_sync(store(request).shared_shops)
     for area, weeks in state.week_points.items():
+        week = week_of(await area_today(request, state, area, shared))
         points = weeks.get(week, 0)
         if not points:
             continue
@@ -805,7 +857,7 @@ async def post_board(request: Request, principal: Principal, state: PassportStat
             "name": display(display_name(principal)),
             "points": points,
             "level": state.level,
-            "stamps": stamps_by_area.get(area, 0),
+            "stamps": sum(r.area == area and r.week == week for r in state.stamps),
             "demo": False,
             "at": time.time(),
         }
@@ -1086,17 +1138,21 @@ async def passport(
 @router.delete("/customer/passport")
 async def erase_passport(request: Request) -> dict[str, bool]:
     principal = await customer(request)
-    state = await anyio.to_thread.run_sync(passports(request).get, principal.uid)
+    await forget_passport(request, principal.uid)
+    return {"deleted": True}
+
+
+async def forget_passport(request: Request, uid: str) -> list[str]:
+    """Erase the passport and this customer's share of the shared tallies; returns its shops."""
+    state = await anyio.to_thread.run_sync(passports(request).get, uid)
     # The shared tallies forget this customer too (co-op help, "neighbours tried this").
     helped: dict[str, list[str]] = {}
     for key in state.coop_helped:
         area, _, week = key.partition("|")
         helped.setdefault(area, []).append(week)
-    await anyio.to_thread.run_sync(
-        coops(request).erase_member, principal.uid, helped, list(state.shops)
-    )
-    await anyio.to_thread.run_sync(passports(request).erase, principal.uid)
-    return {"deleted": True}
+    await anyio.to_thread.run_sync(coops(request).erase_member, uid, helped, list(state.shops))
+    await anyio.to_thread.run_sync(passports(request).erase, uid)
+    return list(state.shops)
 
 
 @router.post("/customer/passport/shops/{business_id}/claim", response_model=PassportView)
@@ -1251,13 +1307,13 @@ async def board(
         shop_areas = [p.area for p in state.shops.values() if p.area]
         if shop_areas:
             area = shop_areas[0]
-    week = week_of(local_now("UTC", time.time()).date())
+    nearby = await nearby_shops(request, lat, lng)
+    week = week_of(await area_today(request, state, area, nearby))
     if not area or len(area) > 12:
         return Board(area="", week=week, joined=state.leaderboard, rows=[], you=None)
     rows = await anyio.to_thread.run_sync(service.board, area, week)
     me = member_id(principal.uid)
     entries = [{**row, "you": key == me} for key, row in rows.items()]
-    nearby = await nearby_shops(request, lat, lng)
     demo_area = any(s.get("demo") for s in nearby) or any(
         p.demo for p in state.shops.values() if p.area == area
     )

@@ -6,7 +6,7 @@ const shots = process.env.QR_SHOTS === '1'
 
 for (const width of [360, 390]) {
   for (const customer of ['signed-out', 'signed-in'] as const) {
-    test(`${width}px ${customer}: QR arrival, stamp, moment and Passport`, async ({
+    test(`OB-95 ${width}px ${customer}: QR count changes only after Collect`, async ({
       browser,
       request,
     }) => {
@@ -55,6 +55,7 @@ for (const width of [360, 390]) {
         await expect(collect).toBeVisible({ timeout: 15_000 })
         await expect(page.getByRole('dialog')).toHaveCount(0)
         await expect(page.getByRole('heading', { name: /Lantern Chai Corner/ })).toBeVisible()
+        await expect(page.getByRole('link', { name: 'Stamp card · 2 of 10 stamps' })).toBeVisible()
         const box = (await collect.boundingBox())!
         const viewport = page.viewportSize()!
         expect(box.height).toBeGreaterThanOrEqual(48)
@@ -97,6 +98,7 @@ for (const width of [360, 390]) {
         await passportLink.click()
         await expect(page.getByRole('heading', { level: 1, name: 'Your passport' })).toBeVisible()
         await expect(page.getByText('Includes 50 demo points')).toBeVisible({ timeout: 15_000 })
+        await expect(page.getByText('3 of 10 stamps', { exact: true })).toBeVisible()
         await shot('3-passport')
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
           true,

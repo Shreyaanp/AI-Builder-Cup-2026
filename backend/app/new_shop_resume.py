@@ -121,7 +121,13 @@ FOLLOW_UPS = 2
 
 
 def has_place(fields: BusinessFields | None) -> bool:
+    """The owner has said where the shop is (a typed place or a map pin): never asked again."""
     return bool(fields and (fields.location or fields.lat is not None))
+
+
+def has_pin(fields: BusinessFields | None) -> bool:
+    """OB-168: customers find a shop by its pin, so only a pinned shop is ever made public."""
+    return bool(fields and fields.lat is not None and fields.lng is not None)
 
 
 def done_steps(draft: NewShopDraft | None) -> dict[str, bool]:
@@ -138,9 +144,10 @@ def done_steps(draft: NewShopDraft | None) -> dict[str, bool]:
 
 
 def ready_to_go_live(draft: NewShopDraft | None) -> bool:
-    """The shop goes live by itself once its name, kind and place are known."""
+    """The shop goes live by itself once its name, kind and pinned place are known (a typed
+    place is pinned when it is said; one that cannot be found waits for the owner's pin)."""
     done = done_steps(draft)
-    return done["name"] and done["category"] and done["place"]
+    return done["name"] and done["category"] and has_pin(draft.business if draft else None)
 
 
 def known_and_missing(draft: NewShopDraft | None) -> tuple[list[str], list[str]]:
@@ -153,7 +160,12 @@ def known_and_missing(draft: NewShopDraft | None) -> tuple[list[str], list[str]]
         known.append(f'name "{fields.name}"')
     if fields and fields.category:
         known.append(f'sells "{fields.category}"')
-    if fields and fields.location:
+    if fields and fields.location and not has_pin(fields):
+        known.append(
+            f'place "{fields.location}" (not found on the map yet: the app asks the owner to'
+            " confirm the pin; never ask the place again)"
+        )
+    elif fields and fields.location:
         known.append(f'place "{fields.location}"')
     elif fields and fields.lat is not None:
         known.append("place (pinned on the map)")
@@ -264,7 +276,9 @@ def progress_note(draft: NewShopDraft | None, last_question: str, resumed: bool)
             " have not said so yet, say it once in a few words; never again."
         )
     elif ready_to_go_live(draft):
-        lines.append("- Name, kind and place are known: the app is putting the shop live now.")
+        lines.append(
+            "- Name, kind and pinned place are known: the app is putting the shop live now."
+        )
     if resumed:
         lines.append(
             "- The connection dropped and has just come back. Do not greet, introduce yourself,"

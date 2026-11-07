@@ -23,8 +23,15 @@ interface Story {
   customers: { stamps_today: number; stamps_needed: number; reward: string }
 }
 
-const money = (minor: number) =>
-  (minor / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+// Whole rupees drop the ".00" (OB-210); real paise stay.
+const money = (minor: number) => {
+  const text = (minor / 100).toLocaleString('en-IN', {
+    minimumFractionDigits: minor % 100 === 0 ? 0 : 2,
+    maximumFractionDigits: 2,
+  })
+  // Not followed by more digits or a decimal part, so "6,492" cannot match "6,492.00" or "6,4925", but may end a sentence.
+  return new RegExp(text.replace('.', '\\.') + '(?!\\.?\\d)')
+}
 // Same rounding as the tour (chainSteps.amount): one decimal, so 2.71 kg reads 2.7 kg (OB-62).
 const qty = (n: number, unit: string) =>
   `${new Intl.NumberFormat('en-IN', { maximumFractionDigits: 1 }).format(n)} ${unit}`
@@ -141,8 +148,8 @@ for (const world of [
       })
 
       for (const title of [
-        'Tomorrow’s prep plan',
         'Your menu, by category',
+        'Tomorrow’s prep plan',
         'Close the day in a minute',
         'Just talk or type',
       ]) {
@@ -167,7 +174,7 @@ test.describe('Hindi', () => {
     const card = page.getByTestId('tour-card')
     await expect(card).toContainText('7 में से 1', { timeout: 30_000 })
     await expect(card).toContainText('आठ हफ़्ते')
-    const expected = [story.today.item, 'AI ऑर्डर तैयार करता है']
+    const expected = ['चाय पत्ती', 'AI ऑर्डर तैयार करता है']
     for (const [index, title] of expected.entries()) {
       await next(page, 'आगे')
       await expect(page.locator('#tour-title')).toContainText(title)

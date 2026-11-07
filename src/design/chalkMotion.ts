@@ -26,10 +26,20 @@ export function useChalkTimeline(
   }, deps)
 }
 
-/** Cards dealt onto the table: rise, straighten from a slight tilt. Use with `--deal-index`. */
+/**
+ * The elements a timeline animates. GSAP warns "target not found" for an empty selection, and
+ * several of these exist only sometimes (no pins on an empty Rescue map, no "you" mark before a
+ * first visit), so a timeline asks for them here and skips what is absent (A-44).
+ */
+export function hits<T extends Element = Element>(root: ParentNode, selector: string): T[] {
+  return Array.from(root.querySelectorAll<T>(selector))
+}
+
+/** Cards dealt onto the table: rise, straighten from a slight tilt. Use with `--deal-index`.
+ * The rise stays under the 24 px reading gap above fixed bars, so a card mid-deal never touches one (OB-92). */
 export const dealIn = {
   '@keyframes chalkDealIn': {
-    from: { opacity: 0, transform: 'translateY(24px) rotate(var(--deal-tilt, -3deg))' },
+    from: { opacity: 0, transform: 'translateY(12px) rotate(var(--deal-tilt, -3deg))' },
     to: { opacity: 1, transform: 'none' },
   },
   animation: `chalkDealIn 450ms ${motion.easing.emphasizedDecelerate} both`,

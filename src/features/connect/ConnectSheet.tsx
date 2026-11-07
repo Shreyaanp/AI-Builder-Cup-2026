@@ -44,8 +44,8 @@ const KNOWN_SYSTEMS = [
   { key: 'square', label: 'Square' },
   { key: 'loyverse', label: 'Loyverse' },
   { key: 'shopify', label: 'Shopify' },
-  { key: 'sap', label: 'SAP' },
-  { key: 'other', label: 'Other POS' },
+  { key: 'sap', label: 'Big-shop system' },
+  { key: 'other', label: 'Other billing app' },
 ] as const
 
 const TARGET_ROLE_KEYS = [
@@ -94,7 +94,8 @@ export function ConnectSheet({
   const shop = ws.active
   const systems = KNOWN_SYSTEMS.map((system) => ({
     ...system,
-    displayLabel: system.key === 'other' ? ui.otherPos : system.label,
+    displayLabel:
+      system.key === 'other' ? ui.otherPos : system.key === 'sap' ? ui.bigShop : system.label,
   }))
 
   const [selectedSystem, setSelectedSystem] = useState<string>(initialSystem ?? 'Petpooja')
@@ -391,6 +392,7 @@ export function ConnectSheet({
         open={open}
         onClose={handleClose}
         titleId="connect-sheet-title"
+        ask="import_sales"
         title={t.connectTitle}
         // Without a mapping the only action is Close, so the phone sheet adds no second one.
         dismissInActions={!currentMapping}

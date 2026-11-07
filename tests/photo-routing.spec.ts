@@ -54,9 +54,9 @@ test('chat photo: confirmed in one line, corrected with chips, routed, never los
   )
   await group.getByRole('button', { name: 'Till report' }).tap()
   const day = page.getByRole('dialog', { name: 'Close the day' })
-  await expect(day.getByText(/\d+ lines$/)).toBeVisible({ timeout: 20_000 })
+  await expect(day.getByText(/\d+ lines?$/)).toBeVisible({ timeout: 20_000 })
   await day
-    .getByRole('button', { name: 'Close', exact: true })
+    .getByRole('button', { name: 'Not now', exact: true })
     .tap()
     .catch(() => undefined)
   await page.keyboard.press('Escape')
@@ -85,5 +85,5 @@ test('chat photo: unknown photo is kept and the owner picks where it goes', asyn
   await expect(page.getByRole('dialog')).toHaveCount(0)
   await group.getByRole('button', { name: 'Receipt' }).tap()
   const day = page.getByRole('dialog', { name: 'Close the day' })
-  await expect(day.getByText(/\d+ lines$/)).toBeVisible({ timeout: 20_000 })
+  await expect(day.getByText(/\d+ lines?$/)).toBeVisible({ timeout: 20_000 })
 })

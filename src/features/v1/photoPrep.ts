@@ -4,6 +4,8 @@
  * keeps small menu print legible and is a fraction of the bytes on mobile data.
  */
 export const PHOTO_MAX_SIDE = 1600
+/** How long the app waits for a photo to be read: production reads took up to 64 s (OB-194). */
+export const PHOTO_READ_TIMEOUT_MS = 150_000
 const QUALITY = 0.85
 /** Photos already this small are sent as they are. */
 const SKIP_BELOW_BYTES = 400_000

@@ -15,6 +15,7 @@ from app.recap import TEMPLATES, RecapWriter, Summary, offline_summary, recap_fa
 from app.sales import daily_sales, today_for
 from app.settings import Settings
 from app.shop_time import shop_timezone
+from tests.pins import SHOP_PIN
 from tests.test_imports import SALES, make_shop, upload
 from tests.test_merchant_store import create, store  # noqa: F401
 from tests.test_photos import app, join  # noqa: F401
@@ -186,7 +187,7 @@ def test_freshness_owner_switch_and_sold_out_signals(store: MerchantRepository):
         "alice",
         ProposalRequest(
             kind="business",
-            business=BusinessFields(name="Ah Seng Kopi", timezone="UTC"),
+            business=BusinessFields(name="Ah Seng Kopi", timezone="UTC", **SHOP_PIN),
             products=[ProductFields(name="Kopi", price=180)],
         ),
     )
@@ -208,6 +209,24 @@ def test_freshness_owner_switch_and_sold_out_signals(store: MerchantRepository):
         store.recap_cache("bob", bid, "week", {})
     with pytest.raises(HTTPException):
         store.recap_signals("bob", bid)
+
+
+def test_ob240_recap_never_lists_an_item_as_top_seller_and_slow_mover():
+    # Issue #622: a tea stall with three items had Bun maska under both lists.
+    signals = {"fields": {"currency": "INR"}, "sold_out": {}, "questions": []}
+
+    def sold(item: str, quantity: int) -> dict:
+        return {"date": "2026-10-26", "item": item, "quantity": quantity, "revenue": quantity * 20}
+
+    stall = [sold("Masala chai", 400), sold("Bun maska", 90), sold("Samosa", 30)]
+    facts = recap_facts("2026-W44", stall, signals)
+    assert [r["item"] for r in facts["top_sellers"]] == ["Masala chai", "Bun maska"]
+    assert [r["item"] for r in facts["slow_movers"]] == ["Samosa"]
+    for rows in (stall[:1], stall[:2], stall + [sold(f"Item {n}", n) for n in range(1, 10)]):
+        facts = recap_facts("2026-W44", rows, signals)
+        top = {r["item"] for r in facts["top_sellers"]}
+        assert top and not top & {r["item"] for r in facts["slow_movers"]}
+        assert facts["top_sellers"][0]["item"] == "Masala chai"
 
 
 def test_routes_save_recap_cache_planning_and_freshness(app):  # noqa: F811

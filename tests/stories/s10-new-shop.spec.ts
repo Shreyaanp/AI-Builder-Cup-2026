@@ -2,13 +2,14 @@ import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
 import { FIRST_QUESTION, FOLLOW_UPS, nextQuestion } from '../newShopTopics.js'
 import { enter, inChatFixtures, liveOnly, localOnly, phone, shot } from './support.js'
+import { startNewShop } from '../support/newShop.js'
 
 // S10 · Opening a new shop (owner answers, 15–17 Oct): big hero, then a full-screen conversation
 // in which the coach speaks first with one open question, asks only the basics still missing,
 // then at most two follow-ups that fit the shop (#112) and a shop photo (no menu), fills the shop
 // card silently, opens the map and the camera as cards inside the chat,
-// puts the shop live once name + kind + place are known, and ends in one summary card (the face
-// check optional), a ready moment and the Google Maps hand-off.
+// puts the shop live once name + kind + place are known, and ends in one summary card,
+// a ready moment and an optional Google Maps hand-off. Face/liveness is deferred (OB-304).
 test.use(phone)
 // Light and dark captures of every screen (phone and desktop) are in tests/new-shop.spec.ts,
 // tests/new-shop-voice.spec.ts and tests/new-shop-inchat.spec.ts.
@@ -37,7 +38,7 @@ async function evidence(page: Page, name: string) {
   await page.screenshot({ path: `docs/stories/new-shop-${name}.png`, animations: 'disabled' })
 }
 
-test('S10 · owner opens a new shop by talking to the coach', async ({ page, context }) => {
+test('OB-150 S10 · owner opens a new shop by talking to the coach', async ({ page, context }) => {
   test.setTimeout(150_000)
   await localOnly(page)
   // A local tone stands in for the microphone (the offline backend runs no speech recognition),
@@ -48,7 +49,7 @@ test('S10 · owner opens a new shop by talking to the coach', async ({ page, con
   await enter(page)
 
   await test.step('1 · "+" opens the hero (no dialog)', async () => {
-    await page.getByRole('banner').getByRole('button', { name: 'Add shop details' }).click()
+    await startNewShop(page)
     await expect(page.getByRole('heading', { name: 'Let’s open your shop' })).toBeVisible()
     await expect(page.getByRole('navigation', { name: 'Main' })).toHaveCount(0)
     // Let the chalk drawing finish before the evidence shot.
@@ -144,11 +145,12 @@ test('S10 · owner opens a new shop by talking to the coach', async ({ page, con
     await shot(page, 10, '5-photo')
   })
 
-  await test.step('6 · one summary card, the optional face check, and the review sheet', async () => {
+  await test.step('6 · one summary card and the review sheet', async () => {
     const summary = page.getByTestId('shop-summary')
     await expect(summary).toContainText('Market Chai')
     await expect(summary).toContainText('Photo added')
-    await expect(summary.getByRole('button', { name: 'Verify now' })).toBeVisible()
+    await expect(summary.getByRole('button', { name: 'Verify now' })).toHaveCount(0) // OB-304
+    await expect(summary.getByRole('button', { name: 'Go to my shop' })).toBeVisible()
     await summary.scrollIntoViewIfNeeded()
     await shot(page, 10, '6-summary')
     await axe(page)
@@ -162,8 +164,13 @@ test('S10 · owner opens a new shop by talking to the coach', async ({ page, con
   })
 
   await test.step('7 · "Your shop is ready", and the Google Maps hand-off', async () => {
-    await page.getByTestId('shop-summary').getByRole('button', { name: 'Skip for now' }).click()
+    await page.getByTestId('shop-summary').getByRole('button', { name: 'Go to my shop' }).click()
     await expect(page.getByRole('heading', { name: /Congratulations, .* is live!/ })).toBeVisible()
+    await page.locator('summary').filter({ hasText: 'Share' }).click() // OB-292
+    // OB-150: the QR poster is generated asynchronously; audit only after its action is usable.
+    await expect(
+      page.getByTestId('shop-qr').getByRole('button', { name: /Download PDF/ }),
+    ).toBeEnabled()
     await shot(page, 10, '7-ready')
     await axe(page)
     const handoff = page.getByTestId('maps-handoff')
@@ -193,7 +200,7 @@ test('S10 · type it in instead: one question per screen, then Edit details the 
   await context.grantPermissions(['geolocation', 'microphone'])
   await context.setGeolocation({ latitude: 12.9718234, longitude: 77.6412345, accuracy: 25 })
   await enter(page)
-  await page.getByRole('banner').getByRole('button', { name: 'Add shop details' }).click()
+  await startNewShop(page)
   await page.getByRole('button', { name: 'Let’s begin' }).click()
   await expect(page.getByRole('log')).toContainText(FIRST_QUESTION)
 
@@ -258,7 +265,11 @@ test('S10 · type it in instead: one question per screen, then Edit details the 
     await expect(review).toContainText('within 25 m')
     await axe(page)
     await page.getByRole('button', { name: 'Open my shop' }).click()
-    await expect(page.getByRole('heading', { name: /Congratulations, .* is live!/ })).toBeVisible()
+    // OB-301: typed setup opens a private shop; it is ready, not yet live to customers.
+    await expect(
+      page.getByRole('heading', { name: 'Courtyard Chai · Your shop is ready' }),
+    ).toBeVisible()
+    await expect(page.getByTestId('shop-link')).toHaveCount(0)
     await page.getByRole('button', { name: 'Continue with my shop' }).click()
   })
 
@@ -295,7 +306,8 @@ test('S10 · entries: tour end and an empty My shop open the same flow', async (
     await page.getByRole('button', { name: 'Cancel', exact: true }).click()
   })
   await test.step('end of the tour: "Start my own shop"', async () => {
-    await page.getByRole('button', { name: 'Take the tour' }).click()
+    // Simplify batch 5: first run offers the demo as a link under the start card.
+    await page.getByRole('button', { name: 'Or see a demo shop first' }).click()
     const tour = page.getByRole('dialog', { name: 'Your shop at a glance' })
     await expect(tour).toBeVisible()
     // Every step, including the feature steps added after the spotlights ("1 of 14").

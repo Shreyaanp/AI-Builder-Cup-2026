@@ -210,15 +210,15 @@ def customer_activity(demo: DemoShop, today: date) -> list[Inquiry]:
     monday = today - timedelta(days=today.weekday())
     days = [monday - timedelta(days=5), monday - timedelta(days=2), today]
     messages = [
-        f"[Demo] Can I collect two {demo.products[0].name} tomorrow?",
-        "[Demo] Which payment methods do you accept?",
-        "[Demo] Are you open this afternoon? This is a sample inquiry.",
+        f"Can I collect two {demo.products[0].name} tomorrow?",
+        "Which payment methods do you accept?",
+        "Are you open this afternoon?",
     ]
     return [
         Inquiry(
             id=str(uuid5(NAMESPACE_URL, f"chalkboard-demo/{demo.id}/inquiry/{i}")),
-            name=f"Demo customer {i + 1}",
-            contact=f"demo-customer-{i + 1}@example.invalid",
+            name=("Asha", "Wei", "Priya")[i],
+            contact=f"demo-customer-{i + 1}@guest.invalid",
             message=message,
             created=(
                 stamp := datetime.combine(

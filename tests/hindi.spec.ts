@@ -1,6 +1,7 @@
 import { mkdirSync } from 'node:fs'
 import { expect, test, type Page } from '@playwright/test'
-import { enter, image, localOnly, seedShop, share } from './stories/support.js'
+import { enter, image, localOnly, otherOwnersWords, seedShop, share } from './stories/support.js'
+import { growTool, openGrowTool } from './support/grow.js'
 
 // Hindi end to end at 360px. The owner app set to Hindi and a customer
 // whose phone is in Hindi walk the main screens; each must read in Hindi: no English UI words
@@ -128,7 +129,8 @@ const tab = (page: Page, name: string) =>
 
 async function growCard(page: Page, name: RegExp) {
   await tab(page, 'बढ़ाएँ').click()
-  await page.getByRole('button', { name }).click()
+  // कितना बनाना है, माल मँगाएँ and मेरी बिक्री each open one sheet (batch 4b).
+  await openGrowTool(page, name)
   await expect(page.getByRole('dialog')).toBeVisible()
 }
 
@@ -148,7 +150,7 @@ test('the owner app reads in Hindi: Today, coach, Shop, Grow tools, You, privacy
   await test.step('coach text turn', async () => {
     await page.getByLabel('संदेश', { exact: true }).fill('आज कितने कप चाय बिकी?')
     await page.getByRole('button', { name: 'भेजें', exact: true }).click()
-    await expect(page.getByRole('log')).toContainText('ऑफ़लाइन नमूना')
+    await expect(page.getByRole('log')).toContainText('आपकी बात मिली')
     await readsInHindi(page, '02-coach-reply')
   })
 
@@ -171,20 +173,32 @@ test('the owner app reads in Hindi: Today, coach, Shop, Grow tools, You, privacy
 
   await test.step('Shop: ₹ prices', async () => {
     await tab(page, 'दुकान').click()
-    await expect(page.getByText('₹18.00')).toBeVisible()
+    const menu = page.locator('[data-tour="menu"]').filter({ visible: true })
+    await expect(menu).toBeVisible()
     await readsInHindi(page, '04-shop')
+    // Prices live in the Menu sheet (Shop shows one row per part of the shop).
+    await menu.click()
+    await expect(page.getByRole('dialog').getByText('₹18', { exact: true })).toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('dialog')).toHaveCount(0)
   })
 
   await test.step('Grow: Hindi dates', async () => {
     await tab(page, 'बढ़ाएँ').click()
-    await expect(page.getByRole('button', { name: /^हफ़्ते का सार/ })).toContainText('अक्टू')
+    await expect(await growTool(page, /^मेरी बिक्री/)).toBeVisible()
     await readsInHindi(page, '05-grow')
+    // The week's summary sits in मेरी बिक्री under its name and dates (batch 4b).
+    await growCard(page, /^मेरी बिक्री/)
+    await expect(
+      page.getByRole('dialog').getByRole('button', { name: /^हफ़्ते का सार/ }),
+    ).toContainText('अक्टू')
+    await closeSheet(page)
   })
 
   await test.step('Close the day: photo read and review', async () => {
     await growCard(page, /^दिन बंद करें/)
     const dialog = page.getByRole('dialog')
-    await dialog.getByRole('button', { name: /बिलिंग या POS रिपोर्ट/ }).click()
+    await dialog.getByRole('button', { name: /बिक्री पर्ची या कॉपी/ }).click()
     await dialog
       .locator('input[type=file]')
       .first()
@@ -195,7 +209,8 @@ test('the owner app reads in Hindi: Today, coach, Shop, Grow tools, You, privacy
   })
 
   await test.step('Plan tomorrow: units in Hindi', async () => {
-    await growCard(page, /^कल की योजना/)
+    await growCard(page, /^कितना बनाना है/)
+    await page.getByRole('dialog').getByRole('button', { name: 'संख्या बदलें' }).click()
     await expect(page.getByLabel('तैयार स्टॉक (कप)')).toBeVisible()
     await readsInHindi(page, '07-plan-tomorrow')
     await closeSheet(page)
@@ -207,13 +222,15 @@ test('the owner app reads in Hindi: Today, coach, Shop, Grow tools, You, privacy
     await closeSheet(page)
   })
 
-  await test.step('purchase order', async () => {
-    const purchaseCard = page
-      .getByRole('button')
-      .filter({ has: page.getByText('खरीद पर्चियाँ', { exact: true }) })
-    await expect(purchaseCard).toHaveCount(1)
-    await purchaseCard.click()
-    await expect(page.getByRole('dialog')).toBeVisible()
+  await test.step('purchase order: Buy stock → My suppliers', async () => {
+    // Purchase orders now live in माल मँगाएँ (Buy stock) → मेरे सप्लायर (batch 4b).
+    await growCard(page, /^माल मँगाएँ/)
+    const suppliers = page
+      .getByRole('dialog')
+      .getByRole('button', { name: /^मेरे सप्लायर/ })
+      .first()
+    await suppliers.click()
+    await expect(suppliers).toHaveAttribute('aria-pressed', 'true')
     // The sandbox supplier's name comes from the imported SAP document (data, not interface copy).
     await readsInHindi(page, '09-purchase-order', ['SAP supplier'])
     await closeSheet(page)
@@ -267,6 +284,8 @@ test('the owner app reads in Hindi: Today, coach, Shop, Grow tools, You, privacy
   })
 })
 
+const WHITEFIELD = { lat: 12.9698, lng: 77.75 }
+
 test('a Hindi customer: front door, Ask, results, shop page, chat, passport', async ({
   page,
   browser,
@@ -275,8 +294,12 @@ test('a Hindi customer: front door, Ask, results, shop page, chat, passport', as
   test.setTimeout(180_000)
   await localOnly(page)
   await enter(page)
-  await seedShop(page)
+  // OB-168: pinned in Whitefield, apart from the Indiranagar and central Bengaluru points other
+  // tests share, so "Similar nearby" (3 km) never collects another test's shops.
+  await seedShop(page, false, undefined, WHITEFIELD)
   const id = new URL(await share(page)).pathname.split('/').pop()!
+  // Read just before each check: other tests' shops can be shared while this one runs.
+  const others = () => otherOwnersWords(page, WHITEFIELD, id)
   const context = await browser.newContext({
     baseURL,
     locale: 'hi-IN',
@@ -286,11 +309,22 @@ test('a Hindi customer: front door, Ask, results, shop page, chat, passport', as
   })
   const customer = await context.newPage()
   await localOnly(customer)
+  // Browses from Whitefield too, the shop's own cell: the default Indiranagar area holds the
+  // English-named tour story shops, and central Bengaluru the shops other tests pin there
+  // (OB-168), whose address text would name the passport's neighbourhood goal.
+  await customer.addInitScript(
+    (at) =>
+      localStorage.setItem(
+        'chalkboard.discover.filters',
+        JSON.stringify({ place: { ...at, label: 'व्हाइटफ़ील्ड' } }),
+      ),
+    WHITEFIELD,
+  )
   try {
     await customer.goto('/explore/')
     // Release 3's front door (#60) opens on the Ask, with no welcome step to continue past.
     await expect(customer.getByRole('heading', { name: 'आस-पास क्या खोज रहे हैं?' })).toBeVisible()
-    await readsInHindi(customer, '20-front-door')
+    await readsInHindi(customer, '20-front-door', await others())
 
     await customer.evaluate(() => localStorage.setItem('chalkboard.customer.journey', 'done'))
     await customer.goto('/explore/')
@@ -298,24 +332,24 @@ test('a Hindi customer: front door, Ask, results, shop page, chat, passport', as
     await customer.getByRole('search').getByRole('textbox').fill('पास में चाय')
     await customer.keyboard.press('Enter')
     await expect(customer.getByText(/^नमूना जवाब/).first()).toBeVisible({ timeout: 20_000 })
-    await readsInHindi(customer, '21-ask-results')
+    await readsInHindi(customer, '21-ask-results', await others())
 
     await customer.goto(`/explore/s/${id}`)
     await expect(
-      customer.getByRole('heading', { name: 'Courtyard Chai · Bengaluru' }),
+      customer.getByRole('heading', { name: 'Courtyard Chai · Bengaluru', level: 1 }),
     ).toBeVisible()
     await expect(customer.getByText('कैफ़े').first()).toBeVisible()
-    await expect(customer.getByText('₹18.00').first()).toBeVisible()
-    await readsInHindi(customer, '22-shop-page')
+    await expect(customer.getByText('₹18').first()).toBeVisible()
+    await readsInHindi(customer, '22-shop-page', await others())
 
     await customer.getByRole('button', { name: 'दुकान से बात करें' }).first().click()
     await expect(customer.getByRole('dialog')).toBeVisible()
-    await readsInHindi(customer, '23-chat')
+    await readsInHindi(customer, '23-chat', await others())
     await customer.keyboard.press('Escape')
 
     await customer.goto('/explore/passport')
     await expect(customer.getByText('आपका पहला स्टैंप बस एक क्यूआर दूर है')).toBeVisible()
-    await readsInHindi(customer, '24-passport')
+    await readsInHindi(customer, '24-passport', await others())
   } finally {
     await context.close()
   }

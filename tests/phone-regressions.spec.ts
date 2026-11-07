@@ -209,10 +209,8 @@ test('PHONE-2: every shop Add entry opens the full-screen new-shop flow (no dial
   page,
 }) => {
   await enter(page)
-  await page.getByRole('button', { name: 'New conversation', exact: true }).tap()
-  const actions = page.getByRole('dialog', { name: 'New conversation', exact: true })
-  await expect(actions).toBeVisible()
-  await actions.getByRole('button', { name: 'Add shop details', exact: true }).tap()
+  // First run: the start card's typed way in (simplify batch 5: no top-bar "+").
+  await page.getByRole('button', { name: 'Type your shop name', exact: true }).tap()
   await expect(page.getByRole('heading', { name: 'Let’s open your shop' })).toBeVisible()
   await expect(page.getByRole('dialog')).toHaveCount(0)
   await page.getByRole('button', { name: 'Cancel', exact: true }).tap()
@@ -240,15 +238,17 @@ test('PHONE-2: every shop Add entry opens the full-screen new-shop flow (no dial
   await expect(page.getByRole('heading', { name: 'Let’s open your shop' })).toBeVisible()
   await expect(page.getByRole('dialog')).toHaveCount(0)
   await page.getByRole('button', { name: 'Cancel', exact: true }).tap()
-  await page.getByRole('button', { name: 'Coach', exact: true }).tap()
-  await page.getByRole('button', { name: 'New conversation', exact: true }).tap()
-  await expect(actions).toBeVisible()
-  await actions.getByRole('button', { name: 'Add product', exact: true }).tap()
+  // Add product lives on Shop › Menu (the coach's ⋯ sheet is only for starting again).
+  await page.getByRole('button', { name: 'Shop', exact: true }).tap()
+  await page.getByRole('button', { name: /^Menu/ }).tap()
+  await page.getByRole('button', { name: 'Add product', exact: true }).tap()
   await expect(page.getByRole('dialog', { name: 'Add product' })).toBeVisible()
   await page.getByLabel('Product name').fill('Kopi')
   await page.getByLabel(/^Price/).fill('1.80')
   await page.getByRole('button', { name: 'Review', exact: true }).tap()
   await page.getByRole('button', { name: 'Confirm and save' }).tap()
+  await page.keyboard.press('Escape')
+  await page.getByRole('button', { name: 'Coach', exact: true }).tap()
   // Today's next setup step opens the details form.
   await page.getByTestId('today-day-one').getByRole('button', { name: 'Add', exact: true }).tap()
   await expect(page.getByRole('dialog', { name: 'Edit details' })).toBeVisible()
@@ -280,7 +280,7 @@ test('PHONE-3: the Google flow ends with official links and an honest waiting st
   await page.getByRole('button', { name: 'Grow', exact: true }).tap()
   await page.getByRole('button', { name: /^Get on Google/ }).tap()
   await page.getByRole('button', { name: 'Step 4 of 4: Google', exact: true }).tap()
-  await expect(page.getByText('Waiting for Google API access', { exact: true })).toBeVisible()
+  await expect(page.getByText('Waiting for Google’s permission', { exact: true })).toBeVisible()
   const maps = page.getByRole('link', { name: 'Find & claim on Maps', exact: true })
   await expect(maps).toHaveAttribute(
     'href',

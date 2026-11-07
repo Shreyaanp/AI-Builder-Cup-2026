@@ -1,10 +1,11 @@
-import { useState } from 'react'
 import { Box, Button, Chip, Stack, Typography, useTheme } from '@mui/material'
 import { ArrowUpRight, Send } from 'lucide-react'
 import { RichText } from '../../design/LazyRichText'
 import { enterRise, shape } from '../../design/theme'
 import { useLocale } from '../../state/hooks'
 import { NEEDS_TAP, type CoachAction } from './coachAction'
+import { LineAction } from './CollapsibleCard'
+import { sendPrepared, type ReplyState } from './chatCards'
 
 /**
  * Coach action copy. Kept in its own module so locales added elsewhere fall back to English
@@ -23,7 +24,20 @@ const en = {
   openToday: 'Open again today, by your usual hours.',
 }
 type Copy = typeof en
-const COPY: Record<string, Copy> = { en }
+/** Hindi: the coach's buttons name Hindi screens, so no English breadcrumb (OB-261). */
+const hi: Copy = {
+  open: (label: string) => `${label} खोलें`,
+  customerAsked: 'ग्राहक ने पूछा',
+  yourReply: 'आपका जवाब',
+  send: 'भेजें',
+  sent: 'भेज दिया',
+  notNow: 'अभी नहीं',
+  hint: 'आपके भेजें दबाने से पहले कुछ नहीं जाता।',
+  failed: 'भेजा नहीं जा सका। फिर कोशिश करें।',
+  closedToday: (day: string) => `आज के लिए बंद (${day})। कल से सामान्य समय।`,
+  openToday: 'आज फिर से खुला, आपके सामान्य समय पर।',
+}
+const COPY: Record<string, Copy> = { en, hi }
 
 function useActionCopy(): Copy {
   const locale = useLocale()
@@ -61,21 +75,24 @@ export function MenuLinkChip({ label, onOpen }: { label: string; onOpen: () => v
   )
 }
 
-/** A reply the coach prepared for a customer; the owner sends it with one tap. */
+/** A reply the coach prepared for a customer; the owner sends it with one tap. Its state lives
+ * with the chat (OB-249), so the folded line knows whether it still waits. */
 export function ReplyCard({
   action,
+  state,
+  onState,
   onSend,
 }: {
   action: CoachAction
+  state: ReplyState
+  onState: (state: ReplyState) => void
   onSend: (action: CoachAction) => Promise<boolean>
 }) {
   const roles = useTheme().material
   const c = useActionCopy()
-  const [state, setState] = useState<'ready' | 'sent' | 'dismissed' | 'failed'>('ready')
-  if (state === 'dismissed') return null
   const done = state === 'sent'
   return (
-    <Box component="li" sx={{ pl: { xs: 0, sm: 10 }, ...enterRise }}>
+    <Box sx={{ pl: { xs: 0, sm: 10 }, ...enterRise }}>
       <Box
         sx={{
           borderRadius: `${shape.xl}px`,
@@ -117,15 +134,11 @@ export function ReplyCard({
                 <Button
                   variant="contained"
                   startIcon={<Send size={18} />}
-                  onClick={async () => {
-                    // Optimistic: the card shows Sent at once and rolls back if sending fails.
-                    setState('sent')
-                    if (!(await onSend(action))) setState('failed')
-                  }}
+                  onClick={() => void sendPrepared(action, onSend, onState)}
                 >
                   {c.send}
                 </Button>
-                <Button onClick={() => setState('dismissed')}>{c.notNow}</Button>
+                <Button onClick={() => onState('dismissed')}>{c.notNow}</Button>
               </Stack>
             </>
           )}
@@ -133,6 +146,12 @@ export function ReplyCard({
       </Box>
     </Box>
   )
+}
+
+/** OB-249: a folded reply's Send, on its one-line summary. */
+export function ReplyLineAction({ onRun }: { onRun: () => Promise<unknown> }) {
+  const c = useActionCopy()
+  return <LineAction label={c.send} icon={<Send size={18} />} onRun={onRun} />
 }
 
 /** Review line for "closed today": the date it applies to, or reopening. */

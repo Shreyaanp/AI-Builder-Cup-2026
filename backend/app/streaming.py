@@ -38,11 +38,14 @@ ACTION_TOOLS = {
     "end_conversation",
     "make_my_icon",
     "use_photo_as_icon",
+    # An honest "can't do that yet" offers the screen where the owner can do it (OB-172).
+    "report_unsupported_request",
 }
 # Tools that prepare a sealed proposal for the review dialog.
 PROPOSAL_TOOLS = {
     "update_shop",
     "propose_business",
+    "update_shop_details",
     "propose_customer_facts",
     "propose_products",
     "request_registration",
@@ -319,11 +322,12 @@ class CoachRuntime:
         ui_language.set(language)
         timer = FirstOutput("text_agent")
         if merchant and merchant.uid.startswith("public-demo-"):
-            from .demo_coach import public_demo_reply
+            from .demo_coach import public_demo_turn
 
-            reply = public_demo_reply(merchant, text)
-            if reply:
-                yield StreamEvent(kind="reply", text=reply)
+            demo = await public_demo_turn(merchant, text)
+            if demo:
+                for event in demo:
+                    yield event
                 timer.mark("text_demo")
                 yield StreamEvent(kind="turn_complete", session_id=session_id)
                 return

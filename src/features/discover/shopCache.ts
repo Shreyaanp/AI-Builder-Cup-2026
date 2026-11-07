@@ -8,7 +8,8 @@ const cellKey = (lat: number, lng: number) =>
   `${Math.round(lat * 50) / 50},${Math.round(lng * 50) / 50}`
 
 const STOP = new Set(
-  "a an the i im i'm me my we want need looking for find some any near nearby around here please today now open cheap cheapest budget good best place places shop shops store under below less than with without and or to of in at on get buy something".split(
+  // Same words as the server's STOP list (backend/app/discover_ask.py).
+  "a an the i im i'm me my we want need looking for find some any near nearby around here please today now open cheap cheapest budget good best place places shop shops store under below less than with without and or to of in at on get buy something where what which who how can could is are there do does sell sells have has rupee rupees rs inr dollar dollars".split(
     ' ',
   ),
 )
@@ -74,11 +75,14 @@ export async function prefetchAreaShops(lat: number, lng: number): Promise<AskPi
 }
 
 function tokenize(text: string): string[] {
-  return text
-    .toLowerCase()
-    .replace(/[^\p{L}\p{N}\s]/gu, ' ')
-    .split(/\s+/)
-    .filter((w) => w.length > 1 && !STOP.has(w))
+  return (
+    text
+      .toLowerCase()
+      .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+      .split(/\s+/)
+      // A number is a budget ("under 30"), never a word to match.
+      .filter((w) => w.length > 1 && !STOP.has(w) && !/^\d+$/.test(w))
+  )
 }
 
 export function localRankShops(q: string, lat: number, lng: number): AskPick[] {

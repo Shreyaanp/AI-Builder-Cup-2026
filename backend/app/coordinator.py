@@ -8,6 +8,7 @@ the tool returns `ask_owner` and the model must ask instead of guessing again.
 """
 
 import re
+import time
 from contextvars import ContextVar
 from dataclasses import dataclass, field
 from datetime import date
@@ -30,9 +31,11 @@ from .merchant import (
     ProposalRequest,
 )
 from .money import to_major, to_minor
+from .passport import local_now
 from .product_categories import suggest_category
 from .product_units import UNITS, normalize_unit
 from .recap import recap_facts
+from .region import shop_zone
 from .search_engine import SearchEngine
 from .sourcing import OrderItem, SupplierGenerator
 from .vendor_profile import (
@@ -58,6 +61,8 @@ ASK_ORDER = (
     "preorders",
     "busy_hours",
 )
+# A shop's map pin; cleared when the coach prepares a new location (see discover.prepare_pin).
+PIN_FIELDS = ("lat", "lng", "place_id", "pin_label", "pin_source", "pin_accuracy_m")
 # A price moving by more than this factor is flagged so the model confirms with the owner.
 SUSPICIOUS_PRICE_RATIO = 2.0
 
@@ -87,6 +92,8 @@ class MerchantContext:
     ended: bool = False
     # A Live voice conversation: tools never hold up the spoken reply (first audio).
     spoken: bool = False
+    # The app's maps service (discover.MapsService): pins the place a new shop's owner typed.
+    maps: Any = None
 
 
 current: ContextVar[MerchantContext | None] = ContextVar("merchant_context", default=None)
@@ -457,18 +464,27 @@ def remember_note(note: str) -> dict[str, Any]:
 
 
 def get_insights() -> dict[str, Any]:
-    """How the shop is doing this week, from its own data: imported sales (top sellers, slow
-    movers, revenue vs last week), sold-out count, customer questions and unanswered messages,
-    and when the menu was last confirmed. Call it when the owner asks how business is going or
-    what to do next, then give 2-3 short, concrete suggestions grounded only in these numbers.
-    If has_sales_data is false, suggest importing a POS or Excel sales export."""
+    """How the shop is doing over the last 7 days, from its own data: imported sales (top
+    sellers, slow movers, revenue vs the 7 days before), sold-out count, customer questions and
+    unanswered messages, and when the menu was last confirmed. Call it when the owner asks how
+    business is going or what to do next, then give 2-3 short, concrete suggestions grounded only
+    in these numbers. For "how did today go?" use `today`: today's saved total and, only when
+    it is there, the same weekday it compares with (never compare with any other day). `today`
+    is null until today's sales are saved; then suggest closing the day.
+    If has_sales_data is false, suggest importing a billing app or Excel sales file."""
     ctx = current.get()
     if not ctx or not ctx.business_id:
         return {"status": "needs_business"}
     signals = ctx.store.recap_signals(ctx.uid, ctx.business_id)
     sales = ctx.store.sales_history(ctx.uid, ctx.business_id)
-    year, week, _ = date.today().isocalendar()
-    facts = recap_facts(f"{year}-W{week:02d}", sales, signals)
+    shop = (ctx.store.context(ctx.uid, ctx.business_id) or {}).get("business") or {}
+    today = local_now(shop_zone(shop.get("fields")), time.time()).date()
+    year, week, _ = today.isocalendar()
+    # The last 7 days, not the calendar week, so early in the week it is never empty.
+    facts = recap_facts(f"{year}-W{week:02d}", sales, signals, through=today)
+    # "week" would read as the calendar week to the model; this is a rolling window.
+    facts.pop("week", None)
+    facts["period"] = "last_7_days"
     currency = facts["currency"]
     for key in ("revenue", "previous_revenue", "revenue_change"):
         facts[key] = to_major(int(facts[key]), currency)
@@ -499,8 +515,24 @@ def get_insights() -> dict[str, Any]:
         {"date": day, "revenue": to_major(total, currency)}
         for day, total in sorted(by_day.items())[-14:]
     ]
+    from .close_reward import close_reward
+
+    closed = close_reward(sales, today, currency)
     return {
         **facts,
+        "today": {
+            "total": to_major(closed.total, currency) if closed.total is not None else None,
+            "items": closed.items,
+            "same_weekday": {
+                "date": closed.same_weekday.date.isoformat(),
+                "total": to_major(closed.same_weekday.total, currency),
+                "difference": to_major(closed.same_weekday.difference, currency),
+            }
+            if closed.same_weekday
+            else None,
+        }
+        if closed
+        else None,
         "daily_revenue": daily,
         "has_sales_data": bool(sales),
         "unanswered_customer_messages": len(waiting),
@@ -616,6 +648,12 @@ def _propose_shop(
         }
         # Saved prices are minor units of the saved currency, so it never changes on edit.
         given["currency"] = shop_currency(existing)
+        if location.strip() and location.strip() != existing["fields"].get("location"):
+            # OB-172 (#527): a new place never keeps the old pin. The review card finds the new
+            # pin (geocode, the owner's consent) exactly like the owner's own edit.
+            for key in PIN_FIELDS:
+                given.pop(key, None)
+            given["pin_demo"] = False
     else:
         draft = ctx.new_shop_draft.business if ctx.new_shop_draft else None
         if ctx.new_shop and draft:
@@ -803,14 +841,13 @@ def propose_business(
     """Prepare the shop's basic details (new shop, or edits to the active shop) for the owner to
     review. Nothing is saved until the owner confirms. Leave a field empty if the owner did not
     say it; for an existing shop pass name="" and only what changed. To rename the shop pass the
-    new name (1-80 characters, "rename my shop to X"). currency is the ISO 4217
-    code (SGD, JPY, MYR…) for a new shop, only when the owner states or clearly implies it.
-    weekly_hours: one record per stated weekday (day: mon/tue/wed/thu/fri/sat/sun,
-    closed: boolean, open/close: HH:MM). Overnight closing belongs to the opening day.
-    Leave it unset to preserve saved hours; an empty list returns to free-text hours.
-    profile: classify from the owner's words, menu or photos, using kind and its typed block.
-    Never infer halal certification. Set food.halal_relevant only for a known relevant region
-    and food.serves_meat only with evidence. Unknown attributes stay unset. Owner reviews it."""
+    new name (1-80 characters). currency: ISO 4217 code (SGD, JPY, MYR…) for a new shop, only
+    when the owner states or clearly implies it. weekly_hours: one record per stated weekday
+    (day: mon..sun, closed, open/close HH:MM); overnight closing belongs to the opening day;
+    unset keeps saved hours, an empty list returns to free-text hours. profile: classify from
+    the owner's words, menu or photos (kind and its typed block). Never infer halal
+    certification: food.halal_relevant only for a known relevant region, food.serves_meat only
+    with evidence. Unknown attributes stay unset."""
     return _propose_shop(
         name=name,
         category=category,
@@ -847,17 +884,15 @@ def propose_customer_facts(
 ) -> dict[str, Any]:
     """Prepare facts customers ask about for the owner to review, only as the owner states
     them; pass just the facts that changed. Private owner goals (never shown to customers):
-    focus is more_customers, less_waste, save_time or other (focus_note: their words, e.g.
-    "more office lunch orders"); regulars: who comes back, in their words; skip: the keys of
-    skippable plan questions (focus, busy_hours, regulars) the owner chose not to answer.
-    halal: yes, no, muslim_owned or not_stated.
-    vegetarian_options, locally_made (made in-house or by local makers), preorders:
-    true/false. delivery: any service name, max 40 characters; use none for no delivery,
-    own for the shop's delivery. Existing grab/foodpanda keys work
-    (delivery_note up to 80 characters, e.g. "within 3 km"). preorder_lead_time e.g. "1 day
-    ahead". payment_methods: up to 8 names, each max 40 characters, exactly as the owner says
-    (e.g. UPI, PayPay, GCash, card, cash). Known keys remain compatible. busy_hours e.g.
-    "12:00-13:30". custom_facts: answers to get_question_plan questions (key, label, value)."""
+    focus is more_customers, less_waste, save_time or other (focus_note: their words);
+    regulars: who comes back, in their words; skip: keys of plan questions (focus, busy_hours,
+    regulars) the owner chose not to answer. halal: yes, no, muslim_owned or not_stated.
+    vegetarian_options, locally_made, preorders: true/false. delivery: any service name, max 40
+    characters; none for no delivery, own for the shop's delivery (delivery_note up to 80
+    characters, e.g. "within 3 km"). preorder_lead_time e.g. "1 day ahead". payment_methods: up
+    to 8 names, each max 40 characters, exactly as the owner says (UPI, PayPay, GCash, card).
+    busy_hours e.g. "12:00-13:30". custom_facts: answers to get_question_plan questions (key,
+    label, value)."""
     ctx = current.get()
     _start_new_shop_draft()
     if not ctx or (
@@ -1189,9 +1224,17 @@ def prepare_order(
         else None
     )
     now = clock.time()
-    order = sourcing.new_order(shop, pin, items, note, delivery, distance, now)
+    from .agent import ui_language
+
+    order = sourcing.new_order(shop, pin, items, note, delivery, distance, now, ui_language.get())
     if replaces_order_id:
         order["replaces"] = replaces_order_id
+        # The old draft is superseded at once (OB-222): only the new card can be sent.
+        for old in ctx.store.supplier_orders(ctx.uid, ctx.business_id):
+            if old["id"] == replaces_order_id and old["status"] == "draft":
+                old["status"] = "replaced"
+                old["replaced_by"] = order["id"]
+                sourcing.save(ctx.store, ctx.uid, ctx.business_id, old, now)
     ctx.store.save_supplier_order(ctx.uid, ctx.business_id, order)
     missing = [line["name"] for line in order["lines"] if line["price"] is None]
     return {

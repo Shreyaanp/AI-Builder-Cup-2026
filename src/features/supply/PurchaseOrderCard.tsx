@@ -20,18 +20,26 @@ import {
   FlaskConical,
   PackageCheck,
   Receipt,
+  RotateCcw,
   Send,
   Truck,
 } from 'lucide-react'
 import { useLocale } from '../../state/hooks'
 import { enterRise, fieldFade, shape } from '../../design/theme'
 import { chalkWrite, stampThud } from '../../design/chalkMotion'
-import { formatPrice } from '../v1/format'
+import { formatShopPrice } from '../v1/format'
+import { productName } from '../../i18n/productNames'
 import { Sheet } from '../v1/Sheet'
+import { useWorkspace } from '../v1/workspaceContext'
+import { SupplierTalk } from './SupplierTalk'
+import { LineAction } from '../v1/CollapsibleCard'
+import { Code } from './Code'
+import { ConfirmUndo } from './ConfirmUndo'
+import { useOrderChangeCopy } from './orderChangeCopy'
 import { useShowcaseCopy } from './showcaseCopy'
-import { orderTotal, poNumber } from './orderFormat'
+import { agreedQuantity, orderLabel, orderTotal } from './orderFormat'
 import { useSupplyCopy, type SupplyCopy } from './copy'
-import { dayLabel, usePoActions, type SimVariant } from './supplyData'
+import { dayLabel, useOrderUnit, usePoActions, type SimVariant } from './supplyData'
 import type { DocFlag, DocKind, PurchaseOrder, RuleCheck, SupplyDocument } from './types'
 
 const STEPS: DocKind[] = ['ORDERS', 'ORDRSP', 'DESADV', 'INVOIC']
@@ -51,11 +59,15 @@ const NEXT: Partial<Record<PurchaseOrder['status'], DocKind>> = {
 
 function useFormat(order: PurchaseOrder) {
   const locale = useLocale()
+  const unit = useOrderUnit()
   const number = new Intl.NumberFormat(locale, { maximumFractionDigits: 2 })
   return {
     locale,
+    // Item names and units in the owner's language (चाय पत्ती, किलो), as stored otherwise.
+    item: (name: string) => productName(name, locale),
+    unit,
     money: (minor: number | null | undefined) =>
-      minor == null ? '–' : formatPrice(minor, order.currency, locale),
+      minor == null ? '–' : formatShopPrice(minor, order.currency, locale),
     qty: (value: number | null | undefined) => number.format(value ?? 0),
     day: (iso: string) => dayLabel(iso, locale),
   }
@@ -64,7 +76,9 @@ function useFormat(order: PurchaseOrder) {
 /** The order in one plain line: "20 kg Atta · deliver Fri 17 Oct · ₹1,240 · 7-day credit". */
 function headline(order: PurchaseOrder, s: SupplyCopy, f: ReturnType<typeof useFormat>) {
   const [first, ...rest] = order.lines
-  const what = first ? `${f.qty(first.quantity)} ${first.unit} ${first.item}` : ''
+  const what = first
+    ? `${f.qty(agreedQuantity(order, first))} ${f.unit(first.unit)} ${f.item(first.item)}`
+    : ''
   return [
     what + (rest.length ? ` +${rest.length}` : ''),
     order.delivery ? s.deliver(f.day(order.delivery)) : '',
@@ -79,11 +93,11 @@ function why(order: PurchaseOrder, s: SupplyCopy, f: ReturnType<typeof useFormat
   const r = order.reason
   const parts = [
     r.runs_out
-      ? s.left(f.qty(r.stock), r.unit, f.day(r.runs_out))
+      ? s.left(f.qty(r.stock), f.unit(r.unit), f.day(r.runs_out))
       : r.method === 'none'
         ? s.noForecast
         : '',
-    r.tier_min ? s.tier(f.qty(r.tier_min), order.lines[0]?.unit ?? r.unit) : '',
+    r.tier_min ? s.tier(f.qty(r.tier_min), f.unit(order.lines[0]?.unit ?? r.unit)) : '',
     order.delivery ? s.arrives(f.day(order.delivery)) : '',
     r.headroom != null && r.headroom > 0 ? s.creditLeft(f.money(r.headroom)) : '',
   ]
@@ -144,6 +158,9 @@ export function PurchaseOrderCard({
   )
   const actions = usePoActions(onChange)
   const [busy, setBusy] = useState<string | null>(null)
+  const [justSent, setJustSent] = useState(false)
+  const [cancelling, setCancelling] = useState(false)
+  const c = useOrderChangeCopy()
   const draft = order.status === 'draft'
   const blocking = order.checks.filter((check) => check.blocking)
   const reasons = order.checks.filter((check) => !check.blocking)
@@ -156,6 +173,7 @@ export function PurchaseOrderCard({
       setBusy(null)
     }
   }
+  const { demo } = useWorkspace()
   const spinner = (key: string, icon: ReactNode) =>
     busy === key ? <CircularProgress size={16} color="inherit" /> : icon
   if (preview === 'timeline')
@@ -172,7 +190,7 @@ export function PurchaseOrderCard({
   return (
     <Box
       component="article"
-      aria-label={s.po(poNumber(order.number))}
+      aria-label={orderLabel(order, s.orderTitle, f.item)}
       sx={{
         borderRadius: `${shape.xl}px`,
         bgcolor: draft ? roles.surfaceContainerLow : roles.surfaceContainer,
@@ -190,9 +208,9 @@ export function PurchaseOrderCard({
         <Typography
           variant="labelLarge"
           color="text.secondary"
-          sx={{ flex: 1, minWidth: 'max-content' }}
+          sx={{ flex: '1 1 160px', minWidth: 0, overflowWrap: 'anywhere' }}
         >
-          {s.po(poNumber(order.number))}
+          {orderLabel(order, s.orderTitle, f.item)}
         </Typography>
         {order.simulated && (
           <Chip
@@ -232,6 +250,7 @@ export function PurchaseOrderCard({
           {order.supplier.name}
         </Typography>
         <Typography
+          data-testid="order-headline"
           variant="titleMedium"
           component="p"
           sx={{ mt: 1, overflowWrap: 'anywhere', ...chalkWrite }}
@@ -247,7 +266,7 @@ export function PurchaseOrderCard({
         {draft && (
           <Typography variant="bodyMedium" color="text.secondary" sx={{ mt: 1 }}>
             {order.reason.moq != null &&
-              `${s.moq}: ${f.qty(order.reason.moq)} ${order.reason.unit} · `}
+              `${s.moq}: ${f.qty(order.reason.moq)} ${f.unit(order.reason.unit)} · `}
             {why(order, s, f)}
           </Typography>
         )}
@@ -255,7 +274,8 @@ export function PurchaseOrderCard({
           <Box component="ul" sx={{ m: 0, mt: 2, pl: 5, display: 'grid', gap: 0.5 }}>
             {order.lines.map((line) => (
               <Typography component="li" variant="bodyMedium" key={line.line}>
-                {f.qty(line.quantity)} {line.unit} {line.item} · {f.money(line.total)}
+                {f.qty(agreedQuantity(order, line))} {f.unit(line.unit)} {f.item(line.item)} ·{' '}
+                {f.money(line.total)}
               </Typography>
             ))}
           </Box>
@@ -296,7 +316,9 @@ export function PurchaseOrderCard({
                         )
                       : s.fixQuantity(
                           f.qty(Number(check.fix.value)),
-                          order.lines.find((line) => line.line === check.fix?.line)?.unit ?? '',
+                          f.unit(
+                            order.lines.find((line) => line.line === check.fix?.line)?.unit ?? '',
+                          ),
                         )}
                 </Button>
               )}
@@ -332,7 +354,12 @@ export function PurchaseOrderCard({
           <Button
             variant="contained"
             disabled={busy !== null || order.blocked}
-            onClick={() => void act('approve', () => actions.approve(order))}
+            onClick={() =>
+              void act('approve', async () => {
+                await actions.approve(order)
+                setJustSent(true)
+              })
+            }
             startIcon={spinner('approve', <Send size={18} />)}
             sx={{ minHeight: 48, px: 6 }}
           >
@@ -341,10 +368,15 @@ export function PurchaseOrderCard({
         </Stack>
       ) : order.status === 'cancelled' ? (
         <Typography variant="bodyMedium" color="text.secondary">
-          {order.sent ? s.status.cancelled : s.discarded}
+          {order.sent ? c.poCancelled(order.supplier.name, !!order.simulated) : s.discarded}
         </Typography>
       ) : (
         <>
+          {justSent && (
+            <Typography role="status" variant="bodyMedium" color="text.secondary">
+              {s.justSent(order.supplier.name, !!order.simulated)}
+            </Typography>
+          )}
           {order.auto_sent && (
             <Typography variant="bodyMedium" color="text.secondary">
               {s.autoSent}
@@ -383,11 +415,56 @@ export function PurchaseOrderCard({
               </Box>
             )}
           </Sheet>
+          {demo && order.simulated && (
+            <SupplierTalk order={order} refresh={actions.refresh} write={actions.talk} />
+          )}
           <Timeline order={order} busy={busy} act={act} actions={actions} />
           <NextStep order={order} busy={busy} act={act} actions={actions} />
+          {/* A sent order can still be cancelled until the supplier confirms it (OB-225). */}
+          {(order.status === 'sent' || order.status === 'changed') &&
+            (cancelling ? (
+              <ConfirmUndo
+                ask={c.poCancelAsk(order.supplier.name, !!order.simulated)}
+                confirm={c.cancelOrder}
+                counting={c.cancellingIn}
+                danger
+                onKeep={() => setCancelling(false)}
+                onRun={() => act('cancel', () => actions.cancel(order))}
+              />
+            ) : (
+              <Button
+                color="error"
+                disabled={busy !== null}
+                onClick={() => setCancelling(true)}
+                sx={{ alignSelf: 'flex-start', minHeight: 48 }}
+              >
+                {c.cancelOrder}
+              </Button>
+            ))}
         </>
       )}
     </Box>
+  )
+}
+
+/** OB-249: a folded draft's "Approve and send", on its one-line summary in the chat. */
+export function PoLineAction({
+  order,
+  onChange,
+}: {
+  order: PurchaseOrder
+  onChange: (order: PurchaseOrder) => void
+}) {
+  const s = useSupplyCopy()
+  const actions = usePoActions(onChange)
+  if (order.status !== 'draft') return null
+  return (
+    <LineAction
+      label={s.approve}
+      icon={<Send size={18} />}
+      disabled={order.blocked}
+      onRun={() => actions.approve(order)}
+    />
   )
 }
 
@@ -560,7 +637,7 @@ function DocumentDetail({
               {warn ? <CircleAlert size={16} /> : <ArrowLeftRight size={16} />}
             </Box>
             <span>
-              {line ? `${line.item}: ` : ''}
+              {line ? `${f.item(line.item)}: ` : ''}
               {text}
             </span>
           </Typography>
@@ -669,38 +746,6 @@ function DocumentDetail({
   )
 }
 
-export function Code({ label, text }: { label: string; text: string }) {
-  const roles = useTheme().material
-  return (
-    <Box sx={{ minWidth: 0 }}>
-      <Typography variant="labelMedium" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
-        {label}
-      </Typography>
-      <Box
-        component="pre"
-        tabIndex={0}
-        aria-label={label}
-        sx={{
-          m: 0,
-          p: 2,
-          maxHeight: 260,
-          overflow: 'auto',
-          borderRadius: `${shape.sm}px`,
-          bgcolor: roles.surfaceContainerHighest,
-          color: roles.onSurface,
-          fontFamily: '"Roboto Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
-          fontSize: 12,
-          lineHeight: 1.5,
-          whiteSpace: 'pre',
-          '&:focus-visible': { outline: `2px solid ${roles.primary}`, outlineOffset: 2 },
-        }}
-      >
-        {text}
-      </Box>
-    </Box>
-  )
-}
-
 function FlagRow({
   order,
   flag,
@@ -721,12 +766,12 @@ function FlagRow({
       : flag.reason === 'date'
         ? f.day(value)
         : flag.reason === 'quantity'
-          ? `${f.qty(Number(value))} ${line?.unit ?? ''}`.trim()
+          ? `${f.qty(Number(value))} ${f.unit(line?.unit ?? '')}`.trim()
           : value
   return (
     <Box>
       <Typography variant="bodyMedium" sx={{ overflowWrap: 'anywhere' }}>
-        {line ? `${line.item} · ` : ''}
+        {line ? `${f.item(line.item)} · ` : ''}
         {s.flagQuestion(s.flagReason[flag.reason], show(flag.value))}
       </Typography>
       <Stack direction="row" sx={{ mt: 1.5, flexWrap: 'wrap', gap: 1.5 }}>
@@ -762,6 +807,7 @@ function NextStep({
   const showcase = useShowcaseCopy()
   const f = useFormat(order)
   const roles = useTheme().material
+  const { demo } = useWorkspace()
   const [paste, setPaste] = useState(false)
   const [text, setText] = useState('')
   const flags = order.open_flags ?? 0
@@ -788,17 +834,16 @@ function NextStep({
     <Stack spacing={3}>
       {(order.backorders ?? []).map((item, index) => (
         <Typography key={index} variant="bodyMedium" color="text.secondary">
-          {s.backorder(f.qty(item.quantity), item.unit, item.item, f.day(item.date))}
+          {s.backorder(
+            f.qty(item.quantity),
+            f.unit(item.unit),
+            f.item(item.item),
+            f.day(item.date),
+          )}
         </Typography>
       ))}
       {order.status === 'changed' && (
         <Stack direction="row" spacing={2} sx={{ justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-          <Button
-            disabled={busy !== null}
-            onClick={() => void act('cancel', () => actions.cancel(order))}
-          >
-            {s.cancelOrder}
-          </Button>
           <Button
             variant="contained"
             disabled={busy !== null || flags > 0}
@@ -849,6 +894,17 @@ function NextStep({
           {s.closed}
         </Typography>
       )}
+      {order.received && (order.status === 'closed' || order.status === 'invoiced') && (
+        <Button
+          variant="outlined"
+          disabled={busy !== null}
+          onClick={() => void act('again', () => actions.again(order))}
+          startIcon={icon('again', <RotateCcw size={18} />)}
+          sx={{ alignSelf: 'flex-start', minHeight: 48 }}
+        >
+          {s.orderAgain}
+        </Button>
+      )}
       {waitingFor && !(order.status === 'received' && invoiced) && (
         <Box
           sx={{
@@ -857,7 +913,8 @@ function NextStep({
             border: `1px dashed ${roles.outline}`,
           }}
         >
-          {order.simulated && sim.length > 0 && (
+          {/* The public demo's supplier answers by itself (SupplierTalk). */}
+          {order.simulated && !demo && sim.length > 0 && (
             <>
               <Button
                 variant="contained"

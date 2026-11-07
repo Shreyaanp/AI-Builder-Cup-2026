@@ -418,6 +418,67 @@
         }
       }
     },
+    "/api/v1/businesses/{business_id}/inventory/{product_id}/source": {
+      "post": {
+        "summary": "Product Source",
+        "description": "The owner's one tap, \"I make it\" or \"I buy it\": only bought stock is ever reordered, and\nthe question is never asked again for this item (OB-239). No AI involved.",
+        "operationId": "product_source_api_v1_businesses__business_id__inventory__product_id__source_post",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          },
+          {
+            "name": "product_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Product Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SourceRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Product Source Api V1 Businesses  Business Id  Inventory  Product Id  Source Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/businesses/{business_id}/share": {
       "post": {
         "summary": "Share",
@@ -856,7 +917,7 @@
     "/api/v1/businesses/{business_id}/gallery": {
       "post": {
         "summary": "Add Gallery Photo",
-        "description": "An explicit owner action (\"Add photo\"), like the sold-out switch: no AI, no proposal.\nThe photo is re-encoded (metadata stripped) and safety-checked before it is kept.",
+        "description": "An explicit owner action (\"Add photo\"), like the sold-out switch: no AI, no proposal.\nThe photo is re-encoded (metadata stripped) and safety-checked before it is kept. `kind`\n(shop front, inside, menu, product, other) is what the Photos sheet groups by.",
         "operationId": "add_gallery_photo_api_v1_businesses__business_id__gallery_post",
         "parameters": [
           {
@@ -866,6 +927,16 @@
             "schema": {
               "type": "string",
               "title": "Business Id"
+            }
+          },
+          {
+            "name": "kind",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "other",
+              "title": "Kind"
             }
           }
         ],
@@ -928,6 +999,118 @@
                   "type": "object",
                   "additionalProperties": true,
                   "title": "Response Remove Gallery Photo Api V1 Businesses  Business Id  Gallery  Photo Id  Delete"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/businesses/{business_id}/gallery/{photo_id}/cover": {
+      "post": {
+        "summary": "Make Cover Photo",
+        "description": "The first gallery photo is the one customers see on the shop page and in search.",
+        "operationId": "make_cover_photo_api_v1_businesses__business_id__gallery__photo_id__cover_post",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          },
+          {
+            "name": "photo_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Photo Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Make Cover Photo Api V1 Businesses  Business Id  Gallery  Photo Id  Cover Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/businesses/{business_id}/gallery/{photo_id}/kind": {
+      "post": {
+        "summary": "Move Gallery Photo",
+        "description": "Move a photo to another group (shop front, inside, menu, product, other). Owner-only.",
+        "operationId": "move_gallery_photo_api_v1_businesses__business_id__gallery__photo_id__kind_post",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          },
+          {
+            "name": "photo_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Photo Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PhotoKind"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Move Gallery Photo Api V1 Businesses  Business Id  Gallery  Photo Id  Kind Post"
                 }
               }
             }
@@ -2984,6 +3167,55 @@
         }
       }
     },
+    "/api/v1/businesses/{business_id}/inquiries/{inquiry_id}/replies": {
+      "get": {
+        "summary": "Reply Suggestions",
+        "description": "One-tap reply drafts for the customer's latest words (OB-303); never sent from here.",
+        "operationId": "reply_suggestions_api_v1_businesses__business_id__inquiries__inquiry_id__replies_get",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          },
+          {
+            "name": "inquiry_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Inquiry Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReplySuggestions"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/public/shops/{business_id}/inquiries/{inquiry_id}/messages/{message_id}/translation": {
       "post": {
         "summary": "Customer Translation",
@@ -3293,6 +3525,27 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Me"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/customer/data": {
+      "delete": {
+        "summary": "Erase My Data",
+        "description": "OB-96 \"Delete my data\": chats (and the shops' copies), passport, tips, follows,\npreferences, searches and the profile. Only this customer's; Try again repeats every step.",
+        "operationId": "erase_my_data_api_v1_customer_data_delete",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Erase My Data Api V1 Customer Data Delete"
                 }
               }
             }
@@ -4080,6 +4333,48 @@
                 }
               ],
               "title": "Lng"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlaceMatch"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/places/pin": {
+      "get": {
+        "summary": "Suggest Owner Pin",
+        "description": "Suggest a country-biased point; the owner must confirm it before it is saved.",
+        "operationId": "suggest_owner_pin_api_v1_places_pin_get",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 300,
+              "title": "Q"
             }
           }
         ],
@@ -6285,6 +6580,287 @@
         }
       }
     },
+    "/api/v1/businesses/{business_id}/day/{day}/reward": {
+      "get": {
+        "tags": [
+          "today"
+        ],
+        "summary": "Day Reward",
+        "operationId": "day_reward_api_v1_businesses__business_id__day__day__reward_get",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          },
+          {
+            "name": "day",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "title": "Day"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/CloseReward"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Day Reward Api V1 Businesses  Business Id  Day  Day  Reward Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/businesses/{business_id}/habit": {
+      "post": {
+        "tags": [
+          "today"
+        ],
+        "summary": "Count Habit",
+        "operationId": "count_habit_api_v1_businesses__business_id__habit_post",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HabitEvents"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/businesses/{business_id}/promise": {
+      "post": {
+        "tags": [
+          "today"
+        ],
+        "summary": "New Promise",
+        "operationId": "new_promise_api_v1_businesses__business_id__promise_post",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewPromise"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Promise"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "today"
+        ],
+        "summary": "Read Promise",
+        "description": "The open promise for a morning: this one by default, or a given day (tonight's for\ntomorrow, so the close screen and tests can read it back).",
+        "operationId": "read_promise_api_v1_businesses__business_id__promise_get",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          },
+          {
+            "name": "day",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Day"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/Promise"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Read Promise Api V1 Businesses  Business Id  Promise Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/businesses/{business_id}/promise/{day}/{state}": {
+      "post": {
+        "tags": [
+          "today"
+        ],
+        "summary": "Answer Promise",
+        "operationId": "answer_promise_api_v1_businesses__business_id__promise__day___state__post",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          },
+          {
+            "name": "day",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "title": "Day"
+            }
+          },
+          {
+            "name": "state",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "enum": [
+                "done",
+                "skipped"
+              ],
+              "type": "string",
+              "title": "State"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/businesses/{business_id}/analytics": {
       "get": {
         "summary": "Shop Analytics",
@@ -6885,6 +7461,128 @@
                   "type": "object",
                   "additionalProperties": true,
                   "title": "Response Discard Order Api V1 Businesses  Business Id  Orders  Order Id  Discard Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/businesses/{business_id}/orders/{order_id}/cancel": {
+      "post": {
+        "summary": "Cancel Order",
+        "description": "Cancel a sent order: the supplier gets the cancellation at once.",
+        "operationId": "cancel_order_api_v1_businesses__business_id__orders__order_id__cancel_post",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          },
+          {
+            "name": "order_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Order Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrderVersion"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Cancel Order Api V1 Businesses  Business Id  Orders  Order Id  Cancel Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/businesses/{business_id}/orders/{order_id}/change": {
+      "post": {
+        "summary": "Change Order",
+        "description": "New quantities on a sent order: the supplier is told what changed.",
+        "operationId": "change_order_api_v1_businesses__business_id__orders__order_id__change_post",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          },
+          {
+            "name": "order_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Order Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrderChange"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Change Order Api V1 Businesses  Business Id  Orders  Order Id  Change Post"
                 }
               }
             }
@@ -7563,6 +8261,117 @@
                   "type": "object",
                   "additionalProperties": true,
                   "title": "Response Cancel Order Api V1 Businesses  Business Id  Supply Orders  Order Id  Cancel Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/businesses/{business_id}/supply/orders/{order_id}/again": {
+      "post": {
+        "summary": "Order Again",
+        "operationId": "order_again_api_v1_businesses__business_id__supply_orders__order_id__again_post",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          },
+          {
+            "name": "order_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Order Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Order Again Api V1 Businesses  Business Id  Supply Orders  Order Id  Again Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/businesses/{business_id}/supply/orders/{order_id}/talk": {
+      "post": {
+        "summary": "Talk",
+        "description": "Public demo only: a message to the scripted supplier. Nothing is sent to anyone.",
+        "operationId": "talk_api_v1_businesses__business_id__supply_orders__order_id__talk_post",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          },
+          {
+            "name": "order_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Order Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TalkBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Talk Api V1 Businesses  Business Id  Supply Orders  Order Id  Talk Post"
                 }
               }
             }
@@ -9941,7 +10750,7 @@
           },
           "shipped": {
             "items": {
-              "$ref": "#/components/schemas/LineQuantity"
+              "$ref": "#/components/schemas/app__supply_routes__LineQuantity"
             },
             "type": "array",
             "maxItems": 60,
@@ -10860,6 +11669,62 @@
         ],
         "title": "ChatSummary"
       },
+      "CloseReward": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date",
+            "title": "Date"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency"
+          },
+          "total": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total"
+          },
+          "items": {
+            "type": "number",
+            "title": "Items"
+          },
+          "same_weekday": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SameWeekday"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "forecast": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ForecastCheck"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "date",
+          "currency",
+          "total",
+          "items"
+        ],
+        "title": "CloseReward"
+      },
       "CoachLine": {
         "properties": {
           "kind": {
@@ -10981,6 +11846,18 @@
               }
             ],
             "title": "Session Id"
+          },
+          "turn_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Turn Id"
           },
           "business_id": {
             "anyOf": [
@@ -11345,6 +12222,10 @@
             "type": "integer",
             "title": "You"
           },
+          "helped": {
+            "type": "boolean",
+            "title": "Helped"
+          },
           "helpers": {
             "type": "integer",
             "title": "Helpers"
@@ -11376,6 +12257,7 @@
           "total",
           "demo_visits",
           "you",
+          "helped",
           "helpers",
           "reached",
           "claimed",
@@ -12596,6 +13478,34 @@
         ],
         "title": "Forecast"
       },
+      "ForecastCheck": {
+        "properties": {
+          "item": {
+            "type": "string",
+            "title": "Item"
+          },
+          "forecast": {
+            "type": "integer",
+            "title": "Forecast"
+          },
+          "sold": {
+            "type": "number",
+            "title": "Sold"
+          },
+          "unit": {
+            "type": "string",
+            "title": "Unit"
+          }
+        },
+        "type": "object",
+        "required": [
+          "item",
+          "forecast",
+          "sold",
+          "unit"
+        ],
+        "title": "ForecastCheck"
+      },
       "FreezeInput": {
         "properties": {
           "week": {
@@ -12740,6 +13650,72 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "HabitEvent": {
+        "properties": {
+          "event": {
+            "type": "string",
+            "enum": [
+              "opened",
+              "prompt_shown",
+              "action_done",
+              "closed",
+              "push_shown",
+              "push_opened",
+              "promise_set",
+              "promise_done"
+            ],
+            "title": "Event"
+          },
+          "kind": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 20
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kind"
+          },
+          "seconds": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 3600.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seconds"
+          }
+        },
+        "type": "object",
+        "required": [
+          "event"
+        ],
+        "title": "HabitEvent"
+      },
+      "HabitEvents": {
+        "properties": {
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/HabitEvent"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "minItems": 1,
+            "title": "Events"
+          }
+        },
+        "type": "object",
+        "required": [
+          "events"
+        ],
+        "title": "HabitEvents"
       },
       "Helpful": {
         "properties": {
@@ -13212,29 +14188,6 @@
         ],
         "title": "LevelView"
       },
-      "LineQuantity": {
-        "properties": {
-          "line": {
-            "type": "integer",
-            "maximum": 99990.0,
-            "minimum": 1.0,
-            "title": "Line"
-          },
-          "quantity": {
-            "type": "number",
-            "maximum": 1000000.0,
-            "minimum": 0.0,
-            "title": "Quantity"
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "line",
-          "quantity"
-        ],
-        "title": "LineQuantity"
-      },
       "LocalSignIn": {
         "properties": {
           "name": {
@@ -13269,6 +14222,27 @@
               }
             ],
             "title": "Runs Out"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "made",
+              "bought",
+              "unknown"
+            ],
+            "title": "Source",
+            "default": "bought"
+          },
+          "product_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Product Id"
           }
         },
         "type": "object",
@@ -13289,6 +14263,11 @@
             "type": "integer",
             "title": "Stock"
           },
+          "unit": {
+            "type": "string",
+            "title": "Unit",
+            "default": ""
+          },
           "runs_out": {
             "anyOf": [
               {
@@ -13300,6 +14279,16 @@
               }
             ],
             "title": "Runs Out"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "made",
+              "bought",
+              "unknown"
+            ],
+            "title": "Source",
+            "default": "bought"
           }
         },
         "type": "object",
@@ -13469,6 +14458,43 @@
           "metric"
         ],
         "title": "Metric"
+      },
+      "NewPromise": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Text"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "order",
+              "make",
+              "note"
+            ],
+            "title": "Kind",
+            "default": "note"
+          },
+          "item": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 80
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Item"
+          }
+        },
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "NewPromise"
       },
       "NewShopDraft": {
         "properties": {
@@ -13750,6 +14776,31 @@
           "demo"
         ],
         "title": "Opportunity"
+      },
+      "OrderChange": {
+        "properties": {
+          "version": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Version"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/app__sourcing_routes__LineQuantity"
+            },
+            "type": "array",
+            "maxItems": 50,
+            "minItems": 1,
+            "title": "Lines"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "version",
+          "lines"
+        ],
+        "title": "OrderChange"
       },
       "OrderMessage": {
         "properties": {
@@ -14181,6 +15232,21 @@
         "type": "object",
         "title": "Personal",
         "description": "What the signed-in customer's profile changed: never applied when signed out."
+      },
+      "PhotoKind": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "maxLength": 20,
+            "title": "Kind"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind"
+        ],
+        "title": "PhotoKind"
       },
       "Pick": {
         "properties": {
@@ -14913,6 +15979,21 @@
             "title": "Available",
             "default": true
           },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "made",
+                  "bought"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
           "previous_unit": {
             "anyOf": [
               {
@@ -14962,6 +16043,56 @@
         },
         "type": "object",
         "title": "Profile"
+      },
+      "Promise": {
+        "properties": {
+          "day": {
+            "type": "string",
+            "format": "date",
+            "title": "Day"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "order",
+              "make",
+              "note"
+            ],
+            "title": "Kind",
+            "default": "note"
+          },
+          "item": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Item"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "open",
+              "done",
+              "skipped"
+            ],
+            "title": "State",
+            "default": "open"
+          }
+        },
+        "type": "object",
+        "required": [
+          "day",
+          "text"
+        ],
+        "title": "Promise"
       },
       "ProposalRequest": {
         "properties": {
@@ -15554,7 +16685,7 @@
           },
           "received": {
             "items": {
-              "$ref": "#/components/schemas/LineQuantity"
+              "$ref": "#/components/schemas/app__supply_routes__LineQuantity"
             },
             "type": "array",
             "maxItems": 60,
@@ -15662,11 +16793,53 @@
             "maxLength": 120,
             "title": "Supplier Id",
             "default": ""
+          },
+          "anyway": {
+            "type": "boolean",
+            "title": "Anyway",
+            "default": false
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "",
+              "made",
+              "bought"
+            ],
+            "title": "Source",
+            "default": ""
           }
         },
         "additionalProperties": false,
         "type": "object",
         "title": "ReorderBody"
+      },
+      "ReplySuggestions": {
+        "properties": {
+          "language": {
+            "type": "string",
+            "title": "Language"
+          },
+          "replies": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 3,
+            "title": "Replies"
+          },
+          "mode": {
+            "type": "string",
+            "const": "template",
+            "title": "Mode",
+            "default": "template"
+          }
+        },
+        "type": "object",
+        "required": [
+          "language"
+        ],
+        "title": "ReplySuggestions"
       },
       "Requirement": {
         "properties": {
@@ -16164,6 +17337,35 @@
         "additionalProperties": false,
         "type": "object",
         "title": "SalonAttributes"
+      },
+      "SameWeekday": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date",
+            "title": "Date"
+          },
+          "weeks_ago": {
+            "type": "integer",
+            "title": "Weeks Ago"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "difference": {
+            "type": "integer",
+            "title": "Difference"
+          }
+        },
+        "type": "object",
+        "required": [
+          "date",
+          "weeks_ago",
+          "total",
+          "difference"
+        ],
+        "title": "SameWeekday"
       },
       "ScratchView": {
         "properties": {
@@ -17255,6 +18457,25 @@
         ],
         "title": "SimulateBody"
       },
+      "SourceRequest": {
+        "properties": {
+          "source": {
+            "type": "string",
+            "enum": [
+              "made",
+              "bought"
+            ],
+            "title": "Source"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "source"
+        ],
+        "title": "SourceRequest",
+        "description": "The owner's one tap: they make this item, or they buy it (OB-239)."
+      },
       "SpeakRequest": {
         "properties": {
           "text": {
@@ -17707,6 +18928,28 @@
         "type": "object",
         "title": "TailorAttributes"
       },
+      "TalkBody": {
+        "properties": {
+          "version": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Version"
+          },
+          "text": {
+            "type": "string",
+            "maxLength": 300,
+            "pattern": "\\S",
+            "title": "Text"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "version",
+          "text"
+        ],
+        "title": "TalkBody"
+      },
       "ThreadMessage": {
         "properties": {
           "text": {
@@ -17930,6 +19173,16 @@
               }
             ],
             "title": "Has Customer Stamp"
+          },
+          "promise": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Promise"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
@@ -18790,6 +20043,52 @@
           "quantity"
         ],
         "title": "Decision"
+      },
+      "app__sourcing_routes__LineQuantity": {
+        "properties": {
+          "line": {
+            "type": "integer",
+            "maximum": 50.0,
+            "minimum": 0.0,
+            "title": "Line"
+          },
+          "quantity": {
+            "type": "number",
+            "maximum": 1000000.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Quantity"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "line",
+          "quantity"
+        ],
+        "title": "LineQuantity"
+      },
+      "app__supply_routes__LineQuantity": {
+        "properties": {
+          "line": {
+            "type": "integer",
+            "maximum": 99990.0,
+            "minimum": 1.0,
+            "title": "Line"
+          },
+          "quantity": {
+            "type": "number",
+            "maximum": 1000000.0,
+            "minimum": 0.0,
+            "title": "Quantity"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "line",
+          "quantity"
+        ],
+        "title": "LineQuantity"
       },
       "app__trust_routes__Decision": {
         "properties": {

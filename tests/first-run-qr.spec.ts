@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 import { enter, localOnly, shareSigned } from './stories/support.js'
 
 // OB-65: a first-time customer who scans a shop's QR lands on the shop and its stamp, not on the
-// 3-screen introduction; the introduction waits for their next visit.
+// 3-screen introduction, and (OB-208) the scan counts as engagement: it is not shown later either.
 test('OB-65: a first QR scan skips the intro and opens the shop and its stamp', async ({
   page,
   browser,
@@ -59,9 +59,10 @@ test('OB-65: a first QR scan skips the intro and opens the shop and its stamp', 
     await expect(done).toBeVisible({ timeout: 30_000 })
     await done.click()
     await expect(customer.getByRole('link', { name: /^Stamp card · / })).toBeVisible()
-    // The next plain visit still gets the introduction once.
+    // The next plain visit does not get the introduction: the QR scan already engaged them.
     await customer.goto('/explore')
-    await expect(customer.getByText('Find local shops near you')).toBeVisible()
+    await expect(customer.getByRole('link', { name: /Passport$/ })).toBeVisible()
+    await expect(customer.getByText('Find local shops near you')).toHaveCount(0)
   } finally {
     await context.close()
   }

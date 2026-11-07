@@ -26,6 +26,8 @@ REPLAY_TTL = 120
 MAX_EVENTS = 128
 MAX_BYTES = 256 * 1024
 MAX_SESSIONS = 128
+# How long a session remembers the owner's last client turn id, so a resend is not a second turn.
+ANSWERED_TTL = 6 * 3600
 MIRROR_SECONDS = 0.4
 REMOTE_POLL_SECONDS = 0.5
 
@@ -115,6 +117,8 @@ class RemoteTurn:
 class TurnReplay:
     business_id: str | None
     turn_id: str = field(default_factory=lambda: str(uuid4()))
+    # The app's id for the owner's turn (a reload can send the same turn again).
+    client_turn: str | None = None
     events: deque[dict[str, str]] = field(default_factory=deque)
     sequence: int = 0
     size: int = 0
@@ -170,12 +174,44 @@ class TurnReplay:
 class ReplayStore:
     def __init__(self, shared: SharedTurns | None = None) -> None:
         self.turns: dict[tuple[str, str], TurnReplay] = {}
+        # The owner's last turn per session, kept when an opening or resume turn follows it.
+        self.owner_turns: dict[tuple[str, str], TurnReplay] = {}
+        # The last client turn id per owner + session, after its replay has expired.
+        self.answered: dict[tuple[str, str], tuple[str, float]] = {}
         self.shared = shared
 
     def prune(self) -> None:
-        for key, turn in list(self.turns.items()):
-            if turn.finished is not None and monotonic() - turn.finished >= REPLAY_TTL:
-                del self.turns[key]
+        for turns in (self.turns, self.owner_turns):
+            for key, turn in list(turns.items()):
+                if turn.finished is not None and monotonic() - turn.finished >= REPLAY_TTL:
+                    del turns[key]
+        for key, (_, at) in list(self.answered.items()):
+            if monotonic() - at >= ANSWERED_TTL:
+                del self.answered[key]
+
+    async def repeated(
+        self, uid: str, sid: str, bid: str | None, client_turn: str
+    ) -> TurnReplay | RemoteTurn | bool:
+        """This owner already sent this turn in this session: its retained replay when there is
+        one, else True. False for a new turn."""
+        self.prune()
+        turn = self.owner_turns.get((uid, sid))
+        if turn is not None and turn.client_turn == client_turn and turn.business_id == bid:
+            return turn
+        if self.shared is not None:
+            try:
+                record = await anyio.to_thread.run_sync(self.shared.load, uid, sid)
+            except Exception:
+                log.warning("replay_mirror_read_failed")
+                record = None
+            if (
+                record
+                and record.get("client_turn") == client_turn
+                and record.get("business_id") == (bid or "")
+            ):
+                return RemoteTurn(self.shared, uid, sid, record)
+        answered = self.answered.get((uid, sid))
+        return answered is not None and answered[0] == client_turn
 
     async def resume(
         self, uid: str, sid: str, bid: str | None, cursor: str
@@ -202,14 +238,24 @@ class ReplayStore:
         return RemoteTurn(self.shared, uid, sid, record), after
 
     def start(
-        self, uid: str, sid: str, bid: str | None, produce: Callable[[TurnReplay], Awaitable[None]]
+        self,
+        uid: str,
+        sid: str,
+        bid: str | None,
+        produce: Callable[[TurnReplay], Awaitable[None]],
+        client_turn: str | None = None,
     ) -> TurnReplay:
         self.prune()
         key = (uid, sid)
         if key not in self.turns and len(self.turns) >= MAX_SESSIONS:
             raise HTTPException(429, "Replay capacity reached. Try again shortly.")
-        turn = TurnReplay(bid)
+        turn = TurnReplay(bid, client_turn=client_turn)
         self.turns[key] = turn
+        if client_turn:
+            self.owner_turns[key] = turn
+            self.answered[key] = (client_turn, monotonic())
+            while len(self.answered) > MAX_SESSIONS * 8:
+                del self.answered[min(self.answered, key=lambda k: self.answered[k][1])]
 
         async def run() -> None:
             mirror = (
@@ -239,6 +285,7 @@ class ReplayStore:
                 written = turn.sequence
                 record = {
                     "turn_id": turn.turn_id,
+                    "client_turn": turn.client_turn or "",
                     "business_id": bid or "",
                     "frames": list(turn.events),
                     "finished": done,

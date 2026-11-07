@@ -56,7 +56,7 @@ test('S1 · owner sets up and shares a shop', async ({ page, context }) => {
     const review = page.getByRole('dialog', { name: reviewName })
     await expect(review).toContainText('Offline Fixture Tea Stall')
     await expect(review).toContainText('Chai')
-    await expect(review).toContainText('₹15.00 / cup')
+    await expect(review).toContainText('₹15 / cup')
     // The decision surface itself says what the reader was unsure of, or that it was a fixture.
     await expect(review.getByRole('alert')).toContainText('From your photo — please check')
     await expect(review.getByRole('alert')).toContainText(
@@ -67,8 +67,8 @@ test('S1 · owner sets up and shares a shop', async ({ page, context }) => {
   })
   await test.step('5 · Shop page, then Grow: what is missing for Google', async () => {
     await page.getByRole('button', { name: 'Shop', exact: true }).click()
-    await expect(page.getByRole('region', { name: 'This is your page' })).toBeVisible()
-    await expect(page.getByRole('button', { name: /^Customer page/ })).toBeVisible()
+    await expect(page.getByRole('region', { name: 'Your shop page' })).toBeVisible()
+    await expect(page.getByRole('button', { name: /^Your shop page/ })).toBeVisible()
     await shot(page, 1, 5)
     await page.getByRole('button', { name: 'Grow', exact: true }).click()
     await expect(page.getByRole('button', { name: /^Get on Google.*missing/ })).toBeVisible()
@@ -132,7 +132,7 @@ test('S1 · owner sets up and shares a shop', async ({ page, context }) => {
     ).toBeVisible()
     // The menu comes before the similar-nearby list, which can hold a same-named chai from other runs.
     await expect(customer.getByRole('listitem').filter({ hasText: /^Chai/ }).first()).toContainText(
-      '₹15.00',
+      /₹15(?![.0-9])/,
     )
     await expect(customer.getByText('UPI', { exact: true })).toBeVisible()
     await shot(customer, 1, '7-customer')

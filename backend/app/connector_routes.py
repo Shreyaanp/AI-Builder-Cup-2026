@@ -15,6 +15,7 @@ import time
 from typing import Any
 
 import anyio
+import structlog
 from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
@@ -22,6 +23,7 @@ from .connector import (
     TARGET_FIELDS,
     ConnectorMapping,
     ConnectorResult,
+    FieldMapping,
     ai_map_fields,
     apply_mapping,
     compute_diff,
@@ -48,6 +50,7 @@ from .sales import daily_sales
 from .screen_photos import PHOTO_TYPE, CellFlag, merge_readings, read_batch
 
 router = APIRouter(prefix="/api/v1/businesses/{business_id}/connect")
+log = structlog.get_logger()
 
 
 def validate_mapping(mapping: ConnectorMapping, headers: list[str] | None = None) -> None:
@@ -160,7 +163,9 @@ async def analyze_export(
     if not business:
         raise HTTPException(404, "Business not found.")
 
+    started = time.perf_counter()
     data, content_type, resolved_source = await _read_payload(request)
+    received = time.perf_counter()
     if source_label:
         resolved_source = source_label
 
@@ -195,6 +200,7 @@ async def analyze_export(
     if not rows:
         raise HTTPException(422, "EMPTY_FILE")
 
+    extracted = time.perf_counter()
     # Check for saved mapping for this source
     saved_record = await anyio.to_thread.run_sync(
         service.get_connector_mapping, uid, business_id, resolved_source
@@ -213,6 +219,25 @@ async def analyze_export(
     preset = detect_preset(headers)
     if preset:
         rows = prepare_rows(preset, headers, rows)
+    if mapping is None and readings:
+        # The photo reader already returns our canonical fields. A second model call
+        # cannot add column meaning; it only adds latency and another failure point.
+        mapping = ConnectorMapping(
+            source_label=resolved_source,
+            kind="sales"
+            if "date" in headers and ("quantity" in headers or "total" in headers)
+            else "menu",
+            fields=[
+                FieldMapping(
+                    source_field=header,
+                    target_field=header,
+                    confidence=1,
+                    sample_values=[row[i] for row in rows[:3] if row[i]],
+                )
+                for i, header in enumerate(headers)
+                if header in TARGET_FIELDS
+            ],
+        )
     if mapping is None:
         mapping = (
             preset_mapping(preset, headers, rows)
@@ -234,6 +259,17 @@ async def analyze_export(
         mapped_items, _ = menu_items(rows, col_map)
         diff = compute_diff(context["inventory"], mapped_items, currency=currency)
 
+    if readings:
+        finished = time.perf_counter()
+        log.info(
+            "menu_photo_analysis_ms",
+            receive=round((received - started) * 1000),
+            read=round((extracted - received) * 1000),
+            mapping=round((finished - extracted) * 1000),
+            total=round((finished - started) * 1000),
+            photos=len(readings),
+            bytes_in=len(data),
+        )
     return ConnectorResult(
         mapping=mapping,
         preview_rows=previews,

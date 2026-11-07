@@ -28,6 +28,7 @@ from pydantic import BaseModel, ConfigDict, Field
 MAX_FOLLOWS = 100
 MAX_SEARCHES = 10
 MAX_THREADS = 50
+MAX_TIPPED = 500
 # A start that died mid-way frees its shop after this long, so the customer can try again.
 CLAIM_SECONDS = 30
 TRANSACTION_ATTEMPTS = 10
@@ -417,6 +418,20 @@ DEMO_TIPS = [
 ]
 
 
+LEGACY_DEMO_UPDATE = re.compile(r"^demo-\d+-\d+$")
+DEMO_UPDATE_IDS = frozenset(f"demo-update-{n}" for n in range(4))
+
+
+def is_demo_update(doc: dict[str, Any]) -> bool:
+    """A current demo card; the older demo-<week>-N cards are ignored (OB-221)."""
+    return bool(doc.get("demo")) and doc.get("id") in DEMO_UPDATE_IDS
+
+
+def is_legacy_demo_update(demo: bool, update_id: str) -> bool:
+    """The old demo-<week>-N cards; rescue deals and every other demo card stay."""
+    return demo and LEGACY_DEMO_UPDATE.match(update_id) is not None
+
+
 def update_key(bid: str, update_id: str) -> str:
     # Per shop: fixed demo IDs repeat across shops.
     return f"{bid}\0{update_id}"
@@ -682,22 +697,24 @@ class Community:
         """Labelled demo updates from the demo shop's actual menu, refreshed weekly."""
         if not shop.get("demo"):
             return
-        recent = [u for u in self.docs.scoped("update", bid, 20) if u.get("demo")]
+        # Legacy demo-<week>-N cards still sit in stored data: they neither count as "recent"
+        # (that blocked the refresh) nor show in feeds (see updates()).
+        recent = [u for u in self.docs.scoped("update", bid, 20) if is_demo_update(u)]
         if recent and recent[0]["created"] > time.time() - 7 * DAY:
             return
         products = shop.get("products", [])
         if not products:
             return
         now = time.time()
-        # One set per week with fixed IDs, so concurrent first looks write the same documents.
-        week = int(now // (7 * DAY))
+        # One set with fixed IDs: concurrent looks write the same documents, and the weekly
+        # refresh overwrites them instead of stacking another four cards (OB-133).
         currency = shop.get("currency", "")
         first = products[0]
         newest = products[-1]
         available = next((p for p in products[1:] if p["available"]), first)
         seeds = [
             Update(
-                id=f"demo-{week}-0",
+                id="demo-update-0",
                 shop_id=bid,
                 kind="menu_confirmed",
                 created=now - 1800,
@@ -705,7 +722,7 @@ class Community:
                 demo=True,
             ),
             Update(
-                id=f"demo-{week}-1",
+                id="demo-update-1",
                 shop_id=bid,
                 kind="price_change",
                 item=first["name"],
@@ -717,7 +734,7 @@ class Community:
                 demo=True,
             ),
             Update(
-                id=f"demo-{week}-2",
+                id="demo-update-2",
                 shop_id=bid,
                 kind="back_in_stock",
                 item=available["name"],
@@ -728,7 +745,7 @@ class Community:
                 demo=True,
             ),
             Update(
-                id=f"demo-{week}-3",
+                id="demo-update-3",
                 shop_id=bid,
                 kind="new_item",
                 item=newest["name"],
@@ -748,6 +765,7 @@ class Community:
         rows = [
             Update.model_validate(u) for bid in bids for u in self.docs.scoped("update", bid, 20)
         ]
+        rows = [r for r in rows if not is_legacy_demo_update(r.demo, r.id)]
         rows.sort(key=lambda u: -u.created)
         active = []
         for row in rows:
@@ -833,10 +851,53 @@ class Community:
             mine=True,
         )
         self.docs.put("tip", f"{bid}\0{uid}", bid, tip.created, {**tip.model_dump(), "uid": uid})
+        self.index_tip(uid, bid, True)
         return tip
 
     def delete_tip(self, uid: str, bid: str) -> None:
         self.docs.delete("tip", f"{bid}\0{uid}")
+        self.index_tip(uid, bid, False)
+
+    # Tips are filed under their shop; this per-customer list is how "Delete my data" finds them.
+
+    def index_tip(self, uid: str, bid: str, on: bool) -> None:
+        def change(data: dict[str, Any] | None) -> tuple[float, dict[str, Any]] | None:
+            shops = [b for b in (data or {}).get("shops", []) if b != bid]
+            if on:
+                shops.insert(0, bid)
+            return time.time(), {"shops": shops[:MAX_TIPPED]}
+
+        with self.lock:
+            self.docs.update("tipped", uid, uid, change)
+
+    def tipped(self, uid: str) -> list[str]:
+        return list((self.docs.get("tipped", uid) or {}).get("shops", []))
+
+    # Customer erasure ("Delete my data"): what this customer keeps here besides the chats in
+    # the shops' inboxes and the passport, which erasure.erase_customer erases too.
+
+    def note_tipped(self, uid: str, bids: list[str]) -> None:
+        """Add shops that may hold a tip from before the index, so erasure still finds them once
+        the follows, chats and stamps that named them are gone (Try again)."""
+
+        def change(data: dict[str, Any] | None) -> tuple[float, dict[str, Any]]:
+            # Uncapped: the whole index is dropped once these shops' tips are erased.
+            shops = [*(data or {}).get("shops", []), *bids]
+            return time.time(), {"shops": list(dict.fromkeys(shops))}
+
+        with self.lock:
+            self.docs.update("tipped", uid, uid, change)
+
+    def erase_tips(self, uid: str) -> None:
+        """This customer's tips at every indexed shop; the index goes only once they all have."""
+        for bid in self.tipped(uid):
+            self.docs.delete("tip", f"{bid}\0{uid}")
+        self.docs.delete("tipped", uid)
+
+    def erase_customer(self, uid: str) -> None:
+        """Profile (name, follows, preferences, searches), chat slots, guest contact, Today."""
+        for kind in ("profile", "threadslots", "guest_identity", "today"):
+            self.docs.delete(kind, uid)
 
 
 def community_service(settings: Any) -> Community:

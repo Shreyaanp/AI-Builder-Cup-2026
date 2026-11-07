@@ -19,10 +19,12 @@ async function sharedBakery(page: Page) {
   await page.getByLabel('I agree to the Terms').check()
   await page.getByLabel('I have read the Privacy Notice').check()
   await page.getByRole('button', { name: 'Agree and continue' }).click()
-  await expect(page.getByRole('heading', { name: 'What shall we work on today?' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Let’s put your shop online' })).toBeVisible()
   const prepared = await page.request.post('/api/v1/proposals', {
     data: {
       kind: 'business',
+      // OB-168: a shared shop needs an owner-confirmed point, not only address text.
+      owner_location: { lat: 12.9352, lng: 77.6245, accuracy_m: 0, source: 'pin' },
       business: {
         name: 'Butter Window Bakery',
         category: 'Bakery',

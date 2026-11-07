@@ -1,9 +1,11 @@
 import type { Locale } from '../../i18n/locales'
-import type { AccountStrings } from './copy'
+import type { LocaleAccountStrings } from './copy'
 
 /** Every customer account, chats, saved, tips and profile string, per supported locale. */
-export const accountTranslations: Record<Exclude<Locale, 'en'>, AccountStrings> = {
+export const accountTranslations: Record<Exclude<Locale, 'en'>, LocaleAccountStrings> = {
   hi: {
+    showAllUpdates: 'सभी दिखाएँ',
+    showLessUpdates: 'कम दिखाएँ',
     actionFailed: 'अनुरोध पूरा नहीं हो सका। कनेक्शन जाँचें और फिर कोशिश करें।',
     followFailed: 'फ़ॉलो की गई दुकानों को अपडेट नहीं कर सके। कनेक्शन जाँचें और फिर कोशिश करें।',
     nav: 'मुख्य',
@@ -29,7 +31,7 @@ export const accountTranslations: Record<Exclude<Locale, 'en'>, AccountStrings> 
     profileButton: 'प्रोफ़ाइल और पसंद',
     preferences: 'Chalkboard क्या याद रखता है',
     preferencesBody:
-      'पूछें में कही गई बातें, जैसे “मैं शाकाहारी हूँ” या “मेरा बजट ₹100 से कम है”। आपके लिए नतीजे क्रम में लगाने में इस्तेमाल होती हैं।',
+      'पूछें में कही गई बातें, जैसे “मैं शाकाहारी हूँ” या “मेरा बजट {price} से कम है”। आपके लिए नतीजे क्रम में लगाने में इस्तेमाल होती हैं।',
     vegetarian: 'शाकाहारी',
     halal: 'सिर्फ़ हलाल',
     budget: '{amount} से कम बजट',
@@ -126,6 +128,8 @@ export const accountTranslations: Record<Exclude<Locale, 'en'>, AccountStrings> 
     agoYesterday: 'कल',
   },
   bn: {
+    showAllUpdates: 'সব দেখান',
+    showLessUpdates: 'কম দেখান',
     actionFailed: 'অনুরোধ সম্পূর্ণ করা যায়নি। সংযোগ পরীক্ষা করে আবার চেষ্টা করুন।',
     followFailed: 'ফলো করা দোকান আপডেট করা যায়নি। সংযোগ পরীক্ষা করে আবার চেষ্টা করুন।',
     nav: 'প্রধান',
@@ -151,7 +155,7 @@ export const accountTranslations: Record<Exclude<Locale, 'en'>, AccountStrings> 
     profileButton: 'প্রোফাইল ও পছন্দ',
     preferences: 'Chalkboard যা মনে রাখে',
     preferencesBody:
-      'জিজ্ঞাসায় বলা কথা, যেমন “আমি নিরামিষাশী” বা “আমার বাজেট ₹100-এর কম”। আপনার জন্য ফলাফল সাজাতে ব্যবহার হয়।',
+      'জিজ্ঞাসায় বলা কথা, যেমন “আমি নিরামিষাশী” বা “আমার বাজেট {price}-এর কম”। আপনার জন্য ফলাফল সাজাতে ব্যবহার হয়।',
     vegetarian: 'নিরামিষ',
     halal: 'শুধু হালাল',
     budget: '{amount}-এর কম বাজেট',
@@ -248,6 +252,8 @@ export const accountTranslations: Record<Exclude<Locale, 'en'>, AccountStrings> 
     agoYesterday: 'গতকাল',
   },
   te: {
+    showAllUpdates: 'అన్నీ చూపించు',
+    showLessUpdates: 'తక్కువ చూపించు',
     actionFailed: 'అభ్యర్థన పూర్తి కాలేదు. కనెక్షన్ తనిఖీ చేసి మళ్లీ ప్రయత్నించండి.',
     followFailed:
       'ఫాలో చేస్తున్న షాపులను అప్‌డేట్ చేయలేకపోయాం. కనెక్షన్ తనిఖీ చేసి మళ్లీ ప్రయత్నించండి.',
@@ -274,7 +280,7 @@ export const accountTranslations: Record<Exclude<Locale, 'en'>, AccountStrings> 
     profileButton: 'ప్రొఫైల్, ఇష్టాలు',
     preferences: 'Chalkboard ఏమి గుర్తుంచుకుంటుంది',
     preferencesBody:
-      'అడగండిలో చెప్పినవి, ఉదా. “నేను శాకాహారిని” లేదా “నా బడ్జెట్ ₹100 లోపు”. మీ కోసం ఫలితాలను వరుసలో పెట్టడానికి వాడతాం.',
+      'అడగండిలో చెప్పినవి, ఉదా. “నేను శాకాహారిని” లేదా “నా బడ్జెట్ {price} లోపు”. మీ కోసం ఫలితాలను వరుసలో పెట్టడానికి వాడతాం.',
     vegetarian: 'శాకాహారం',
     halal: 'హలాల్ మాత్రమే',
     budget: '{amount} లోపు బడ్జెట్',
@@ -372,6 +378,8 @@ export const accountTranslations: Record<Exclude<Locale, 'en'>, AccountStrings> 
     agoYesterday: 'నిన్న',
   },
   mr: {
+    showAllUpdates: 'सर्व दाखवा',
+    showLessUpdates: 'कमी दाखवा',
     actionFailed: 'विनंती पूर्ण करता आली नाही. कनेक्शन तपासून पुन्हा प्रयत्न करा.',
     followFailed: 'फॉलो केलेली दुकाने अपडेट करता आली नाहीत. कनेक्शन तपासून पुन्हा प्रयत्न करा.',
     nav: 'मुख्य',
@@ -397,7 +405,7 @@ export const accountTranslations: Record<Exclude<Locale, 'en'>, AccountStrings> 
     profileButton: 'प्रोफाइल आणि आवडी',
     preferences: 'Chalkboard काय लक्षात ठेवते',
     preferencesBody:
-      'विचारा मध्ये सांगितलेले, जसे “मी शाकाहारी आहे” किंवा “माझे बजेट ₹100 पेक्षा कमी आहे”. तुमच्यासाठी निकाल क्रमाने लावण्यासाठी वापरले जाते.',
+      'विचारा मध्ये सांगितलेले, जसे “मी शाकाहारी आहे” किंवा “माझे बजेट {price} पेक्षा कमी आहे”. तुमच्यासाठी निकाल क्रमाने लावण्यासाठी वापरले जाते.',
     vegetarian: 'शाकाहारी',
     halal: 'फक्त हलाल',
     budget: '{amount} पेक्षा कमी बजेट',
@@ -495,6 +503,8 @@ export const accountTranslations: Record<Exclude<Locale, 'en'>, AccountStrings> 
     agoYesterday: 'काल',
   },
   kn: {
+    showAllUpdates: 'ಎಲ್ಲವನ್ನೂ ತೋರಿಸಿ',
+    showLessUpdates: 'ಕಡಿಮೆ ತೋರಿಸಿ',
     actionFailed: 'ವಿನಂತಿ ಪೂರ್ಣಗೊಳಿಸಲು ಆಗಲಿಲ್ಲ. ಸಂಪರ್ಕ ಪರಿಶೀಲಿಸಿ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.',
     followFailed:
       'ಫಾಲೋ ಮಾಡಿದ ಅಂಗಡಿಗಳನ್ನು ಅಪ್‌ಡೇಟ್ ಮಾಡಲು ಆಗಲಿಲ್ಲ. ಸಂಪರ್ಕ ಪರಿಶೀಲಿಸಿ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.',
@@ -522,7 +532,7 @@ export const accountTranslations: Record<Exclude<Locale, 'en'>, AccountStrings> 
     profileButton: 'ಪ್ರೊಫೈಲ್ ಮತ್ತು ಆದ್ಯತೆಗಳು',
     preferences: 'Chalkboard ಏನನ್ನು ನೆನಪಿಡುತ್ತದೆ',
     preferencesBody:
-      'ಕೇಳಿ ಯಲ್ಲಿ ಹೇಳಿದ್ದು, ಉದಾ. “ನಾನು ಸಸ್ಯಾಹಾರಿ” ಅಥವಾ “ನನ್ನ ಬಜೆಟ್ ₹100 ಒಳಗೆ”. ನಿಮಗಾಗಿ ಫಲಿತಾಂಶಗಳನ್ನು ಕ್ರಮಗೊಳಿಸಲು ಬಳಸಲಾಗುತ್ತದೆ.',
+      'ಕೇಳಿ ಯಲ್ಲಿ ಹೇಳಿದ್ದು, ಉದಾ. “ನಾನು ಸಸ್ಯಾಹಾರಿ” ಅಥವಾ “ನನ್ನ ಬಜೆಟ್ {price} ಒಳಗೆ”. ನಿಮಗಾಗಿ ಫಲಿತಾಂಶಗಳನ್ನು ಕ್ರಮಗೊಳಿಸಲು ಬಳಸಲಾಗುತ್ತದೆ.',
     vegetarian: 'ಸಸ್ಯಾಹಾರ',
     halal: 'ಹಲಾಲ್ ಮಾತ್ರ',
     budget: '{amount} ಒಳಗಿನ ಬಜೆಟ್',
@@ -620,6 +630,8 @@ export const accountTranslations: Record<Exclude<Locale, 'en'>, AccountStrings> 
     agoYesterday: 'ನಿನ್ನೆ',
   },
   ta: {
+    showAllUpdates: 'அனைத்தையும் காட்டு',
+    showLessUpdates: 'குறைவாகக் காட்டு',
     actionFailed: 'கோரிக்கையை முடிக்க முடியவில்லை. இணைப்பைச் சரிபார்த்து மீண்டும் முயலவும்.',
     followFailed:
       'பின்தொடரும் கடைகளைப் புதுப்பிக்க முடியவில்லை. இணைப்பைச் சரிபார்த்து மீண்டும் முயலவும்.',
@@ -647,7 +659,7 @@ export const accountTranslations: Record<Exclude<Locale, 'en'>, AccountStrings> 
     profileButton: 'சுயவிவரமும் விருப்பங்களும்',
     preferences: 'Chalkboard நினைவில் வைப்பவை',
     preferencesBody:
-      'கேளுங்கள் பகுதியில் சொன்னவை, உதா. “நான் சைவம்” அல்லது “என் பட்ஜெட் ₹100-க்குள்”. உங்களுக்கான முடிவுகளை வரிசைப்படுத்த பயன்படும்.',
+      'கேளுங்கள் பகுதியில் சொன்னவை, உதா. “நான் சைவம்” அல்லது “என் பட்ஜெட் {price}-க்குள்”. உங்களுக்கான முடிவுகளை வரிசைப்படுத்த பயன்படும்.',
     vegetarian: 'சைவம்',
     halal: 'ஹலால் மட்டும்',
     budget: '{amount}-க்குள் பட்ஜெட்',
@@ -750,6 +762,8 @@ export const accountTranslations: Record<Exclude<Locale, 'en'>, AccountStrings> 
     agoYesterday: 'நேற்று',
   },
   'zh-Hans': {
+    showAllUpdates: '显示全部',
+    showLessUpdates: '收起',
     actionFailed: '无法完成请求。请检查网络连接后重试。',
     followFailed: '无法更新关注的店铺。请检查网络连接后重试。',
     nav: '主导航',
@@ -775,7 +789,7 @@ export const accountTranslations: Record<Exclude<Locale, 'en'>, AccountStrings> 
     profileButton: '资料和偏好',
     preferences: 'Chalkboard 记住的内容',
     preferencesBody:
-      '你在“提问”里说过的话，例如“我吃素”或“我的预算在 ₹100 以内”。用于为你排序“为你推荐”的结果。',
+      '你在“提问”里说过的话，例如“我吃素”或“我的预算在 {price} 以内”。用于为你排序“为你推荐”的结果。',
     vegetarian: '素食',
     halal: '仅限清真',
     budget: '预算低于 {amount}',
@@ -872,6 +886,8 @@ export const accountTranslations: Record<Exclude<Locale, 'en'>, AccountStrings> 
     agoYesterday: '昨天',
   },
   ms: {
+    showAllUpdates: 'Tunjuk semua',
+    showLessUpdates: 'Tunjuk kurang',
     actionFailed: 'Permintaan tidak dapat diselesaikan. Semak sambungan dan cuba lagi.',
     followFailed: 'Kedai yang diikuti tidak dapat dikemas kini. Semak sambungan dan cuba lagi.',
     nav: 'Utama',
@@ -898,7 +914,7 @@ export const accountTranslations: Record<Exclude<Locale, 'en'>, AccountStrings> 
     profileButton: 'Profil dan pilihan',
     preferences: 'Apa yang Chalkboard ingat',
     preferencesBody:
-      'Yang disebut dalam Tanya, seperti “saya vegetarian” atau “bajet saya bawah ₹100”. Digunakan untuk menyusun hasil Untuk anda.',
+      'Yang disebut dalam Tanya, seperti “saya vegetarian” atau “bajet saya bawah {price}”. Digunakan untuk menyusun hasil Untuk anda.',
     vegetarian: 'Vegetarian',
     halal: 'Halal sahaja',
     budget: 'Bajet bawah {amount}',
@@ -996,6 +1012,8 @@ export const accountTranslations: Record<Exclude<Locale, 'en'>, AccountStrings> 
     agoYesterday: 'semalam',
   },
   ja: {
+    showAllUpdates: 'すべて表示',
+    showLessUpdates: '表示を減らす',
     actionFailed: 'リクエストを完了できませんでした。接続を確認して、もう一度お試しください。',
     followFailed:
       'フォロー中のお店を更新できませんでした。接続を確認して、もう一度お試しください。',
@@ -1022,7 +1040,7 @@ export const accountTranslations: Record<Exclude<Locale, 'en'>, AccountStrings> 
     profileButton: 'プロフィールと設定',
     preferences: 'Chalkboard が覚えていること',
     preferencesBody:
-      '「質問」で伝えたこと（例：「ベジタリアンです」「予算は ₹100 以下」）。「あなたへのおすすめ」の並び順に使います。',
+      '「質問」で伝えたこと（例：「ベジタリアンです」「予算は {price} 以下」）。「あなたへのおすすめ」の並び順に使います。',
     vegetarian: 'ベジタリアン',
     halal: 'ハラールのみ',
     budget: '予算 {amount} 以下',
@@ -1120,6 +1138,8 @@ export const accountTranslations: Record<Exclude<Locale, 'en'>, AccountStrings> 
     agoYesterday: '昨日',
   },
   ko: {
+    showAllUpdates: '모두 보기',
+    showLessUpdates: '간략히 보기',
     actionFailed: '요청을 완료하지 못했어요. 연결을 확인하고 다시 시도하세요.',
     followFailed: '팔로우하는 가게를 업데이트하지 못했어요. 연결을 확인하고 다시 시도하세요.',
     nav: '기본',
@@ -1145,7 +1165,7 @@ export const accountTranslations: Record<Exclude<Locale, 'en'>, AccountStrings> 
     profileButton: '프로필 및 선호',
     preferences: 'Chalkboard가 기억하는 것',
     preferencesBody:
-      '질문에서 말한 내용(예: “채식해요”, “예산은 ₹100 이하”). 나를 위한 추천 결과의 순서를 정하는 데 쓰여요.',
+      '질문에서 말한 내용(예: “채식해요”, “예산은 {price} 이하”). 나를 위한 추천 결과의 순서를 정하는 데 쓰여요.',
     vegetarian: '채식',
     halal: '할랄만',
     budget: '예산 {amount} 이하',
@@ -1242,6 +1262,8 @@ export const accountTranslations: Record<Exclude<Locale, 'en'>, AccountStrings> 
     agoYesterday: '어제',
   },
   id: {
+    showAllUpdates: 'Tampilkan semua',
+    showLessUpdates: 'Tampilkan sedikit',
     actionFailed: 'Permintaan tidak dapat diselesaikan. Periksa koneksi dan coba lagi.',
     followFailed: 'Tidak dapat memperbarui toko yang diikuti. Periksa koneksi dan coba lagi.',
     nav: 'Utama',
@@ -1268,7 +1290,7 @@ export const accountTranslations: Record<Exclude<Locale, 'en'>, AccountStrings> 
     profileButton: 'Profil dan preferensi',
     preferences: 'Yang diingat Chalkboard',
     preferencesBody:
-      'Yang Anda sebut di Tanya, misalnya “saya vegetarian” atau “anggaran saya di bawah ₹100”. Dipakai untuk mengurutkan hasil Untuk Anda.',
+      'Yang Anda sebut di Tanya, misalnya “saya vegetarian” atau “anggaran saya di bawah {price}”. Dipakai untuk mengurutkan hasil Untuk Anda.',
     vegetarian: 'Vegetarian',
     halal: 'Hanya halal',
     budget: 'Anggaran di bawah {amount}',
@@ -1368,6 +1390,8 @@ export const accountTranslations: Record<Exclude<Locale, 'en'>, AccountStrings> 
     agoYesterday: 'kemarin',
   },
   th: {
+    showAllUpdates: 'แสดงทั้งหมด',
+    showLessUpdates: 'แสดงน้อยลง',
     actionFailed: 'ดำเนินการไม่ได้ ตรวจสอบการเชื่อมต่อแล้วลองอีกครั้ง',
     followFailed: 'อัปเดตร้านที่ติดตามไม่ได้ ตรวจสอบการเชื่อมต่อแล้วลองอีกครั้ง',
     nav: 'หลัก',
@@ -1393,7 +1417,7 @@ export const accountTranslations: Record<Exclude<Locale, 'en'>, AccountStrings> 
     profileButton: 'โปรไฟล์และความชอบ',
     preferences: 'สิ่งที่ Chalkboard จำไว้',
     preferencesBody:
-      'สิ่งที่คุณบอกในหน้าถาม เช่น “ฉันกินมังสวิรัติ” หรือ “งบไม่เกิน ₹100” ใช้จัดลำดับผลลัพธ์สำหรับคุณ',
+      'สิ่งที่คุณบอกในหน้าถาม เช่น “ฉันกินมังสวิรัติ” หรือ “งบไม่เกิน {price}” ใช้จัดลำดับผลลัพธ์สำหรับคุณ',
     vegetarian: 'มังสวิรัติ',
     halal: 'ฮาลาลเท่านั้น',
     budget: 'งบไม่เกิน {amount}',
@@ -1490,6 +1514,8 @@ export const accountTranslations: Record<Exclude<Locale, 'en'>, AccountStrings> 
     agoYesterday: 'เมื่อวาน',
   },
   vi: {
+    showAllUpdates: 'Xem tất cả',
+    showLessUpdates: 'Thu gọn',
     actionFailed: 'Không thể hoàn tất yêu cầu. Hãy kiểm tra kết nối và thử lại.',
     followFailed: 'Không thể cập nhật cửa hàng đang theo dõi. Hãy kiểm tra kết nối và thử lại.',
     nav: 'Chính',
@@ -1516,7 +1542,7 @@ export const accountTranslations: Record<Exclude<Locale, 'en'>, AccountStrings> 
     profileButton: 'Hồ sơ và tuỳ chọn',
     preferences: 'Những gì Chalkboard ghi nhớ',
     preferencesBody:
-      'Những gì bạn nói trong Hỏi, như “tôi ăn chay” hay “ngân sách của tôi dưới ₹100”. Dùng để xếp hạng kết quả Dành cho bạn.',
+      'Những gì bạn nói trong Hỏi, như “tôi ăn chay” hay “ngân sách của tôi dưới {price}”. Dùng để xếp hạng kết quả Dành cho bạn.',
     vegetarian: 'Ăn chay',
     halal: 'Chỉ halal',
     budget: 'Ngân sách dưới {amount}',
@@ -1613,6 +1639,8 @@ export const accountTranslations: Record<Exclude<Locale, 'en'>, AccountStrings> 
     agoYesterday: 'hôm qua',
   },
   fil: {
+    showAllUpdates: 'Ipakita lahat',
+    showLessUpdates: 'Ipakita kaunti',
     actionFailed: 'Hindi makumpleto ang kahilingan. Tingnan ang koneksyon at subukan muli.',
     followFailed:
       'Hindi ma-update ang mga sinusundang tindahan. Tingnan ang koneksyon at subukan muli.',
@@ -1640,7 +1668,7 @@ export const accountTranslations: Record<Exclude<Locale, 'en'>, AccountStrings> 
     profileButton: 'Profile at mga kagustuhan',
     preferences: 'Ang naaalala ng Chalkboard',
     preferencesBody:
-      'Mga sinabi mo sa Magtanong, gaya ng “vegetarian ako” o “wala pang ₹100 ang budget ko”. Ginagamit para iayos ang mga resulta Para sa iyo.',
+      'Mga sinabi mo sa Magtanong, gaya ng “vegetarian ako” o “wala pang {price} ang budget ko”. Ginagamit para iayos ang mga resulta Para sa iyo.',
     vegetarian: 'Vegetarian',
     halal: 'Halal lang',
     budget: 'Budget na wala pang {amount}',

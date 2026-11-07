@@ -27,6 +27,8 @@ export interface PoLine {
   next_tier?: { min_quantity: number; price: number } | null
   confirmed?: number
   confirmed_price?: number | null
+  /** The price asked for, once an accepted reply has changed `price`. */
+  asked_price?: number | null
   line_status?: 'accepted' | 'changed' | 'backordered' | 'substituted' | 'rejected'
   backorder_quantity?: number
   backorder_date?: string
@@ -44,6 +46,8 @@ export type CheckCode =
   | 'over_approval'
   | 'new_supplier'
   | 'no_price'
+  // A draft far beyond what the shop uses, flagged when the orders are read (OB-250).
+  | 'too_big'
 
 export interface Fix {
   kind: 'quantity' | 'cash' | 'supplier'
@@ -87,6 +91,19 @@ export interface SupplyDocument {
   /** gemini (live AI), parser (offline fixture) or template (we wrote it). */
   reader: 'gemini' | 'parser' | 'template'
   simulated?: boolean
+  /** The document in plain fields, whatever format it arrived in. */
+  canonical?: {
+    total?: number | null
+    lines?: {
+      item: string
+      quantity: number
+      unit: string
+      price?: number | null
+      status?: string
+      backorder_quantity?: number | null
+      backorder_date?: string | null
+    }[]
+  }
 }
 
 export interface OrderChange {
@@ -157,6 +174,9 @@ export interface PurchaseOrder {
   documents: SupplyDocument[]
   backorders: { item: string; quantity: number; unit: string; date: string }[]
   changes?: OrderChange[]
+  changes_accepted?: boolean
+  /** Public demo: what the visitor wrote to the scripted supplier, and its answers. */
+  talk?: { id: string; at: number; text?: string; answer?: 'when' | 'price' | 'noted' }[]
   received: boolean
   received_at?: number
   received_stock?: Record<string, number>

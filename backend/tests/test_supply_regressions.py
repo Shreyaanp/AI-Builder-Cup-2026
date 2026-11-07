@@ -218,3 +218,22 @@ def test_supply_incomplete_forecast_never_crashes(forecast):
     need = supply_chain.need_from_forecast(None, forecast, "Sugar", date(2026, 10, 17))
     assert need["daily"] == 0 and need["rows"] == 0
     assert not need["stock_known"]
+
+
+def test_supply_overview_is_limited_and_reuses_cached_forecast(supply_client):
+    from unittest.mock import AsyncMock
+
+    from app.limits import LIMITS
+
+    client = supply_client
+    bid = http_shop(client)
+    service = client.app.state.forecaster
+    inner = AsyncMock(wraps=service._forecast)
+    service._forecast = inner
+    path = f"/api/v1/businesses/{bid}/supply"
+    assert client.get(path).status_code == 200
+    assert client.get(path).status_code == 200
+    assert inner.await_count <= 1  # the second open is served from the forecast cache
+    maximum, _ = LIMITS["supply:read"][0]
+    codes = [client.get(path).status_code for _ in range(maximum)]
+    assert codes[-1] == 429

@@ -131,7 +131,7 @@ for (const appearance of ['light', 'dark']) {
   })
 }
 
-test('settings errors recover, no-pin rides explain next step, all guide chips send their own sentence', async ({
+test('OB-282: settings errors recover, no-pin rides explain next step, all guide chips send their own sentence', async ({
   page,
 }) => {
   await ownerTools(page)
@@ -173,7 +173,9 @@ test('settings errors recover, no-pin rides explain next step, all guide chips s
     const chips = page
       .locator('main')
       .getByRole('button')
-      .filter({ hasText: /^(Help me|Forecast demand|Find suppliers|What are customers)/ })
+      .filter({
+        hasText: /^(Help me|Close the day|Forecast demand|Find suppliers|What are customers)/,
+      })
     await expect(chips).toHaveCount(7)
     const text = (await chips.nth(i).textContent())!
     await chips.nth(i).click()

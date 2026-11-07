@@ -13,6 +13,7 @@ from app.auth import COOKIE
 from app.main import create_app
 from app.settings import Settings
 from scripts.seed_demo_shops import seed
+from tests.pins import SHOP_PIN
 from tests.test_community import requires_emulator
 from tests.test_customer import create_shop
 from tests.test_photos import join
@@ -277,7 +278,7 @@ def test_guest_card_only_scan_cannot_earn_a_second_stamp_with_location(client: T
             business_id=shop,
             revision=context["business"]["revision"],
             business=BusinessFields(
-                name="Tiong Bahru Kopi", stamps_enabled=True, reward_text="Free kopi"
+                name="Tiong Bahru Kopi", stamps_enabled=True, reward_text="Free kopi", **SHOP_PIN
             ),
         ),
     )

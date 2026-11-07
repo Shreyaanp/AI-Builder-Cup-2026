@@ -20,7 +20,7 @@ from PIL import Image, ImageOps
 from pydantic import BaseModel, Field, field_validator
 
 from .gemini_schema import to_number
-from .product_units import UNITS, normalize_unit
+from .product_units import UNITS, clean_category, normalize_unit
 from .reply_language import reply_language, written_language
 from .settings import Settings
 
@@ -39,6 +39,10 @@ BLOCK_AT = {"adult": 3, "racy": 4, "violence": 4}
 # shows, so tests can pick each kind. Any other width reads as a menu.
 FIXTURE_KIND_WIDTHS = {21: "shop_photo", 22: "product", 23: "receipt", 24: "till", 25: "other"}
 PhotoKind = Literal["shop_photo", "menu", "product", "receipt", "till", "other"]
+# OB-194: reading a menu needs little reasoning; unbounded thinking made each read take 25-40 s
+# in production (and could spend the output limit before the menu rows were written).
+# OB-211: Gemini rejects a thinking budget on image + JSON calls, so reads use a level instead.
+READ_THINKING_LEVEL = "LOW"
 
 
 Unit = Literal[UNITS]  # type: ignore[valid-type]
@@ -111,7 +115,7 @@ def to_extraction(spec: _PhotoSpec) -> PhotoExtraction:
                     else None
                 ),
                 unit=product.unit,
-                category=product.category[:80],
+                category=clean_category(product.category, spec.business.name)[:80],
             )
             for product in spec.products[:200]
             if product.name.strip()
@@ -142,8 +146,10 @@ Copy only text that is clearly visible; never guess. Keep the original language/
 Prices: a plain number in the local currency, only when printed next to the item.
 Give every product a category: the visible menu section it sits under, otherwise a short
 section a customer would expect (for example Drinks, Mains, Desserts, Services), in the
-board's language. Categories are suggestions the owner reviews.
-Give every product a unit from the allowed list; use "item" when none fits.
+board's language. Categories are suggestions the owner reviews. A title such as "MENU" or
+the shop's name is never a category; use a real section or leave it empty.
+Give every product a unit from the allowed list; use "item" when none fits. A currency
+symbol or word (Rs, ₹, INR, $) is never a unit.
 List every field or item you are unsure about in "uncertain".
 Write the "uncertain" notes for the owner in {language}."""
 # The offline note in the owner's language (live notes follow the prompt above).
@@ -228,11 +234,20 @@ class PhotoPipeline:
 
         if self._vision is None:
             self._vision = vision.ImageAnnotatorClient()
-        response = self._vision.safe_search_detection(image=vision.Image(content=image))
-        if response.error.message:
-            raise PhotoRejected(503, "MODERATION_UNAVAILABLE")
-        found = response.safe_search_annotation
-        return {"adult": found.adult, "racy": found.racy, "violence": found.violence}
+        # One retry and a log line: a single Vision hiccup used to fail the owner's photo with a
+        # silent 503 (and a raised client error with a bare 500).
+        for attempt in (1, 2):
+            try:
+                response = self._vision.safe_search_detection(image=vision.Image(content=image))
+            except Exception as error:
+                problem = str(error)[:300]
+            else:
+                if not response.error.message:
+                    found = response.safe_search_annotation
+                    return {"adult": found.adult, "racy": found.racy, "violence": found.violence}
+                problem = response.error.message[:300]
+            log.warning("photo_moderation_failed", attempt=attempt, error=problem)
+        raise PhotoRejected(503, "MODERATION_UNAVAILABLE")
 
     @staticmethod
     def blocked(scores: dict[str, int]) -> bool:
@@ -261,26 +276,40 @@ class PhotoPipeline:
                 return FIXTURE_KIND_WIDTHS.get(opened.width, "menu")  # type: ignore[return-value]
         from google.genai import types
 
-        try:
-            response = await self._client().aio.models.generate_content(
-                model=self.settings.google_text_model,
-                contents=[
-                    types.Part.from_bytes(data=image, mime_type="image/jpeg"),
-                    CLASSIFY_PROMPT,
-                ],
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json",
-                    response_schema=_KindSpec,
-                    temperature=0,
-                    max_output_tokens=200,
-                ),
-            )
-        except Exception as error:
-            log.warning("photo_classify_failed", error=str(error)[:300])
-            raise PhotoRejected(503, "EXTRACTION_UNAVAILABLE") from None
-        if not isinstance(response.parsed, _KindSpec):
-            raise PhotoRejected(503, "EXTRACTION_UNAVAILABLE")
-        return response.parsed.kind
+        # One retry: a single model hiccup used to fail the chat photo with a silent 503.
+        for attempt in (1, 2):
+            try:
+                response = await self._client().aio.models.generate_content(
+                    model=self.settings.google_text_model,
+                    contents=[
+                        types.Part.from_bytes(data=image, mime_type="image/jpeg"),
+                        CLASSIFY_PROMPT,
+                    ],
+                    config=types.GenerateContentConfig(
+                        response_mime_type="application/json",
+                        response_schema=_KindSpec,
+                        temperature=0,
+                        # The model thinks first and its thinking counts against this limit
+                        # (75-100 tokens on menus and receipts); 200 left too little room.
+                        max_output_tokens=1024,
+                        # OB-194: unbounded thinking made this one-word answer take 39 s in
+                        # production before the owner even saw "Is this your menu?".
+                        # OB-211: a level, not a budget; Gemini rejects a thinking budget on
+                        # image + JSON calls.
+                        thinking_config=types.ThinkingConfig(
+                            thinking_level=types.ThinkingLevel.MINIMAL
+                        ),
+                    ),
+                )
+            except Exception as error:
+                log.warning("photo_classify_failed", attempt=attempt, error=str(error)[:300])
+                continue
+            if isinstance(response.parsed, _KindSpec):
+                return response.parsed.kind
+            candidate = (response.candidates or [None])[0]
+            reason = str(getattr(candidate, "finish_reason", "") or "")
+            log.warning("photo_classify_unreadable", attempt=attempt, finish_reason=reason)
+        raise PhotoRejected(503, "EXTRACTION_UNAVAILABLE")
 
     async def classify_upload(self, data: bytes) -> PhotoKind:
         image = await anyio.to_thread.run_sync(sanitize, data)
@@ -300,32 +329,38 @@ class PhotoPipeline:
             )
         from google.genai import types
 
-        try:
-            response = await self._client().aio.models.generate_content(
-                model=self.settings.google_text_model,
-                contents=[
-                    types.Part.from_bytes(data=image, mime_type="image/jpeg"),
-                    PROMPT.format(language=written_language(language)),
-                ],
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json",
-                    response_schema=_PhotoSpec,
-                    temperature=0,
-                    max_output_tokens=16000,
-                ),
-            )
-        except Exception as error:
-            # Never a bare 500: the owner sees "couldn't read this photo, try again".
-            log.warning("photo_extraction_failed", error=str(error)[:300])
-            raise PhotoRejected(503, "EXTRACTION_UNAVAILABLE") from None
-        feedback = getattr(response, "prompt_feedback", None)
-        candidate = (response.candidates or [None])[0]
-        reason = str(getattr(candidate, "finish_reason", "") or "")
-        if (feedback and feedback.block_reason) or "SAFETY" in reason or "PROHIBITED" in reason:
-            raise PhotoRejected(422, "PHOTO_BLOCKED")
-        if not isinstance(response.parsed, _PhotoSpec):
-            raise PhotoRejected(503, "EXTRACTION_UNAVAILABLE")
-        return to_extraction(response.parsed)
+        # One retry: a single model hiccup used to send the owner back to "try again".
+        for attempt in (1, 2):
+            try:
+                response = await self._client().aio.models.generate_content(
+                    model=self.settings.google_text_model,
+                    contents=[
+                        types.Part.from_bytes(data=image, mime_type="image/jpeg"),
+                        PROMPT.format(language=written_language(language)),
+                    ],
+                    config=types.GenerateContentConfig(
+                        response_mime_type="application/json",
+                        response_schema=_PhotoSpec,
+                        temperature=0,
+                        max_output_tokens=16000,
+                        thinking_config=types.ThinkingConfig(
+                            thinking_level=types.ThinkingLevel[READ_THINKING_LEVEL]
+                        ),
+                    ),
+                )
+            except Exception as error:
+                # Never a bare 500: the owner sees "couldn't read this photo, try again".
+                log.warning("photo_extraction_failed", attempt=attempt, error=str(error)[:300])
+                continue
+            feedback = getattr(response, "prompt_feedback", None)
+            candidate = (response.candidates or [None])[0]
+            reason = str(getattr(candidate, "finish_reason", "") or "")
+            if (feedback and feedback.block_reason) or "SAFETY" in reason or "PROHIBITED" in reason:
+                raise PhotoRejected(422, "PHOTO_BLOCKED")
+            if isinstance(response.parsed, _PhotoSpec):
+                return to_extraction(response.parsed)
+            log.warning("photo_extraction_unreadable", attempt=attempt, finish_reason=reason)
+        raise PhotoRejected(503, "EXTRACTION_UNAVAILABLE")
 
     # --- storage ----------------------------------------------------------------------
     def store_sync(self, uid: str, bid: str | None, image: bytes) -> str | None:

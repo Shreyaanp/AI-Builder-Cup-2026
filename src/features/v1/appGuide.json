@@ -1,0 +1,320 @@
+{
+  "tabs": ["Coach", "Shop", "Grow", "You"],
+  "features": [
+    {
+      "id": "today",
+      "title": "Today",
+      "path": ["Coach"],
+      "path_hi": ["कोच"],
+      "ask": "What should I do today?",
+      "ask_hi": "आज क्या करना है?",
+      "screen": "today"
+    },
+    {
+      "id": "details",
+      "title": "Shop name, kind and phone",
+      "path": ["Shop", "Shop details"],
+      "path_hi": ["दुकान", "दुकान की जानकारी"],
+      "ask": "Change my phone number",
+      "ask_hi": "मेरा फ़ोन नंबर बदलो",
+      "screen": "details"
+    },
+    {
+      "id": "games",
+      "title": "Stamps and perks",
+      "path": ["Shop", "More", "Stamp card"],
+      "path_hi": ["दुकान", "और भी", "स्टैम्प कार्ड"],
+      "ask": "Show my perks",
+      "ask_hi": "मेरे इनाम दिखाओ",
+      "screen": "games"
+    },
+    {
+      "id": "payments",
+      "title": "Payments & rides",
+      "path": ["Grow", "Payments & rides"],
+      "path_hi": ["बढ़ाएँ", "Payments & rides"],
+      "ask": "Make a payment link for 250",
+      "ask_hi": "250 का पेमेंट लिंक बनाओ",
+      "screen": "payments"
+    },
+    {
+      "id": "rider",
+      "title": "Send a rider",
+      "path": ["Grow", "Payments & rides", "Send a rider"],
+      "path_hi": ["बढ़ाएँ", "Payments & rides", "Send a rider"],
+      "ask": "Send a rider",
+      "ask_hi": "राइडर बुलाओ",
+      "screen": "rider"
+    },
+    {
+      "id": "supply",
+      "title": "Purchase orders",
+      "path": ["Grow", "Buy stock", "To do"],
+      "path_hi": ["बढ़ाएँ", "माल मँगाएँ", "करना है"],
+      "ask": "Reorder tea dust",
+      "ask_hi": "चायपत्ती फिर से मँगाओ",
+      "screen": "supply"
+    },
+    {
+      "id": "deliveries",
+      "title": "Deliveries on the way",
+      "path": ["Grow", "Buy stock", "On the way"],
+      "path_hi": ["बढ़ाएँ", "माल मँगाएँ", "रास्ते में"],
+      "ask": "What's coming today?",
+      "ask_hi": "आज क्या आने वाला है?",
+      "screen": "supply"
+    },
+    {
+      "id": "playbook",
+      "title": "What Chalkboard knows",
+      "path": ["You", "What the coach knows"],
+      "path_hi": ["आप", "कोच क्या जानता है"],
+      "ask": "What do you know about my shop?",
+      "ask_hi": "तुम मेरी दुकान के बारे में क्या जानते हो?",
+      "screen": "playbook"
+    },
+    {
+      "id": "connect",
+      "title": "Link your billing app",
+      "path": ["Shop", "More", "Link your billing app"],
+      "path_hi": ["दुकान", "और भी", "बिक्री का हिसाब जोड़ें"],
+      "ask": "Connect my Petpooja",
+      "ask_hi": "मेरा Petpooja जोड़ो",
+      "screen": "connect"
+    },
+    {
+      "id": "add_menu",
+      "title": "Add your menu",
+      "path": ["Shop", "Menu", "Add product"],
+      "path_hi": ["दुकान", "मेन्यू", "सामान जोड़ें"],
+      "ask": "Add cutting chai for 15 rupees",
+      "ask_hi": "कटिंग चाय 15 रुपये जोड़ो",
+      "screen": "menu"
+    },
+    {
+      "id": "price_change",
+      "title": "Change a price",
+      "path": ["Shop", "Menu"],
+      "path_hi": ["दुकान", "मेन्यू"],
+      "ask": "Samosa is 20 now",
+      "ask_hi": "समोसा अब 20 का",
+      "screen": "menu"
+    },
+    {
+      "id": "sold_out",
+      "title": "Sold out or back in stock",
+      "path": ["Shop", "Sold out"],
+      "path_hi": ["दुकान", "खत्म"],
+      "ask": "Samosa is sold out",
+      "ask_hi": "समोसा ख़त्म",
+      "screen": "sold_out"
+    },
+    {
+      "id": "hours",
+      "title": "Opening hours",
+      "path": ["Shop", "Shop details"],
+      "path_hi": ["दुकान", "दुकान की जानकारी"],
+      "ask": "We open 7 to 9",
+      "ask_hi": "हम 7 से 9 खुले हैं",
+      "screen": "details"
+    },
+    {
+      "id": "closed_today",
+      "title": "Closed today",
+      "path": ["Shop", "Shop details", "Closed today"],
+      "path_hi": ["दुकान", "दुकान की जानकारी", "आज बंद"],
+      "ask": "We are closed today",
+      "ask_hi": "आज दुकान बंद है",
+      "screen": "details"
+    },
+    {
+      "id": "share",
+      "title": "Share your page and QR",
+      "path": ["Shop", "Your shop page"],
+      "path_hi": ["दुकान", "आपकी दुकान का पेज"],
+      "ask": "Share my page",
+      "ask_hi": "मेरा पेज भेजो",
+      "screen": "share"
+    },
+    {
+      "id": "messages",
+      "title": "Reply to customers",
+      "path": ["Shop", "Messages"],
+      "path_hi": ["दुकान", "संदेश"],
+      "ask": "Any customer questions?",
+      "ask_hi": "ग्राहकों ने क्या पूछा?",
+      "screen": "messages"
+    },
+    {
+      "id": "reply_language",
+      "title": "Your language",
+      "path": ["You", "Language"],
+      "path_hi": ["आप", "भाषा"],
+      "ask": "Reply in Hindi",
+      "ask_hi": "हिंदी में जवाब दो",
+      "screen": "you"
+    },
+    {
+      "id": "close_day",
+      "title": "Close the day",
+      "path": ["Grow", "Close the day"],
+      "path_hi": ["बढ़ाएँ", "दिन बंद करें"],
+      "ask": "Close the day",
+      "ask_hi": "आज का हिसाब",
+      "screen": "close_day"
+    },
+    {
+      "id": "promise",
+      "title": "One thing for tomorrow",
+      "path": ["Grow", "Close the day"],
+      "path_hi": ["बढ़ाएँ", "दिन बंद करें"],
+      "ask": "Remind me to order milk tomorrow",
+      "ask_hi": "कल सुबह दूध मँगाना याद दिलाना",
+      "screen": "close_day"
+    },
+    {
+      "id": "rescue",
+      "title": "Rescue leftovers",
+      "path": ["Grow", "Rescue deals"],
+      "path_hi": ["बढ़ाएँ", "बचे माल के ऑफ़र"],
+      "ask": "6 bun maska 30% off till 8",
+      "ask_hi": "6 बन मस्का 8 बजे तक 30% छूट",
+      "screen": "grow"
+    },
+    {
+      "id": "radar",
+      "title": "Nearby demand",
+      "path": ["Grow", "Asked nearby"],
+      "path_hi": ["बढ़ाएँ", "आसपास पूछा गया"],
+      "ask": "What are people nearby asking for?",
+      "ask_hi": "आस-पास लोग क्या माँग रहे हैं?",
+      "screen": "radar"
+    },
+    {
+      "id": "forecast",
+      "title": "How much to prepare",
+      "path": ["Grow", "How much to make"],
+      "path_hi": ["बढ़ाएँ", "कितना बनाना है"],
+      "ask": "How much chai tomorrow?",
+      "ask_hi": "कल कितनी चाय बनाऊँ?",
+      "screen": "plan"
+    },
+    {
+      "id": "insights",
+      "title": "How business is going",
+      "path": ["Grow", "My sales"],
+      "path_hi": ["बढ़ाएँ", "मेरी बिक्री"],
+      "ask": "How was business this week?",
+      "ask_hi": "इस हफ़्ते बिक्री कैसी रही?",
+      "screen": "grow"
+    },
+    {
+      "id": "suppliers",
+      "title": "Order supplies",
+      "path": ["Grow", "Buy stock", "Find a supplier"],
+      "path_hi": ["बढ़ाएँ", "माल मँगाएँ", "सप्लायर ढूँढें"],
+      "ask": "My milk is running low",
+      "ask_hi": "दूध ख़त्म होने वाला है",
+      "screen": "grow"
+    },
+    {
+      "id": "import_sales",
+      "title": "Link your billing app",
+      "path": ["Shop", "More", "Link your billing app"],
+      "path_hi": ["दुकान", "और भी", "बिक्री का हिसाब जोड़ें"],
+      "ask": "Import my sales",
+      "ask_hi": "मेरी बिक्री इम्पोर्ट करो",
+      "screen": "connect"
+    },
+    {
+      "id": "google",
+      "title": "Get on Google",
+      "path": ["Grow", "Get on Google"],
+      "path_hi": ["बढ़ाएँ", "Google पर आएँ"],
+      "ask": "How do I get on Google?",
+      "ask_hi": "Google पर कैसे आऊँ?",
+      "screen": "google"
+    },
+    {
+      "id": "stamps",
+      "title": "Stamp card and perks",
+      "path": ["Shop", "More", "Stamp card"],
+      "path_hi": ["दुकान", "और भी", "स्टैम्प कार्ड"],
+      "ask": "Free chai after 8 visits",
+      "ask_hi": "8 बार आने पर एक चाय मुफ़्त",
+      "screen": "stamps"
+    },
+    {
+      "id": "photos",
+      "title": "Shop photos",
+      "path": ["Shop", "Photos"],
+      "path_hi": ["दुकान", "फ़ोटो"],
+      "ask": "Add a shop photo",
+      "ask_hi": "दुकान की फ़ोटो जोड़ो",
+      "screen": "photo"
+    },
+    {
+      "id": "icon",
+      "title": "Shop icon",
+      "path": ["Shop", "Shop details"],
+      "path_hi": ["दुकान", "दुकान की जानकारी"],
+      "ask": "Make my icon",
+      "ask_hi": "मेरा आइकन बनाओ",
+      "screen": "icon"
+    },
+    {
+      "id": "memory",
+      "title": "Teach the coach",
+      "path": ["Shop", "Shop details"],
+      "path_hi": ["दुकान", "दुकान की जानकारी"],
+      "ask": "Remember: closed on Mondays",
+      "ask_hi": "याद रखो: सोमवार को बंद",
+      "screen": "details"
+    },
+    {
+      "id": "reminders",
+      "title": "Reminders",
+      "path": ["You", "Remind me"],
+      "path_hi": ["आप", "याद दिलाएँ"],
+      "ask": "Remind me every morning",
+      "ask_hi": "मुझे हर सुबह याद दिलाओ",
+      "screen": "reminders"
+    },
+    {
+      "id": "shops",
+      "title": "More shops",
+      "path": ["You", "Your shops"],
+      "path_hi": ["आप", "आपकी दुकानें"],
+      "ask": "Add another shop",
+      "ask_hi": "एक और दुकान जोड़ो",
+      "screen": "you"
+    },
+    {
+      "id": "privacy",
+      "title": "Your data and deleting it",
+      "path": ["You", "Privacy & your data"],
+      "path_hi": ["आप", "गोपनीयता और आपका डेटा"],
+      "ask": "Delete my data",
+      "ask_hi": "मेरा डेटा मिटाओ",
+      "screen": "privacy"
+    },
+    {
+      "id": "face_check",
+      "title": "Optional face check",
+      "path": ["You", "Privacy & your data", "Verify it’s you"],
+      "path_hi": ["आप", "गोपनीयता और आपका डेटा", "पुष्टि करें कि यह आप हैं"],
+      "ask": "Verify me",
+      "ask_hi": "मेरा चेहरा जाँचो",
+      "screen": "trust"
+    },
+    {
+      "id": "help",
+      "title": "What the coach can do",
+      "path": ["You", "What can I ask?"],
+      "path_hi": ["आप", "मैं क्या पूछूँ?"],
+      "ask": "What can you do?",
+      "ask_hi": "तुम क्या कर सकते हो?",
+      "screen": "you"
+    }
+  ]
+}

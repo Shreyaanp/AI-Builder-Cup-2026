@@ -217,8 +217,9 @@ CONCEPTS: dict[str, str] = {
     "tea": "tea teh chai masala tarik matcha hojicha chaa lemongrass",
     "breakfast": "breakfast idli dosa vada poha upma paratha toast kaya egg omelette porridge "
     "congee lemak bakar morning",
+    # A "Bakes" section can contain cake; it does not establish that an item is bread.
     "bread": "bread bakery bun buns loaf croissant baguette pav sourdough naan shokupan pan "
-    "roll rolls bakes bake baked puff",
+    "roll rolls puff",
     "sweet": "sweet sweets dessert desserts cake cakes pastry pastries kueh ladoo barfi halwa "
     "jamun cookie cookies biscuit biscuits chocolate mithai pudding tart cheesecake scone "
     "anpan jaggery",
@@ -257,10 +258,16 @@ def _stem(word: str) -> str:
 def fixture_vector(text: str) -> list[float]:
     """Deterministic offline stand-in for an embedding: words plus their concept groups."""
     vector = np.zeros(DIMENSIONS, dtype=np.float32)
-    for word in words(text.casefold())[:400]:
+    tokens = words(text.casefold())[:400]
+    for index, word in enumerate(tokens):
         stem = _stem(word)
         vector[_slot("w:" + stem)] += 1.0
+        # In "banana bread" or "vegetable puff", produce describes the baked item,
+        # rather than making raw fruit/vegetables its closest recommendation.
+        following = _CONCEPT_OF.get(tokens[index + 1], set()) if index + 1 < len(tokens) else set()
         for concept in _CONCEPT_OF.get(word, set()) | _CONCEPT_OF.get(stem, set()):
+            if concept == "produce" and following & {"bread", "sweet"}:
+                continue
             vector[_slot("c:" + concept)] += 2.0
     return normalize(vector).tolist()
 
@@ -817,4 +824,4 @@ def build_engine(settings: Any, docs: VectorDocuments | None) -> SearchEngine:
             settings.embedding_model,
         )
         return SearchEngine(embed, settings.embedding_model, docs, live=True, explainer=explainer)
-    return SearchEngine(fixture_embedder, "fixture-concepts-v1", docs, explainer=explainer)
+    return SearchEngine(fixture_embedder, "fixture-concepts-v2", docs, explainer=explainer)

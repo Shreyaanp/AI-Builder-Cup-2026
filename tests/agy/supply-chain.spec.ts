@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { enter, localOnly, seedShop } from '../stories/support.js'
+import { openBuyStock } from '../support/grow.js'
 
 test.use({
   viewport: { width: 390, height: 844 },
@@ -20,9 +21,9 @@ test.describe('Supply chain flows on phone (390px)', () => {
     await seedShop(page)
     await page.keyboard.press('Escape')
 
-    // Navigate to Grow → Purchase orders → Try supply demo
+    // Navigate to Grow → Buy stock → Try supply demo
     await page.getByRole('button', { name: 'Grow', exact: true }).click()
-    await page.getByRole('button', { name: /^Purchase orders/ }).click()
+    await openBuyStock(page)
     await page.getByRole('button', { name: 'Try supply demo', exact: true }).click()
 
     // 1. Today view displays supply chain warning card
@@ -34,22 +35,24 @@ test.describe('Supply chain flows on phone (390px)', () => {
     await todaySupply.getByRole('button', { name: 'Reorder', exact: true }).click()
     const orderCard = page.getByRole('article')
     await expect(orderCard).toBeVisible()
-    await expect(orderCard).toContainText('AI draft · offline rules')
+    await expect(orderCard).toContainText('Drafted for you')
     await expect(orderCard).toContainText(/Minimum order/i)
 
     // 3. Outbound PO: Approve and send
     await orderCard.getByRole('button', { name: 'Approve and send', exact: true }).click()
 
-    // View as SAP IDoc
-    await orderCard.getByRole('button', { name: 'View as SAP (IDoc)', exact: true }).click()
-    const sapDialog = page.getByRole('dialog', { name: 'View as SAP (IDoc)' })
-    await expect(sapDialog.getByLabel('SAP IDoc')).toContainText('<IDOCTYP>ORDERS05</IDOCTYP>')
+    // View as Supplier’s format
+    await orderCard.getByRole('button', { name: 'See the supplier’s copy', exact: true }).click()
+    const sapDialog = page.getByRole('dialog', { name: 'See the supplier’s copy' })
+    await expect(sapDialog.getByLabel('Supplier’s format')).toContainText(
+      '<IDOCTYP>ORDERS05</IDOCTYP>',
+    )
     await expect(sapDialog).toContainText('In plain words')
     await page.keyboard.press('Escape')
 
     // 4. Inbound simulation: simulate supplier replies across the timeline
-    for (const step of ['Confirmed (ORDRSP)', 'Shipping notice (DESADV)', 'Invoice']) {
-      await orderCard.getByRole('button', { name: 'Simulate supplier reply', exact: true }).click()
+    for (const step of ['Confirmed', 'On its way', 'Invoice']) {
+      await orderCard.getByRole('button', { name: 'See the supplier’s reply', exact: true }).click()
       const row = orderCard.getByRole('listitem').filter({ hasText: step }).first()
       await expect(row).not.toContainText('Waiting')
     }
@@ -84,18 +87,15 @@ test.describe('Supply chain flows on phone (390px)', () => {
 
     // Enable demo supply
     await page.getByRole('button', { name: 'Grow', exact: true }).click()
-    await page.getByRole('button', { name: /^Purchase orders/ }).click()
+    await openBuyStock(page)
     await page.getByRole('button', { name: 'Try supply demo', exact: true }).click()
 
-    // Open Supply chain hub
+    // Open Buy stock → On the way (what was the Supply chain hub, batch 4b)
     await page.getByRole('button', { name: 'Grow', exact: true }).click()
-    await page.getByRole('button', { name: /^Supply chain/ }).click()
-    const hub = page.getByRole('dialog', { name: 'Supply chain' })
-    await expect(hub).toBeVisible()
+    const hub = await openBuyStock(page, 'On the way')
 
     // INBOUND: Partner sends next document (forecast, order, order changed)
-    await hub.getByRole('button', { name: /^Coming in/ }).click()
-    const nextDocBtn = hub.getByRole('button', { name: 'Partner sends next document (demo)' })
+    const nextDocBtn = hub.getByRole('button', { name: 'Show next step (demo)' })
     await expect(nextDocBtn).toBeVisible()
     await nextDocBtn.click()
     await expect(hub).toContainText('Forecast')
@@ -107,7 +107,7 @@ test.describe('Supply chain flows on phone (390px)', () => {
     await expect(hub).toContainText('Order changed')
 
     // OUTBOUND: Accept order change and check shipping notice
-    await hub.getByRole('button', { name: /^Needs me now/ }).click()
+    await hub.getByRole('button', { name: /^To do/ }).click()
     await hub.getByRole('button', { name: /Harbour Café \(Demo\) changed an order/ }).click()
     const cafeDialog = page.getByRole('dialog', { name: 'Harbour Café (Demo)' })
     await expect(cafeDialog).toBeVisible()

@@ -1,7 +1,8 @@
 import { chatBubbleStyle } from '../../coach/bubbleStyle'
+import { galleryKindOf, type GalleryKind } from '../../google/galleryGroups'
 import { AiInfo } from '../AiInfo'
 import { photoCopy } from '../../coach/photoCopy'
-import { photoHeaders, preparePhoto } from '../photoPrep'
+import { PHOTO_READ_TIMEOUT_MS, photoHeaders, preparePhoto } from '../photoPrep'
 import { PlainText } from '../../../design/PlainText'
 import { RichText } from '../../../design/LazyRichText'
 import { stripMarkdown } from '../../../design/markdownUtils'
@@ -11,7 +12,7 @@ import {
   photoRouteCopy,
   type PhotoRoute,
 } from '../../coach/photoRouteCopy'
-import { CloseDay, type Kind as DayKind } from '../../closeday/CloseDay'
+import type { Kind as DayKind } from '../../closeday/CloseDay'
 import {
   lazy,
   Suspense,
@@ -51,17 +52,22 @@ import {
   ImagePlus,
   ImageUp,
   FileSpreadsheet,
+  FileText,
+  Handshake,
   Layers,
   Paperclip,
   Leaf,
   MessageSquare,
   MessageSquarePlus,
   Mic,
-  PackagePlus,
   Share2,
   Square,
+  Send,
   Store,
   Tag,
+  TrendingUp,
+  Truck,
+  Wallet,
   Volume2,
   VolumeX,
   ZapOff,
@@ -72,19 +78,15 @@ import { RateLimitError, streamCoach, TooSlowError, TURN_IDLE_MS } from '../../.
 import type { CoachEvent } from '../../../api/stream'
 import { useIdentity } from '../../../auth/useIdentity'
 import { useLocale } from '../../../state/hooks'
+import { productName } from '../../../i18n/productNames'
 import { ApiError } from '../api'
 import type { Conversation, PhotoResult, Proposal } from '../api'
 import { defaultCurrency } from '../format'
 import { useCopy } from '../strings'
 import { Sheet } from '../Sheet'
 import { useBackClose } from '../backStack'
-import { ConnectSheet } from '../../connect/ConnectSheet'
 import { useConnectCopy } from '../../connect/strings'
-import { SalesImportSheet } from '../ImportMenu'
 import { DOCUMENT_ACCEPT, useImport, type SalesImport } from '../useImport'
-import { StartCard } from '../ShopCard'
-import { TourOffer } from '../../tour/Tour'
-import { ShopSheets } from '../ShopTiles'
 import { NeedsPill, TodayView, type TodayActions } from '../today/TodayView'
 import type { ShopSheetKind } from '../ShopTiles'
 import { useUnread } from '../useUnread'
@@ -94,27 +96,43 @@ import { useSpokenReveal } from '../useSpokenReveal'
 import { cardWords, mergeTranscript } from '../speechReveal'
 import { useOnline } from '../useOnline'
 import { useWorkspace } from '../workspaceContext'
-import { OwnerJourney } from '../../frontdoors/OwnerJourney'
 import { LoadError } from '../LoadError'
 import { enterRise, shape } from '../../../design/theme'
 import { useSourcingCopy } from '../../sourcing/copy'
-import { OrdersSheet } from '../../sourcing/Orders'
 import { track } from '../../../app/analytics'
 import { useReceiveOrder } from '../../sourcing/orderData'
-import { OrderCard, SearchingSuppliers, SupplierCarousel } from '../../sourcing/SourcingCards'
 import type { Order, SupplierResult } from '../../sourcing/types'
-import { SupplyChatCard, type SupplyCardData } from '../../supply/SupplyEntry'
+import type { SupplyCardData } from '../../supply/SupplyEntry'
 import type { PurchaseOrder, Relationship } from '../../supply/types'
 import { utter } from '../phoneVoice'
 import { useLanguageSwitch } from '../languageSwitch'
-import { ActionChip, MenuLinkChip, ReplyCard } from '../CoachActions'
+import { ActionChip, MenuLinkChip, ReplyCard, ReplyLineAction } from '../CoachActions'
+import { CollapsibleCard, LineAction } from '../CollapsibleCard'
+import { sendPrepared, useCardFold, type ReplyState } from '../chatCards'
+import { cardSummary, summaryCopy, type SummaryInput } from '../cardSummary'
 import { useNextStepsCopy } from '../nextStepsCopy'
 import { asCoachAction, NEEDS_TAP, type CoachAction } from '../coachAction'
+import { requestOpen } from '../openRequest'
 import type { Destination } from '../workspaceContext'
-import { GuideChips } from '../../owner-tools/CoachGuide'
+import { TodayChips } from '../../owner-tools/CoachGuide'
+import { useSimpleCopy } from '../today/simpleCopy'
 import { openOwnerFeature } from '../../owner-tools/entry'
-import { PaymentCard } from '../../owner-tools/PaymentsScreen'
+import { OnceOpened } from '../../../app/OnceOpened'
+import {
+  CloseDay,
+  ConnectSheet,
+  FirstRun,
+  OrderCard,
+  OrdersSheet,
+  PaymentCard,
+  SalesImportSheet,
+  SearchingSuppliers,
+  ShopSheets,
+  VendorListCard,
+  SupplyChatCard,
+} from './coachDeferred'
 import type { PaymentLink } from '../../owner-tools/links'
+import { stripOfflinePrefix } from '../offlinePrefix'
 
 // Charts, purchase orders and rules cards only appear mid-conversation; their code loads then.
 const CoachChart = lazy(() => import('../CoachChart').then((m) => ({ default: m.CoachChart })))
@@ -123,6 +141,12 @@ const PurchaseOrderCard = lazy(() =>
 )
 const RulesChangeCard = lazy(() =>
   import('../../supply/Supply').then((m) => ({ default: m.RulesChangeCard })),
+)
+const PoLineAction = lazy(() =>
+  import('../../supply/PurchaseOrderCard').then((m) => ({ default: m.PoLineAction })),
+)
+const RulesLineAction = lazy(() =>
+  import('../../supply/Supply').then((m) => ({ default: m.RulesLineAction })),
 )
 
 const PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp']
@@ -163,9 +187,9 @@ const SHEETS: Partial<Record<CoachAction['target'], ShopSheetKind>> = {
   details: 'details',
   // The shop icon card sits at the top of the details sheet.
   icon: 'details',
-  stamps: 'details',
-  plan: 'plan',
-  games: 'customer',
+  // The stamp card and its thank-you perks: Shop → More → Stamp card (simplify batch 3).
+  stamps: 'stamps',
+  games: 'perks',
 }
 const DESTINATIONS: Partial<Record<CoachAction['target'], Destination>> = {
   today: 'coach',
@@ -177,17 +201,28 @@ const DESTINATIONS: Partial<Record<CoachAction['target'], Destination>> = {
   close_day: 'grow',
   google: 'google',
   privacy: 'privacy',
+  // How much to make (numbers open) and Buy stock open over Grow (simplify batch 4b).
+  plan: 'grow',
   supply: 'grow',
   // The playbook sheet lives under Your data.
   playbook: 'privacy',
   // Payments & rides opens over Grow, so Back returns there.
   payments: 'grow',
+  rider: 'grow',
+  radar: 'grow',
+  reminders: 'you',
+}
+/** Screens that open over or inside the destination tab (simplify batch 2). */
+function openInside(target: CoachAction['target']) {
+  if (target === 'radar' || target === 'rider' || target === 'plan') requestOpen(target)
+  if (target === 'supply') requestOpen('stock')
+  if (target === 'payments' || target === 'rider') openOwnerFeature('payments')
 }
 const REPLY_POLL_MS = 1500
 const REPLY_WAIT_MS = 45_000
 
 /** A shop photo the owner may later choose to show customers (offered once, never automatic). */
-export type GalleryPhoto = { file: File; businessId: string }
+export type GalleryPhoto = { file: File; businessId: string; kind?: GalleryKind }
 
 // The extraction file survives a new shop's approval (the flow hands it over with the new ID).
 // It stays local to this coach workspace and never enters preference storage.
@@ -215,6 +250,7 @@ function CoachScreen({
   setGalleryPhoto: (value: GalleryPhoto | null) => void
 }) {
   const t = useCopy()
+  const simple = useSimpleCopy()
   const o = useOnboardingCopy()
   const theme = useTheme()
   const roles = theme.material
@@ -239,8 +275,12 @@ function CoachScreen({
   const s = useSourcingCopy()
   // Sourcing: the item being searched for, every order shown in the chat, the open thread.
   const [searching, setSearching] = useState<string | null>(null)
+  // Example requests a reply offers (the offline demo coach): one tap sends one.
+  const [prompts, setPrompts] = useState<string[]>([])
   const [orders, setOrders] = useState<Record<string, Order>>({})
   const [pos, setPos] = useState<Record<string, PurchaseOrder>>({})
+  // Prepared customer replies: sent or set aside (their folded line says which, OB-249).
+  const [replies, setReplies] = useState<Record<string, ReplyState>>({})
   const [thread, setThread] = useState<string | null>(null)
   const watching = useRef(new Set<string>())
   const receiveOrder = useReceiveOrder()
@@ -252,6 +292,11 @@ function CoachScreen({
   const [menuFocus, setMenuFocus] = useState<string | null>(null)
   const next = useNextStepsCopy()
   const { unread, refresh: refreshUnread } = useUnread()
+  const closeShopSheet = () => {
+    if (shopSheet === 'messages') refreshUnread()
+    setShopSheet(null)
+    setMenuFocus(null)
+  }
   const messageInput = useRef<HTMLTextAreaElement>(null)
   const session = useRef<string | null>(null)
   const controller = useRef<AbortController | null>(null)
@@ -326,6 +371,14 @@ function CoachScreen({
       }
       if (event.kind === 'delta') setReply((text) => text + (event.text ?? ''))
       if (event.kind === 'reply' || event.kind === 'output_transcript') setReply(event.text ?? '')
+      if (event.kind === 'reply') {
+        const offered = event.data?.suggestions
+        setPrompts(
+          Array.isArray(offered)
+            ? offered.filter((item): item is string => typeof item === 'string').slice(0, 6)
+            : [],
+        )
+      }
       if (event.kind === 'input_transcript') {
         setShowToday(false)
         setMessages((items) => [...items, { role: 'user', text: event.text ?? '' }])
@@ -368,7 +421,15 @@ function CoachScreen({
       }
       if (event.kind === 'order') {
         const order = event.data as unknown as Order
-        setOrders((known) => ({ ...known, [order.id]: order }))
+        setOrders((known) => {
+          const old = order.replaces ? known[order.replaces] : undefined
+          // The edited draft replaces the old one on the server (OB-222): its card stops offering Send.
+          const replaced =
+            old?.status === 'draft'
+              ? { [old.id]: { ...old, status: 'replaced' as const, replaced_by: order.id } }
+              : {}
+          return { ...known, ...replaced, [order.id]: order }
+        })
         // One card per order, moved to the end when the coach updates it.
         setMessages((items) =>
           [
@@ -380,18 +441,20 @@ function CoachScreen({
       if (event.kind === 'action') {
         const action = asCoachAction(event.data)
         if (action) {
-          setMessages((items) =>
-            [...items, { role: 'action' as const, action, key: crypto.randomUUID() }].slice(-40),
-          )
+          const chip = { role: 'action' as const, action, key: crypto.randomUUID() }
+          // An offered button belongs under the answer it comes with ("what first?", OB-264), so
+          // it waits for the end of the turn like the menu links.
+          if (action.offer) menuLinks.current.push(chip)
+          else setMessages((items) => [...items, chip].slice(-40))
           // Screens open at once (everything by voice); pickers and Send wait for a tap.
-          if (!NEEDS_TAP.has(action.target)) {
+          if (!NEEDS_TAP.has(action.target) && !action.offer) {
             setShowToday(action.target === 'today')
             const sheet = SHEETS[action.target]
-            if (action.target === 'games') go('grow')
+            if (action.target === 'games') go('shop')
             if (action.target === 'connect') setConnectOpen(true)
             if (sheet) setShopSheet(sheet)
             else if (DESTINATIONS[action.target]) go(DESTINATIONS[action.target]!)
-            if (action.target === 'payments') openOwnerFeature('payments')
+            openInside(action.target)
           }
         }
       }
@@ -641,6 +704,7 @@ function CoachScreen({
     setError('')
     setMessages((items) => [...items, { role: 'user' as const, text: message }].slice(-40))
     setNote('')
+    setPrompts([])
     let finalReply = ''
     let proposed = false
     try {
@@ -729,14 +793,14 @@ function CoachScreen({
 
   function openAction(action: CoachAction) {
     setShowToday(action.target === 'today')
-    if (action.target === 'games') go('grow')
+    if (action.target === 'games') go('shop')
     if (action.target === 'connect') setConnectOpen(true)
     if (action.target === 'photo') pick('library')
     else if (action.target === 'import') pick('document')
     else if (action.target === 'reply') return
     else if (SHEETS[action.target]) setShopSheet(SHEETS[action.target]!)
     else if (DESTINATIONS[action.target]) go(DESTINATIONS[action.target]!)
-    if (action.target === 'payments') openOwnerFeature('payments')
+    openInside(action.target)
   }
   async function sendReply(action: CoachAction): Promise<boolean> {
     if (!activeId || !action.thread_id || !action.text) return false
@@ -765,6 +829,12 @@ function CoachScreen({
       setError(
         cause instanceof ApiError && cause.code === 'ADD_SHOP_PHONE' ? s.addPhone : s.sendFailed,
       )
+      // A stale card (replaced, already sent) shows its real state instead of a dead Send.
+      const latest = await api<Order>(orderPath(order.id)).catch(() => null)
+      if (latest && latest.version !== order.version) {
+        setOrders((known) => ({ ...known, [latest.id]: latest }))
+        setError('')
+      }
       return false
     }
   }
@@ -859,7 +929,7 @@ function CoachScreen({
         method: 'POST',
         body: file,
         headers: photoHeaders(photo),
-        signal: AbortSignal.any([operation.signal, AbortSignal.timeout(60_000)]),
+        signal: AbortSignal.any([operation.signal, AbortSignal.timeout(PHOTO_READ_TIMEOUT_MS)]),
       })
       if (!alive.current || operation.signal.aborted) return
       const uncertain = Array.isArray(result?.extraction?.uncertain)
@@ -872,7 +942,7 @@ function CoachScreen({
         businessId &&
         ['storefront', 'signboard', 'menu', 'price_list'].includes(result?.photo_kind ?? '')
       )
-        setGalleryPhoto({ file, businessId })
+        setGalleryPhoto({ file, businessId, kind: galleryKindOf(result?.photo_kind) })
       setMessages((items) =>
         [
           ...items,
@@ -919,6 +989,69 @@ function CoachScreen({
   // A typed reply streams as tokens; a spoken one appears as it is said.
   const liveReply = reply || reveal.shown
   const empty = messages.length === 0 && !liveReply
+  // OB-249: every card in the chat, by key; only the newest (or the one the owner opened) is full.
+  function cardOf(message: Message): [string, SummaryInput] | null {
+    if (message.role === 'order')
+      return orders[message.orderId]
+        ? [
+            message.orderId,
+            {
+              kind: 'order',
+              order: orders[message.orderId]!,
+              pendingWords: { cancel: s.cancelToSend, message: s.messageToSupplier },
+            },
+          ]
+        : null
+    if (message.role === 'po')
+      return pos[message.poId] ? [message.poId, { kind: 'po', order: pos[message.poId]! }] : null
+    if (message.role === 'supply')
+      return message.data.order ? [message.key, { kind: 'po', order: message.data.order }] : null
+    if (message.role === 'suppliers')
+      return [message.key, { kind: 'suppliers', result: message.result }]
+    if (message.role === 'chart') return [message.key, { kind: 'chart', chart: message.chart }]
+    if (message.role === 'payment')
+      return [message.key, { kind: 'payment', payment: message.payment }]
+    if (message.role === 'rules') return [message.key, { kind: 'rules', row: message.row }]
+    if (message.role === 'action' && message.action.target === 'reply')
+      return replies[message.key] === 'dismissed'
+        ? null
+        : [
+            message.key,
+            { kind: 'reply', action: message.action, sent: replies[message.key] === 'sent' },
+          ]
+    return null
+  }
+  const rulesChanged = (key: string) => (row: Relationship) =>
+    setMessages((items) =>
+      items.map((item) => (item.role === 'rules' && item.key === key ? { ...item, row } : item)),
+    )
+  const fold = useCardFold(messages.flatMap((message) => cardOf(message)?.[0] ?? []))
+  /** The folded order's action: a prepared cancellation or message is named as what it sends. */
+  function pendingLine(order: Order) {
+    const c = summaryCopy(language)
+    const name = order.supplier.name
+    if (order.pending?.kind === 'cancel') return { label: c.sendCancel, name: c.sendCancelTo(name) }
+    if (order.pending) return { label: c.sendMessage, name: c.sendMessageTo(name) }
+    return { label: s.send, name: s.sendTo(name) }
+  }
+  /** One card of the chat, folded to its summary line unless it is the open one. */
+  function folded(message: Message, icon: ReactElement, card: ReactElement, action?: ReactElement) {
+    const [key, input] = cardOf(message)!
+    const summary = cardSummary(input, language)
+    return (
+      <CollapsibleCard
+        key={key}
+        open={fold.open(key)}
+        newest={fold.newest(key)}
+        summary={summary}
+        icon={icon}
+        action={summary.needsYou ? action : undefined}
+        onToggle={() => fold.toggle(key)}
+      >
+        {card}
+      </CollapsibleCard>
+    )
+  }
   // OB-38: "How this works" goes away once the owner has sent 2+ messages in this shop (remembered
   // per shop so it stays hidden on reload); it stays reachable in the + sheet.
   const helpSeenKey = activeId ? `niva.coach.helpSeen.${activeId}` : null
@@ -1028,7 +1161,6 @@ function CoachScreen({
         mx: 'auto',
       }}
     >
-      {!ws.active && <OwnerJourney />}
       {/* One quiet line: which coach is answering. Every other action is behind the top bar's +. */}
       {!empty && (
         <Typography
@@ -1049,32 +1181,13 @@ function CoachScreen({
         open={actionsOpen}
         onClose={() => setActionsOpen(false)}
         titleId="coach-actions-title"
-        title={t.newChat}
+        title={simple.startAgain}
         dismissInActions
         actions={<Button onClick={() => setActionsOpen(false)}>{t.cancel}</Button>}
       >
+        {/* Start again and past chats; how the coach and its numbers work. Adding a shop lives in
+            the shop switcher, adding a product on Shop › Menu (SIMPLIFY §3.7). */}
         <Stack spacing={1} sx={{ alignItems: 'flex-start' }}>
-          <AiInfo feature="coach" inSheet />
-          <Button
-            startIcon={<Store size={18} />}
-            onClick={() => {
-              setActionsOpen(false)
-              ws.startNewShop()
-            }}
-          >
-            {t.addShop}
-          </Button>
-          {ws.active && (
-            <Button
-              startIcon={<PackagePlus size={18} />}
-              onClick={() => {
-                setActionsOpen(false)
-                ws.openEditor({ kind: 'product', product: null })
-              }}
-            >
-              {t.addProduct}
-            </Button>
-          )}
           <Button
             startIcon={<MessageSquarePlus size={18} />}
             disabled={empty}
@@ -1082,9 +1195,12 @@ function CoachScreen({
               setActionsOpen(false)
               resetThread()
             }}
+            sx={{ minHeight: 48 }}
           >
             {t.newChat}
           </Button>
+          {/* Today's forecast is explained here too, now that Today has no help line of its own. */}
+          <AiInfo feature="coach" also={ws.active ? ['forecast'] : []} inSheet />
         </Stack>
         {shopHistory.length > 0 && (
           <List
@@ -1165,7 +1281,7 @@ function CoachScreen({
                   setError('')
                   try {
                     await api(
-                      `/businesses/${encodeURIComponent(galleryPhoto.businessId)}/gallery`,
+                      `/businesses/${encodeURIComponent(galleryPhoto.businessId)}/gallery?kind=${galleryPhoto.kind ?? 'other'}`,
                       {
                         method: 'POST',
                         body: galleryPhoto.file,
@@ -1242,31 +1358,21 @@ function CoachScreen({
           ws.loading || ws.loadError ? null : ws.active ? (
             // Today: how the shop is doing and what needs the owner now. Anything complete
             // goes away; the top bar already names the shop.
-            <Stack spacing={3}>
-              <TodayView key={ws.active.id} actions={today} showAiInfo={!sorting} />
-              <GuideChips
-                compact
-                disabled={busy !== 'idle' || voice.state !== 'idle'}
-                onSend={(sentence) => void send(sentence)}
-              />
-            </Stack>
+            <TodayView
+              key={ws.active.id}
+              actions={today}
+              chips={(evening) => (
+                <TodayChips
+                  evening={evening}
+                  disabled={busy !== 'idle' || voice.state !== 'idle'}
+                  onSend={(sentence) => void send(sentence)}
+                />
+              )}
+            />
           ) : (
-            <Stack spacing={{ xs: 3, sm: 5 }} sx={{ pt: { xs: 1, sm: 10 }, pb: 4 }}>
-              {/* Before a shop exists the greeting introduces the coach. */}
-              <Typography
-                component="h1"
-                variant="headlineMedium"
-                sx={{
-                  fontSize: { xs: '1.5rem', sm: undefined },
-                  lineHeight: { xs: '2rem', sm: undefined },
-                }}
-              >
-                {t.coachGreeting}
-              </Typography>
-              <StartCard />
-              {/* First visit: see the product working on a filled demo shop. */}
-              {ws.businesses.length === 0 && <TourOffer />}
-            </Stack>
+            <Suspense fallback={null}>
+              <FirstRun />
+            </Suspense>
           )
         ) : (
           <>
@@ -1292,7 +1398,7 @@ function CoachScreen({
                     ws.savedProposals.includes(message.proposalId) && (
                       <MenuLinkChip
                         key={message.key}
-                        label={next.seeInMenu(message.item)}
+                        label={next.seeInMenu(productName(message.item, language))}
                         onOpen={() => {
                           setMenuFocus(message.item)
                           setShopSheet('menu')
@@ -1301,7 +1407,26 @@ function CoachScreen({
                     )
                   ) : message.role === 'action' ? (
                     message.action.target === 'reply' ? (
-                      <ReplyCard key={message.key} action={message.action} onSend={sendReply} />
+                      cardOf(message) &&
+                      folded(
+                        message,
+                        <MessageSquare size={18} />,
+                        <ReplyCard
+                          action={message.action}
+                          state={replies[message.key] ?? 'ready'}
+                          onState={(state) =>
+                            setReplies((known) => ({ ...known, [message.key]: state }))
+                          }
+                          onSend={sendReply}
+                        />,
+                        <ReplyLineAction
+                          onRun={() =>
+                            sendPrepared(message.action, sendReply, (state) =>
+                              setReplies((known) => ({ ...known, [message.key]: state })),
+                            )
+                          }
+                        />,
+                      )
                     ) : (
                       <ActionChip
                         key={message.key}
@@ -1310,80 +1435,127 @@ function CoachScreen({
                       />
                     )
                   ) : message.role === 'payment' ? (
-                    <Box component="li" key={message.key}>
-                      <PaymentCard payment={message.payment} />
-                    </Box>
-                  ) : message.role === 'chart' ? (
-                    <Box component="li" key={message.key} sx={{ display: 'flex' }}>
+                    folded(
+                      message,
+                      <Wallet size={18} />,
                       <Suspense fallback={null}>
-                        <CoachChart chart={message.chart} />
-                      </Suspense>
-                    </Box>
+                        <PaymentCard payment={message.payment} />
+                      </Suspense>,
+                    )
+                  ) : message.role === 'chart' ? (
+                    folded(
+                      message,
+                      <TrendingUp size={18} />,
+                      <Box sx={{ display: 'flex' }}>
+                        <Suspense fallback={null}>
+                          <CoachChart chart={message.chart} />
+                        </Suspense>
+                      </Box>,
+                    )
                   ) : message.role === 'suppliers' ? (
-                    <SupplierCarousel
-                      key={message.key}
-                      result={message.result}
-                      onChoose={(card) => {
-                        const amount = message.result.quantity
-                          ? `${message.result.quantity} ${message.result.unit} `
-                          : ''
-                        setNote(s.chooseDraft(card.rank, `${amount}${message.result.item}`))
-                        messageInput.current?.focus()
-                      }}
-                    />
+                    folded(
+                      message,
+                      <Store size={18} />,
+                      <Suspense fallback={null}>
+                        <VendorListCard
+                          result={message.result}
+                          onChoose={(card) => {
+                            const amount = message.result.quantity
+                              ? `${message.result.quantity} ${message.result.unit} `
+                              : ''
+                            // Order goes as a turn: the coach prepares the card with Send.
+                            void send(s.chooseDraft(card.rank, `${amount}${message.result.item}`))
+                          }}
+                        />
+                      </Suspense>,
+                    )
                   ) : message.role === 'po' ? (
-                    pos[message.poId] && (
-                      <Box component="li" key={message.poId} sx={{ pl: { xs: 0, sm: 10 } }}>
+                    pos[message.poId] &&
+                    folded(
+                      message,
+                      <FileText size={18} />,
+                      <Box sx={{ pl: { xs: 0, sm: 10 } }}>
                         <Suspense fallback={null}>
                           <PurchaseOrderCard
                             order={pos[message.poId]!}
                             onChange={(po) => setPos((known) => ({ ...known, [po.id]: po }))}
                           />
                         </Suspense>
-                      </Box>
+                      </Box>,
+                      <Suspense fallback={null}>
+                        <PoLineAction
+                          order={pos[message.poId]!}
+                          onChange={(po) => setPos((known) => ({ ...known, [po.id]: po }))}
+                        />
+                      </Suspense>,
                     )
                   ) : message.role === 'supply' ? (
-                    <Box component="li" key={message.key} sx={{ pl: { xs: 0, sm: 10 } }}>
-                      <SupplyChatCard data={message.data} />
-                    </Box>
+                    message.data.order ? (
+                      folded(
+                        message,
+                        <FileText size={18} />,
+                        <Box sx={{ pl: { xs: 0, sm: 10 } }}>
+                          <Suspense fallback={null}>
+                            <SupplyChatCard data={message.data} />
+                          </Suspense>
+                        </Box>,
+                      )
+                    ) : (
+                      // A link to the supply screens: one line already.
+                      <Box component="li" key={message.key} sx={{ pl: { xs: 0, sm: 10 } }}>
+                        <Suspense fallback={null}>
+                          <SupplyChatCard data={message.data} />
+                        </Suspense>
+                      </Box>
+                    )
                   ) : message.role === 'rules' ? (
-                    <Box component="li" key={message.key} sx={{ pl: { xs: 0, sm: 10 } }}>
+                    folded(
+                      message,
+                      <Handshake size={18} />,
+                      <Box sx={{ pl: { xs: 0, sm: 10 } }}>
+                        <Suspense fallback={null}>
+                          <RulesChangeCard row={message.row} onChange={rulesChanged(message.key)} />
+                        </Suspense>
+                      </Box>,
                       <Suspense fallback={null}>
-                        <RulesChangeCard
-                          row={message.row}
-                          onChange={(row) =>
-                            setMessages((items) =>
-                              items.map((item) =>
-                                item.role === 'rules' && item.key === message.key
-                                  ? { ...item, row }
-                                  : item,
-                              ),
-                            )
+                        <RulesLineAction row={message.row} onChange={rulesChanged(message.key)} />
+                      </Suspense>,
+                    )
+                  ) : message.role === 'order' ? (
+                    orders[message.orderId] &&
+                    folded(
+                      message,
+                      <Truck size={18} />,
+                      <Suspense fallback={null}>
+                        <OrderCard
+                          order={orders[message.orderId]!}
+                          onSend={sendOrder}
+                          onDiscard={discardOrder}
+                          onOpen={(order) => setThread(order.id)}
+                          onReceived={(order) =>
+                            void receiveOrder(order).then((received) => {
+                              if (received)
+                                setOrders((known) => ({ ...known, [received.id]: received }))
+                            })
                           }
                         />
-                      </Suspense>
-                    </Box>
-                  ) : message.role === 'order' ? (
-                    orders[message.orderId] && (
-                      <OrderCard
-                        key={message.orderId}
-                        order={orders[message.orderId]!}
-                        onSend={sendOrder}
-                        onDiscard={discardOrder}
-                        onOpen={(order) => setThread(order.id)}
-                        onReceived={(order) =>
-                          void receiveOrder(order).then((received) => {
-                            if (received)
-                              setOrders((known) => ({ ...known, [received.id]: received }))
-                          })
-                        }
-                      />
+                      </Suspense>,
+                      <LineAction
+                        label={pendingLine(orders[message.orderId]!).label}
+                        name={pendingLine(orders[message.orderId]!).name}
+                        icon={<Send size={18} />}
+                        onRun={() => sendOrder(orders[message.orderId]!)}
+                      />,
                     )
                   ) : (
                     <Bubble key={index} message={message} you={t.you} coach={t.coach} />
                   ),
                 )}
-                {searching !== null && <SearchingSuppliers item={searching} />}
+                {searching !== null && (
+                  <Suspense fallback={null}>
+                    <SearchingSuppliers item={searching} />
+                  </Suspense>
+                )}
                 {liveReply && (
                   <Bubble
                     message={{ role: 'assistant', text: liveReply }}
@@ -1399,38 +1571,70 @@ function CoachScreen({
                 )}
               </Stack>
             </Box>
-            {lastIsReply && <Box sx={{ pt: 4, pl: 10 }}>{chips}</Box>}
+            {lastIsReply && (
+              <Box sx={{ pt: 4, pl: 10 }}>
+                {prompts.length > 0 ? (
+                  <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 2 }}>
+                    {prompts.map((prompt) => (
+                      <Chip
+                        key={prompt}
+                        label={prompt}
+                        variant="outlined"
+                        onClick={() => void send(prompt)}
+                        sx={{
+                          height: 'auto',
+                          minHeight: 48,
+                          maxWidth: '100%',
+                          borderColor: roles.outlineVariant,
+                          '& .MuiChip-label': { whiteSpace: 'normal', py: 1 },
+                          ...enterRise,
+                        }}
+                      />
+                    ))}
+                  </Stack>
+                ) : (
+                  chips
+                )}
+              </Box>
+            )}
           </>
         )}
         <div ref={end} />
       </Box>
-      <SalesImportSheet imported={sales} onClose={() => setSales(null)} />
-      {dayPhoto && <CloseDay initial={dayPhoto} onClose={() => setDayPhoto(null)} />}
-      <OrdersSheet open={thread !== null} orderId={thread} onClose={() => setThread(null)} />
-      <ConnectSheet open={connectOpen} onClose={() => setConnectOpen(false)} />
-      <ShopSheets
-        kind={shopSheet}
-        menuFocus={menuFocus}
-        onClose={() => {
-          if (shopSheet === 'messages') refreshUnread()
-          setShopSheet(null)
-          setMenuFocus(null)
-        }}
-      />
+      <OnceOpened open={sales !== null} onClose={() => setSales(null)}>
+        <SalesImportSheet imported={sales} onClose={() => setSales(null)} />
+      </OnceOpened>
+      {dayPhoto && (
+        <Suspense fallback={null}>
+          <CloseDay initial={dayPhoto} onClose={() => setDayPhoto(null)} />
+        </Suspense>
+      )}
+      <OnceOpened open={thread !== null} onClose={() => setThread(null)}>
+        <OrdersSheet open={thread !== null} orderId={thread} onClose={() => setThread(null)} />
+      </OnceOpened>
+      <OnceOpened open={connectOpen} onClose={() => setConnectOpen(false)}>
+        <ConnectSheet open={connectOpen} onClose={() => setConnectOpen(false)} />
+      </OnceOpened>
+      <OnceOpened open={shopSheet !== null} onClose={closeShopSheet}>
+        <ShopSheets kind={shopSheet} menuFocus={menuFocus} onClose={closeShopSheet} />
+      </OnceOpened>
       {closeDayOpen && (
-        <CloseDay
-          onClose={() => {
-            setCloseDayOpen(false)
-            void ws.reload()
-          }}
-        />
+        <Suspense fallback={null}>
+          <CloseDay
+            onClose={() => {
+              setCloseDayOpen(false)
+              void ws.reload()
+            }}
+          />
+        </Suspense>
       )}
 
       <Box
         sx={{
           position: 'relative',
           flexShrink: 0,
-          pb: 2,
+          // Phones: the composer sits directly on the bottom navigation (OB-199).
+          pb: { xs: 0, sm: 2 },
           pt: 1,
           bgcolor: 'background.default',
           zIndex: 2,
@@ -1492,7 +1696,7 @@ function CoachScreen({
           sx={{
             display: 'flex',
             alignItems: 'flex-end',
-            gap: 0.5,
+            gap: 0,
             bgcolor: roles.surfaceContainerHigh,
             borderRadius: `${shape.xl}px`,
             p: 1,
@@ -1618,7 +1822,7 @@ function CoachScreen({
                   void send()
                 }
               }}
-              placeholder={t.messagePlaceholder}
+              placeholder={ws.active ? simple.askPlaceholder : t.messagePlaceholder}
               disabled={voice.state !== 'idle'}
               aria-label={visible ? t.message : undefined}
               maxLength={2000}
@@ -1811,7 +2015,7 @@ function Bubble({
         <Typography component="span" sx={visuallyHidden}>
           {coach}:{' '}
         </Typography>
-        <RichText content={message.text} streaming={streaming} />
+        <RichText content={stripOfflinePrefix(message.text)} streaming={streaming} />
       </Box>
     </Stack>
   )

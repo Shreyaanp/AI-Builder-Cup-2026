@@ -9,6 +9,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
     app_env: Literal["local", "test", "production"] = "local"
+    # Number of trusted proxies appended to X-Forwarded-For. Keep zero for local/test.
+    trusted_proxy_hops: int = Field(default=0, ge=0)
     public_demo_enabled: bool = False
     coach_mode: Literal["offline", "gemini"] = "offline"
     forecast_backend: Literal["weekday_average", "bigquery"] = "weekday_average"
@@ -106,6 +108,10 @@ class Settings(BaseSettings):
     # A busy text model (429/503 after its retries) hands chat, search and close the day to this
     # lighter model (e.g. gemini-3.5-flash-lite); empty: no fallback. See text_model.py.
     google_text_fallback_model: str = ""
+    # Optional cheaper model for simple one-shot calls (today: the search intent parse). Empty:
+    # those calls use google_text_model, exactly as before. If it is busy they fall back to the
+    # full text model, never to something lighter. See text_model.tries.
+    google_lite_model: str = ""
     google_live_model: str = ""
     # One voice for the whole app (owner choice, 16 Oct): Gemini Live and Cloud TTS (Chirp 3 HD)
     # share these names; other TTS tiers fall back to a female voice.

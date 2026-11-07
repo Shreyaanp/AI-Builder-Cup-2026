@@ -25,6 +25,44 @@ REORDER_ITEM = re.compile(
     r"([^\W\d_]+(?:\s[^\W\d_]+)?)",
     re.I,
 )
+# Approving a draft far beyond what the shop uses (OB-242), in each app locale; others get
+# English (OB-250).
+TOO_BIG_REPLY = {
+    "en": "Offline coach: This order is much bigger than you use. Check the amount first. "
+    "I sent nothing. How much do you want?",
+    "zh-Hans": "离线教练：这个订单远超过您的用量。请先检查数量。我什么都没发送。您需要多少？",
+    "ms": "Jurulatih luar talian: Pesanan ini jauh lebih besar daripada yang anda guna. Semak "
+    "jumlahnya dahulu. Saya tidak menghantar apa-apa. Berapa banyak yang anda mahu?",
+    "id": "Pelatih offline: Pesanan ini jauh lebih besar dari yang Anda pakai. Periksa "
+    "jumlahnya dulu. Saya tidak mengirim apa pun. Berapa banyak yang Anda mau?",
+    "fil": "Offline coach: Mas malaki ang order na ito kaysa sa ginagamit mo. Tingnan muna ang "
+    "dami. Wala akong ipinadala. Ilan ang gusto mo?",
+    "ja": "オフラインコーチ：この注文は使う量よりかなり多いです。先に数量を確認してください。"
+    "何も送っていません。どれくらい必要ですか？",
+    "ko": "오프라인 코치: 이 주문은 쓰는 양보다 훨씬 많아요. 먼저 수량을 확인하세요. "
+    "아무것도 보내지 않았어요. 얼마나 필요하세요?",
+    "th": "โค้ชออฟไลน์: คำสั่งซื้อนี้มากกว่าที่คุณใช้มาก ตรวจสอบจำนวนก่อน ยังไม่ได้ส่งอะไรไป คุณต้องการเท่าไร",
+    "vi": "Trợ lý ngoại tuyến: Đơn này lớn hơn nhiều so với lượng bạn dùng. Hãy kiểm tra số "
+    "lượng trước. Tôi chưa gửi gì. Bạn cần bao nhiêu?",
+    "ta": "ஆஃப்லைன் பயிற்சியாளர்: இந்த ஆர்டர் நீங்கள் பயன்படுத்துவதை விட மிகப் பெரியது. "
+    "முதலில் அளவைச் சரிபாருங்கள். நான் எதையும் அனுப்பவில்லை. உங்களுக்கு எவ்வளவு வேண்டும்?",
+    "hi": "ऑफ़लाइन कोच: यह ऑर्डर आपके इस्तेमाल से बहुत बड़ा है। पहले मात्रा जाँच लें। "
+    "मैंने कुछ नहीं भेजा। आपको कितना चाहिए?",
+    "bn": "অফলাইন কোচ: এই অর্ডার আপনার ব্যবহারের চেয়ে অনেক বড়। আগে পরিমাণটা দেখে নিন। "
+    "আমি কিছু পাঠাইনি। আপনার কতটা লাগবে?",
+    "te": "ఆఫ్‌లైన్ కోచ్: ఈ ఆర్డర్ మీరు వాడే దానికంటే చాలా ఎక్కువ. ముందు పరిమాణం చూసుకోండి. నేను ఏమీ పంపలేదు. మీకు ఎంత కావాలి?",
+    "mr": "ऑफलाइन कोच: ही ऑर्डर तुमच्या वापरापेक्षा खूप मोठी आहे. आधी प्रमाण तपासा. "
+    "मी काहीही पाठवले नाही. तुम्हाला किती हवे?",
+    "kn": "ಆಫ್‌ಲೈನ್ ಕೋಚ್: ಈ ಆರ್ಡರ್ ನೀವು ಬಳಸುವುದಕ್ಕಿಂತ ತುಂಬಾ ದೊಡ್ಡದು. ಮೊದಲು ಪ್ರಮಾಣವನ್ನು "
+    "ಪರಿಶೀಲಿಸಿ. ನಾನು ಏನನ್ನೂ ಕಳುಹಿಸಿಲ್ಲ. ನಿಮಗೆ ಎಷ್ಟು ಬೇಕು?",
+}
+
+
+def in_language(replies: dict[str, str], language: str) -> str:
+    """The reply in the owner's app locale (zh-Hans, or hi for hi-IN), else English."""
+    return replies.get(language) or replies.get(language.split("-")[0]) or replies["en"]
+
+
 RULE_WORDS = re.compile(
     r"\b(?:moq|minimum order|credit|approval|approve|auto-?send|lead time|price tier|"
     r"substitut\w*|back-?orders?|partial)\b",
@@ -38,7 +76,22 @@ ORDER_QUESTION = re.compile(
     r"my purchase orders)\b",
     re.I,
 )
-SKIP = {"my", "the", "some", "more", "it", "please", "now", "stock"}
+SKIP = {"my", "the", "some", "more", "it", "please", "now", "stock", "for", "tomorrow", "today"}
+# The owner's answer to "Do you make it or buy it?" (OB-239): "I buy Samosa", "we make samosa",
+# "I buy it", or just "buy" / "make". An item needs the "I" or "we": "make a list" is not one.
+MAKE_OR_BUY = re.compile(
+    r"^\s*(?:(?:i|we)\s+(buy|make|cook|bake)(?:\s+(?:the\s+)?([^\W\d_]+(?:\s[^\W\d_]+){0,3}))?"
+    r"|(buy|make))(?:\s+(?:it\s+)?ready-?made)?\s*[.!]?\s*$",
+    re.I,
+)
+# The same in Hindi: "हम बनाते हैं", "मैं समोसा खरीदता हूँ", "खरीदते हैं".
+MAKE_OR_BUY_HI = re.compile(
+    r"^\s*(?:(?:हम|मैं)\s+(?:(\S+(?:\s\S+)?)\s+)??)?(?:खुद\s+)?"
+    r"(बना|(?:ख़|ख़|ख)रीद)"
+    r"[ऀ-ॿ]*(?:\s+(?:हैं|है|हूँ|हूं))?\s*[।.!]?\s*$"
+)
+# "It", "this": the item the coach just asked about.
+IT = {"it", "them", "this", "that", "इसे", "इसको", "यह", "ये", "वो", "उसे"}
 SHOW_INBOUND = re.compile(
     r"\b(?:inbound|what came in|what(?:'s| is) coming in|what needs me|order changes?\??$|"
     r"any (?:new )?(?:orders|changes|forecasts?))\b",
@@ -151,7 +204,33 @@ def rule_args(text: str) -> dict[str, Any]:
     return args
 
 
-def supply_call(question: str, ctx: Any) -> types.Part | None:
+def make_or_buy(text: str, contents: list[types.Content]) -> types.Part | None:
+    """The owner's answer to "Do you make it or buy it?" (OB-239). "It", or no item at all, is the
+    item the coach just asked about; with no such question it is not an answer."""
+    english, hindi = MAKE_OR_BUY.match(text), MAKE_OR_BUY_HI.match(text)
+    if english:
+        verb, item = (english.group(1) or english.group(3)).casefold(), english.group(2) or ""
+        source = "bought" if verb == "buy" else "made"
+        if item.split()[:1] == ["more"]:
+            return None  # "We make more samosa" asks for a prep plan, not an answer.
+    elif hindi:
+        item = hindi.group(1) or ""
+        source = "made" if hindi.group(2) == "बना" else "bought"
+    else:
+        return None
+    if not item or item.casefold() in IT:
+        from .sourcing_offline import last_response
+
+        asked = last_response(contents, "draft_reorder") or {}
+        if asked.get("status") not in {"ask_make_or_buy", "made_here"} or not asked.get("item"):
+            return None
+        item = str(asked["item"])
+    return call("draft_reorder", {"item": item, "source": source})
+
+
+def supply_call(
+    question: str, ctx: Any, contents: list[types.Content] | None = None
+) -> types.Part | None:
     text = question.strip()
     io = io_call(text)
     if io is not None:
@@ -167,6 +246,9 @@ def supply_call(question: str, ctx: Any) -> types.Part | None:
         if args:
             supplier = supplier_named(text, ctx)
             return call("set_supplier_rules", {"supplier": supplier, **args})
+    answer = make_or_buy(text, contents or [])
+    if answer is not None:
+        return answer
     if REORDER.search(text):
         args = {}
         found = REORDER_ITEM.search(text)
@@ -206,7 +288,7 @@ def _qty(row: dict[str, Any]) -> str:
     return f"{float(row['quantity']):g} {row['unit']} {row['item']}"
 
 
-def io_reply(name: str, result: dict[str, Any]) -> str | None:
+def io_reply(name: str, result: dict[str, Any], language: str = "en") -> str | None:
     status = result.get("status")
     demo = " (simulated: demo partner)" if result.get("demo_partner") else ""
     if name == "show_inbound":
@@ -230,9 +312,11 @@ def io_reply(name: str, result: dict[str, Any]) -> str | None:
     if name == "approve_and_send_po":
         if status == "rules_broken":
             return "Offline coach: a supplier rule is broken; fix it on the card first."
+        if status == "too_big":
+            return in_language(TOO_BIG_REPLY, language)
         if status != "sent":
             return "Offline coach: there is no drafted order to approve."
-        return f"Offline coach: PO {result['po_number']} approved and sent to {result['supplier']}."
+        return f"Offline coach: the order is approved and sent to {result['supplier']}."
     if name == "record_goods_received":
         if status not in {"receipt_sent", "receipt_ready"}:
             return "Offline coach: no delivery is open. Which order arrived?"
@@ -270,11 +354,65 @@ def io_reply(name: str, result: dict[str, Any]) -> str | None:
     return None
 
 
-def supply_reply(name: str, result: dict[str, Any]) -> str | None:
-    io = io_reply(name, result)
+def supply_reply(name: str, result: dict[str, Any], language: str = "en") -> str | None:
+    io = io_reply(name, result, language)
     if io is not None:
         return io
     if name == "draft_reorder":
+        if result.get("status") == "already_on_order":
+            arrives = f", arriving {human_date(result['arrives'])}" if result.get("arrives") else ""
+            return (
+                f"Offline coach: {result['on_order']:g} {result['unit']} {result['item']} is "
+                f"already on order{arrives}. No new order needed."
+            )
+        if result.get("status") == "made_here":
+            return (
+                f"Offline coach: you make {result['item']} yourself, so there is no supplier "
+                "order. Ask me how many to make, or reorder what it is made from."
+            )
+        if result.get("status") == "ask_make_or_buy":
+            return (
+                f'Offline coach: do you make {result["item"]} or buy it? Say "I make '
+                f'{result["item"]}" or "I buy {result["item"]}", or tap Make or Buy on Today.'
+            )
+        if result.get("status") == "which_item":
+            choices = result.get("choices") or []
+            if not choices:
+                return (
+                    f"Offline coach: {result['item']} is not on your menu, so I saved nothing and "
+                    "drafted nothing. Which item do you mean? Say its name as on your menu."
+                )
+            verb = "make" if result.get("source") == "made" else "buy"
+            return (
+                f"Offline coach: which item do you mean: {' or '.join(choices)}? I saved "
+                f'nothing yet. Say "I {verb} {choices[0]}" with the name you mean.'
+            )
+        if result.get("status") == "check_quantity" and result.get("reason") == "named":
+            return (
+                f"Offline coach: {result['supplier']} can't sell {result['asked']:g} "
+                f"{result['unit']} {result['item']}: they sell it by the "
+                f"{result['supplier_unit']}, at least {result['supplier_quantity']:g}. I drafted "
+                "nothing. Name an amount they sell, or check the supplier."
+            )
+        if result.get("status") == "check_quantity" and result.get("reason") == "no_history":
+            return (
+                f"Offline coach: I can't tell how much {result['item']} you use, so I drafted "
+                f"nothing. How much do you buy a week? {result['supplier']} sells at least "
+                f"{result['supplier_quantity']:g} {result['supplier_unit']}."
+            )
+        if result.get("status") == "check_quantity":
+            if result.get("days") is None:
+                return (
+                    f"Offline coach: check this first. {result['supplier']} sells "
+                    f"{result['item']} by the {result['supplier_unit']} (at least "
+                    f"{result['supplier_quantity']:g}) and you count it in {result['unit']}, so "
+                    "I drafted nothing. Tell me how much you want."
+                )
+            return (
+                f"Offline coach: check this first. {result['quantity']:g} {result['unit']} "
+                f"{result['item']} from {result['supplier']} is about {result['days']} days of "
+                "what you use, so I drafted nothing. Tell me how much you want."
+            )
         if result.get("status") not in {"needs_owner_tap", "sent_automatically"}:
             return "Offline coach: tell me which item to reorder and I'll draft the order."
         currency = result.get("currency", "SGD")
@@ -295,7 +433,7 @@ def supply_reply(name: str, result: dict[str, Any]) -> str | None:
             else " Tap Approve to send it."
         )
         return (
-            f"Offline coach: I've drafted PO {result['po_number']}: {line['quantity']:g} "
+            f"Offline coach: I've drafted your order: {line['quantity']:g} "
             f"{line['unit']} {line['item']} from {result['supplier']}, {total}, deliver "
             f"{human_date(result['deliver_on'])}.{why}{demo}{broken}{tail}"
         )
@@ -322,7 +460,7 @@ def supply_reply(name: str, result: dict[str, Any]) -> str | None:
             return "Offline coach: no purchase orders yet."
         latest = rows[0]
         return (
-            f"Offline coach: PO {latest['po_number']} to {latest['supplier']} is "
+            f"Offline coach: your order to {latest['supplier']} is "
             f"{latest['status']}; documents so far: {', '.join(latest['documents']) or 'none'}."
         )
     return None

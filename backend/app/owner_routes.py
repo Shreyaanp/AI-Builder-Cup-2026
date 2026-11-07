@@ -137,6 +137,8 @@ async def morning_brief(business_id: str, request: Request) -> brief.Brief:
     cache = await anyio.to_thread.run_sync(service.feature_docs.get, "brief", business_id)
     if cache and cache.get("key") == key:
         return brief.Brief.model_validate(cache["value"])
+    # Before the claim, so a refusal does not use up the shop's model call for the day.
+    await enforce_limits(request, [("brief", uid)])
     claimed = False
 
     def claim(old: dict[str, Any] | None) -> tuple[float, dict[str, Any]]:

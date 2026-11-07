@@ -1,6 +1,7 @@
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test } from '@playwright/test'
 import { enter, localOnly, seedShop } from './stories/support.js'
+import { openBuyStock } from './support/grow.js'
 
 test('Today → forecast reorder → SAP → replies → reviewed stock → Today', async ({ page }) => {
   test.setTimeout(180_000)
@@ -10,7 +11,7 @@ test('Today → forecast reorder → SAP → replies → reviewed stock → Toda
   await seedShop(page)
   await page.keyboard.press('Escape')
   await page.getByRole('button', { name: 'Grow', exact: true }).click()
-  await page.getByRole('button', { name: /^Purchase orders/ }).click()
+  await openBuyStock(page)
   await page.getByRole('button', { name: 'Try supply demo', exact: true }).click()
   const today = page.getByRole('region', { name: 'Supply chain' })
   await expect(today).toContainText(/Milk runs out/)
@@ -20,21 +21,21 @@ test('Today → forecast reorder → SAP → replies → reviewed stock → Toda
   await page.screenshot({ path: 'output/playwright/supply-today.png' })
   await today.getByRole('button', { name: 'Reorder', exact: true }).click()
   const card = page.getByRole('article')
-  await expect(card).toContainText('AI draft · offline rules')
+  await expect(card).toContainText('Drafted for you')
   await expect(card).toContainText('Minimum order: 12 l')
   await expect(card).toContainText('12 l price tier')
-  await expect(card).toContainText('Simulated SAP supplier')
+  await expect(card).toContainText('Demo supplier')
   await card.getByRole('button', { name: 'Approve and send', exact: true }).click()
-  await card.getByRole('button', { name: 'View as SAP (IDoc)', exact: true }).click()
-  const sap = page.getByRole('dialog', { name: 'View as SAP (IDoc)' })
-  await expect(sap.getByLabel('SAP IDoc')).toContainText('<IDOCTYP>ORDERS05</IDOCTYP>')
+  await card.getByRole('button', { name: 'See the supplier’s copy', exact: true }).click()
+  const sap = page.getByRole('dialog', { name: 'See the supplier’s copy' })
+  await expect(sap.getByLabel('Supplier’s format')).toContainText('<IDOCTYP>ORDERS05</IDOCTYP>')
   await expect(sap).toContainText('In plain words')
   await expect(sap).toContainText('12 l Milk')
   await overflow()
   await page.screenshot({ path: 'output/playwright/supply-sap.png' })
   await page.keyboard.press('Escape')
-  for (const step of ['Confirmed (ORDRSP)', 'Shipping notice (DESADV)', 'Invoice']) {
-    await card.getByRole('button', { name: 'Simulate supplier reply', exact: true }).click()
+  for (const step of ['Confirmed', 'On its way', 'Invoice']) {
+    await card.getByRole('button', { name: 'See the supplier’s reply', exact: true }).click()
     const row = card.getByRole('listitem').filter({ hasText: step }).first()
     await expect(row).not.toContainText('Waiting')
     await expect(row).toContainText(/\d{1,2}:\d{2}/)
@@ -66,7 +67,7 @@ test('Today → forecast reorder → SAP → replies → reviewed stock → Toda
   await page.getByRole('button', { name: 'Continue local preview' }).click()
   // The workspace starts on its first shop after reload; the demo entry resumes its own shop.
   await page.getByRole('button', { name: 'Grow', exact: true }).click()
-  await page.getByRole('button', { name: /^Purchase orders/ }).click()
+  await openBuyStock(page)
   await page.getByRole('button', { name: 'Try supply demo', exact: true }).click()
   await expect(page.getByRole('region', { name: 'Supply chain' })).toContainText('Milk restocked')
   await overflow()

@@ -1,5 +1,7 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
 import { enter, localOnly } from './stories/support.js'
+import { shopMore } from './support/shopMore.js'
+import { openGrowRows } from './support/grow.js'
 
 // Owner CSS fixes from the heatmap audit (#69): touch targets are at least 48px and nothing
 // clips or overflows at 360, 390 and 412px, in English and Hindi. Phone project only.
@@ -37,7 +39,7 @@ async function enterAndSeed(page: Page, language: string) {
   })
   expect(approved.ok()).toBe(true)
   const { business_id: id } = await approved.json()
-  // A few days of saved sales, so Your week has a chart to lay out.
+  // A few days of saved sales, so My sales has a chart to lay out.
   for (const back of [1, 2, 3]) {
     const date = new Date(Date.now() - back * 86_400_000).toISOString().slice(0, 10)
     const day = await page.request.post(`/api/v1/businesses/${id}/day/prepare`, {
@@ -119,11 +121,12 @@ for (const lang of LANGS) {
           expect((await chip.boundingBox())!.height).toBeGreaterThanOrEqual(MIN)
       }
 
-      // Shop → Connect your system: system pills, tabs and the upload button.
+      // Shop → Link your billing app: system pills, tabs and the upload button.
       await page.locator('[data-tour="nav-shop"]').click()
+      await shopMore(page)
       await page
         .locator(
-          'button:has-text("Connect your system"), button:has-text("बिक्री का हिसाब जोड़ें")',
+          'button:has-text("Link your billing app"), button:has-text("बिक्री का हिसाब जोड़ें")',
         )
         .first()
         .click()
@@ -163,9 +166,10 @@ for (const lang of LANGS) {
       await page.keyboard.press('Escape')
       await page.keyboard.press('Escape')
 
-      // Grow: carousel dots, Your week spacing and the Rescue discount chips.
+      // Grow: carousel dots, My sales spacing and the Rescue discount chips.
       await page.locator('[data-tour="nav-grow"]').click()
-      await expect(page.getByTestId('grow-tiles')).toBeVisible()
+      // The Morning brief row opens in place (batch 4a): its slides show then.
+      await openGrowRows(page)
       const slides = await page.locator('[aria-roledescription="slide"]').count()
       if (slides) {
         const sizes = await page.evaluate(() => {
@@ -182,9 +186,12 @@ for (const lang of LANGS) {
         for (const size of sizes) expect(size).toBeGreaterThanOrEqual(48)
       }
 
+      // The week is My sales (simplify batch 4b).
       await page
         .locator(
-          'button:has-text("Your week"), button:has-text("Week pulse"), button:has-text("हफ़्ते"), button:has-text("हफ़्ता")',
+          ['My sales', 'मेरी बिक्री']
+            .map((name) => `button:not([data-grow-group]):has-text("${name}")`)
+            .join(', '),
         )
         .first()
         .click()

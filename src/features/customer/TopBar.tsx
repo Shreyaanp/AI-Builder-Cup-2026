@@ -1,3 +1,4 @@
+import { AppHeader } from '../../design/AppHeader'
 import { useEffect, useState } from 'react'
 import { Box, Button, Stack, useTheme } from '@mui/material'
 import { ArrowLeft } from 'lucide-react'
@@ -25,51 +26,53 @@ export function CustomerTopBar({ back = false }: { back?: boolean }) {
     return () => window.removeEventListener('scroll', update)
   }, [])
   return (
-    <Box
-      component="header"
+    <AppHeader
       data-scrolled={scrolled || undefined}
       sx={{
-        position: 'sticky',
-        top: 0,
         zIndex: 1100,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: 1,
-        minHeight: 64,
-        pt: 'env(safe-area-inset-top, 0px)',
-        px: 'max(8px, env(safe-area-inset-left, 0px))',
         bgcolor: roles.surface,
         backdropFilter: 'blur(12px)',
-        borderBottom: '1px solid transparent',
-        transition: 'border-color 200ms var(--c-ease)',
-        '&[data-scrolled]': { borderBottomColor: roles.outlineVariant },
+        '&[data-scrolled]': { boxShadow: `inset 0 -1px ${roles.outlineVariant}` },
         viewTransitionName: 'customer-top-bar',
       }}
     >
-      <Stack direction="row" sx={{ alignItems: 'center', gap: 1, minWidth: 0 }}>
-        <BrandLogo wordmark="wide" href="/explore/" />
-        {back ? (
-          <Button
-            component="a"
-            href="/explore/"
-            onClick={customerBack}
-            startIcon={<ArrowLeft size={18} />}
-            sx={{ minHeight: 48 }}
-          >
-            {t.back}
-          </Button>
-        ) : (
-          <Button href="/explore/demo" sx={{ minHeight: 48 }}>
-            {demo.tryDemo}
-          </Button>
-        )}
-      </Stack>
-      <Stack direction="row" sx={{ alignItems: 'center', gap: 0.5, flexShrink: 0 }}>
-        {!back && <ProfileButton inline />}
-        <LanguagePicker variant="inline" />
-        <AppearanceToggle inline />
-      </Stack>
-    </Box>
+      {/* The same 720 px column as the pages below, so the bar lines up with them at 1280 (OB-101). */}
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 1,
+          maxWidth: 688,
+          width: '100%',
+          mx: 'auto',
+        }}
+      >
+        <Stack direction="row" sx={{ alignItems: 'center', gap: 1, minWidth: 0 }}>
+          <BrandLogo wordmark="wide" href="/explore/" />
+          {back ? (
+            <Button
+              component="a"
+              href="/explore/"
+              onClick={customerBack}
+              startIcon={<ArrowLeft size={18} />}
+              sx={{ minHeight: 48 }}
+            >
+              {t.back}
+            </Button>
+          ) : null}
+        </Stack>
+        <Stack direction="row" sx={{ alignItems: 'center', gap: 1, flexShrink: 0 }}>
+          {!back && (
+            <Button href="/explore/demo" sx={{ minHeight: 48, px: 1 }}>
+              {demo.tryDemo}
+            </Button>
+          )}
+          {!back && <ProfileButton inline />}
+          <LanguagePicker variant="inline" />
+          <AppearanceToggle inline />
+        </Stack>
+      </Box>
+    </AppHeader>
   )
 }

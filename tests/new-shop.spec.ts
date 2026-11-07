@@ -10,6 +10,7 @@ import {
   openNewShopReview,
   seedShop,
 } from './stories/support.js'
+import { startNewShop } from './support/newShop.js'
 
 /// The full-screen new-shop flow (onboarding v2): hero, a coach-led conversation that fills the
 // shop card silently, the shop live by itself after name + kind + place, "Review my shop" as a
@@ -44,7 +45,7 @@ async function audit(page: Page, sheet = false) {
 }
 
 async function begin(page: Page) {
-  await page.getByRole('banner').getByRole('button', { name: 'Add shop details' }).click()
+  await startNewShop(page)
   await page.getByRole('button', { name: 'Let’s begin' }).click()
   await expect(page.getByRole('log')).toContainText(FIRST_QUESTION)
 }
@@ -65,7 +66,7 @@ for (const scheme of ['light', 'dark'] as const) {
     await enter(page)
     const capture = (step: string, sheet = false) =>
       test.step(`audit ${step}`, () => audit(page, sheet))
-    await page.getByRole('banner').getByRole('button', { name: 'Add shop details' }).click()
+    await startNewShop(page)
     await expect(page).toHaveURL(/\/new-shop\?step=hero/)
     await expect(page.getByRole('heading', { name: 'Let’s open your shop' })).toBeFocused()
     await expect(page.getByRole('navigation', { name: 'Main' })).toHaveCount(0)
@@ -184,14 +185,14 @@ test('closing the review returns to the same conversation, which carries on', as
   await expect(page.getByRole('button', { name: 'Choose shop: Revised Bakery' })).toBeVisible()
 })
 
-test('header plus opens a separate draft; cancel restores the current shop draft', async ({
+test('the switcher’s New shop opens a separate draft; cancel restores the current shop draft', async ({
   page,
 }) => {
   await enter(page)
   await seedShop(page)
   const before = await shops(page)
   await page.getByLabel('Message', { exact: true }).fill('Keep my daily draft')
-  await page.getByRole('button', { name: 'Add shop details', exact: true }).click()
+  await startNewShop(page)
   await expect(page).toHaveURL(/\/new-shop/)
   await expect(page.getByRole('navigation', { name: 'Main' })).toHaveCount(0)
   await page.getByRole('button', { name: 'Cancel', exact: true }).click()

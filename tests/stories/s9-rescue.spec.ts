@@ -1,6 +1,7 @@
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Browser, type Page } from '@playwright/test'
 import { closeSheet, enter, localOnly, phone, shareSigned, shot, collectStamp } from './support.js'
+import { showInGrow } from '../support/grow.js'
 
 /**
  * A rescue needs a pickup time later today and no later than closing, whatever the wall clock
@@ -121,8 +122,9 @@ async function ownerSends(page: Page, mode: Mode) {
   const evidence = recorder(mode)
   await test.step('1 · Grow: the morning brief, a quiet Rescue tile and Asked nearby', async () => {
     await page.getByRole('button', { name: 'Grow', exact: true }).click()
+    // The brief opens in place from its Morning brief row (batch 4a).
     const brief = page.getByRole('region', { name: 'Morning brief' })
-    await expect(brief).toBeVisible()
+    await showInGrow(page, brief)
     await expect(brief.getByRole('heading', { name: 'Prep today' })).toBeVisible()
     await expect(brief.getByRole('button', { name: /^Slide 1 of / })).toBeVisible()
     await expect(page.getByRole('button', { name: /^Rescue/ })).toContainText('Leftovers?')
@@ -149,7 +151,7 @@ async function ownerSends(page: Page, mode: Mode) {
       'aria-pressed',
       'true',
     )
-    await expect(sheet.getByText('₹25.00 → ₹17.50')).toBeVisible()
+    await expect(sheet.getByText('₹25 → ₹17.50')).toBeVisible()
     await expect(sheet.getByLabel('Pickup until')).toHaveValue('22:45')
     await evidence(page, '2-owner-rescue')
   })
@@ -255,7 +257,9 @@ async function ownerSeesHold(page: Page, mode: Mode) {
     await page.reload()
     await page.getByRole('button', { name: 'Continue local preview' }).click()
     await page.getByRole('button', { name: 'Grow', exact: true }).click()
-    await expect(page.getByRole('button', { name: /^Rescue/ })).toContainText('Left: 5 of 6')
+    // Rescue deals is a More tools icon (batch 4a): its live status is in its name, and the
+    // sheet shows the hold.
+    await expect(page.getByRole('button', { name: /^Rescue/ })).toHaveAccessibleName(/Left: 5 of 6/)
     await page.getByRole('button', { name: /^Rescue/ }).click()
     const sheet = page.getByRole('dialog', { name: 'Closing-time rescue' })
     await expect(sheet.getByRole('region', { name: 'Live now' })).toContainText('Held: 1 · Left: 5')

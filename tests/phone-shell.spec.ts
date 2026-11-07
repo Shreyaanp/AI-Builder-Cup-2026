@@ -129,7 +129,7 @@ test('B3: the composer is one line (even with a long translated hint), grows for
   await page.getByRole('combobox').tap()
   await page.getByRole('option', { name: 'English', exact: true }).tap()
   await page.locator('[data-tour="nav-coach"]').tap()
-  await expect(field).toHaveAttribute('placeholder', 'Tell me about your shop…')
+  await expect(field).toHaveAttribute('placeholder', 'Your shop…')
   // Multi-line text grows the field a line at a time; clearing it goes back to one line.
   await field.fill('Kopi\nTeh\nMilo')
   expect(await height()).toBe(104)
@@ -237,37 +237,36 @@ test('B4: Back closes the top sheet or dialog first, and asks before throwing aw
   expect(await unload).toBe('beforeunload')
 })
 
-test('B5: no "What’s new at …" line; + (new shop) sits top-right; settings live on You', async ({
+test('B5: no "What’s new at …" line; the top bar is the shop and one ⋯ on Coach; settings live on You', async ({
   page,
 }) => {
   await enter(page)
   await saveShop(page)
   await expect(page.getByText(/What’s new at/)).toHaveCount(0)
-  const header = page.getByRole('banner')
-  // "+" opens the new-shop flow directly; new conversation sits just before it.
-  await expect(header.getByRole('button', { name: 'New conversation', exact: true })).toBeVisible()
-  const plus = header.getByRole('button', { name: 'Add shop details', exact: true })
-  await expect(plus).toBeVisible()
-  const a = (await plus.boundingBox())!
-  // At the right edge of the bar; the settings gear moved to the You tab.
+  const header = page.locator('header[data-app-header]')
+  // Simplify batch 5: no "+" (a new shop is in the switcher); Coach adds one ⋯ at the right edge.
+  await expect(header.getByRole('button', { name: 'Add shop details', exact: true })).toHaveCount(0)
+  const more = header.getByRole('button', { name: 'More options', exact: true })
+  await expect(more).toBeVisible()
+  const a = (await more.boundingBox())!
   expect(a.x + a.width).toBeGreaterThan(390 - 24)
   await expect(header.getByRole('button', { name: 'Settings', exact: true })).toHaveCount(0)
-  await expect(page.locator('main').getByRole('button', { name: 'New conversation' })).toHaveCount(
-    0,
-  )
   await axe(page)
-  await plus.tap()
+  await more.tap()
+  const sheet = page.getByRole('dialog', { name: 'Start again' })
+  await expect(sheet).toBeVisible()
+  await expect(sheet.getByRole('button', { name: 'New conversation', exact: true })).toBeVisible()
+  await expect(sheet.getByRole('button', { name: 'How this works' })).toBeVisible()
+  await page.getByRole('button', { name: 'Cancel', exact: true }).tap()
+  // The ⋯ belongs to the coach; other tabs keep the logo and the shop switcher only.
+  await page.getByRole('button', { name: 'Shop', exact: true }).tap()
+  await expect(more).toHaveCount(0)
+  await expect(header.locator('a:visible, button:visible')).toHaveCount(2)
+  await page.getByRole('button', { name: /Choose shop/ }).tap()
+  await page.getByRole('menuitem', { name: 'New shop', exact: true }).tap()
   await expect(page.getByRole('heading', { name: 'Let’s open your shop' })).toBeVisible()
   await expect(page.getByRole('dialog')).toHaveCount(0)
   await page.getByRole('button', { name: 'Cancel', exact: true }).tap()
-  const newChat = header.getByRole('button', { name: 'New conversation', exact: true })
-  await newChat.tap()
-  await expect(page.getByRole('dialog', { name: 'New conversation' })).toBeVisible()
-  await page.getByRole('button', { name: 'Cancel', exact: true }).tap()
-  // New conversation belongs to the coach; "+" (a new shop) is on every screen.
-  await page.getByRole('button', { name: 'Shop', exact: true }).tap()
-  await expect(newChat).toHaveCount(0)
-  await expect(plus).toBeVisible()
 })
 
 test('B6: Today fits the phone without scrolling, items leave when done, and finished setup leaves no bar', async ({
@@ -325,7 +324,7 @@ test('B6: Today fits the phone without scrolling, items leave when done, and fin
   await page.reload()
   await page.getByRole('button', { name: 'Continue local preview' }).tap()
   await page.getByRole('button', { name: 'Shop', exact: true }).tap()
-  await page.getByRole('button', { name: /^Customer page/ }).tap()
+  await page.getByRole('button', { name: /^Your shop page/ }).tap()
   // The new-shop flow put the shop live by itself (name + kind + place): already shared.
   await expect(page.getByRole('switch', { name: 'Share customer page' })).toBeChecked()
   await page.keyboard.press('Escape')

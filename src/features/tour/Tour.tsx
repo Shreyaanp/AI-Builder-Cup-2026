@@ -2,9 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import {
   Box,
   Button,
-  ButtonBase,
   Card,
-  CircularProgress,
   IconButton,
   Stack,
   Typography,
@@ -17,7 +15,7 @@ import { useLocale } from '../../state/hooks'
 import { useWorkspace } from '../v1/workspaceContext'
 import type { Destination } from '../v1/workspaceContext'
 import { tourCopy } from './strings'
-import { startDemoTour } from './tourActions'
+import { firstRunCopyFor } from '../v1/today/firstRunCopy'
 import { tour, useTourRunning } from './tourStore'
 import { narrationQueue } from './narrationQueue'
 import { narrationVoice } from './narrationVoice'
@@ -55,8 +53,9 @@ const STEPS: Step[] = [
   spot(0, 'today', 'coach'),
   story(0, 'today-supply'),
   story(1, 'reorder'),
-  spot(2, 'forecast', 'coach'),
+  // Simplify batch 5: prep points at Grow's "How much to make" row, beside Close the day.
   spot(1, 'menu', 'shop'),
+  spot(2, 'prep', 'grow'),
   spot(3, 'closeday', 'grow'),
   spot(5, 'composer', 'coach'),
 ]
@@ -116,6 +115,7 @@ export function TourHost() {
   const ws = useWorkspace()
   const language = useLocale()
   const t = tourCopy(language)
+  const simple = firstRunCopyFor(language)
   const tale = useChainStory(running)
   const chain = chainCopy(language)
   const roles = useTheme().material
@@ -365,6 +365,10 @@ export function TourHost() {
                   {t.doneTitle}
                 </Typography>
                 <Typography color="text.secondary">{t.doneBody}</Typography>
+                {/* Both paths, taught once more: every screen can also just be asked for. */}
+                <Typography data-testid="tour-tip" color="text.secondary">
+                  {simple.tourTip}
+                </Typography>
                 <Stack
                   direction="row"
                   sx={{ gap: 2, flexWrap: 'wrap', pt: 1, '& button': { minHeight: 48 } }}
@@ -396,21 +400,23 @@ export function TourHost() {
                       .replace('{n}', String(step + 1))
                       .replace('{total}', String(STEPS.length))}
                   </Typography>
-                  <IconButton aria-label={t.close} onClick={close} sx={{ width: 48, height: 48 }}>
-                    <X size={22} />
-                  </IconButton>
-                  <IconButton
-                    aria-label={t.narration}
-                    aria-pressed={narrated}
-                    onClick={toggleNarration}
-                    sx={{
-                      width: 48,
-                      height: 48,
-                      color: narrated ? roles.primary : roles.onSurfaceVariant,
-                    }}
-                  >
-                    {narrated ? <Volume2 size={22} /> : <VolumeX size={22} />}
-                  </IconButton>
+                  <Stack direction="row" sx={{ alignItems: 'center', mr: -1 }}>
+                    <IconButton
+                      aria-label={t.narration}
+                      aria-pressed={narrated}
+                      onClick={toggleNarration}
+                      sx={{
+                        width: 48,
+                        height: 48,
+                        color: narrated ? roles.primary : roles.onSurfaceVariant,
+                      }}
+                    >
+                      {narrated ? <Volume2 size={22} /> : <VolumeX size={22} />}
+                    </IconButton>
+                    <IconButton aria-label={t.close} onClick={close} sx={{ width: 48, height: 48 }}>
+                      <X size={22} />
+                    </IconButton>
+                  </Stack>
                 </Stack>
                 <Typography id="tour-title" variant="titleLarge" sx={{ mt: 0.5 }}>
                   {copy?.title}
@@ -418,35 +424,37 @@ export function TourHost() {
                 <Typography color="text.secondary" sx={{ mt: 1 }}>
                   {copy?.body}
                 </Typography>
+                {/* Progress on its own line, so Skip / Back / Next keep one row at every step (OB-80). */}
+                <Stack direction="row" sx={{ gap: 0.75, mt: 3 }} aria-hidden="true">
+                  {STEPS.map((_, i) => (
+                    <Box
+                      key={i}
+                      sx={{
+                        width: i === step ? 18 : 6,
+                        height: 6,
+                        borderRadius: 3,
+                        bgcolor: i <= step ? roles.primary : roles.outlineVariant,
+                      }}
+                    />
+                  ))}
+                </Stack>
                 <Stack
                   direction="row"
                   sx={{
-                    mt: 3,
+                    mt: 2,
                     alignItems: 'center',
+                    justifyContent: 'flex-end',
                     gap: 1,
                     flexWrap: 'wrap',
                     '& button': { minHeight: 48 },
                   }}
                 >
-                  <Stack direction="row" sx={{ gap: 0.75, flex: 1 }} aria-hidden="true">
-                    {STEPS.map((_, i) => (
-                      <Box
-                        key={i}
-                        sx={{
-                          width: i === step ? 18 : 6,
-                          height: 6,
-                          borderRadius: 3,
-                          bgcolor: i <= step ? roles.primary : roles.outlineVariant,
-                        }}
-                      />
-                    ))}
-                  </Stack>
                   {narrated ? (
-                    <Button size="small" onClick={() => narration.stop()}>
+                    <Button size="small" onClick={() => narration.stop()} sx={{ mr: 'auto' }}>
                       {t.skipVoice}
                     </Button>
                   ) : (
-                    <Button size="small" onClick={close}>
+                    <Button size="small" onClick={close} sx={{ mr: 'auto' }}>
                       {t.skip}
                     </Button>
                   )}
@@ -465,61 +473,5 @@ export function TourHost() {
         </FocusTrap>
       </Box>
     </>
-  )
-}
-
-/** Offer card for owners with no shop yet: creates the filled demo shop and starts the tour. */
-export function TourOffer() {
-  const ws = useWorkspace()
-  const t = tourCopy(useLocale())
-  const roles = useTheme().material
-  const [busy, setBusy] = useState(false)
-  const [failed, setFailed] = useState(false)
-  return (
-    <Box
-      sx={{
-        p: 4,
-        borderRadius: '24px',
-        bgcolor: roles.secondaryContainer,
-        color: roles.onSecondaryContainer,
-      }}
-    >
-      <Typography variant="titleMedium">{t.offerTitle}</Typography>
-      <Typography variant="bodyMedium" sx={{ mt: 1 }}>
-        {t.offerBody}
-      </Typography>
-      <Button
-        variant="contained"
-        sx={{ mt: 3 }}
-        disabled={busy}
-        startIcon={busy ? <CircularProgress size={16} /> : <Sparkles size={18} />}
-        onClick={() => void startDemoTour(ws, setBusy, setFailed)}
-      >
-        {busy ? t.preparing : t.offerButton}
-      </Button>
-      {failed && (
-        <Typography variant="bodySmall" color="error" sx={{ mt: 1 }} role="alert">
-          {t.failed}
-        </Typography>
-      )}
-    </Box>
-  )
-}
-
-/** Settings entry: replay the tour on the demo shop at any time. */
-export function TourMenuButton({ onStart }: { onStart: () => void }) {
-  const ws = useWorkspace()
-  const t = tourCopy(useLocale())
-  return (
-    <ButtonBase
-      onClick={() => {
-        onStart()
-        void startDemoTour(ws)
-      }}
-      sx={{ minHeight: 48, width: '100%', px: 2, gap: 2, justifyContent: 'flex-start' }}
-    >
-      <Sparkles size={18} aria-hidden="true" />
-      <Typography variant="bodyLarge">{t.settings}</Typography>
-    </ButtonBase>
   )
 }

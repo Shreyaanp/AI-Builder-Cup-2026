@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useReducer } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useReducer, useRef } from 'react'
 import type { ReactNode } from 'react'
 import { CssBaseline, ThemeProvider, useMediaQuery } from '@mui/material'
 import { nivaTheme } from '../design/theme'
@@ -12,9 +12,12 @@ import { businessReducer, initialBusiness, preferencesReducer } from '../state/m
 import type { Preferences } from '../state/model'
 import { IdentityProvider } from '../auth/IdentityProvider'
 import { useIdentity } from '../auth/useIdentity'
-import { isLanguagePref, resolveLocale } from '../i18n/locales'
+import { isLanguagePref, matchOne, resolveLocale } from '../i18n/locales'
+import type { Locale } from '../i18n/locales'
+import { resolveApp } from './router'
 import { loadScriptFont } from '../i18n/fonts'
 import { configureAnalytics, watchRouteChanges } from './analytics'
+import { loadBootstrap } from '../api/appConfig'
 import { sideKey } from '../auth/appSide'
 
 /** Kept apart from the preferences object, which older code and tests overwrite whole. */
@@ -34,23 +37,62 @@ function adoptLegacy(legacy: string, name: string) {
   localStorage.setItem(seen, value)
 }
 
+type SavedPreferences = Partial<Preferences> & { appearanceChosen?: boolean }
+
+/**
+ * OB-195: everyone starts in light, even on a phone set to dark. Dark, or System (follow the
+ * phone), only when the person picked it. Older builds saved "system" as the silent default, so
+ * "system" counts only with the marker written when it is picked.
+ */
+function savedAppearance(saved: SavedPreferences): Preferences['appearance'] {
+  if (saved?.appearance === 'dark' || saved?.appearance === 'light') return saved.appearance
+  return saved?.appearance === 'system' && saved.appearanceChosen === true ? 'system' : 'light'
+}
+
+/**
+ * OB-270: the public site links here with ?lang=xx (or hl). It counts as a manual choice, is
+ * saved at once (this runs twice under StrictMode) and leaves the address bar. Unsupported codes
+ * are dropped and the saved choice stays.
+ */
+function takeLanguageHandoff(): Locale | undefined {
+  const url = new URL(location.href)
+  if (resolveApp(url) !== 'business') return undefined
+  const given = url.searchParams.get('lang') ?? url.searchParams.get('hl')
+  if (given === null) return undefined
+  url.searchParams.delete('lang')
+  url.searchParams.delete('hl')
+  history.replaceState(history.state, '', url)
+  const language = given ? matchOne(given) : undefined
+  if (!language) return undefined
+  try {
+    localStorage.setItem(
+      preferencesKey(),
+      JSON.stringify({ ...JSON.parse(localStorage.getItem(preferencesKey()) ?? '{}'), language }),
+    )
+    localStorage.setItem(languageChosenKey(), '1')
+  } catch {
+    /* Storage may be disabled; the choice still applies to this visit. */
+  }
+  return language
+}
+
 function readPreferences(): Preferences {
-  let saved: Partial<Preferences> = {}
+  const handed = takeLanguageHandoff()
+  let saved: SavedPreferences = {}
   let chosen = false
   try {
     adoptLegacy('niva.language.chosen', 'language.chosen')
     adoptLegacy('niva.starter.preferences', 'preferences')
     chosen = localStorage.getItem(languageChosenKey()) === '1'
-    saved = JSON.parse(localStorage.getItem(preferencesKey()) ?? '{}') as Partial<Preferences>
+    saved = JSON.parse(localStorage.getItem(preferencesKey()) ?? '{}') as SavedPreferences
   } catch {
     /* Storage may be disabled. */
   }
-  const language = isLanguagePref(saved?.language) ? saved.language : 'system'
+  const language = handed ?? (isLanguagePref(saved?.language) ? saved.language : 'system')
   return {
     language,
     languageChosen: chosen || language !== 'system',
-    appearance:
-      saved?.appearance === 'dark' || saved?.appearance === 'light' ? saved.appearance : 'light',
+    appearance: savedAppearance(saved),
     destination: 'coach',
   }
 }
@@ -90,6 +132,20 @@ function Providers({
   const resolved =
     preferences.appearance === 'system' ? (systemDark ? 'dark' : 'light') : preferences.appearance
   const theme = useMemo(() => nivaTheme(resolved), [resolved])
+  const shownMode = useRef(resolved)
+  useLayoutEffect(() => {
+    if (shownMode.current === resolved) return
+    shownMode.current = resolved
+    // A light/dark switch repaints at once: colours never fade through a washed-out in-between.
+    const style = document.createElement('style')
+    style.textContent = '*,*::before,*::after{transition:none!important}'
+    document.head.appendChild(style)
+    const frame = requestAnimationFrame(() => requestAnimationFrame(() => style.remove()))
+    return () => {
+      cancelAnimationFrame(frame)
+      style.remove()
+    }
+  }, [resolved])
   useEffect(() => {
     // Keep the PWA/browser chrome in step with the active surface colour.
     document
@@ -104,6 +160,8 @@ function Providers({
       const display = JSON.stringify({
         language: preferences.language,
         appearance: preferences.appearance,
+        // Light is the default, so "system" in state was always picked (see savedAppearance).
+        ...(preferences.appearance === 'system' ? { appearanceChosen: true } : {}),
       })
       localStorage.setItem(preferencesKey(), display)
       if (preferences.languageChosen) localStorage.setItem(languageChosenKey(), '1')
@@ -116,9 +174,10 @@ function Providers({
     if (!analyticsApp) return
     const stopWatching = watchRouteChanges()
     const abort = new AbortController()
-    void fetch('/api/v1/bootstrap', { signal: abort.signal })
-      .then((response) => (response.ok ? response.json() : null))
-      .then((config: { ga_measurement_id?: string } | null) => {
+    // One shared read per page (A-4): the account and maps use the same answer.
+    void loadBootstrap()
+      .catch(() => null)
+      .then((config) => {
         if (!abort.signal.aborted) {
           const region = navigator.languages.some((language) => /-SG(?:-|$)/i.test(language))
             ? 'SG'

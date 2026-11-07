@@ -41,7 +41,7 @@ const en = {
     },
     {
       title: 'Just talk or type',
-      body: '“Kopi is two dollars now, kaya toast sold out.” Nothing changes until you confirm.',
+      body: '“Chai is 20 rupees now, samosa sold out.” Nothing changes until you confirm.',
     },
     {
       title: 'Get on Google, guided',

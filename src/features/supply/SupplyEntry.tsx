@@ -6,11 +6,14 @@ import { useIoCopy } from './ioCopy'
 import { useBoard, useIoActions, useUndoableSend } from './ioData'
 import type { IoOrder, View } from './ioTypes'
 import { OrderCard, TaskCard } from './IoParts'
-import { OrderSheet } from './OrderSheet'
-import { SupplyHub } from './SupplyHub'
+import { OnceOpened } from '../../app/OnceOpened'
+import { OrderSheet, SupplyHub } from './supplyDeferred'
 
-/** Today: exceptions float up (shortages, changes, late, unsent); on-time documents stay quiet. */
-export function TodaySupplyNeeds() {
+/**
+ * Today: exceptions float up (shortages, changes, late, unsent); on-time documents stay quiet.
+ * Inside "Needs you now" (`inCard`) it is part of Today's one stock surface (HABIT change 2).
+ */
+export function TodaySupplyNeeds({ inCard = false }: { inCard?: boolean }) {
   const c = useIoCopy()
   const roles = useTheme().material
   const { board } = useBoard(true)
@@ -25,7 +28,12 @@ export function TodaySupplyNeeds() {
         component="section"
         aria-label={c.question.needs}
         spacing={2}
-        sx={{ p: 4, borderRadius: `${shape.lg}px`, bgcolor: roles.surfaceContainerLow }}
+        data-testid="today-supply-needs"
+        sx={
+          inCard
+            ? { px: 1, pt: 3, pb: 1, borderTop: `1px solid ${roles.outlineVariant}` }
+            : { p: 4, borderRadius: `${shape.lg}px`, bgcolor: roles.surfaceContainerLow }
+        }
       >
         <Typography variant="titleMedium" component="h2">
           {c.needsNow(tasks.length)}
@@ -44,8 +52,12 @@ export function TodaySupplyNeeds() {
           {c.action.open}: {c.title}
         </Button>
       </Stack>
-      <SupplyHub open={open} onClose={() => setOpen(false)} />
-      <OrderSheet order={order} open={order !== null} onClose={() => setOrderId(null)} />
+      <OnceOpened open={open} onClose={() => setOpen(false)}>
+        <SupplyHub open={open} onClose={() => setOpen(false)} />
+      </OnceOpened>
+      <OnceOpened open={order !== null} onClose={() => setOrderId(null)}>
+        <OrderSheet order={order} open={order !== null} onClose={() => setOrderId(null)} />
+      </OnceOpened>
     </>
   )
 }
@@ -130,12 +142,14 @@ export function SupplyChatCard({ data }: { data: SupplyCardData }) {
     return (
       <>
         <OrderCard order={latest} onOpen={() => setOpen(true)} />
-        <OrderSheet
-          order={latest}
-          open={open}
-          onClose={() => setOpen(false)}
-          sapDocId={data.view === 'sap' ? data.document_id : undefined}
-        />
+        <OnceOpened open={open} onClose={() => setOpen(false)}>
+          <OrderSheet
+            order={latest}
+            open={open}
+            onClose={() => setOpen(false)}
+            sapDocId={data.view === 'sap' ? data.document_id : undefined}
+          />
+        </OnceOpened>
       </>
     )
   const view: View = data.view === 'order' || data.view === 'sap' ? 'needs' : data.view
@@ -144,7 +158,9 @@ export function SupplyChatCard({ data }: { data: SupplyCardData }) {
       <Button variant="outlined" onClick={() => setOpen(true)} sx={{ minHeight: 48 }}>
         {c.action.open}: {c.tabs[view]}
       </Button>
-      <SupplyHub open={open} onClose={() => setOpen(false)} initial={view} />
+      <OnceOpened open={open} onClose={() => setOpen(false)}>
+        <SupplyHub open={open} onClose={() => setOpen(false)} initial={view} />
+      </OnceOpened>
     </>
   )
 }

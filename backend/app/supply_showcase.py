@@ -38,14 +38,16 @@ async def create_showcase(store: MerchantRepository, uid: str) -> str:
         )
         bid = str(store.commit(uid, proposal["id"], proposal["digest"])["business_id"])
         today = supply_chain.shop_today(store.context(uid, bid))
+        # Busier weekends: a week sells about 25 l, more than last week's standing 12 l order
+        # covers, so the reorder still has a real need to fill (OB-226 counts what is coming).
         history = [
             {
-                "date": (today - timedelta(days=i)).isoformat(),
+                "date": day.isoformat(),
                 "item": "Milk",
-                "quantity": 3,
-                "revenue": 18000,
+                "quantity": (quantity := 5 if day.weekday() >= 5 else 3),
+                "revenue": quantity * 6000,
             }
-            for i in range(1, 43)
+            for day in (today - timedelta(days=i) for i in range(1, 43))
         ]
         pending = store.prepare_sales(uid, bid, history)
         store.save_sales(uid, bid, pending["id"], pending["digest"])
@@ -89,8 +91,9 @@ async def create_showcase(store: MerchantRepository, uid: str) -> str:
     if await anyio.to_thread.run_sync(supply_chain.all_orders, store, bid):
         return bid
     settings = Settings(_env_file=None, app_env="test", coach_mode="offline")  # type: ignore[call-arg]
+    # Last week's standing order, already on its way: 12 l, the dairy's minimum.
     result: dict[str, Any] = await supply_chain.draft_reorder(
-        store, uid, bid, "Milk", None, ForecastService(settings), None, "chalkboard-supply-demo"
+        store, uid, bid, "Milk", 12, ForecastService(settings), None, "chalkboard-supply-demo"
     )
     po = result["order"]
     await anyio.to_thread.run_sync(supply_chain.approve, store, uid, bid, po["id"], po["version"])

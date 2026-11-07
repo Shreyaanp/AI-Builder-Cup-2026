@@ -7,7 +7,7 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from threading import Lock
-from typing import Protocol, cast
+from typing import Any, Protocol, cast
 from uuid import uuid4
 
 import anyio
@@ -42,7 +42,7 @@ LIMITS: dict[str, tuple[tuple[int, int], ...]] = {
     "voice": ((30, 600), (300, 86_400)),
     "voice:resume": ((90, 600), (600, 86_400)),
     "photo": ((10, 60), (60, 86_400)),
-    # Shop gallery uploads (moderated, no AI extraction).
+    # Shop gallery uploads (Vision-moderated, no AI extraction).
     "gallery": ((20, 60), (100, 86_400)),
     "import": ((10, 3_600), (30, 86_400)),
     # Shop icon from a photo or the gallery (moderated, no AI), and AI generations per shop.
@@ -50,7 +50,13 @@ LIMITS: dict[str, tuple[tuple[int, int], ...]] = {
     # The Prep plan tile loads with My shop; repeats are answered from the forecast cache.
     "forecast": ((120, 3_600), (1_000, 86_400)),
     "owner:read": ((120, 3_600), (1_000, 86_400)),
+    # The Supply screen reaches the forecast (cached 30 min); owners open it often.
+    "supply:read": ((300, 3_600), (3_000, 86_400)),
+    # Morning brief wording: one Gemini call per shop per day at most, only on a cache miss.
+    "brief": ((30, 3_600), (200, 86_400)),
     "owner:write": ((30, 60), (200, 86_400)),
+    # Owner habit counts (HABIT section 9): a few small batches per visit, no paid call.
+    "owner:habit": ((60, 60), (600, 86_400)),
     "rescue:write": ((30, 60), (200, 86_400)),
     "rescue:public": ((30, 60),),
     "rescue:hold": ((20, 60), (100, 86_400)),
@@ -78,10 +84,46 @@ LIMITS: dict[str, tuple[tuple[int, int], ...]] = {
     "helpful": ((30, 600),),
     "today": ((30, 60), (600, 86_400)),
     "thread:translate": ((30, 60),),
-    "bootstrap": ((30, 60),),
-    "consent": ((30, 60),),
-    "me": ((30, 60),),
+    # A-4: no cost; many phones share one IP (carrier NAT, office wifi, a demo room).
+    "bootstrap": ((300, 60),),
+    "consent": ((120, 60),),
+    "me": ((300, 60),),
+    # Customer "Delete my data" (OB-96): up to ~600 Firestore operations a call, no paid AI.
+    "customer:erase": ((5, 3_600),),
 }
+
+# When the limit store errors (OB-91), signed-in actions that spend paid AI, voice or Maps
+# keep their limits in a per-instance counter: a normal owner is never refused, a scripted
+# loop still is. Every other signed-in action (reads, saves, cheap writes) stays open so the
+# owner's day is never blocked by the store; anonymous actions stay closed.
+PAID_OWNER_ACTIONS = frozenset(
+    {
+        "coach",
+        "voice",
+        "voice:resume",
+        "photo",
+        "import",
+        "tts",
+        "recap",
+        "playbook",
+        "playbook:regenerate",
+        "reverse",
+        # Model-backed or moderated: forecast provider, proposal extraction, icon and gallery
+        # upload moderation.
+        "forecast",
+        "proposal",
+        "icon",
+        # The morning brief's Gemini wording (cache misses only).
+        "brief",
+        # Today, rescue suggestions and the brief reach the paid forecast model (AI.FORECAST),
+        # and analytics reads BigQuery. A normal owner is never refused; loops are bounded.
+        "owner:read",
+        # Supply overview: forecast provider on a cache miss.
+        "supply:read",
+        # Every upload is moderated with paid Vision before it is saved.
+        "gallery",
+    }
+)
 
 
 @dataclass(frozen=True)
@@ -195,9 +237,49 @@ def rate_limiter(settings: Settings) -> RateLimiter:
     return InMemoryRateLimiter()
 
 
+def fallback_limiter(state: Any) -> RateLimiter:
+    """This instance's counter for paid owner actions while the shared store is down."""
+    limiter = getattr(state, "rate_limit_fallback", None)
+    if limiter is None:
+        limiter = InMemoryRateLimiter()
+        state.rate_limit_fallback = limiter
+    return cast(RateLimiter, limiter)
+
+
 def client_ip(connection: Request | WebSocket) -> str:
-    forwarded = connection.headers.get("x-forwarded-for", "").split(",", 1)[0].strip()
-    return forwarded or (connection.client.host if connection.client else "unknown")
+    """The caller's address for per-client limits (HTTP and the voice WebSocket alike).
+
+    Behind `trusted_proxy_hops` proxies that each append to X-Forwarded-For, the client is the
+    entry that many places from the right; anything further left is caller-supplied (OB-90).
+    Every X-Forwarded-For header counts, so a second header cannot hide the appended entries.
+    """
+    forwarded = [
+        address.strip()
+        for header in connection.headers.getlist("x-forwarded-for")
+        for address in header.split(",")
+        if address.strip()
+    ]
+    if not forwarded:
+        return connection.client.host if connection.client else "unknown"
+    settings = getattr(connection.app.state, "v1_settings", None)
+    hops = settings.trusted_proxy_hops if settings is not None else 0
+    if not hops:
+        # Local/test callers keep the historical first-entry convention.
+        return forwarded[0]
+    # Fewer entries than hops: the request skipped the balancer (a direct *.run.app call), and
+    # its leftmost entry is the one Google's front end added. One shared fallback bucket (the
+    # socket peer) would block every such caller at once.
+    return forwarded[max(len(forwarded) - hops, 0)]
+
+
+def local_test_rate_limit_bypass(connection: Request | WebSocket) -> bool:
+    """Allow isolated browser suites to opt out of shared local rate-limit state."""
+    settings = getattr(connection.app.state, "v1_settings", None)
+    return (
+        settings is not None
+        and settings.app_env in {"local", "test"}
+        and connection.headers.get("x-test-rate-limit-bypass") == "1"
+    )
 
 
 async def enforce_limits(
@@ -208,6 +290,8 @@ async def enforce_limits(
     clock: Callable[[], float] | None = None,
 ) -> None:
     settings = getattr(connection.app.state, "v1_settings", None)
+    if local_test_rate_limit_bypass(connection):
+        return
     if settings is not None and not settings.rate_limits_enabled:
         return
     buckets = [
@@ -216,14 +300,19 @@ async def enforce_limits(
         for maximum, seconds in LIMITS[action]
     ]
     limiter = cast(RateLimiter, connection.app.state.rate_limiter)
+    now = (clock or time.time)()
     try:
-        retry = await anyio.to_thread.run_sync(limiter.take, buckets, (clock or time.time)())
+        retry = await anyio.to_thread.run_sync(limiter.take, buckets, now)
     except Exception:
         # Log no subject, IP, provider error or request content.
         log.warning("rate_limit_store_failed", anonymous=anonymous)
-        if not anonymous:
+        if anonymous:
+            retry = 60
+        elif any(action in PAID_OWNER_ACTIONS for action, _ in subjects):
+            # Same limits, counted in this instance only: a normal owner is never refused.
+            retry = fallback_limiter(connection.app.state).take(buckets, now)
+        else:
             return
-        retry = 60
     if retry:
         raise HTTPException(429, "RATE_LIMITED", headers={"Retry-After": str(retry)})
 

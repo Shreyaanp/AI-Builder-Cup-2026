@@ -4,6 +4,7 @@ from datetime import date, timedelta
 
 from app import shop_today
 from app.brief import Weather
+from app.forecast import Forecast, Prediction
 from tests.test_community import app  # noqa: F401
 from tests.test_owner_features import save_history, setup  # noqa: F401
 
@@ -148,3 +149,31 @@ def test_today_carries_playbook_hints_only_when_the_shop_has_one(setup):  # noqa
     assert client.get(f"/api/v1/businesses/{bid}/playbook").status_code == 200
     hints = client.get(f"/api/v1/businesses/{bid}/today").json()["hints"]
     assert hints["needs_you"] and hints["pulse"] and hints["line_topics"]
+
+
+def test_made_items_never_take_the_low_stock_rows_from_supplies():
+    # OB-244: three made items with fewer left used to fill all of Today's low rows, hiding the
+    # milk and sugar the shop must order. Supplies come first, the one that runs out first leading.
+    today = date(2026, 11, 2)
+    inventory = [
+        {"name": "Samosa", "unit": "piece", "stock": 1, "source": "made"},
+        {"name": "Bun maska", "unit": "piece", "stock": 2, "source": "made"},
+        {"name": "Vada pav", "unit": "piece", "stock": 3, "source": "made"},
+        {"name": "Sugar", "unit": "kg", "stock": 4},
+        {"name": "Milk", "unit": "litre", "stock": 20},
+    ]
+    forecast = Forecast(
+        status="ready",
+        method="weekday_average",
+        training_cutoff=today,
+        predictions=[
+            Prediction(date=today + timedelta(days=day), item="Milk", quantity=25, unit="litre")
+            for day in range(1, 8)
+        ],
+    )
+    low = shop_today.low_stock(inventory, forecast, today, "Tea stall")
+    assert [(item.name, item.source) for item in low] == [
+        ("Milk", "bought"),
+        ("Sugar", "bought"),
+        ("Samosa", "made"),
+    ]

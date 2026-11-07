@@ -21,7 +21,7 @@ from fastapi.testclient import TestClient
 from google.adk.sessions import InMemorySessionService
 from starlette.websockets import WebSocketDisconnect
 
-from app import business_understanding
+from app import business_understanding, new_shop_tools
 from app.agent import (
     FACE_QUESTION,
     GOODBYE,
@@ -347,29 +347,76 @@ def test_a_slow_profile_is_picked_up_with_the_next_answer(tmp_path: Path) -> Non
         business_understanding.understander = previous
 
 
-def test_a_profile_ready_by_bas_joins_the_draft(tmp_path: Path) -> None:
-    """Live eval (tailor): the profile finished after the last answer; "bas" still saves it."""
-    reader, _ = gemini_reader({"kind": "service", "confidence": 0.9}, delay=3)
-    previous = business_understanding.understander
-    business_understanding.understander = reader
-    try:
-        ctx = context(tmp_path)
+def test_ob319_a_profile_ready_by_bas_joins_the_draft(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """OB-319, OB-322: the original pending profile finishes and still joins on "bas"."""
+    reader, models = gemini_reader(
+        {"kind": "service", "what": "tailoring and alterations", "confidence": 0.9}
+    )
+    monkeypatch.setattr(business_understanding, "understander", reader)
+    ctx = context(tmp_path)
 
-        async def flow() -> None:
-            token = current.set(ctx)
-            try:
-                await update_shop(name="Raju Tailors", category="silai, alteration")
-                assert ctx.new_shop_draft and ctx.new_shop_draft.understanding is None
-                await asyncio.sleep(1)
-                end_conversation()
-            finally:
-                current.reset(token)
+    async def flow() -> None:
+        started = asyncio.Event()
+        release = asyncio.Event()
+        completed = asyncio.Event()
+        profile_tasks: list[asyncio.Task[Any]] = []
+        generate = models.generate_content
+        understand = reader.understand
 
-        asyncio.run(flow())
-        assert ctx.new_shop_draft and ctx.new_shop_draft.understanding
-        assert ctx.new_shop_draft.understanding.kind == "service"
-    finally:
-        business_understanding.understander = previous
+        async def tracked_profile(text: str) -> BusinessUnderstanding:
+            task = asyncio.current_task()
+            assert task is not None
+            profile_tasks.append(task)
+            result = await understand(text)
+            completed.set()
+            return result
+
+        async def gated_profile(**kwargs: Any) -> Any:
+            started.set()
+            await release.wait()
+            return await generate(**kwargs)
+
+        async def expire_wait(awaitable: Any, _wait_limit: float) -> Any:
+            waiting = asyncio.ensure_future(awaitable)
+            await started.wait()
+            assert not waiting.done()
+            # Cancel only the caller's shield, as wait_for does on timeout. The profile
+            # must survive the reply deadline and populate the cache after release.
+            waiting.cancel()
+            with pytest.raises(asyncio.CancelledError):
+                await waiting
+            raise TimeoutError
+
+        monkeypatch.setattr(models, "generate_content", gated_profile)
+        monkeypatch.setattr(reader, "understand", tracked_profile)
+        token = current.set(ctx)
+        try:
+            with monkeypatch.context() as deadline:
+                deadline.setattr(new_shop_tools.asyncio, "wait_for", expire_wait)
+                result = await update_shop(name="Raju Tailors", category="silai, alteration")
+            assert result["status"] == "saved"
+            assert started.is_set() and profile_tasks
+            assert all(not task.done() for task in profile_tasks)
+            assert ctx.new_shop_draft and ctx.new_shop_draft.understanding is None
+            assert reader.cached("silai, alteration") is None
+            release.set()
+            await completed.wait()
+            ready = reader.cached("silai, alteration")
+            assert ready and ready.kind == "service" and models.calls == 1
+            assert ready.what == "tailoring and alterations"
+            assert ctx.new_shop_draft.understanding is None
+            end_conversation()
+        finally:
+            release.set()
+            current.reset(token)
+
+    asyncio.run(flow())
+    assert ctx.new_shop_draft and ctx.new_shop_draft.understanding
+    assert ctx.new_shop_draft.understanding.kind == "service"
+    assert ctx.new_shop_draft.understanding.what == "tailoring and alterations"
+    assert models.calls == 1
 
 
 def test_the_phone_gets_a_profile_that_arrives_during_bas(tmp_path: Path) -> None:

@@ -3,11 +3,27 @@ import { conversationEnglish } from './conversationCopy'
 import type { ConversationCopy, Translation } from './conversationCopy'
 import { followInquiries } from '../../api/inquiryStream'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Alert, Box, Button, CircularProgress, Divider, Stack, Typography } from '@mui/material'
+import {
+  Alert,
+  Box,
+  Button,
+  ButtonBase,
+  Divider,
+  IconButton,
+  Menu,
+  MenuItem,
+  Stack,
+  Typography,
+  useTheme,
+} from '@mui/material'
+import { visuallyHidden } from '@mui/utils'
+import { ChevronLeft, EllipsisVertical } from 'lucide-react'
 import type { components } from '../../api/generated'
 import type { Locale } from '../../i18n/locales'
 import { useLocale } from '../../state/hooks'
+import { shopZone } from '../../region/region'
 import { useWorkspace } from '../v1/workspaceContext'
+import { useCopy } from '../v1/strings'
 import type { TipList } from '../customer/types'
 import { OwnerTips } from './OwnerTips'
 import { useGuestCopy } from '../customer/guestCopy'
@@ -20,6 +36,8 @@ const en = {
   reload: 'Reload messages',
   failed: 'Could not load or update messages. Please try again.',
   unnamed: 'Customer',
+  suggested: 'Suggested replies',
+  sent: 'Sent',
 }
 const translations: Record<Exclude<Locale, 'en'>, Omit<typeof en, keyof ConversationCopy>> = {
   hi: {
@@ -29,6 +47,8 @@ const translations: Record<Exclude<Locale, 'en'>, Omit<typeof en, keyof Conversa
     reload: 'संदेश फिर लोड करें',
     failed: 'संदेश लोड या अपडेट नहीं हुए। फिर कोशिश करें।',
     unnamed: 'ग्राहक',
+    suggested: 'सुझाए गए जवाब',
+    sent: 'भेजा गया',
   },
   bn: {
     title: 'বার্তাগুলি',
@@ -37,6 +57,8 @@ const translations: Record<Exclude<Locale, 'en'>, Omit<typeof en, keyof Conversa
     reload: 'বার্তা আবার লোড করুন',
     failed: 'বার্তা লোড বা আপডেট হয়নি। আবার চেষ্টা করুন।',
     unnamed: 'ক্রেতা',
+    suggested: 'প্রস্তাবিত উত্তর',
+    sent: 'পাঠানো হয়েছে',
   },
   te: {
     title: 'సందేశాలు',
@@ -45,6 +67,8 @@ const translations: Record<Exclude<Locale, 'en'>, Omit<typeof en, keyof Conversa
     reload: 'సందేశాలు మళ్లీ లోడ్ చేయండి',
     failed: 'సందేశాలు లోడ్ లేదా నవీకరణ కాలేదు. మళ్లీ ప్రయత్నించండి.',
     unnamed: 'కస్టమర్',
+    suggested: 'సూచించిన జవాబులు',
+    sent: 'పంపబడింది',
   },
   mr: {
     title: 'संदेश',
@@ -53,6 +77,8 @@ const translations: Record<Exclude<Locale, 'en'>, Omit<typeof en, keyof Conversa
     reload: 'संदेश पुन्हा लोड करा',
     failed: 'संदेश लोड किंवा अपडेट झाले नाहीत. पुन्हा प्रयत्न करा.',
     unnamed: 'ग्राहक',
+    suggested: 'सुचवलेली उत्तरे',
+    sent: 'पाठवले',
   },
   kn: {
     title: 'ಸಂದೇಶಗಳು',
@@ -61,6 +87,8 @@ const translations: Record<Exclude<Locale, 'en'>, Omit<typeof en, keyof Conversa
     reload: 'ಸಂದೇಶ ಮತ್ತೆ ಲೋಡ್ ಮಾಡಿ',
     failed: 'ಸಂದೇಶ ಲೋಡ್ ಅಥವಾ ನವೀಕರಿಸಲಾಗಲಿಲ್ಲ. ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.',
     unnamed: 'ಗ್ರಾಹಕ',
+    suggested: 'ಸೂಚಿಸಿದ ಉತ್ತರಗಳು',
+    sent: 'ಕಳುಹಿಸಲಾಗಿದೆ',
   },
 
   'zh-Hans': {
@@ -70,6 +98,8 @@ const translations: Record<Exclude<Locale, 'en'>, Omit<typeof en, keyof Conversa
     reload: '重新加载留言',
     failed: '无法加载或更新留言，请重试。',
     unnamed: '顾客',
+    suggested: '建议回复',
+    sent: '已发送',
   },
   ms: {
     title: 'Mesej',
@@ -78,6 +108,8 @@ const translations: Record<Exclude<Locale, 'en'>, Omit<typeof en, keyof Conversa
     reload: 'Muat semula mesej',
     failed: 'Tidak dapat memuatkan atau mengemas kini mesej. Sila cuba lagi.',
     unnamed: 'Pelanggan',
+    suggested: 'Balasan dicadangkan',
+    sent: 'Dihantar',
   },
   ta: {
     title: 'செய்திகள்',
@@ -86,6 +118,8 @@ const translations: Record<Exclude<Locale, 'en'>, Omit<typeof en, keyof Conversa
     reload: 'செய்திகளை மீண்டும் ஏற்று',
     failed: 'செய்திகளை ஏற்றவோ புதுப்பிக்கவோ முடியவில்லை. மீண்டும் முயலுங்கள்.',
     unnamed: 'வாடிக்கையாளர்',
+    suggested: 'பரிந்துரைத்த பதில்கள்',
+    sent: 'அனுப்பப்பட்டது',
   },
   ja: {
     title: 'メッセージ',
@@ -94,6 +128,8 @@ const translations: Record<Exclude<Locale, 'en'>, Omit<typeof en, keyof Conversa
     reload: 'メッセージを再読み込み',
     failed: 'メッセージを読み込めないか、更新できませんでした。もう一度お試しください。',
     unnamed: 'お客様',
+    suggested: '返信の候補',
+    sent: '送信済み',
   },
   ko: {
     title: '메시지',
@@ -102,6 +138,8 @@ const translations: Record<Exclude<Locale, 'en'>, Omit<typeof en, keyof Conversa
     reload: '메시지 새로고침',
     failed: '메시지를 불러오거나 업데이트하지 못했어요. 다시 시도해 주세요.',
     unnamed: '손님',
+    suggested: '추천 답장',
+    sent: '보냄',
   },
   id: {
     title: 'Pesan',
@@ -110,6 +148,8 @@ const translations: Record<Exclude<Locale, 'en'>, Omit<typeof en, keyof Conversa
     reload: 'Muat ulang pesan',
     failed: 'Tidak dapat memuat atau memperbarui pesan. Silakan coba lagi.',
     unnamed: 'Pelanggan',
+    suggested: 'Saran balasan',
+    sent: 'Terkirim',
   },
   th: {
     title: 'ข้อความ',
@@ -118,6 +158,8 @@ const translations: Record<Exclude<Locale, 'en'>, Omit<typeof en, keyof Conversa
     reload: 'โหลดข้อความใหม่',
     failed: 'โหลดหรืออัปเดตข้อความไม่สำเร็จ กรุณาลองใหม่',
     unnamed: 'ลูกค้า',
+    suggested: 'คำตอบที่แนะนำ',
+    sent: 'ส่งแล้ว',
   },
   vi: {
     title: 'Tin nhắn',
@@ -126,6 +168,8 @@ const translations: Record<Exclude<Locale, 'en'>, Omit<typeof en, keyof Conversa
     reload: 'Tải lại tin nhắn',
     failed: 'Không tải hoặc cập nhật được tin nhắn. Vui lòng thử lại.',
     unnamed: 'Khách hàng',
+    suggested: 'Gợi ý trả lời',
+    sent: 'Đã gửi',
   },
   fil: {
     title: 'Mga mensahe',
@@ -134,6 +178,8 @@ const translations: Record<Exclude<Locale, 'en'>, Omit<typeof en, keyof Conversa
     reload: 'I-reload ang mga mensahe',
     failed: 'Hindi ma-load o ma-update ang mga mensahe. Subukang muli.',
     unnamed: 'Customer',
+    suggested: 'Mga mungkahing sagot',
+    sent: 'Naipadala',
   },
 }
 const chatTranslations: Record<Exclude<Locale, 'en'>, ConversationCopy> = {
@@ -151,10 +197,11 @@ const chatTranslations: Record<Exclude<Locale, 'en'>, ConversationCopy> = {
     you: 'आप',
     customer: 'ग्राहक',
     shop: 'दुकान',
+    aiAnswer: 'AI तुरंत जवाब',
     translate: 'अनुवाद देखें',
     original: 'मूल देखें',
     ai: 'AI अनुवाद · गलत हो सकता है',
-    fixture: 'नमूना अनुवाद · ऑफ़लाइन, लाइव AI जुड़ा नहीं है',
+    fixture: 'डेमो के लिए नमूना अनुवाद',
     remove: 'यह बातचीत मिटाएँ',
     confirmDelete: 'यह बातचीत हमेशा के लिए मिटाएँ?',
     confirmBlock: 'ग्राहक के और संदेश ब्लॉक करें?',
@@ -180,10 +227,11 @@ const chatTranslations: Record<Exclude<Locale, 'en'>, ConversationCopy> = {
     you: 'আপনি',
     customer: 'ক্রেতা',
     shop: 'দোকান',
+    aiAnswer: 'AI তাৎক্ষণিক উত্তর',
     translate: 'অনুবাদ দেখুন',
     original: 'মূল দেখুন',
     ai: 'AI অনুবাদ · ভুল হতে পারে',
-    fixture: 'নমুনা অনুবাদ · অফলাইন, লাইভ AI যুক্ত নয়',
+    fixture: 'ডেমোর জন্য নমুনা অনুবাদ',
     remove: 'এই কথোপকথন মুছুন',
     confirmDelete: 'এই কথোপকথন স্থায়ীভাবে মুছবেন?',
     confirmBlock: 'এই ক্রেতার আরও বার্তা ব্লক করবেন?',
@@ -209,10 +257,11 @@ const chatTranslations: Record<Exclude<Locale, 'en'>, ConversationCopy> = {
     you: 'మీరు',
     customer: 'కస్టమర్',
     shop: 'దుకాణం',
+    aiAnswer: 'AI తక్షణ జవాబు',
     translate: 'అనువాదం చూడండి',
     original: 'అసలు చూడండి',
     ai: 'AI అనువాదం · తప్పులు ఉండవచ్చు',
-    fixture: 'నమూనా అనువాదం · ఆఫ్‌లైన్, లైవ్ AI కనెక్ట్ కాలేదు',
+    fixture: 'డెమో కోసం నమూనా అనువాదం',
     remove: 'ఈ సంభాషణ తొలగించండి',
     confirmDelete: 'ఈ సంభాషణ శాశ్వతంగా తొలగించాలా?',
     confirmBlock: 'ఈ కస్టమర్ మరిన్ని సందేశాలు పంపకుండా బ్లాక్ చేయాలా?',
@@ -238,10 +287,11 @@ const chatTranslations: Record<Exclude<Locale, 'en'>, ConversationCopy> = {
     you: 'तुम्ही',
     customer: 'ग्राहक',
     shop: 'दुकान',
+    aiAnswer: 'AI झटपट उत्तर',
     translate: 'भाषांतर पाहा',
     original: 'मूळ पाहा',
     ai: 'AI भाषांतर · चुकू शकते',
-    fixture: 'नमुना भाषांतर · ऑफलाइन, लाइव्ह AI जोडलेले नाही',
+    fixture: 'डेमोसाठी नमुना भाषांतर',
     remove: 'या गप्पा मिटवा',
     confirmDelete: 'या गप्पा कायमच्या मिटवायच्या?',
     confirmBlock: 'या ग्राहकाचे पुढील संदेश ब्लॉक करायचे?',
@@ -267,10 +317,11 @@ const chatTranslations: Record<Exclude<Locale, 'en'>, ConversationCopy> = {
     you: 'ನೀವು',
     customer: 'ಗ್ರಾಹಕ',
     shop: 'ಅಂಗಡಿ',
+    aiAnswer: 'AI ತಕ್ಷಣದ ಉತ್ತರ',
     translate: 'ಅನುವಾದ ನೋಡಿ',
     original: 'ಮೂಲ ನೋಡಿ',
     ai: 'AI ಅನುವಾದ · ತಪ್ಪಿರಬಹುದು',
-    fixture: 'ಮಾದರಿ ಅನುವಾದ · ಆಫ್‌ಲೈನ್, ನೇರ AI ಸಂಪರ್ಕಿಸಿಲ್ಲ',
+    fixture: 'ಡೆಮೊಗಾಗಿ ಮಾದರಿ ಅನುವಾದ',
     remove: 'ಈ ಮಾತುಕತೆ ಅಳಿಸಿ',
     confirmDelete: 'ಈ ಮಾತುಕತೆ ಶಾಶ್ವತವಾಗಿ ಅಳಿಸಬೇಕೇ?',
     confirmBlock: 'ಈ ಗ್ರಾಹಕರ ಮುಂದಿನ ಸಂದೇಶಗಳನ್ನು ಬ್ಲಾಕ್ ಮಾಡಬೇಕೇ?',
@@ -297,10 +348,11 @@ const chatTranslations: Record<Exclude<Locale, 'en'>, ConversationCopy> = {
     you: '你',
     customer: '顾客',
     shop: '店家',
+    aiAnswer: 'AI 即时回复',
     translate: '查看翻译',
     original: '查看原文',
     ai: 'AI 翻译 · 可能不准确',
-    fixture: '模拟翻译 · 离线示例，未连接实时 AI',
+    fixture: '演示用的示例翻译',
     remove: '删除此对话',
     confirmDelete: '永久删除此对话？',
     confirmBlock: '屏蔽此顾客，不再接收消息？',
@@ -326,10 +378,11 @@ const chatTranslations: Record<Exclude<Locale, 'en'>, ConversationCopy> = {
     you: 'Anda',
     customer: 'Pelanggan',
     shop: 'Kedai',
+    aiAnswer: 'Jawapan segera AI',
     translate: 'Lihat terjemahan',
     original: 'Lihat asal',
     ai: 'Terjemahan AI · mungkin tidak tepat',
-    fixture: 'Terjemahan simulasi · contoh luar talian, tiada AI langsung',
+    fixture: 'Contoh terjemahan untuk demo',
     remove: 'Padam perbualan ini',
     confirmDelete: 'Padam perbualan ini secara kekal?',
     confirmBlock: 'Sekat pelanggan ini daripada menghantar mesej lagi?',
@@ -355,10 +408,11 @@ const chatTranslations: Record<Exclude<Locale, 'en'>, ConversationCopy> = {
     you: 'நீங்கள்',
     customer: 'வாடிக்கையாளர்',
     shop: 'கடை',
+    aiAnswer: 'AI உடனடி பதில்',
     translate: 'மொழிபெயர்ப்பைக் காண்',
     original: 'அசலைக் காண்',
     ai: 'AI மொழிபெயர்ப்பு · தவறுகள் இருக்கலாம்',
-    fixture: 'மாதிரி மொழிபெயர்ப்பு · இணையமில்லா உதாரணம், நேரடி AI இல்லை',
+    fixture: 'டெமோவுக்கான மாதிரி மொழிபெயர்ப்பு',
     remove: 'இந்த உரையாடலை நீக்கு',
     confirmDelete: 'இந்த உரையாடலை நிரந்தரமாக நீக்கவா?',
     confirmBlock: 'இந்த வாடிக்கையாளர் மேலும் செய்தி அனுப்புவதைத் தடுக்கவா?',
@@ -384,10 +438,11 @@ const chatTranslations: Record<Exclude<Locale, 'en'>, ConversationCopy> = {
     you: 'あなた',
     customer: 'お客様',
     shop: 'お店',
+    aiAnswer: 'AI の即時回答',
     translate: '翻訳を見る',
     original: '原文を見る',
     ai: 'AI 翻訳 · 不正確な場合があります',
-    fixture: '模擬翻訳 · オフラインの例、ライブ AI 未接続',
+    fixture: 'デモ用のサンプル翻訳',
     remove: 'この会話を削除',
     confirmDelete: 'この会話を完全に削除しますか？',
     confirmBlock: 'このお客様からのメッセージをブロックしますか？',
@@ -413,10 +468,11 @@ const chatTranslations: Record<Exclude<Locale, 'en'>, ConversationCopy> = {
     you: '나',
     customer: '고객',
     shop: '가게',
+    aiAnswer: 'AI 즉시 답변',
     translate: '번역 보기',
     original: '원문 보기',
     ai: 'AI 번역 · 정확하지 않을 수 있습니다',
-    fixture: '모의 번역 · 오프라인 예시, 실시간 AI 미연결',
+    fixture: '데모용 샘플 번역',
     remove: '이 대화 삭제',
     confirmDelete: '이 대화를 영구 삭제할까요?',
     confirmBlock: '이 고객의 추가 메시지를 차단할까요?',
@@ -442,10 +498,11 @@ const chatTranslations: Record<Exclude<Locale, 'en'>, ConversationCopy> = {
     you: 'Anda',
     customer: 'Pelanggan',
     shop: 'Toko',
+    aiAnswer: 'Jawaban instan AI',
     translate: 'Lihat terjemahan',
     original: 'Lihat asli',
     ai: 'Terjemahan AI · mungkin tidak akurat',
-    fixture: 'Terjemahan simulasi · contoh luring, AI langsung tidak terhubung',
+    fixture: 'Contoh terjemahan untuk demo',
     remove: 'Hapus percakapan ini',
     confirmDelete: 'Hapus percakapan ini secara permanen?',
     confirmBlock: 'Blokir pelanggan ini agar tidak mengirim pesan lagi?',
@@ -471,10 +528,11 @@ const chatTranslations: Record<Exclude<Locale, 'en'>, ConversationCopy> = {
     you: 'คุณ',
     customer: 'ลูกค้า',
     shop: 'ร้าน',
+    aiAnswer: 'คำตอบอัตโนมัติจาก AI',
     translate: 'ดูคำแปล',
     original: 'ดูต้นฉบับ',
     ai: 'คำแปล AI · อาจไม่ถูกต้อง',
-    fixture: 'คำแปลจำลอง · ตัวอย่างออฟไลน์ ไม่ได้เชื่อมต่อ AI สด',
+    fixture: 'ตัวอย่างคำแปลสำหรับเดโม',
     remove: 'ลบการสนทนานี้',
     confirmDelete: 'ลบการสนทนานี้ถาวรหรือไม่?',
     confirmBlock: 'บล็อกลูกค้ารายนี้ไม่ให้ส่งข้อความอีกหรือไม่?',
@@ -500,10 +558,11 @@ const chatTranslations: Record<Exclude<Locale, 'en'>, ConversationCopy> = {
     you: 'Bạn',
     customer: 'Khách hàng',
     shop: 'Cửa hàng',
+    aiAnswer: 'AI trả lời tức thì',
     translate: 'Xem bản dịch',
     original: 'Xem bản gốc',
     ai: 'Bản dịch AI · có thể không chính xác',
-    fixture: 'Bản dịch mô phỏng · ví dụ ngoại tuyến, chưa kết nối AI trực tiếp',
+    fixture: 'Bản dịch mẫu cho bản demo',
     remove: 'Xóa cuộc trò chuyện này',
     confirmDelete: 'Xóa vĩnh viễn cuộc trò chuyện này?',
     confirmBlock: 'Chặn khách hàng này gửi thêm tin nhắn?',
@@ -529,10 +588,11 @@ const chatTranslations: Record<Exclude<Locale, 'en'>, ConversationCopy> = {
     you: 'Ikaw',
     customer: 'Customer',
     shop: 'Tindahan',
+    aiAnswer: 'Agarang sagot ng AI',
     translate: 'Tingnan ang salin',
     original: 'Tingnan ang orihinal',
     ai: 'Salin ng AI · maaaring hindi tumpak',
-    fixture: 'Simuladong salin · offline na halimbawa, walang live AI',
+    fixture: 'Sample na salin para sa demo',
     remove: 'Burahin ang pag-uusap na ito',
     confirmDelete: 'Permanenteng burahin ang pag-uusap na ito?',
     confirmBlock: 'I-block ang customer na ito sa pagpapadala ng mga mensahe?',
@@ -547,6 +607,7 @@ const chatTranslations: Record<Exclude<Locale, 'en'>, ConversationCopy> = {
 }
 
 type Inquiry = components['schemas']['Inquiry']
+type ReplySuggestions = components['schemas']['ReplySuggestions']
 
 export function Messages({ businessId }: { businessId: string }) {
   const guest = useGuestCopy()
@@ -555,7 +616,8 @@ export function Messages({ businessId }: { businessId: string }) {
     ...en,
     ...(locale === 'en' ? {} : { ...translations[locale], ...chatTranslations[locale] }),
   }
-  const { api } = useWorkspace()
+  const { api, active } = useWorkspace()
+  const timeZone = shopZone(active?.fields)
   const [items, setItems] = useState<Inquiry[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
@@ -563,6 +625,9 @@ export function Messages({ businessId }: { businessId: string }) {
   const [busy, setBusy] = useState(false)
   const [selected, setSelected] = useState<string | null>(null)
   const [confirmBlock, setConfirmBlock] = useState(false)
+  const [menu, setMenu] = useState<HTMLElement | null>(null)
+  const v1 = useCopy()
+  const roles = useTheme().material
   const [tips, setTips] = useState<TipList | null>(null)
   const lifetime = useRef<AbortController | null>(null)
   const path = `/businesses/${encodeURIComponent(businessId)}/inquiries`
@@ -615,6 +680,26 @@ export function Messages({ businessId }: { businessId: string }) {
     }
   }, [api, path, load])
   const thread = items.find((item) => item.id === selected)
+  // One-tap drafts for the customer's latest words, fetched once per question (OB-303).
+  const question = thread?.messages?.filter((m) => m.kind !== 'ai').at(-1)
+  const asking = question?.author === 'customer' ? question.id : null
+  const [drafts, setDrafts] = useState<{ id: string; replies: string[] } | null>(null)
+  useEffect(() => {
+    if (!selected || !asking) return
+    const abort = new AbortController()
+    api<ReplySuggestions>(`${path}/${encodeURIComponent(selected)}/replies`, {
+      signal: abort.signal,
+    }).then(
+      (result) => {
+        const replies = Array.isArray(result?.replies)
+          ? result.replies.filter((r): r is string => typeof r === 'string' && r.trim() !== '')
+          : []
+        if (!abort.signal.aborted) setDrafts({ id: asking, replies: replies.slice(0, 3) })
+      },
+      () => undefined,
+    )
+    return () => abort.abort()
+  }, [api, path, selected, asking])
   const update = async (id: string, action: string, text?: string) => {
     const result = await api<Inquiry>(`${path}/${encodeURIComponent(id)}/${action}`, {
       method: 'POST',
@@ -623,29 +708,50 @@ export function Messages({ businessId }: { businessId: string }) {
     })
     setItems((current) => current.map((item) => (item.id === result.id ? result : item)))
   }
+  const unreadCount = items.filter((item) => item.unread && !item.done).length
+  const run = async (action: () => Promise<void>) => {
+    setBusy(true)
+    setError(false)
+    try {
+      await action()
+    } catch {
+      setError(true)
+    } finally {
+      setBusy(false)
+    }
+  }
   return (
     <Box component="section" aria-labelledby="messages-title">
-      <Stack direction="row" sx={{ gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
-        <Typography id="messages-title" component="h2" variant="titleLarge" sx={{ flex: 1 }}>
-          {t.title} ({items.filter((item) => item.unread && !item.done).length})
-        </Typography>
-        <Button
-          disabled={loading || busy}
-          onClick={() => {
-            if (lifetime.current) void load(lifetime.current.signal)
-          }}
-          startIcon={loading ? <CircularProgress size={16} /> : undefined}
-        >
-          {t.reload}
-        </Button>
-      </Stack>
+      {/* One header: "Messages (n)" on the list; inside a conversation, ‹ and the customer's name. */}
+      <Typography
+        id="messages-title"
+        component="h2"
+        variant="titleLarge"
+        sx={thread ? visuallyHidden : { pr: { sm: 12, xs: 0 } }}
+      >
+        {t.title} ({unreadCount})
+      </Typography>
       {polling && (
         <Typography role="status" variant="bodySmall">
           {t.polling}
         </Typography>
       )}
       {error && (
-        <Alert severity="error" sx={{ mt: 2 }}>
+        <Alert
+          severity="error"
+          sx={{ mt: 2 }}
+          action={
+            <Button
+              color="inherit"
+              disabled={loading || busy}
+              onClick={() => {
+                if (lifetime.current) void load(lifetime.current.signal)
+              }}
+            >
+              {t.reload}
+            </Button>
+          }
+        >
           {t.failed}
         </Alert>
       )}
@@ -655,29 +761,107 @@ export function Messages({ businessId }: { businessId: string }) {
         </Typography>
       )}
       {thread ? (
-        <Stack spacing={2} sx={{ mt: 2 }}>
-          <Button
-            onClick={() => {
-              setSelected(null)
-              setConfirmBlock(false)
-            }}
-            sx={{ alignSelf: 'flex-start' }}
-          >
-            {t.back}
-          </Button>
-          <Typography component="h3" variant="titleMedium">
-            {thread.name || t.unnamed}
-          </Typography>
+        <Stack spacing={2}>
+          <Stack direction="row" sx={{ alignItems: 'center', gap: 1, pr: { sm: 12, xs: 0 } }}>
+            <IconButton
+              aria-label={t.back}
+              onClick={() => {
+                setSelected(null)
+                setConfirmBlock(false)
+              }}
+              sx={{ width: 48, height: 48, ml: -2 }}
+            >
+              <ChevronLeft size={24} />
+            </IconButton>
+            <Typography
+              component="h3"
+              variant="titleLarge"
+              sx={{ flex: 1, minWidth: 0, overflowWrap: 'anywhere' }}
+            >
+              {thread.name || t.unnamed}
+            </Typography>
+            <IconButton
+              aria-label={v1.moreOptions}
+              aria-haspopup="menu"
+              aria-expanded={menu ? 'true' : undefined}
+              onClick={(event) => setMenu(event.currentTarget)}
+              sx={{ width: 48, height: 48 }}
+            >
+              <EllipsisVertical size={22} />
+            </IconButton>
+            <Menu anchorEl={menu} open={Boolean(menu)} onClose={() => setMenu(null)}>
+              {!thread.done && (
+                <MenuItem
+                  disabled={busy}
+                  onClick={() => {
+                    setMenu(null)
+                    void run(() => update(thread.id, 'done'))
+                  }}
+                  sx={{ minHeight: 48 }}
+                >
+                  {t.closeChat}
+                </MenuItem>
+              )}
+              {thread.blocked ? (
+                <MenuItem
+                  disabled={busy}
+                  onClick={() => {
+                    setMenu(null)
+                    void run(() => update(thread.id, 'unblock'))
+                  }}
+                  sx={{ minHeight: 48 }}
+                >
+                  {guest.unblock}
+                </MenuItem>
+              ) : (
+                <MenuItem
+                  disabled={busy}
+                  onClick={() => {
+                    setMenu(null)
+                    setConfirmBlock(true)
+                  }}
+                  sx={{ minHeight: 48, color: 'error.main' }}
+                >
+                  {t.block}
+                </MenuItem>
+              )}
+            </Menu>
+          </Stack>
           {!thread.contact.endsWith('@guest.invalid') && (
             <Typography variant="bodyMedium" sx={{ overflowWrap: 'anywhere' }}>
               {thread.contact}
             </Typography>
+          )}
+          {confirmBlock && (
+            <Box role="group" aria-label={t.confirmBlock}>
+              <Typography variant="bodyMedium">{t.confirmBlock}</Typography>
+              <Button
+                disabled={busy}
+                color="error"
+                onClick={() =>
+                  void run(async () => {
+                    await update(thread.id, 'block')
+                    setConfirmBlock(false)
+                  })
+                }
+              >
+                {t.block}
+              </Button>
+              <Button disabled={busy} onClick={() => setConfirmBlock(false)}>
+                {t.cancel}
+              </Button>
+            </Box>
           )}
           <ConversationView
             key={thread.id}
             thread={thread}
             viewer="owner"
             copy={t}
+            owner={{
+              suggestions: drafts && drafts.id === asking ? drafts.replies : [],
+              timeZone,
+              copy: { suggested: t.suggested, sent: t.sent },
+            }}
             onSend={async (text) => {
               await update(thread.id, 'messages', text)
             }}
@@ -689,75 +873,6 @@ export function Messages({ businessId }: { businessId: string }) {
               })
             }
           />
-          <Stack direction="row" sx={{ gap: 1, flexWrap: 'wrap' }}>
-            {!thread.done && (
-              <Button
-                disabled={busy}
-                onClick={async () => {
-                  setBusy(true)
-                  setError(false)
-                  try {
-                    await update(thread.id, 'done')
-                  } catch {
-                    setError(true)
-                  } finally {
-                    setBusy(false)
-                  }
-                }}
-              >
-                {t.closeChat}
-              </Button>
-            )}
-            {thread.blocked && (
-              <Button
-                disabled={busy}
-                onClick={async () => {
-                  setBusy(true)
-                  setError(false)
-                  try {
-                    await update(thread.id, 'unblock')
-                  } catch {
-                    setError(true)
-                  } finally {
-                    setBusy(false)
-                  }
-                }}
-              >
-                {guest.unblock}
-              </Button>
-            )}
-            {!thread.blocked && (
-              <Button disabled={busy} color="error" onClick={() => setConfirmBlock(true)}>
-                {t.block}
-              </Button>
-            )}
-          </Stack>
-          {confirmBlock && (
-            <Box role="group" aria-label={t.confirmBlock}>
-              <Typography variant="bodyMedium">{t.confirmBlock}</Typography>
-              <Button
-                disabled={busy}
-                color="error"
-                onClick={async () => {
-                  setBusy(true)
-                  setError(false)
-                  try {
-                    await update(thread.id, 'block')
-                    setConfirmBlock(false)
-                  } catch {
-                    setError(true)
-                  } finally {
-                    setBusy(false)
-                  }
-                }}
-              >
-                {t.block}
-              </Button>
-              <Button disabled={busy} onClick={() => setConfirmBlock(false)}>
-                {t.cancel}
-              </Button>
-            </Box>
-          )}
         </Stack>
       ) : (
         <>
@@ -766,45 +881,95 @@ export function Messages({ businessId }: { businessId: string }) {
               {t.empty}
             </Typography>
           )}
+          {/* A chat list: the whole row opens the conversation. */}
           <Stack
             component="ul"
             divider={<Divider component="li" aria-hidden="true" />}
-            sx={{ p: 0, listStyle: 'none' }}
+            sx={{ p: 0, mt: 2, mb: 0, listStyle: 'none' }}
           >
-            {items.map((item) => (
-              <Box component="li" key={item.id} sx={{ py: 2, overflowWrap: 'anywhere' }}>
-                <Typography component="h3" variant="titleMedium">
-                  {item.name || t.unnamed}
-                </Typography>
-                {!item.contact.endsWith('@guest.invalid') && (
-                  <Typography variant="bodyMedium">{item.contact}</Typography>
-                )}
-                <Typography variant="bodyLarge" sx={{ whiteSpace: 'pre-wrap' }}>
-                  {/* The latest words from a person, not the AI's instant answer. */}
-                  {item.messages?.filter((m) => m.kind !== 'ai').at(-1)?.text ?? item.message}
-                </Typography>
-                <Typography variant="labelMedium">
-                  {item.blocked ? t.blocked : item.done ? t.closed : item.unread ? t.unread : ''}
-                </Typography>
-                <Button
-                  disabled={busy}
-                  onClick={async () => {
-                    setBusy(true)
-                    setError(false)
-                    try {
-                      await update(item.id, 'read')
-                      setSelected(item.id)
-                    } catch {
-                      setError(true)
-                    } finally {
-                      setBusy(false)
+            {items.map((item) => {
+              const name = item.name || t.unnamed
+              // The latest words from a person, not the AI's instant answer; "You: …" when the
+              // shop has the last word, so the row never reads as if the customer wrote it.
+              const latest = item.messages?.filter((m) => m.kind !== 'ai').at(-1)
+              const preview = latest
+                ? latest.author === 'owner'
+                  ? `${t.you}: ${latest.text}`
+                  : latest.text
+                : item.message
+              const status = item.blocked
+                ? t.blocked
+                : item.done
+                  ? t.closed
+                  : item.unread
+                    ? t.unread
+                    : ''
+              return (
+                <Box component="li" key={item.id}>
+                  <ButtonBase
+                    disabled={busy}
+                    aria-label={`${t.openChat}: ${name}`}
+                    aria-describedby={`inquiry-${item.id}`}
+                    onClick={() =>
+                      void run(async () => {
+                        await update(item.id, 'read')
+                        setSelected(item.id)
+                      })
                     }
-                  }}
-                >
-                  {t.openChat}
-                </Button>
-              </Box>
-            ))}
+                    sx={{
+                      width: '100%',
+                      minHeight: 56,
+                      py: 2,
+                      gap: 3,
+                      justifyContent: 'flex-start',
+                      textAlign: 'start',
+                      overflowWrap: 'anywhere',
+                      '&:focus-visible': {
+                        outline: `3px solid ${roles.primary}`,
+                        outlineOffset: -3,
+                      },
+                    }}
+                  >
+                    <Box component="span" id={`inquiry-${item.id}`} sx={{ flex: 1, minWidth: 0 }}>
+                      <Typography component="span" variant="titleMedium" sx={{ display: 'block' }}>
+                        {name}
+                      </Typography>
+                      <Typography
+                        component="span"
+                        variant="bodyMedium"
+                        color="text.secondary"
+                        sx={{
+                          display: '-webkit-box',
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: 'vertical',
+                          overflow: 'hidden',
+                        }}
+                      >
+                        {preview}
+                      </Typography>
+                      {status && (
+                        <Typography component="span" variant="labelLarge" sx={{ display: 'block' }}>
+                          {status}
+                        </Typography>
+                      )}
+                    </Box>
+                    {item.unread && !item.done && (
+                      <Box
+                        component="span"
+                        aria-hidden="true"
+                        sx={{
+                          width: 10,
+                          height: 10,
+                          flexShrink: 0,
+                          borderRadius: '50%',
+                          bgcolor: roles.primary,
+                        }}
+                      />
+                    )}
+                  </ButtonBase>
+                </Box>
+              )
+            })}
           </Stack>
           <OwnerTips list={tips} />
         </>

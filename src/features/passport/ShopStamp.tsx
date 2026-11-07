@@ -6,6 +6,7 @@ import { holdAt } from '../rescue/holds'
 import { StampMoment } from './StampMoment'
 import { demoKey } from './store'
 import { landStamp } from '../rewards/storage'
+import { remember } from '../first-run/seen'
 import { track } from '../../app/analytics'
 
 /**
@@ -105,8 +106,9 @@ export function ShopStamp({
       )}
       {shop.demo && scan === null && (
         <Box sx={{ mt: 2 }}>
+          {/* Outlined: the shop page's one filled button is the chat bar. */}
           <Button
-            variant="contained"
+            variant="outlined"
             startIcon={<Stamp size={18} />}
             disabled={busy}
             onClick={() => void collect(false)}
@@ -130,6 +132,7 @@ export function ShopStamp({
             if (answered) onSpent?.()
             if (stamped) {
               landStamp(shop.id)
+              remember('customer')
               track('stamp_added')
             }
           }}

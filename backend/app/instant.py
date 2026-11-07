@@ -12,16 +12,21 @@ import re
 from collections import OrderedDict
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any, Literal
 
 import anyio
 
-from .app_guide import guide_reply
+from .app_guide import guide_reply, where_line
+from .close_reward import close_reward, reward_text
 from .contracts import StreamEvent
 from .coordinator import MerchantContext, propose_products
 from .discover import open_now
-from .region import shop_zone
+from .region import shop_currency, shop_zone
+from .rescue import local_now
 from .voice_tools import SCREENS, get_customer_messages, open_screen, set_open_today
+
+if TYPE_CHECKING:
+    from .owner_promise import Promise
 
 Embedder = Callable[[str], list[float]]
 
@@ -44,13 +49,28 @@ SCREEN_RULES: tuple[tuple[str, str], ...] = (
         r"|\b(?:show|print|get)\b(?!.*\b(?:payment|pay|upi)\b).*\bqr\b",
         "share",
     ),
-    (r"\bclose\s+(?:the|my)\s+day\b|\bday\s*end\b|\bend\s+of\s+(?:the\s+)?day\b", "close_day"),
+    (
+        r"\bclose\s+(?:the|my)\s+day\b|\bday\s*end\b|\bend\s+of\s+(?:the\s+)?day\b"
+        r"|\baaj\s+ka\s+hisaa?b\b",
+        "close_day",
+    ),
     (r"\b(?:get|put|list)\b.*\bon\s+google\b|\bgoogle\s+(?:step|listing|profile)\b", "google"),
     (r"\b(?:delete|erase|remove|download|export)\s+(?:all\s+)?my\s+(?:data|account)\b", "privacy"),
     (r"\bconnect\b.*\b(?:pos|billing|tally|petpooja)\b|\bimport\b.*\bsales\b", "import"),
     (r"\bplan\s+tomorrow\b", "plan"),
     (r"\b(?:open|show)\b.*\bmessages?\b", "messages"),
     (r"\b(?:stamp\s*card|loyalty\s+card)\b", "stamps"),
+    # Screens with no tool of their own: the chat opens them.
+    (
+        r"\bnearby\s+demand\b|\basked\s+nearby\b"
+        r"|\bpeople\s+(?:nearby|near\s+(?:me|here|my\s+shop))\b.*\b(?:ask|want|look)\w*\b",
+        "radar",
+    ),
+    (r"\b(?:send|call|book|get)\s+(?:me\s+)?(?:a\s+)?(?:rider|courier)\b", "rider"),
+    (
+        r"^remind\s+me\b|\b(?:turn|switch|set)\s+(?:on|up)\s+(?:my\s+|the\s+)?reminders?\b",
+        "reminders",
+    ),
 )
 CLOSED_TODAY = re.compile(
     r"^(?:we(?:'re|\s+are)|i(?:'m|\s+am)|the\s+shop\s+is|shop\s+is|shop)?\s*closed\s+today\b"
@@ -69,7 +89,54 @@ MESSAGES = re.compile(
     r"(?:new\s+)?(?:customer\s+)?(?:messages|questions)\b",
     re.I,
 )
+# "How did today go?": the close screen's facts in the chat (HABIT change 3, two paths).
+HOW_TODAY = re.compile(
+    r"^(?:how\s+(?:did|was)\s+(?:today|my\s+day)(?:\s+go)?|how(?:'s|\s+is)\s+today\s+going"
+    r"|aaj\s+(?:ka\s+din\s+)?kaisa\s+(?:raha|tha|gaya))\b",
+    re.I,
+)
 SOLD_OUT_LIST = re.compile(r"^what(?:'s|\s+is)\s+sold\s+out\b", re.I)
+# Tomorrow's promise by chat (HABIT change 4): "remind me to order milk tomorrow (morning)",
+# "tomorrow remind me to call Ganesh", "kal subah doodh yaad dilana". Only with "tomorrow" or
+# "kal": "remind me every morning" stays the Remind me screen.
+TOMORROW = r"(?:tomorrow|tmrw|kal)(?:\s+(?:morning|subah))?"
+# "Remind (me)" in Hindi, when it comes before the thing: याद दिलाना / दिलाओ / दिला देना …
+REMIND_HI = r"(?:दिला|करा)(?:ना|ओ|\s*देना|\s*दो|\s*दीजिए|इए|इये|एँ|एं)"
+PROMISE = (
+    re.compile(
+        rf"^(?:{TOMORROW}\s+)?(?:please\s+)?remind\s+me\s+(?:{TOMORROW}\s+)?(?:to|about)\s+"
+        rf"(?P<what>.+?)\s+{TOMORROW}$"
+        rf"|^(?:{TOMORROW}\s+)(?:please\s+)?remind\s+me\s+(?:to|about)\s+(?P<before>.+)$"
+        rf"|^(?:please\s+)?remind\s+me\s+{TOMORROW}\s+(?:to|about)\s+(?P<after>.+)$",
+        re.I,
+    ),
+    re.compile(
+        rf"^{TOMORROW}\s+(?P<what>.+?)\s+(?:yaad|yad)\s+(?:dila|dilaa)(?:na|o|dena|iye|ana)$",
+        re.I,
+    ),
+    # The same in Devanagari: Hindi typing and Hindi voice ("कल सुबह दूध मँगाना याद दिलाना",
+    # the close screen's own Hindi hint).
+    re.compile(
+        r"^(?:मुझे\s+)?कल(?:\s+सुबह)?\s+(?:मुझे\s+)?(?P<what>.+?)\s+(?:की\s+)?याद\s+"
+        r"(?:दिला|करा)(?:ना|ओ|\s*देना|\s*दो|\s*दीजिए|इए|इये|एँ|एं|ना\s+है)$"
+    ),
+    # "Remind me" first: "कल मुझे याद दिलाना कि दूध मंगाना है", "याद दिलाना कल दूध मंगाना".
+    re.compile(
+        rf"^(?:मुझे\s+)?कल(?:\s+सुबह)?\s+(?:मुझे\s+)?याद\s+{REMIND_HI}\s+(?:कि\s+)?"
+        r"(?P<that>.+?)(?:\s+है)?$"
+    ),
+    re.compile(
+        rf"^(?:मुझे\s+)?याद\s+{REMIND_HI}\s+(?:कि\s+)?कल(?:\s+सुबह)?\s+"
+        r"(?P<later>.+?)(?:\s+है)?$"
+    ),
+)
+# Where the promise is in the Hindi UI (tabsCopy navGrow, closeday translations title).
+PROMISE_WHERE_HI = "बढ़ाएँ → दिन बंद करें"
+# "kal subah yaad dilana" names no thing to write down: just tomorrow's words (or "me", as in
+# "कल मुझे याद दिलाना").
+WHEN_ONLY = re.compile(rf"{TOMORROW}|morning|subah|सुबह|कल(?:\s+सुबह)?|मुझे", re.I)
+ORDER_WORDS = re.compile(r"^(?:re-?order|order|buy|get)\s+(?:more\s+|some\s+)?(?P<item>.+)$", re.I)
+MAKE_WORDS = re.compile(r"^(?:make|prep|prepare)\s+(?:more\s+|some\s+)?(?P<item>.+)$", re.I)
 
 # Known phrasings of read-only and navigation intents, for embedding matches.
 EXEMPLARS: dict[str, tuple[str, ...]] = {
@@ -163,7 +230,9 @@ SCREEN_REPLIES = {
     "close_day": "Let's close the day. Take a photo of today's sales book and I'll read it.",
     "google": "Here is your Get on Google checklist. You finish each step on Google's own pages.",
     "privacy": "Here is your data page. Nothing is deleted unless you confirm there.",
-    "import": "Pick your POS or Excel sales export and I'll map the columns for you to confirm.",
+    "import": (
+        "Pick your billing app or Excel sales file and I'll map the columns for you to confirm."
+    ),
     "plan": "Here is tomorrow's plan.",
     "messages": "Here are your customer messages.",
     "stamps": "Here is your stamp card. Tell me the reward, like free chai after 8 visits.",
@@ -173,6 +242,33 @@ SCREEN_REPLIES = {
     "photo": "Tap Add a photo to pick one.",
     "payments": "Here are payments and rides. You share the link; I never handle the money.",
     "supply": "Here are your purchase orders. Nothing is sent until you confirm.",
+    "radar": "Here is what people nearby asked for. An idea shows once 5 different people ask.",
+    "rider": "Here is Send a rider. Type the customer's address and pick a ride app; "
+    "I never book or pay the rider.",
+    "reminders": "Here is Remind me. Turn it on for a short nudge in the morning and evening, "
+    "only when something needs you.",
+}
+# The same screen in the shared map (app_guide.py), so each reply also teaches the screen path.
+SCREEN_FEATURE = {
+    "share": "share",
+    "close_day": "close_day",
+    "google": "google",
+    "privacy": "privacy",
+    "import": "import_sales",
+    "messages": "messages",
+    "stamps": "stamps",
+    "sold_out": "sold_out",
+    "menu": "price_change",
+    "details": "details",
+    "payments": "payments",
+    "supply": "supply",
+    "games": "games",
+    "trust": "face_check",
+    "playbook": "playbook",
+    "connect": "connect",
+    "radar": "radar",
+    "rider": "rider",
+    "reminders": "reminders",
 }
 
 
@@ -213,10 +309,86 @@ def _read_intent(ctx: MerchantContext, intent: str) -> InstantResult | None:
             if gone
             else "Nothing is marked sold out right now.",
         )
+    if intent == "how_today":
+        sales = ctx.store.sales_history(ctx.uid, ctx.business_id or "")
+        reward = close_reward(sales, local_now(fields).date(), shop_currency(fields))
+        return InstantResult(intent, reward_text(reward))
     if intent.startswith("screen:"):
         target = intent.split(":", 1)[1]
-        return _screen(ctx, target, SCREEN_REPLIES.get(target, "Here it is."))
+        reply = SCREEN_REPLIES.get(target, "Here it is.")
+        if target in SCREEN_FEATURE:
+            reply += " " + where_line(SCREEN_FEATURE[target])
+        return _screen(ctx, target, reply)
     return None
+
+
+def promise_words(lowered: str) -> str | None:
+    """What to remind the owner of tomorrow, from a chat message; None when it is not one."""
+    for pattern in PROMISE:
+        found = pattern.match(lowered)
+        if found:
+            what = next(v for v in found.groupdict().values() if v)
+            # "remind me tomorrow" alone has nothing to write down: the coach asks what.
+            if what.strip() and not WHEN_ONLY.fullmatch(what.strip()):
+                return what.strip()
+    return None
+
+
+def save_promise(ctx: MerchantContext, what: str) -> "Promise":
+    """Write tomorrow's promise, as said. "order milk" with a Milk item on the menu gets an
+    Order button tomorrow morning; the demo coach writes it the same way (S2-9)."""
+    from .owner_promise import NewPromise, set_promise
+
+    fields, inventory = _shop(ctx)
+    kind: Literal["order", "make", "note"] = "note"
+    item: str | None = None
+    for pattern, named in ((ORDER_WORDS, "order"), (MAKE_WORDS, "make")):
+        found = pattern.match(what)
+        if found:
+            wanted = found["item"].casefold()
+            item = next(
+                (str(p["name"]) for p in inventory if str(p.get("name", "")).casefold() == wanted),
+                None,
+            )
+            if item:
+                kind = "order" if named == "order" else "make"
+            break
+    return set_promise(
+        ctx.store,
+        ctx.business_id or "",
+        fields,
+        NewPromise(text=what, kind=kind, item=item),
+        uid=ctx.uid,
+    )
+
+
+def _promise(ctx: MerchantContext, what: str, hindi: bool = False) -> InstantResult:
+    """Write tomorrow's promise and say where it will be. The owner's words are kept as said;
+    "order milk" with a Milk item on the menu gets an Order button tomorrow morning."""
+    from .owner_promise import consent_current
+
+    fields, _ = _shop(ctx)
+    # Like the close screen's route (428 there): nothing is written before the current terms.
+    if not fields.get("demo") and not consent_current(ctx.store, ctx.uid):
+        return InstantResult(
+            "promise",
+            "पहले नई शर्तें स्वीकार करें। फिर मैं इसे कल के लिए लिख लूँगा।"
+            if hindi
+            else "Please accept the updated terms first. Then I can write this down for tomorrow.",
+        )
+    promise = save_promise(ctx, what)
+    if hindi:
+        return InstantResult(
+            "promise",
+            f"कल सुबह के लिए लिख लिया: “{promise.text}”। यह कोच में सबसे ऊपर दिखेगा। "
+            # The Hindi UI's own labels: the कोच tab, and Grow's "Close the day" tile.
+            f"यह {PROMISE_WHERE_HI} में भी है।",
+        )
+    return InstantResult(
+        "promise",
+        f'Written down for tomorrow morning: "{promise.text}". It will be at the top of Coach. '
+        + where_line("promise"),
+    )
 
 
 def _upkeep(ctx: MerchantContext, text: str) -> InstantResult | None:
@@ -260,6 +432,11 @@ async def route(
     message = " ".join(text.split())
     if not ctx or not ctx.business_id or ctx.new_shop or not message or len(message) > 200:
         return None
+    # Tomorrow's promise in any script the router knows (the close screen's Hindi hint is
+    # Devanagari). The owner's words keep their own case: they are shown back as written.
+    promised = promise_words(message.rstrip(" .!।"))
+    if promised:
+        return _promise(ctx, promised, hindi=not LATIN.match(message))
     if not LATIN.match(message):
         return None
     lowered = message.casefold().rstrip(" .!")
@@ -295,6 +472,8 @@ async def route(
         return _read_intent(ctx, "messages")
     if SOLD_OUT_LIST.search(lowered):
         return _read_intent(ctx, "sold_out_list")
+    if HOW_TODAY.search(lowered):
+        return _read_intent(ctx, "how_today")
     guide = guide_reply(message)
     if guide:
         return InstantResult("app_guide", guide)

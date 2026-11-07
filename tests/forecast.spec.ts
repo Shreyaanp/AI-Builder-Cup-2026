@@ -1,6 +1,7 @@
 import { createShop } from './stories/support.js'
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
+import { growTool, openMake } from './support/grow.js'
 
 test.use({ reducedMotion: 'reduce' })
 
@@ -17,7 +18,7 @@ async function shop(page: Page) {
     .then((rows) => rows[0].id as string)
 }
 
-test('Prep plan uses approved sales, labels its method and passes axe on phone', async ({
+test('How much to make uses approved sales, labels its method and passes axe on phone', async ({
   page,
 }) => {
   const bid = await shop(page)
@@ -37,7 +38,7 @@ test('Prep plan uses approved sales, labels its method and passes axe on phone',
     })
     .then((r) => r.json())
   await page.getByRole('button', { name: 'Grow', exact: true }).click()
-  const tile = page.getByRole('button', { name: /^Prep plan/ })
+  const tile = await growTool(page, /^How much to make/)
   await expect(tile).toContainText('Import and save at least 4 weeks')
   await page.request.post(`/api/v1/businesses/${bid}/import/${proposed.import_id}/approve`, {
     data: { digest: proposed.digest },
@@ -45,23 +46,26 @@ test('Prep plan uses approved sales, labels its method and passes axe on phone',
   await page.reload()
   await page.getByRole('button', { name: 'Continue local preview' }).click()
   await page.getByRole('button', { name: 'Grow', exact: true }).click()
-  await expect(tile).toContainText('Kopi · 30')
-  await expect(tile).toContainText('Weekday average · seasonality and trend')
+  await growTool(page, /^How much to make/)
+  await expect(tile).toContainText('Kopi 30')
+  // The sheet (simplify batch 4b): the list, its method, and the chat path.
+  const sheet = await openMake(page)
+  await expect(sheet).toContainText('Kopi')
+  await expect(sheet).toContainText('Based on your last weeks')
+  await page.waitForTimeout(500) // the sheet has finished sliding in
   const audit = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()
   expect(audit.violations).toEqual([])
-  await tile.click()
+  await sheet.getByRole('button', { name: 'Ask the coach' }).click()
   await expect(page.getByRole('textbox', { name: 'Message', exact: true })).toHaveValue(
     'How much should I prep tomorrow?',
   )
   await page.getByRole('button', { name: 'Send', exact: true }).click()
-  await expect(
-    page.getByText(/Offline coach:.*Kopi: 30 item.*Method: weekday average/),
-  ).toBeVisible()
+  await expect(page.getByText(/Kopi: 30 item.*Method: weekday average/)).toBeVisible()
   // The numbers behind the answer, drawn as a chart card in the chat (owner, 16 Oct).
   const chart = page.getByRole('figure', { name: /^Forecast chart: Kopi/ })
   await expect(chart).toBeVisible()
   await expect(chart).toContainText('Next 7 days')
-  await expect(chart).toContainText('Weekday average')
+  await expect(chart).toContainText('Based on your last weeks')
   await chart.scrollIntoViewIfNeeded()
   await page.waitForTimeout(1500)
   await page.screenshot({

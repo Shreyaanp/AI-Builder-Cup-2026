@@ -1,19 +1,22 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 import { useIdentity } from '../../auth/useIdentity'
+import { deferred } from '../../app/deferred'
 import { makeApi } from './api'
 import type { Business, Me } from './api'
-import { AppShell } from './AppShell'
-import { BackHistory } from './backStack'
 import { LEGAL_VERSION } from './legal'
 import { Landing } from './Landing'
 import { AccountError, ConsentScreen, Splash } from './Onboarding'
-import { WorkspaceProvider } from './WorkspaceProvider'
 import { Box } from '@mui/material'
 import { TrustStrip } from './TrustStrip'
 
 import { LanguageStep } from '../language/LanguageStep'
 import { useNeedsLanguage } from '../language/needsLanguage'
 import { setAnalyticsConsent } from '../../app/analytics'
+import { useLocale } from '../../state/hooks'
+
+// OB-78/OB-165: the welcome and sign-in no longer wait for the whole owner app. Its code is
+// fetched as soon as an account is known, beside /me, so the workspace itself is not later.
+const OwnerWorkspace = deferred(() => import('./OwnerWorkspace').then((m) => m.default))
 
 /** First run: splash → welcome/sign-in → language → consent → workspace. */
 export default function V1App() {
@@ -42,10 +45,14 @@ export default function V1App() {
 
 function Account({ onLeave }: { onLeave: () => void }) {
   const identity = useIdentity()
-  const api = useMemo(() => makeApi(identity.getToken), [identity.getToken])
+  const locale = useLocale()
+  const api = useMemo(() => makeApi(identity.getToken, locale), [identity.getToken, locale])
   const [me, setMe] = useState<Me | null>(null)
   const [failed, setFailed] = useState(false)
   const needsLanguage = useNeedsLanguage()
+  useEffect(() => {
+    void OwnerWorkspace.preload().catch(() => {})
+  }, [])
   // The language step guesses from the owner's shop pin when they already have a shop.
   const [shops, setShops] = useState<Business[] | null>(null)
   useEffect(() => {
@@ -102,12 +109,9 @@ function Account({ onLeave }: { onLeave: () => void }) {
         }}
       />
     )
-  // The phone's Back button closes the owner app's sheets and dialogs first.
   return (
-    <BackHistory value>
-      <WorkspaceProvider api={api} me={me}>
-        <AppShell />
-      </WorkspaceProvider>
-    </BackHistory>
+    <Suspense fallback={<Splash />}>
+      <OwnerWorkspace api={api} me={me} />
+    </Suspense>
   )
 }

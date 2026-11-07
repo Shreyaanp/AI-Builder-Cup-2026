@@ -20,7 +20,18 @@ export default defineConfig({
     },
   },
   plugins: [react()],
-  build: { manifest: true },
+  build: {
+    manifest: true,
+    rolldownOptions: {
+      output: {
+        codeSplitting: {
+          // OB-165: lazy screens split the icons into dozens of sub-kilobyte files, each its own
+          // round trip on a phone. One small icon chunk replaces them.
+          groups: [{ name: 'icons', test: /node_modules[\\/]lucide-react[\\/]/ }],
+        },
+      },
+    },
+  },
   // Pre-bundled at start: found only when the face check opened, it reloaded the page mid-capture.
   optimizeDeps: { include: ['@mediapipe/tasks-vision'] },
   server: {

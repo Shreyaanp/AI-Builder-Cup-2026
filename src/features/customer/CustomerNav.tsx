@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef } from 'react'
 import { Box, Typography, useTheme } from '@mui/material'
 import { Bookmark, Leaf, MessageCircle, Sparkles, Stamp } from 'lucide-react'
 import { customerNavigate } from '../frontdoors/navigation'
@@ -16,6 +17,49 @@ const tabs: { id: CustomerTab; href: string; Icon: typeof Sparkles }[] = [
   { id: 'chats', href: '/explore/chats', Icon: MessageCircle },
   { id: 'saved', href: '/explore/saved', Icon: Bookmark },
 ]
+
+/**
+ * The theme's 14px label size, stepping down only when a long word (Tamil, Kannada, Malay…) would
+ * not fit its fifth of the bar: 12px next, and last a size that scales with the screen. A word
+ * never splits mid-syllable and the bar never shows a 9-11px size where 14px fits (A-22).
+ */
+const NAV_SIZES = ['', '12px', 'min(12px, 2.9vw)']
+function NavLabel({ current, children }: { current: boolean; children: string }) {
+  const ref = useRef<HTMLSpanElement>(null)
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const fit = () => {
+      for (const size of NAV_SIZES) {
+        el.style.fontSize = size
+        if (el.scrollWidth <= el.clientWidth + 1) break
+      }
+    }
+    fit()
+    // A web font that arrives late, or a turned phone, changes the width.
+    void document.fonts?.ready.then(fit)
+    window.addEventListener('resize', fit)
+    return () => window.removeEventListener('resize', fit)
+  }, [children])
+  return (
+    <Typography
+      ref={ref}
+      variant="labelMedium"
+      sx={{
+        maxWidth: '100%',
+        fontWeight: current ? 700 : 500,
+        lineHeight: 1.15,
+        letterSpacing: 0,
+        textAlign: 'center',
+        overflowWrap: 'normal',
+        wordBreak: 'keep-all',
+        hyphens: 'none',
+      }}
+    >
+      {children}
+    </Typography>
+  )
+}
 
 /** M3 navigation bar: the top-level customer destinations, unread badge on Chats. */
 export function CustomerNav({ active }: { active: CustomerTab }) {
@@ -74,7 +118,7 @@ export function CustomerNav({ active }: { active: CustomerTab }) {
                   flexDirection: 'column',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: 0.5,
+                  gap: 1,
                   color: current ? roles.onSurface : roles.onSurfaceVariant,
                   textDecoration: 'none',
                   WebkitTapHighlightColor: 'transparent',
@@ -113,11 +157,11 @@ export function CustomerNav({ active }: { active: CustomerTab }) {
                         left: 36,
                         minWidth: 18,
                         height: 18,
-                        px: 0.5,
+                        px: 1,
                         borderRadius: 999,
                         bgcolor: roles.error,
                         color: roles.onError,
-                        fontSize: 11,
+                        fontSize: 12,
                         fontWeight: 700,
                         display: 'grid',
                         placeItems: 'center',
@@ -127,25 +171,8 @@ export function CustomerNav({ active }: { active: CustomerTab }) {
                     </Box>
                   )}
                 </Box>
-                {/* Long labels (Tamil, Malay…) wrap to two lines rather than run together. */}
-                <Typography
-                  variant="labelMedium"
-                  sx={{
-                    maxWidth: '100%',
-                    fontWeight: current ? 700 : 500,
-                    lineHeight: 1.15,
-                    // Shrinks before it breaks: a word never splits mid-syllable (Tamil, Hindi).
-                    // The theme sets the phone size in a media query, so this has to be one too.
-                    '@media (max-width: 599px)': { fontSize: 'min(12px, 2.7vw)' },
-                    letterSpacing: 0,
-                    textAlign: 'center',
-                    overflowWrap: 'normal',
-                    wordBreak: 'keep-all',
-                    hyphens: 'none',
-                  }}
-                >
-                  {label}
-                </Typography>
+                {/* Several words (Hindi "सहेजे गए") wrap to two lines rather than run together. */}
+                <NavLabel current={current}>{label}</NavLabel>
               </Box>
             </li>
           )

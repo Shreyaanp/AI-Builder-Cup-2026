@@ -2,7 +2,7 @@ import type { components } from '../../api/generated'
 
 export type Place = components['schemas']['DiscoveryPlace']
 export type Discovery = components['schemas']['DiscoveryResponse']
-export type Usual = Pick<Place, 'id' | 'name' | 'source' | 'google_maps_uri' | 'demo'>
+export type Usual = Pick<Place, 'id' | 'name' | 'source' | 'google_maps_uri' | 'demo' | 'demo_shop'>
 
 export function mapsLink(value: string | null | undefined): string | undefined {
   if (!value) return undefined

@@ -1,5 +1,6 @@
+import { AppHeader } from '../../design/AppHeader'
 import { lazy, Suspense, useEffect, useState } from 'react'
-import type { ReactNode } from 'react'
+import type { MouseEvent, ReactNode } from 'react'
 import {
   Box,
   Button,
@@ -19,6 +20,8 @@ import {
   Check,
   ChevronDown,
   CircleUserRound,
+  Compass,
+  Ellipsis,
   MessageCircle,
   Plus,
   Sparkles,
@@ -32,20 +35,33 @@ import { useTabsCopy } from './tabsCopy'
 import { PARENT_TAB, useWorkspace } from './workspaceContext'
 import type { Destination } from './workspaceContext'
 import { CoachWorkspace, type GalleryPhoto } from './screens/CoachScreen'
-import { NewShopFlow } from './NewShopFlow'
-import { TourHost } from '../tour/Tour'
 import { startDemoTour } from '../tour/tourActions'
 import { tourCopy } from '../tour/strings'
 import { useLocale } from '../../state/hooks'
-import { ShopOverview } from './ShopTiles'
 import { SubPage } from './screens/SubPage'
 import { DiscardPrompt } from './DiscardPrompt'
 import { useBackClose } from './backStack'
 import { useIdentity } from '../../auth/useIdentity'
 import { CoachGuide } from '../owner-tools/CoachGuide'
-import { PaymentsScreen } from '../owner-tools/PaymentsScreen'
 import { openOwnerFeature, useOwnerFeature } from '../owner-tools/entry'
 import { useToolCopy } from '../owner-tools/copy'
+import { deferred, useIdlePreload } from '../../app/deferred'
+import { BrandSplash } from '../frontdoors/Splash'
+import { coachDeferred } from './screens/coachDeferred'
+import { supplyDeferred } from '../supply/supplyDeferred'
+import { workspaceDeferred } from './workspaceDeferred'
+import { useSimpleCopy } from './today/simpleCopy'
+import { useDemoCopy } from '../frontdoors/strings'
+import { customerNavigate } from '../frontdoors/navigation'
+
+// OB-165: the coach is the first screen; the new-shop flow, the tour, payments and the large-
+// window shop tiles load apart from it, fetched while the phone is idle so a tap never waits.
+const NewShopFlow = deferred(() => import('./NewShopFlow').then((m) => m.NewShopFlow))
+const TourHost = deferred(() => import('../tour/Tour').then((m) => m.TourHost))
+const PaymentsScreen = deferred(() =>
+  import('../owner-tools/PaymentsScreen').then((m) => m.PaymentsScreen),
+)
+const ShopOverview = deferred(() => import('./ShopTiles').then((m) => m.ShopOverview))
 
 // Tab screens other than the coach load when first opened.
 const ShopScreen = lazy(() =>
@@ -83,6 +99,14 @@ export function AppShell() {
   const showNavBar = !rail && !keyboard && !inFlow
   // Large windows: My shop tiles beside the coach (phones keep the coach to one card).
   const supporting = useMediaQuery(`(min-width:${windowClass.large}px)`)
+  // Onboarding first: "+" must open the new-shop conversation at once.
+  useIdlePreload(
+    NewShopFlow.preload,
+    ...workspaceDeferred,
+    ...coachDeferred,
+    ...supplyDeferred,
+    PaymentsScreen.preload,
+  )
   useEffect(() => {
     if (!feature) return
     const previousTitle = document.title
@@ -104,6 +128,7 @@ export function AppShell() {
   ]
   // A sub-page (Google, Privacy) keeps its tab selected.
   const tab = PARENT_TAB[destination] ?? destination
+  const coachShown = destination === 'coach' && !feature
   // Leaving for a tab closes an open owner feature (guide, payments).
   const go = (destination: Destination) => {
     openOwnerFeature(null)
@@ -130,7 +155,11 @@ export function AppShell() {
 
   return (
     <>
-      {inFlow && <NewShopFlow setGalleryPhoto={setGalleryPhoto} />}
+      {inFlow && (
+        <Suspense fallback={<BrandSplash business />}>
+          <NewShopFlow setGalleryPhoto={setGalleryPhoto} />
+        </Suspense>
+      )}
       <Box
         sx={{
           display: inFlow ? 'none' : 'flex',
@@ -155,7 +184,7 @@ export function AppShell() {
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
-              gap: 1.5,
+              gap: 1,
               pt: 'calc(16px + env(safe-area-inset-top))',
               pl: 'env(safe-area-inset-left)',
             }}
@@ -167,7 +196,9 @@ export function AppShell() {
         )}
         <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
           <TopBar />
-          <TourHost />
+          <Suspense fallback={null}>
+            <TourHost />
+          </Suspense>
           <Box sx={{ display: 'flex', flex: 1, minHeight: 0 }}>
             <Box
               component="main"
@@ -179,7 +210,8 @@ export function AppShell() {
                 minHeight: 0,
                 px: { xs: 2, sm: 3, md: 4 },
                 // Clear the fixed bar by its measured height: labels wrap and fonts differ.
-                pb: rail ? 3 : `${navHeight + 16}px`,
+                // The coach's composer sits right on the bar (OB-199); other tabs keep 16px.
+                pb: rail ? 3 : `${navHeight + (coachShown && showNavBar ? 0 : 16)}px`,
                 outline: 'none',
               }}
             >
@@ -188,13 +220,15 @@ export function AppShell() {
               <Box hidden={destination !== 'coach' || feature !== null} sx={{ height: '100%' }}>
                 <CoachWorkspace galleryPhoto={galleryPhoto} setGalleryPhoto={setGalleryPhoto} />
               </Box>
-              {feature === 'guide' ? (
-                <CoachGuide />
-              ) : feature === 'payments' ? (
-                <PaymentsScreen key={ws.activeId} />
-              ) : (
-                <Suspense fallback={null}>{screen}</Suspense>
-              )}
+              <Suspense fallback={null}>
+                {feature === 'guide' ? (
+                  <CoachGuide />
+                ) : feature === 'payments' ? (
+                  <PaymentsScreen key={ws.activeId} />
+                ) : (
+                  screen
+                )}
+              </Suspense>
             </Box>
             {supporting && destination === 'coach' && !feature && ws.active && !inFlow && (
               <Box
@@ -210,9 +244,13 @@ export function AppShell() {
                   top: 80,
                   maxHeight: 'calc(100dvh - 96px)',
                   overflowY: 'auto',
+                  // Beside the coach the page keeps one top size (headlineSmall), not a fourth.
+                  '& .MuiTypography-titleLarge': { typography: 'headlineSmall' },
                 }}
               >
-                <ShopOverview key={ws.active.id} narrow />
+                <Suspense fallback={null}>
+                  <ShopOverview key={ws.active.id} narrow />
+                </Suspense>
               </Box>
             )}
           </Box>
@@ -230,7 +268,7 @@ export function AppShell() {
               display: 'grid',
               gridTemplateColumns: `repeat(${destinations.length}, 1fr)`,
               bgcolor: roles.surfaceContainer,
-              pt: 1.5,
+              pt: 1,
               pb: 'calc(16px + env(safe-area-inset-bottom))',
               px: 'env(safe-area-inset-left)',
             }}
@@ -321,7 +359,7 @@ function NavItem({
       onClick={() => onSelect(item.id)}
       sx={{
         flexDirection: 'column',
-        gap: 0.5,
+        gap: 0,
         minWidth: rail ? 80 : 64,
         minHeight: 56,
         borderRadius: `${shape.lg}px`,
@@ -348,7 +386,7 @@ function NavItem({
         sx={{
           fontWeight: selected ? 700 : 500,
           lineHeight: 1.8,
-          py: 0.5,
+          py: 1,
           'html[lang="ta"] &': { fontFamily: '"Noto Sans Tamil", sans-serif' },
         }}
       >
@@ -360,6 +398,8 @@ function NavItem({
 
 function TopBar() {
   const t = useCopy()
+  const simple = useSimpleCopy()
+  const demoText = useDemoCopy()
   const tourText = tourCopy(useLocale())
   const ws = useWorkspace()
   const roles = useTheme().material
@@ -367,57 +407,47 @@ function TopBar() {
   const [tourBusy, setTourBusy] = useState(false)
   const [tourFailed, setTourFailed] = useState(false)
   useBackClose(Boolean(shopMenu), () => setShopMenu(null))
-  // Settings live on the You tab now; the top bar keeps the shop switcher, new chat and "+".
   return (
-    <Box
-      component="header"
-      sx={{
-        position: 'sticky',
-        top: 0,
-        zIndex: 5,
-        bgcolor: roles.surface,
-        display: 'flex',
-        alignItems: 'center',
-        gap: 1,
-        minHeight: 64,
-        px: { xs: 1, sm: 2 },
-        pt: 'env(safe-area-inset-top)',
-      }}
-    >
-      <BrandLogo wordmark="wide" href="/" />
+    <AppHeader sx={{ gap: 1, justifyContent: 'flex-start' }}>
+      <BrandLogo wordmark="wide" href="/" large={ws.destination === 'coach'} />
       <Button
         onClick={(event) => setShopMenu(event.currentTarget)}
         endIcon={<ChevronDown size={18} />}
         aria-haspopup="menu"
         aria-label={t.chooseShop + (ws.active ? `: ${ws.active.fields.name}` : '')}
-        sx={{ color: roles.onSurface, minWidth: 0, maxWidth: 'min(70vw, 420px)', px: 1.5 }}
+        sx={{
+          color: roles.onSurface,
+          minWidth: 0,
+          maxWidth: 'min(70vw, 420px)',
+          flexShrink: 1,
+          px: 2,
+        }}
       >
+        {/* One line with an ellipsis: a long shop name must not grow the bar (OB-117). */}
         <Typography
-          variant="titleLarge"
+          variant={ws.destination === 'coach' ? 'headlineSmall' : 'titleLarge'}
           component="span"
-          sx={{ overflowWrap: 'anywhere', minWidth: 0 }}
+          noWrap
+          title={ws.active?.fields.name ?? t.appName}
+          sx={{ minWidth: 0 }}
         >
           {ws.active?.fields.name ?? t.appName}
         </Typography>
       </Button>
       <Box sx={{ flex: 1 }} />
-      {ws.destination === 'coach' && (
-        <Tooltip title={t.newChat}>
+      {/* Outside Coach the bar is the logo and the shop switcher; Coach adds one ⋯ menu (start
+          again, past chats, how it works). Adding a shop lives in the switcher (SIMPLIFY §3.7). */}
+      {ws.destination === 'coach' && ws.active && (
+        <Tooltip title={simple.moreOptions}>
           <IconButton
-            aria-label={t.newChat}
+            aria-label={simple.moreOptions}
             aria-haspopup="dialog"
             onClick={() => ws.setCoachActions(true)}
           >
-            <MessageCircle size={22} />
+            <Ellipsis size={22} />
           </IconButton>
         </Tooltip>
       )}
-      {/* "+" opens the full-screen new-shop flow (never a form dialog). */}
-      <Tooltip title={t.addShop}>
-        <IconButton aria-label={t.addShop} onClick={ws.startNewShop}>
-          <Plus size={22} />
-        </IconButton>
-      </Tooltip>
       <Menu anchorEl={shopMenu} open={Boolean(shopMenu)} onClose={() => setShopMenu(null)}>
         {ws.businesses.length === 0 && (
           <MenuItem disabled>
@@ -458,7 +488,26 @@ function TopBar() {
             {tourText.failed}
           </Typography>
         )}
+        {/* The demo's other side (shops as customers see them) sits here, not in the banner. */}
+        {ws.demo && (
+          <MenuItem
+            component="a"
+            href="/explore/demo"
+            onClick={(event: MouseEvent<HTMLElement>) => {
+              setShopMenu(null)
+              customerNavigate(event)
+            }}
+            sx={{ minHeight: 48 }}
+          >
+            <ListItemIcon>
+              <Compass size={18} />
+            </ListItemIcon>
+            <ListItemText primary={demoText.customer} />
+          </MenuItem>
+        )}
         <MenuItem
+          sx={{ minHeight: 48 }}
+          onPointerDown={() => void NewShopFlow.preload().catch(() => {})}
           onClick={() => {
             setShopMenu(null)
             ws.startNewShop()
@@ -470,6 +519,6 @@ function TopBar() {
           <ListItemText primary={t.newShop} />
         </MenuItem>
       </Menu>
-    </Box>
+    </AppHeader>
   )
 }

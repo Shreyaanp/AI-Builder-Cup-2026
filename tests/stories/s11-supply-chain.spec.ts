@@ -1,6 +1,7 @@
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Locator, type Page } from '@playwright/test'
 import { confirm, enter, liveOnly, localOnly } from './support.js'
+import { openBuyStock } from '../support/grow.js'
 
 /**
  * S11 · Supply chain: the forecast drafts a purchase order to a (simulated) SAP supplier, the
@@ -98,6 +99,9 @@ async function axe(page: Page) {
 async function theme(page: Page, name: 'Dark' | 'Light') {
   // Appearance lives on You; the coach stays mounted, so its cards keep their state.
   await page.getByRole('button', { name: 'You', exact: true }).click()
+  // Look is one row on You; its choices open under it (simplify batch 3).
+  const look = page.getByRole('button', { name: /^Look/ })
+  if ((await look.getAttribute('aria-expanded')) !== 'true') await look.click()
   await page.getByRole('button', { name, exact: true }).click()
   await page.getByRole('button', { name: 'Coach', exact: true }).click()
   await expect(page.getByRole('dialog')).toHaveCount(0)
@@ -120,16 +124,19 @@ test('S11 · forecast → PO → ORDRSP (partial) → ASN → invoice, translate
   const same = page.getByRole('button', { name: 'Yes, all good' })
   if (process.env.S11_SAME && (await same.count())) await same.click()
 
+  // OB-260: the kirana gets demo suppliers of its own, so the cheapest is always Kaveri,
+  // whatever other shops nearby searched for before this one.
+  const drafted = 'Atta (wheat flour) from Kaveri Fresh & Dairy Supply'
   await test.step('1 · the coach drafts the PO from the forecast and the rules', async () => {
     await page.getByRole('textbox', { name: 'Message', exact: true }).fill('Reorder atta')
     await page.getByRole('button', { name: 'Send', exact: true }).click()
-    const card = page.getByRole('article', { name: 'PO 4500012346' })
+    const card = page.getByRole('article', { name: drafted, exact: true })
     await expect(card).toBeVisible()
     // The authored kirana sells Atta; the older supplier fixture calls it Wheat flour.
     await expect(card).toContainText(/kg (?:Wheat flour|Atta) · deliver/)
     await expect(card).toContainText('6 kg left, runs out')
-    await expect(card).toContainText('Simulation')
-    await expect(page.getByRole('log')).toContainText("I've drafted PO 4500012346")
+    await expect(card).toContainText('Demo')
+    await expect(page.getByRole('log')).toContainText("I've drafted your order")
     await snap(page, '1-draft', project)
     await axe(page)
     // A broken rule (e.g. over the credit limit) comes with its one-tap fix.
@@ -141,21 +148,21 @@ test('S11 · forecast → PO → ORDRSP (partial) → ASN → invoice, translate
     await card
       .getByRole('button', { name: /For your supplier’s system|For your supplier's system/i })
       .click()
-    await expect(card.getByLabel('They receive · SAP IDoc')).toContainText(
+    await expect(card.getByLabel('They receive · Supplier’s format')).toContainText(
       '<MESTYP>ORDERS</MESTYP>',
     )
     await expect(card.getByLabel('You sent · JSON')).toContainText('"kind": "ORDERS"')
-    await snap(page, '2-sent-as-idoc', project, card.getByLabel('They receive · SAP IDoc'))
+    await snap(page, '2-sent-as-idoc', project, card.getByLabel('They receive · Supplier’s format'))
     await card.getByRole('button', { name: 'Hide' }).click()
     await expect(card).not.toContainText('<MESTYP>')
   })
 
-  const card = page.getByRole('article', { name: 'PO 4500012346' })
+  const card = page.getByRole('article', { name: drafted, exact: true })
   await test.step('2 · ORDRSP: part now, the rest back-ordered', async () => {
     await card.getByRole('button', { name: 'Confirm part, back-order the rest' }).click()
     await status(card, 'Changes to check')
     await expect(card).toContainText(/kg now, \d+ kg on/)
-    await expect(card).toContainText('Came as SAP IDoc · Translated offline (fixture parser)')
+    await expect(card).toContainText('Came as Supplier’s format · Read from the document')
     liveOnly('S11/2: with COACH_MODE=gemini the same documents are read by Gemini')
     await snap(page, '3-ordrsp-partial', project, card.getByText(/kg now/))
     await card.getByRole('button', { name: 'Accept changes' }).click()
@@ -169,7 +176,7 @@ test('S11 · forecast → PO → ORDRSP (partial) → ASN → invoice, translate
     await card.getByRole('button', { name: 'Goods arrived' }).click()
     await confirm(page)
     await status(card, 'Arrived')
-    await snap(page, '4-arrived', project, card.getByRole('heading', { name: /^Shipping notice/ }))
+    await snap(page, '4-arrived', project, card.getByRole('heading', { name: /^On its way/ }))
   })
 
   await test.step('4 · INVOIC with the wrong price: three-way match flags it', async () => {
@@ -189,7 +196,7 @@ test('S11 · forecast → PO → ORDRSP (partial) → ASN → invoice, translate
     await expect(card).toContainText('Corrected to the agreed price')
     const invoice = card.getByRole('listitem').filter({ hasText: /^Invoice/ })
     await invoice.getByRole('button', { name: 'For your supplier’s system' }).click()
-    await expect(invoice.getByLabel('Supplier’s system · SAP IDoc')).toContainText(
+    await expect(invoice.getByLabel('Supplier’s system · Supplier’s format')).toContainText(
       '<IDOCTYP>INVOIC02</IDOCTYP>',
     )
     await expect(invoice.getByLabel('Your app · JSON')).toContainText('"kind": "INVOIC"')
@@ -206,9 +213,11 @@ test('S11 · forecast → PO → ORDRSP (partial) → ASN → invoice, translate
 
   await test.step('5 · rules screen on Grow', async () => {
     await page.getByRole('button', { name: 'Grow', exact: true }).click()
-    await page.getByRole('button', { name: /^Purchase orders/ }).click()
-    const sheet = page.getByRole('dialog', { name: 'Purchase orders' })
-    await expect(sheet).toContainText('PO 4500012346')
+    // Buy stock (simplify batch 4b): the finished order is under On the way, the rules under
+    // My suppliers.
+    const sheet = await openBuyStock(page, 'On the way')
+    await expect(sheet).toContainText(drafted)
+    await sheet.getByRole('button', { name: /^My suppliers/ }).click()
     await sheet
       .getByRole('list', { name: 'Suppliers and rules' })
       .getByRole('button')

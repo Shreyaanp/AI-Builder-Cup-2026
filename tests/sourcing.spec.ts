@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { growTool, openBuyStock } from './support/grow.js'
 
 // Offline coach script: the same tool calls Gemini makes, so the story runs without a model.
 async function openWithShop(page: Page) {
@@ -23,7 +24,7 @@ test('running low → demo suppliers → one-tap order → supplier reply → Or
   await openWithShop(page)
 
   await say(page, 'My flour is running low')
-  const carousel = page.getByRole('list', { name: /suppliers nearby/ })
+  const carousel = page.getByRole('list', { name: /suppliers? nearby/ })
   await expect(carousel).toBeVisible()
   const cards = carousel.getByRole('listitem')
   expect(await cards.count()).toBeGreaterThanOrEqual(3)
@@ -42,6 +43,12 @@ test('running low → demo suppliers → one-tap order → supplier reply → Or
   await expect(page.getByText(/replied: “Confirmed:/)).toBeVisible({ timeout: 30_000 })
   await expect(page.getByText('Automatic demo reply').first()).toBeVisible()
 
+  // A slow network: the orders arrive a moment after the sheet opens. Until then it holds the
+  // order's place; it never flashes the Orders list and its search field to type into by mistake.
+  await page.route('**/api/v1/businesses/*/orders', async (route) => {
+    await new Promise((done) => setTimeout(done, 1500))
+    await route.fallback()
+  })
   await page.getByRole('button', { name: 'Open conversation' }).click()
   const thread = page.getByRole('dialog')
   await thread.getByRole('textbox').fill('Can you deliver by 8am?')
@@ -51,14 +58,83 @@ test('running low → demo suppliers → one-tap order → supplier reply → Or
   await expect(page.getByRole('dialog')).toHaveCount(0)
 
   await page.getByRole('button', { name: 'Grow', exact: true }).click()
-  const tile = page.getByRole('button', { name: /^Orders/ })
-  await expect(tile).toContainText('1 open')
-  await tile.click()
-  const orders = page.getByRole('dialog', { name: 'Orders' })
+  // The order is Grow → Buy stock → On the way (simplify batch 4b).
+  const tile = await growTool(page, /^Buy stock/)
+  await expect(tile).toContainText('1 on the way')
+  const orders = await openBuyStock(page, 'On the way')
   await expect(orders).toContainText('Confirmed')
   // Delivered: no menu item matches the flour, so there is no stock review, only the status.
   await orders.getByRole('button', { name: /Lakshmi|Kallang|Cash & Carry/ }).click()
   await page.getByRole('button', { name: 'Mark as received' }).click()
   await expect(page.getByRole('dialog')).toHaveCount(0)
-  await expect(tile).toContainText('None open')
+  await expect(tile).not.toContainText('on the way')
+})
+
+async function orderFrom(page: Page, running: string, order: string) {
+  await say(page, running)
+  await expect(page.getByRole('list', { name: /suppliers? nearby/ }).last()).toBeVisible()
+  await say(page, order)
+  await page
+    .getByRole('button', { name: /^Send to / })
+    .last()
+    .click()
+  await expect(page.getByText(/replied: “Confirmed:/).last()).toBeVisible({ timeout: 30_000 })
+}
+
+test('a second order in the same session opens its thread without flashing the list', async ({
+  page,
+}) => {
+  test.setTimeout(120_000)
+  await openWithShop(page)
+  await orderFrom(
+    page,
+    'My flour is running low',
+    'The second one looks good, order 20 kg flour from them',
+  )
+  await page.getByRole('button', { name: 'Open conversation' }).first().click()
+  await expect(page.getByRole('dialog').getByRole('textbox')).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+
+  await orderFrom(
+    page,
+    'My sugar is running low',
+    'The first one looks good, order 5 kg sugar from them',
+  )
+  // The sheet is still mounted with the first order's list; the new order is not in it yet.
+  await page.route('**/api/v1/businesses/*/orders', async (route) => {
+    await new Promise((done) => setTimeout(done, 1500))
+    await route.fallback()
+  })
+  await page.getByRole('button', { name: 'Open conversation' }).last().click()
+  const sheet = page.getByRole('dialog')
+  await expect(sheet.getByText('Find a supplier')).toHaveCount(0)
+  await expect(sheet.getByRole('button', { name: /Kallang|Cash & Carry/ })).toHaveCount(0)
+  await expect(sheet.locator('[aria-busy="true"]')).toBeVisible()
+  await expect(sheet.getByRole('textbox')).toBeVisible({ timeout: 10_000 })
+  await sheet.getByRole('textbox').fill('Can you deliver by 8am?')
+  await sheet.getByRole('button', { name: 'Send' }).click()
+  await expect(sheet.getByText(/Yes, we can deliver by 8/)).toBeVisible({ timeout: 30_000 })
+})
+
+test('orders that fail to load say so and can be retried', async ({ page }) => {
+  test.setTimeout(90_000)
+  await openWithShop(page)
+  await orderFrom(
+    page,
+    'My flour is running low',
+    'The second one looks good, order 20 kg flour from them',
+  )
+  let fail = true
+  await page.route('**/api/v1/businesses/*/orders', async (route) => {
+    if (fail) return route.abort('failed')
+    await route.fallback()
+  })
+  await page.getByRole('button', { name: 'Open conversation' }).last().click()
+  const sheet = page.getByRole('dialog')
+  await expect(sheet.getByText('Couldn’t load your orders. Try again')).toBeVisible()
+  await expect(sheet.locator('[aria-busy="true"]')).toHaveCount(0)
+  fail = false
+  await sheet.getByRole('button', { name: 'Try again' }).click()
+  await expect(sheet.getByRole('textbox')).toBeVisible({ timeout: 10_000 })
 })

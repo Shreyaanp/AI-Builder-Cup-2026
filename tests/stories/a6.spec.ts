@@ -7,6 +7,7 @@ import {
   phone,
   reviewName,
   seedShop,
+  shopName,
   shot,
   sortAsMenu,
 } from './support.js'
@@ -16,7 +17,8 @@ test.skip(({ isMobile }) => !isMobile, 'Phone evidence')
 test('A6 · an existing shop reviews menu and photo pin separately', async ({ page }) => {
   await localOnly(page)
   await enter(page)
-  await seedShop(page)
+  // OB-168: this story is about an existing shop that has no pin yet.
+  await seedShop(page, false, shopName, false)
   const before = (await (await page.request.get('/api/v1/businesses')).json())[0]
   await page.locator('input[type="file"][accept*="image/jpeg"]').setInputFiles(gpsBoardPath)
   await sortAsMenu(page)

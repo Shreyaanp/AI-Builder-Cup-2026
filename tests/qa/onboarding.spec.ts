@@ -18,7 +18,7 @@ test('consent validates both choices and keyboard activation', async ({ page }) 
   await audit(page)
   await submit.focus()
   await page.keyboard.press('Enter')
-  await expect(page.getByRole('heading', { name: 'What shall we work on today?' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Let’s put your shop online' })).toBeVisible()
 })
 
 test('new shop: cancel writes nothing, review saves once and reloads', async ({ page }) => {

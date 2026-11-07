@@ -26,6 +26,7 @@ from .business_understanding import (
     with_owner_kind,
 )
 from .coordinator import FactInput, MerchantContext, _card, _propose_shop, current
+from .discover import pin_fields
 from .merchant import (
     BusinessFields,
     CustomFact,
@@ -59,7 +60,7 @@ def progress(draft: NewShopDraft | None) -> dict[str, Any]:
     elif draft and draft.live_id:
         result["live"] = "The shop is already live for customers."
     elif ready_to_go_live(draft):
-        result["live"] = "Name, kind and place are known: the app puts the shop live now."
+        result["live"] = "Name, kind and pinned place are known: the app puts the shop live now."
     return result
 
 
@@ -158,19 +159,17 @@ async def update_shop(
     """Record what the owner just said about their new shop, all fields at once, silently (in
     the same turn as your reply). Pass ONLY the fields they said; one sentence can give several.
     name: the shop's real name, only when clearly a name (never invent one). category: what
-    they offer, in THEIR words, a few words ("chai aur samosa", "silai ka kaam", "self-cleaning
-    helmet station"). location: the area or street and a landmark, only when they are not at the
-    shop or GPS was refused. hours: as said ("subah 6 se raat 10, Sunday band"), and
-    weekly_hours: one record per weekday (day: mon..sun, closed: true, or open/close HH:MM;
-    overnight closing belongs to the opening day). description: one short line for customers
-    from what they told you, keeping the details customers care about (seating, brands, home
-    visits, orders ahead). kind: only when the owner says what kind of business it is or
-    corrects it ("nahi, yeh service hai"): product, service, food or mixed. extra_answers: the
-    answer to an extra question listed in still_missing ({key, answer}; answer "" when they do
-    not know). A correction ("nahi, Lakshmi Chai Point") is just a new value: pass it, do not
-    confirm it aloud. skip: steps the owner put off or does not know ("pata nahi", "baad
-    mein", silence twice): hours, photo, face. The same answer twice changes nothing. Never pass
-    prices or menu items here."""
+    they offer, in THEIR words, a few words ("chai aur samosa", "silai ka kaam"). location: the
+    area or street and a landmark, only when they are not at the shop or GPS was refused.
+    hours: as said ("subah 6 se raat 10, Sunday band"), and weekly_hours: one record per weekday
+    (day: mon..sun, closed: true, or open/close HH:MM; overnight closing belongs to the opening
+    day). description: one short line for customers from what they told you, keeping the
+    details customers care about (seating, brands, home visits, orders ahead). kind: only when
+    the owner says or corrects what kind of business it is: product, service, food or mixed.
+    extra_answers: the answer to an extra question listed in still_missing ({key, answer};
+    answer "" when they do not know). A correction is just a new value: pass it, do not confirm
+    it aloud. skip: steps the owner put off or does not know ("pata nahi", "baad mein", silence
+    twice): hours, photo, face. Never pass prices or menu items here."""
     ctx = current.get()
     if not ctx:
         return {"status": "unavailable"}
@@ -226,6 +225,9 @@ async def update_shop(
             # Voice: never hold up the spoken reply; the profile joins with a later answer.
             await understand(ctx, said, wait=0 if ctx.spoken else UNDERSTAND_SECONDS)
             draft = ctx.new_shop_draft or draft
+        if location.strip():
+            # Pinned before it is recorded, so the shop card never shows an unpinned place.
+            await pin_typed_place(ctx, location.strip())
         result = _propose_shop(
             name=name,
             category=category,
@@ -304,9 +306,65 @@ def end_conversation() -> dict[str, Any]:
     return {"status": "ended", "card_id": card_id, "instruction": END_NOTE}
 
 
+# How long a spoken turn waits for a typed place's pin (the reply never waits longer).
+SPOKEN_PIN_SECONDS = 2.0
+
 # One owner's shop goes live once, even when a tool call and the app's draft update race.
 _live_locks: dict[str, threading.Lock] = {}
 _live_guard = threading.Lock()
+
+
+async def pin_typed_place(ctx: MerchantContext, place: str | None = None) -> None:
+    """OB-168: a shop is public only with a map pin, and the place the owner told the coach
+    ("Indiranagar metro ke paas") is where they asked customers to find them. Its pin is looked
+    up as it is said (biased to the phone's country), so the one-sentence flow still goes live
+    and the shop takes the money and clock of that place when it opens. A place that cannot be
+    found, or that is ambiguous (a partial match, or several places of the same name such as
+    "माधवपुर"), stays unpinned: the app shows the suggested spot on the map for the owner to
+    confirm instead. A spoken turn waits only briefly (the next answer or the map card follow).
+
+    `place` is what the owner just said (None: the draft's own place, on a resume). A GPS or
+    hand-placed pin always wins; a pin found from an earlier wording follows a corrected place
+    (and stays as it was when the new one cannot be found)."""
+    from .discover import demo_pin
+    from .region import phone_country
+
+    draft = ctx.new_shop_draft or NewShopDraft()
+    fields = draft.business
+    typed = (place if place is not None else fields.location if fields else "").strip()
+    if not typed:
+        return
+    if fields and fields.lat is not None and fields.lng is not None:
+        if fields.pin_source is not None or fields.location.strip() == typed:
+            return
+    try:
+        if ctx.maps is None:
+            # Scripts and unit tests have no maps service: the offline areas answer.
+            pin, confident = demo_pin(typed), True
+        else:
+            pin, confident = await asyncio.wait_for(
+                ctx.maps.typed_pin(typed, phone_country()),
+                SPOKEN_PIN_SECONDS if ctx.spoken else None,
+            )
+    except HTTPException as error:
+        log.info("new_shop_place_unpinned", reason=str(error.detail)[:40])
+        return
+    except TimeoutError:
+        log.info("new_shop_place_unpinned", reason="slow")
+        return
+    if not confident:
+        log.info("new_shop_place_unpinned", reason="ambiguous")
+        return
+    business = BusinessFields.model_validate(
+        {
+            **(fields.model_dump() if fields else {"name": ""}),
+            **pin_fields(pin),
+            "location": typed[:300],
+            "pin_source": None,
+            "pin_accuracy_m": None,
+        }
+    )
+    ctx.new_shop_draft = draft.model_copy(update={"business": business})
 
 
 def _owner_lock(uid: str) -> threading.Lock:

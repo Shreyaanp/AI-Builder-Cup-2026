@@ -1,5 +1,6 @@
-import { IconButton, useTheme } from '@mui/material'
+import { Button, IconButton, useTheme } from '@mui/material'
 import { HoverTip } from './HoverTip'
+import { settingsRowSx } from './settingsRow'
 import { Moon, Sun } from 'lucide-react'
 import type { Locale } from '../../i18n/locales'
 import { useLocale, usePreferencesDispatch } from '../../state/hooks'
@@ -24,16 +25,34 @@ const labels: Record<Locale, { light: string; dark: string }> = {
 
 /** Customer pages: one tap between light and dark (remembered with the other preferences).
  * `inline` sits in a page's own header row instead of floating top-right. */
-export function AppearanceToggle({ inline = false }: { inline?: boolean }) {
+export function AppearanceToggle({
+  inline = false,
+  row = false,
+}: {
+  inline?: boolean
+  /** A full-width settings row (the profile sheet) with the label spelled out. */
+  row?: boolean
+}) {
   const dark = useTheme().palette.mode === 'dark'
   const dispatch = usePreferencesDispatch()
   const t = labels[useLocale()] ?? labels.en
   const label = dark ? t.light : t.dark
+  const toggle = () => dispatch({ type: 'appearance', appearance: dark ? 'light' : 'dark' })
+  if (row)
+    return (
+      <Button
+        onClick={toggle}
+        startIcon={dark ? <Sun size={20} /> : <Moon size={20} />}
+        sx={settingsRowSx}
+      >
+        {label}
+      </Button>
+    )
   return (
     <HoverTip title={label}>
       <IconButton
         aria-label={label}
-        onClick={() => dispatch({ type: 'appearance', appearance: dark ? 'light' : 'dark' })}
+        onClick={toggle}
         sx={
           inline
             ? { width: 48, height: 48 }

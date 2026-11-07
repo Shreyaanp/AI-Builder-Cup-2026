@@ -119,3 +119,48 @@ def test_existing_menu_photo_links_separate_pin_approval_and_rejects_stale(app) 
         )
         assert client.get("/api/v1/businesses").json()[0]["fields"]["lat"] == 1.305
         assert upload(client, located_jpeg(), f"?business_id={bid}").json()["pin_proposal"] is None
+
+
+async def live_reverse(lat: float, lng: float) -> dict:
+    """A live reverse geocode: a street address plus the neighbourhood it names."""
+    return {
+        "lat": lat,
+        "lng": lng,
+        "place_id": "fixture-place",
+        "pin_label": "12 East Coast Road, Katong, Singapore",
+        "pin_demo": False,
+        "locality": "Katong",
+    }
+
+
+def test_live_new_shop_photo_with_a_named_area_proposes_the_pin(app, monkeypatch) -> None:  # noqa: F811
+    with TestClient(app) as client:
+        join(client)
+        monkeypatch.setattr(app.state.maps, "reverse", live_reverse)
+        response = upload(client, located_jpeg())
+        assert response.status_code == 200
+        business = response.json()["proposal"]["snapshot"]["business"]
+        assert (business["lat"], business["lng"]) == (1.305, 103.905)
+        assert business["place_id"] == "fixture-place" and "locality" not in business
+
+
+def test_live_storefront_photo_with_a_named_area_proposes_the_pin(app, monkeypatch) -> None:  # noqa: F811
+    with TestClient(app) as client:
+        join(client)
+        first = upload(client, located_jpeg(None)).json()["proposal"]
+        bid = client.post(
+            f"/api/v1/proposals/{first['id']}/approve", json={"digest": first["digest"]}
+        ).json()["business_id"]
+
+        async def storefront(image: bytes, language: str = "en") -> PhotoExtraction:
+            return PhotoExtraction(
+                photo_kind="storefront", business=ExtractedBusiness(name="Katong Kopi")
+            )
+
+        monkeypatch.setattr(app.state.photos, "extract", storefront)
+        monkeypatch.setattr(app.state.maps, "reverse", live_reverse)
+        response = upload(client, located_jpeg(), f"?business_id={bid}")
+        assert response.status_code == 200
+        business = response.json()["proposal"]["snapshot"]["business"]
+        assert (business["lat"], business["lng"]) == (1.305, 103.905)
+        assert business["place_id"] == "fixture-place" and "locality" not in business

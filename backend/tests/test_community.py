@@ -5,6 +5,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from threading import Barrier
+from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
@@ -339,6 +340,28 @@ def test_concurrent_first_looks_report_a_change_and_seed_demo_once(docs) -> None
     assert len([u for u in feed if not u.demo]) == 1
     community.seed_demo_updates("other-demo-shop", {**base})
     assert len(community.updates(["demo-shop"])) == 5  # Fixed demo IDs stay per shop.
+
+
+def test_ob133_weekly_demo_refresh_replaces_the_four_cards_not_adds_four(docs, monkeypatch) -> None:
+    """OB-133 / #429: the feed length must not depend on when the demo set was last refreshed."""
+    community = Community(docs)
+    shop = {
+        "demo": True,
+        "currency": "SGD",
+        "products": [
+            {"name": "Kopi", "price": 180, "available": True, "unit": "cup"},
+            {"name": "Kaya toast", "price": 240, "available": True, "unit": "set"},
+        ],
+    }
+    start = 1_760_000_000.0
+    for offset in (0, 8 * 86_400, 16 * 86_400, 40 * 86_400):
+        monkeypatch.setattr(
+            "app.community.time", SimpleNamespace(time=lambda offset=offset: start + offset)
+        )
+        community.seed_demo_updates("demo-shop", shop)
+        feed = community.updates(["demo-shop"])
+        assert [u.kind for u in feed if u.demo].count("menu_confirmed") == 1
+        assert len(feed) == 4, f"refresh at +{offset // 86_400}d left {len(feed)} cards"
 
 
 def test_marking_a_deleted_thread_seen_does_not_bring_it_back(docs) -> None:

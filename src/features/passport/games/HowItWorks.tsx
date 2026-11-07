@@ -41,7 +41,15 @@ function steps(game: Game, t: GamesStrings) {
 }
 
 /** A one-glance "how it works": 3 illustrated steps, opened from a small help button. */
-export function HowItWorks({ game, label }: { game: Game; label?: string }) {
+export function HowItWorks({
+  game,
+  label,
+  singleLine = false,
+}: {
+  game: Game
+  label?: string
+  singleLine?: boolean
+}) {
   const t = useGamesCopy()
   const theme = useTheme()
   const roles = theme.material
@@ -57,8 +65,14 @@ export function HowItWorks({ game, label }: { game: Game; label?: string }) {
         startIcon={<CircleHelp size={18} aria-hidden="true" />}
         onClick={() => setOpen(true)}
         aria-label={fill(t.howItWorksFor, { title })}
-        // Long labels (Kannada, Tamil) wrap inside the button instead of pushing the page wide.
-        sx={{ minHeight: 48, minWidth: 0, color: 'inherit', textAlign: 'start' }}
+        // The neighbourhood card keeps this short action on one line beside its title.
+        sx={{
+          minHeight: 48,
+          minWidth: 0,
+          color: 'inherit',
+          textAlign: 'start',
+          ...(singleLine && { flexShrink: 0, whiteSpace: 'nowrap' }),
+        }}
       >
         {label ?? t.howItWorks}
       </Button>

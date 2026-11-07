@@ -67,7 +67,14 @@ def test_stall_orders_by_whatsapp_with_everyday_items(tmp_path: Path) -> None:
         assert "Sugar" in {line["item"] for line in first["lines"]}
         assert len(first["lines"]) >= 3 and first["total"] < 100_000_00
         assert first["documents"][0]["raw"].startswith("*Purchase order")
-        assert {d["kind"] for d in first["documents"]} == {"ORDERS", "RECEIPT"}
+        # The order that came went the whole way, by text too (OB-248).
+        assert [d["kind"] for d in first["documents"]] == [
+            "ORDERS",
+            "ORDRSP",
+            "DESADV",
+            "INVOIC",
+            "RECEIPT",
+        ]
 
 
 @pytest.mark.parametrize("bid", [*SMALL, FRESHMART.id])

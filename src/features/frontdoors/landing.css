@@ -9,6 +9,36 @@
   overflow-x: clip;
   min-height: 100vh;
 }
+/* The app's phone text is 16px body / 14px labels (simplify batch 1). The landing page keeps the
+   smaller sizes it was approved with, so these roles are set back here. */
+@media (max-width: 599px) {
+  .lp {
+    font-size: var(--type-bodyMedium-size);
+    line-height: var(--type-bodyMedium-line);
+    --type-titleMedium-size: 0.9375rem;
+    --type-titleMedium-line: 1.375rem;
+    --type-titleMedium-tracking: 0.00667em;
+    --type-titleSmall-size: 0.8125rem;
+    --type-titleSmall-line: 1.125rem;
+    --type-titleSmall-tracking: 0.00769em;
+    --type-bodyLarge-size: 0.9375rem;
+    --type-bodyLarge-line: 1.375rem;
+    --type-bodyLarge-tracking: 0.01em;
+    --type-bodyMedium-size: 0.9375rem;
+    --type-bodyMedium-line: 1.375rem;
+    --type-bodyMedium-tracking: 0.00667em;
+    --type-bodySmall-size: 0.8125rem;
+    --type-bodySmall-line: 1.125rem;
+    --type-bodySmall-tracking: 0.01538em;
+    --type-labelLarge-size: 0.8125rem;
+    --type-labelLarge-line: 1.125rem;
+    --type-labelLarge-tracking: 0.00385em;
+    --type-labelMedium-size: 0.8125rem;
+    --type-labelMedium-line: 1.125rem;
+    --type-labelMedium-tracking: 0.02308em;
+  }
+}
+
 .lp a:not(.MuiButton-root) {
   color: inherit;
 }
@@ -34,17 +64,9 @@
 
 /* Nav: glass bar that stays put. */
 .lp-nav {
-  position: sticky;
-  top: env(safe-area-inset-top);
-  z-index: 5;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 12px clamp(16px, 4vw, 48px);
   backdrop-filter: blur(16px) saturate(1.4);
   background: color-mix(in srgb, var(--surface) 78%, transparent);
-  border-bottom: 1px solid color-mix(in srgb, var(--outline) 60%, transparent);
+  box-shadow: inset 0 -1px color-mix(in srgb, var(--outline) 60%, transparent);
 }
 .lp-nav nav {
   display: flex;
@@ -54,6 +76,13 @@
 .lp-nav nav > a:first-child {
   font-weight: 500;
   text-decoration: none;
+}
+@media (min-width: 900px) {
+  .lp-nav-find {
+    display: inline-flex;
+    align-items: center;
+    min-height: 48px;
+  }
 }
 @media (max-width: 899px) {
   .lp-nav .lp-nav-find,
@@ -79,7 +108,13 @@
 .lp-intro {
   max-width: 34rem;
   color: var(--muted);
-  font-size: clamp(1.05rem, 1.6vw, 1.25rem) !important;
+  /* The logo's size (the theme's titleLarge); phones use the body size (below). */
+  font-size: var(--type-logo-size, 1.375rem) !important;
+}
+/* Buttons and the app mock-up use the body size, so the first view has three text sizes. */
+.lp .MuiButton-root.MuiButton-root {
+  font-size: var(--type-bodyMedium-size, 1rem);
+  line-height: var(--type-bodyMedium-line, 1.5rem);
 }
 .lp-cta {
   display: flex;
@@ -104,10 +139,22 @@
   display: grid;
   grid-template-columns: 1.15fr 0.85fr;
   align-items: center;
-  gap: clamp(24px, 4vw, 64px);
-  padding: clamp(32px, 7vw, 96px) clamp(16px, 4vw, 48px) clamp(48px, 8vw, 120px);
+  gap: 24px;
+  padding: 32px 16px 48px;
   max-width: 1240px;
   margin: 0 auto;
+}
+@media (min-width: 600px) {
+  .lp-hero {
+    gap: 32px;
+    padding: 48px 24px 64px;
+  }
+}
+@media (min-width: 900px) {
+  .lp-hero {
+    gap: 48px;
+    padding: 88px 48px 104px;
+  }
 }
 @media (max-width: 899px) {
   .lp-hero {
@@ -175,7 +222,7 @@
   aspect-ratio: 9 / 18.5;
   border-radius: 44px;
   background: #111;
-  padding: 10px;
+  padding: 8px;
   box-shadow:
     0 40px 80px -30px rgb(0 0 0 / 0.45),
     0 0 0 1px rgb(255 255 255 / 0.06) inset;
@@ -204,7 +251,7 @@
   padding: 52px 16px 16px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   opacity: 0;
   transform: translateY(24px) scale(0.98);
   transition:
@@ -217,13 +264,13 @@
 }
 .lp-app-bar {
   font-weight: 600;
-  font-size: 1.05rem;
+  font-size: var(--type-bodyMedium-size, 1rem);
 }
 .lp-bubble {
   max-width: 88%;
-  padding: 10px 14px;
+  padding: 8px 12px;
   border-radius: 20px;
-  font-size: 0.92rem;
+  font-size: var(--type-bodyMedium-size, 1rem);
   line-height: 1.35;
 }
 .lp-bubble.me {
@@ -270,7 +317,7 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
-  padding: 14px;
+  padding: 12px;
   border-radius: 20px;
   background: var(--surface-low);
   border: 1px solid var(--outline);
@@ -280,7 +327,7 @@
 }
 .lp-review strong {
   font-weight: 500;
-  font-size: 1.05rem;
+  font-size: var(--type-bodyMedium-size, 1rem);
 }
 .lp-review em {
   font-style: normal;
@@ -288,7 +335,7 @@
 }
 .lp-confirm {
   margin-top: 8px;
-  padding: 10px;
+  padding: 12px;
   border-radius: 999px;
   text-align: center;
   background: var(--primary);
@@ -297,19 +344,19 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
 }
 .lp-float {
   position: absolute;
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 14px;
+  padding: 8px 12px;
   border-radius: 16px;
   background: var(--surface);
   border: 1px solid var(--outline);
   box-shadow: 0 16px 32px -18px rgb(0 0 0 / 0.35);
-  font-size: 0.9rem;
+  font-size: var(--type-bodyMedium-size, 1rem);
   font-weight: 500;
   animation: lp-float 6s ease-in-out infinite alternate;
 }
@@ -906,7 +953,6 @@
   .lp-nav {
     gap: 12px;
     flex-wrap: wrap;
-    padding-inline: max(16px, env(safe-area-inset-left)) max(16px, env(safe-area-inset-right));
   }
   .lp-nav nav {
     min-width: 0;
@@ -927,18 +973,20 @@
     flex-shrink: 0;
   }
   .lp-title {
-    font-size: clamp(2rem, 1rem + 5vw, 2.5rem) !important;
-    line-height: 1.08 !important;
+    font-size: var(--type-hero-size, 2.25rem) !important;
+    line-height: var(--type-hero-line, 2.5rem) !important;
+    letter-spacing: var(--type-hero-tracking, -0.044em) !important;
   }
   .lp-h2,
   .lp-final-title {
     font-size: clamp(1.65rem, 1rem + 3vw, 2.1rem) !important;
     line-height: 1.15 !important;
   }
+  /* The phone body size (OB-198), so the intro adds no extra type size. */
   .lp-intro,
   .lp .MuiTypography-bodyLarge {
-    font-size: clamp(1rem, 0.9rem + 0.4vw, 1.1rem) !important;
-    line-height: 1.5;
+    font-size: var(--type-bodyLarge-size, 1rem) !important;
+    line-height: var(--type-bodyLarge-line, 1.5rem);
   }
   .lp .MuiTypography-titleLarge,
   .lp .MuiTypography-headlineSmall {

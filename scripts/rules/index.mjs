@@ -10,8 +10,9 @@ import * as size from './size.mjs'
 import * as layout from './layout.mjs'
 import * as voice from './voice.mjs'
 import * as bugs from './bugs.mjs'
+import * as importtype from './importtype.mjs'
 
-const rules = [commits, money, region, i18n, duplicates, size, layout, voice, bugs]
+const rules = [commits, money, region, i18n, duplicates, size, layout, voice, bugs, importtype]
 const update = process.argv.includes('--update-baseline')
 const baseline = update ? {} : loadBaseline()
 

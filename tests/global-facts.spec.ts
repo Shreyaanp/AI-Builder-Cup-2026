@@ -1,4 +1,9 @@
-import { createShop, detailsStep, editShopDetails } from './stories/support.js'
+import {
+  createShopFromReview,
+  detailsStep,
+  editShopDetails,
+  openNewShopReview,
+} from './stories/support.js'
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test } from '@playwright/test'
 
@@ -63,7 +68,13 @@ test('owner reviews custom payments and delivery; customer chips and answers kee
   await page.getByLabel('I have read the Privacy Notice').check()
   await page.getByRole('button', { name: 'Agree and continue' }).click()
   const name = `Global shop ${Date.now()}`
-  await createShop(page, `name: ${name}`)
+  // OB-168 / OB-188: the payment suggestions belong to the confirmed shop's country.
+  await openNewShopReview(page, `name: ${name}; location: Bengaluru`, {
+    lat: 12.9716,
+    lng: 77.6412,
+    label: 'Bengaluru',
+  })
+  await createShopFromReview(page)
   await editShopDetails(page)
   await detailsStep(page, 'Payment')
   // The region's usual payments are one tap; any other name goes in the field below.

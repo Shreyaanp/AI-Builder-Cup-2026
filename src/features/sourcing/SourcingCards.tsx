@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import type { ReactNode } from 'react'
 import {
   Box,
   Button,
@@ -10,11 +9,11 @@ import {
   Typography,
   useTheme,
 } from '@mui/material'
+import { visuallyHidden } from '@mui/utils'
 import {
   CalendarClock,
   Check,
   CircleAlert,
-  MapPin,
   MessageSquare,
   PackageCheck,
   Send,
@@ -22,9 +21,12 @@ import {
   Truck,
 } from 'lucide-react'
 import { useLocale } from '../../state/hooks'
-import { enterRise, fieldFade, motion, scrollArea, shape } from '../../design/theme'
-import { formatPrice, toMinor } from '../v1/format'
+import { productName } from '../../i18n/productNames'
+import { useOrderUnit } from '../supply/supplyData'
+import { enterRise, fieldFade, motion, shape } from '../../design/theme'
+import { formatShopPrice, toMinor } from '../v1/format'
 import { formatMoneyText } from '../inquiries/formatMoneyText'
+import { useGrowCopy } from '../v1/growCopy'
 import { useSourcingCopy } from './copy'
 import { deliveryLabel } from './orderData'
 import type { Order, OrderStatus, SupplierCard, SupplierResult } from './types'
@@ -52,7 +54,7 @@ export function DemoChip() {
   )
 }
 
-export function StatusChip({ status }: { status: OrderStatus }) {
+export function StatusChip({ status, replaced }: { status: OrderStatus; replaced?: boolean }) {
   const roles = useTheme().material
   const s = useSourcingCopy()
   const tone: Record<OrderStatus, [string, string]> = {
@@ -79,7 +81,7 @@ export function StatusChip({ status }: { status: OrderStatus }) {
       component="span"
       size="small"
       icon={icon}
-      label={s.status[status]}
+      label={replaced && status === 'replaced' ? s.replacedChip : s.status[status]}
       sx={{
         height: 24,
         flexShrink: 0,
@@ -160,25 +162,16 @@ export function SearchingSuppliers({ item }: { item: string }) {
   )
 }
 
-function Row({ icon, children }: { icon: ReactNode; children: ReactNode }) {
-  const roles = useTheme().material
-  return (
-    <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', minWidth: 0 }}>
-      <Box
-        aria-hidden="true"
-        sx={{ display: 'flex', color: roles.onSurfaceVariant, flexShrink: 0 }}
-      >
-        {icon}
-      </Box>
-      <Typography variant="bodySmall" color="text.secondary" noWrap sx={{ minWidth: 0 }}>
-        {children}
-      </Typography>
-    </Stack>
-  )
-}
+/** Rows shown before "Show N more" (PLAN-COACH-POC §2a). */
+const VENDORS_SHOWN = 3
 
-/** Supplier cards stagger in as a horizontal carousel inside the conversation. */
-export function SupplierCarousel({
+/**
+ * The vendor list (PLAN-COACH-POC slice 1, simplify batch 4b): suppliers for one item as rows,
+ * best first, never wider than the phone. Each row says price per unit, the estimate for the
+ * owner's amount, distance and delivery; Order sends "Order from number N" to the coach, which
+ * prepares the order card with Send. The Buy stock sheet's Find a supplier lands here.
+ */
+export function VendorListCard({
   result,
   onChoose,
 }: {
@@ -187,65 +180,75 @@ export function SupplierCarousel({
 }) {
   const roles = useTheme().material
   const s = useSourcingCopy()
+  const grow = useGrowCopy()
   const locale = useLocale()
+  const unit = useOrderUnit()
+  const [all, setAll] = useState(false)
   const km = new Intl.NumberFormat(locale, { maximumFractionDigits: 1 })
   const money = (major: number) =>
-    formatPrice(toMinor(major, result.currency), result.currency, locale)
+    formatShopPrice(toMinor(major, result.currency), result.currency, locale)
   const anyDemo = result.suppliers.some((card) => card.demo)
+  const shown = all ? result.suppliers : result.suppliers.slice(0, VENDORS_SHOWN)
+  const more = result.suppliers.length - shown.length
   return (
-    <Box component="li" sx={{ pl: { xs: 0, sm: 10 }, ...enterRise }}>
-      <Stack spacing={0.5} sx={{ pl: { xs: 10, sm: 0 }, pb: 2 }}>
-        <Typography variant="titleSmall">{s.suppliersNear(result.suppliers.length)}</Typography>
-        {anyDemo && (
-          <Typography variant="bodySmall" color="text.secondary" sx={{ minWidth: 0 }}>
-            {s.demoNote}
-          </Typography>
-        )}
-      </Stack>
+    <Box
+      sx={{
+        pl: { xs: 0, sm: 10 },
+        minWidth: 0,
+        width: '100%',
+        ...enterRise,
+      }}
+    >
       <Box
-        role="list"
-        aria-label={s.suppliersNear(result.suppliers.length)}
         sx={{
-          display: 'flex',
-          gap: 3,
-          overflowX: 'auto',
-          scrollSnapType: 'x mandatory',
-          scrollPaddingInline: '16px',
-          // Bleed to the screen edges on phones so the next card visibly peeks in.
-          mx: { xs: -4, sm: 0 },
-          px: { xs: 4, sm: 0 },
-          pb: 2,
-          ...scrollArea,
+          borderRadius: `${shape.lg}px`,
+          bgcolor: roles.surfaceContainerLow,
+          border: `1px solid ${roles.outlineVariant}`,
+          overflow: 'hidden',
         }}
       >
-        {result.suppliers.map((card, index) => (
-          <Box
-            key={card.id}
-            role="listitem"
-            sx={{
-              flex: '0 0 min(78%, 280px)',
-              scrollSnapAlign: 'start',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 2,
-              p: 4,
-              borderRadius: `${shape.lg}px`,
-              bgcolor: roles.surfaceContainerLow,
-              border: `1px solid ${roles.outlineVariant}`,
-              '@keyframes supplierIn': {
-                from: { opacity: 0, transform: 'translateX(32px) scale(0.96)' },
-                to: { opacity: 1, transform: 'none' },
-              },
-              animation: `supplierIn ${motion.duration.enter + 100}ms ${easeOut} ${index * 90}ms both`,
-            }}
-          >
-            <Stack direction="row" spacing={2} sx={{ alignItems: 'flex-start' }}>
+        <Stack spacing={1} sx={{ px: 4, pt: 3, pb: 2 }}>
+          <Typography variant="titleSmall">{s.suppliersNear(result.suppliers.length)}</Typography>
+          {anyDemo && (
+            <Typography variant="bodySmall" color="text.secondary">
+              {s.demoNote}
+            </Typography>
+          )}
+        </Stack>
+        <Box
+          component="ul"
+          role="list"
+          aria-label={s.suppliersNear(result.suppliers.length)}
+          sx={{
+            m: 0,
+            p: 0,
+            listStyle: 'none',
+            '& > li': { borderTop: `1px solid ${roles.outlineVariant}` },
+          }}
+        >
+          {shown.map((card, index) => (
+            <Box
+              component="li"
+              key={card.id}
+              sx={{
+                px: 4,
+                py: 3,
+                display: 'grid',
+                gridTemplateColumns: '28px minmax(0, 1fr)',
+                columnGap: 3,
+                rowGap: 1,
+                '@keyframes vendorIn': {
+                  from: { opacity: 0, transform: 'translateY(8px)' },
+                  to: { opacity: 1, transform: 'none' },
+                },
+                animation: `vendorIn ${motion.duration.enter}ms ${easeOut} ${index * 60}ms both`,
+              }}
+            >
               <Box
                 aria-hidden="true"
                 sx={{
                   width: 28,
                   height: 28,
-                  flexShrink: 0,
                   borderRadius: '50%',
                   display: 'grid',
                   placeItems: 'center',
@@ -256,100 +259,96 @@ export function SupplierCarousel({
               >
                 {card.rank}
               </Box>
-              <Typography
-                variant="titleSmall"
+              <Stack direction="row" spacing={2} sx={{ alignItems: 'center', minWidth: 0 }}>
+                <Typography
+                  variant="bodyLarge"
+                  sx={{ flex: 1, minWidth: 0, fontWeight: 600, overflowWrap: 'anywhere' }}
+                >
+                  <Box component="span" sx={visuallyHidden}>
+                    {card.rank}.{' '}
+                  </Box>
+                  {card.name}
+                </Typography>
+                {card.demo && <DemoChip />}
+              </Stack>
+              <Stack
+                direction="row"
                 sx={{
-                  flex: 1,
-                  minWidth: 0,
-                  display: '-webkit-box',
-                  WebkitLineClamp: 2,
-                  WebkitBoxOrient: 'vertical',
-                  overflow: 'hidden',
+                  gridColumn: 2,
+                  columnGap: 2,
+                  flexWrap: 'wrap',
+                  alignItems: 'baseline',
+                  fontVariantNumeric: 'tabular-nums',
                 }}
               >
-                <Box component="span" sx={visually}>
-                  {card.rank}.{' '}
-                </Box>
-                {card.name}
-              </Typography>
-              {card.demo && <DemoChip />}
-            </Stack>
-            <Row icon={<MapPin size={14} />}>
-              {s.km(km.format(card.distance_km))}
-              {card.delivery ? ` · ${card.delivery}` : ''}
-            </Row>
-            <Box>
-              <Typography
-                variant="titleLarge"
-                sx={{ fontVariantNumeric: 'tabular-nums', color: roles.onSurface }}
-              >
-                {s.perUnit(money(card.item.price), card.item.unit)}
-              </Typography>
-              <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
-                <Typography variant="bodyMedium" color="text.secondary" noWrap>
-                  {card.item.name}
+                <Typography variant="bodyLarge" sx={{ fontWeight: 600 }}>
+                  {s.perUnit(money(card.item.price), unit(card.item.unit))}
                 </Typography>
+                {card.estimate != null && (
+                  <Typography variant="bodySmall" sx={{ color: roles.primary }}>
+                    {s.about(money(card.estimate))}
+                  </Typography>
+                )}
                 {!card.item.available && (
                   <Chip size="small" label={s.outOfStock} sx={{ height: 20 }} component="span" />
                 )}
               </Stack>
-            </Box>
-            {card.estimate != null && (
-              <Typography variant="bodySmall" sx={{ color: roles.primary }}>
-                {s.about(money(card.estimate))}
-              </Typography>
-            )}
-            {card.in_stock.length > 0 && (
               <Typography
                 variant="bodySmall"
                 color="text.secondary"
-                sx={{
-                  display: '-webkit-box',
-                  WebkitLineClamp: 2,
-                  WebkitBoxOrient: 'vertical',
-                  overflow: 'hidden',
-                }}
+                sx={{ gridColumn: 2, overflowWrap: 'anywhere' }}
               >
-                {s.alsoStocks}: {card.in_stock.join(', ')}
+                {[
+                  productName(card.item.name, locale),
+                  s.km(km.format(card.distance_km)),
+                  card.delivery,
+                  card.min_order,
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
               </Typography>
-            )}
-            <Box sx={{ flex: 1 }} />
-            <Stack
-              direction="row"
-              sx={{ alignItems: 'center', justifyContent: 'space-between', gap: 2 }}
-            >
-              <Typography variant="bodySmall" color="text.secondary" noWrap sx={{ minWidth: 0 }}>
-                {card.min_order}
-              </Typography>
+              {card.in_stock.length > 0 && (
+                <Typography
+                  variant="bodySmall"
+                  color="text.secondary"
+                  sx={{ gridColumn: 2, overflowWrap: 'anywhere' }}
+                >
+                  {s.alsoStocks}:{' '}
+                  {card.in_stock.map((name) => productName(name, locale)).join(', ')}
+                </Typography>
+              )}
               <Button
-                size="small"
                 variant={index === 0 ? 'contained' : 'outlined'}
                 onClick={() => onChoose(card)}
-                sx={{ flexShrink: 0, minHeight: 40 }}
+                sx={{ gridColumn: 2, justifySelf: 'start', minHeight: 48, mt: 1 }}
               >
-                {s.choose}
+                {grow.order}
               </Button>
-            </Stack>
-          </Box>
-        ))}
+            </Box>
+          ))}
+        </Box>
+        {more > 0 && (
+          <Button
+            onClick={() => setAll(true)}
+            sx={{
+              width: '100%',
+              minHeight: 48,
+              borderRadius: 0,
+              borderTop: `1px solid ${roles.outlineVariant}`,
+            }}
+          >
+            {grow.showMore(more)}
+          </Button>
+        )}
       </Box>
       {result.approximate_location && (
-        <Typography variant="bodySmall" color="text.secondary" sx={{ pl: { xs: 10, sm: 0 } }}>
+        <Typography variant="bodySmall" color="text.secondary" sx={{ mt: 2 }}>
           {s.approximate}
         </Typography>
       )}
     </Box>
   )
 }
-
-const visually = {
-  position: 'absolute',
-  width: '1px',
-  height: '1px',
-  overflow: 'hidden',
-  clip: 'rect(0 0 0 0)',
-  whiteSpace: 'nowrap',
-} as const
 
 /**
  * The order request in the chat. One tap on Send delivers it; the card then flies into its
@@ -374,7 +373,8 @@ export function OrderCard({
   const [busy, setBusy] = useState(false)
   // Plays the flight once, when this card's own Send succeeds.
   const [flying, setFlying] = useState(false)
-  const money = (minor: number) => formatPrice(minor, order.currency, locale)
+  const unit = useOrderUnit()
+  const money = (minor: number) => formatShopPrice(minor, order.currency, locale)
   const number = new Intl.NumberFormat(locale, { maximumFractionDigits: 2 })
   const actionable = order.status === 'draft' || Boolean(order.pending)
   const reply = [...order.messages].reverse().find((message) => message.author === 'supplier')
@@ -389,7 +389,7 @@ export function OrderCard({
     }
   }
   return (
-    <Box component="li" sx={{ pl: { xs: 0, sm: 10 }, ...enterRise }}>
+    <Box sx={{ pl: { xs: 0, sm: 10 }, ...enterRise }}>
       <Box
         sx={{
           position: 'relative',
@@ -438,7 +438,7 @@ export function OrderCard({
           <Typography variant="labelLarge" color="text.secondary" sx={{ flex: 1 }}>
             {s.orderRequest}
           </Typography>
-          <StatusChip status={order.status} />
+          <StatusChip status={order.status} replaced={Boolean(order.replaced_by)} />
         </Stack>
         <Stack direction="row" spacing={2} sx={{ alignItems: 'center', mb: 3 }}>
           <Typography variant="titleMedium" sx={{ flex: 1, minWidth: 0, overflowWrap: 'anywhere' }}>
@@ -465,9 +465,9 @@ export function OrderCard({
                 }}
               >
                 <Box component="span" sx={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>
-                  {number.format(line.quantity)} {line.unit}
+                  {number.format(line.quantity)} {unit(line.unit)}
                 </Box>{' '}
-                {line.name}
+                {productName(line.name, locale)}
               </Typography>
               <Typography
                 variant="bodyLarge"
@@ -536,7 +536,7 @@ export function OrderCard({
           </Box>
         ) : order.status === 'replaced' ? (
           <Typography variant="bodyMedium" color="text.secondary" sx={{ mt: 3, ...fieldFade }}>
-            {s.discarded}
+            {order.replaced_by ? s.replacedByEdit : s.discarded}
           </Typography>
         ) : (
           <Box sx={{ mt: 3, ...enterRise }}>

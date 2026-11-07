@@ -10,10 +10,13 @@ export function BrandLogo({
   name = 'Chalkboard',
   href,
   wordmark = 'always',
+  large = false,
 }: {
   name?: string
   href?: string
   wordmark?: 'always' | 'wide'
+  /** Headline size, for a screen whose other top-level text is also headlineSmall (Coach). */
+  large?: boolean
 }) {
   return (
     <Box
@@ -29,7 +32,7 @@ export function BrandLogo({
         minHeight: 48,
         color: 'text.primary',
         // The theme's title size (titleLarge), so the logo adds no type size of its own (OB-31).
-        fontSize: '1.375rem',
+        ...(large ? { typography: 'headlineSmall' } : { fontSize: '1.375rem' }),
         fontWeight: 700,
         letterSpacing: '-0.02em',
         textDecoration: 'none',

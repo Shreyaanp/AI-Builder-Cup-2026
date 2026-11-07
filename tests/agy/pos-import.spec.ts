@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { confirm, enter, localOnly, reviewName, seedShop } from '../stories/support.js'
+import { shopMore } from '../support/shopMore.js'
 
 test.use({
   viewport: { width: 390, height: 844 },
@@ -38,6 +39,7 @@ test.describe('POS import flows on phone (390px)', () => {
     await page.getByRole('combobox', { name: 'Language', exact: true }).click()
     await page.getByRole('option', { name: 'हिन्दी', exact: true }).click()
     await page.getByRole('button', { name: 'दुकान', exact: true }).click()
+    await shopMore(page)
     await page.getByRole('button', { name: /बिक्री का हिसाब जोड़ें/ }).click()
 
     const connectDialog = page.getByRole('dialog', { name: 'बिक्री का हिसाब जोड़ें' })
@@ -66,9 +68,10 @@ test.describe('POS import flows on phone (390px)', () => {
     await seedShop(page)
 
     await page.getByRole('button', { name: 'Shop', exact: true }).click()
-    await page.getByRole('button', { name: /Connect your system/i }).click()
+    await shopMore(page)
+    await page.getByRole('button', { name: /Link your billing app/i }).click()
 
-    const connectDialog = page.getByRole('dialog', { name: 'Connect your system' })
+    const connectDialog = page.getByRole('dialog', { name: 'Link your billing app' })
     await expect(connectDialog).toBeVisible()
 
     // Pick Petpooja system
@@ -113,9 +116,10 @@ test.describe('POS import flows on phone (390px)', () => {
     await seedShop(page)
 
     await page.getByRole('button', { name: 'Shop', exact: true }).click()
-    await page.getByRole('button', { name: /Connect your system/i }).click()
+    await shopMore(page)
+    await page.getByRole('button', { name: /Link your billing app/i }).click()
 
-    const connectDialog = page.getByRole('dialog', { name: 'Connect your system' })
+    const connectDialog = page.getByRole('dialog', { name: 'Link your billing app' })
     await expect(connectDialog).toBeVisible()
 
     await connectDialog.getByRole('button', { name: 'Petpooja', exact: true }).click()
@@ -147,9 +151,10 @@ test.describe('POS import flows on phone (390px)', () => {
     await seedShop(page)
 
     await page.getByRole('button', { name: 'Shop', exact: true }).click()
-    await page.getByRole('button', { name: /Connect your system/i }).click()
+    await shopMore(page)
+    await page.getByRole('button', { name: /Link your billing app/i }).click()
 
-    const connectDialog = page.getByRole('dialog', { name: 'Connect your system' })
+    const connectDialog = page.getByRole('dialog', { name: 'Link your billing app' })
     await expect(connectDialog).toBeVisible()
 
     await connectDialog.getByTestId('connector-file').setInputFiles({
@@ -181,9 +186,10 @@ test.describe('POS import flows on phone (390px)', () => {
     await seedShop(page)
 
     await page.getByRole('button', { name: 'Shop', exact: true }).click()
-    await page.getByRole('button', { name: /Connect your system/i }).click()
+    await shopMore(page)
+    await page.getByRole('button', { name: /Link your billing app/i }).click()
 
-    const connectDialog = page.getByRole('dialog', { name: 'Connect your system' })
+    const connectDialog = page.getByRole('dialog', { name: 'Link your billing app' })
     await expect(connectDialog).toBeVisible()
     await expect(connectDialog.getByText('Take a photo of your screen or printout')).toBeVisible()
 

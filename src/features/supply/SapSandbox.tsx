@@ -12,7 +12,7 @@ import {
 import { ChevronDown } from 'lucide-react'
 import { useLocale } from '../../state/hooks'
 import { shape } from '../../design/theme'
-import { formatPrice } from '../v1/format'
+import { formatShopPrice } from '../v1/format'
 import { useWorkspace } from '../v1/workspaceContext'
 import { dayLabel } from './supplyData'
 import type { PoLine } from './types'
@@ -115,7 +115,7 @@ export function SapSandboxOrders({ open }: { open: boolean }) {
               <ListItemText
                 primary={`${copy.po(order.number)} · ${order.supplier.name}`}
                 secondary={[
-                  order.total == null ? '' : formatPrice(order.total, order.currency, locale),
+                  order.total == null ? '' : formatShopPrice(order.total, order.currency, locale),
                   order.delivery ? copy.deliver(dayLabel(order.delivery, locale)) : '',
                 ]
                   .filter(Boolean)

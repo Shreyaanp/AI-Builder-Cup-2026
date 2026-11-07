@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { closeSheet, enter, localOnly, phone, seedShop, share, shot } from './support.js'
+import { closeSheet, enter, localOnly, menuRow, phone, seedShop, share, shot } from './support.js'
 
 test.use(phone)
 test.skip(({ isMobile }) => !isMobile, 'Phone evidence')
@@ -76,7 +76,7 @@ test('A11 · customer light mode separates menu and background surfaces', async 
   const url = await share(page)
   await page.goto(url)
   await page.emulateMedia({ colorScheme: 'light' })
-  const menu = page.getByRole('listitem').filter({ hasText: 'Kopi' }).locator('..')
+  const menu = menuRow(page, 'Kopi').locator('..')
   const background = await page
     .locator('body')
     .evaluate((node) => getComputedStyle(node).backgroundColor)

@@ -7,6 +7,7 @@ import { shopGames } from './api'
 import type { PerkTrigger, ShopGames as Facts } from './api'
 import { useGamesCopy } from './copy'
 import { HowItWorks } from './HowItWorks'
+import { PERKS_SHOWN, repeatsCondition } from './perks'
 
 // The order a customer meets them: first visits, then habits, then prizes.
 const ORDER: PerkTrigger[] = [
@@ -33,6 +34,8 @@ export function ShopGames({ shop }: { shop: string }) {
   const roles = theme.material
   const [facts, setFacts] = useState<{ shop: string; data: Facts } | null>(null)
   const [showOdds, setShowOdds] = useState(false)
+  const [allPerks, setAllPerks] = useState(false)
+  const perksId = useId()
   const oddsId = useId()
   useEffect(() => {
     const controller = new AbortController()
@@ -66,8 +69,8 @@ export function ShopGames({ shop }: { shop: string }) {
           <Typography component="h2" variant="titleMedium" sx={{ fontWeight: 700 }}>
             {t.perksHere}
           </Typography>
-          <Box component="ul" sx={{ listStyle: 'none', p: 0, m: 0, mt: 1 }}>
-            {perks.map((perk) => (
+          <Box id={perksId} component="ul" sx={{ listStyle: 'none', p: 0, m: 0, mt: 1 }}>
+            {(allPerks ? perks : perks.slice(0, PERKS_SHOWN)).map((perk) => (
               <Stack
                 component="li"
                 key={perk.id}
@@ -86,13 +89,26 @@ export function ShopGames({ shop }: { shop: string }) {
                   <Typography variant="bodyLarge" sx={{ overflowWrap: 'anywhere' }}>
                     {perk.text}
                   </Typography>
-                  <Typography variant="bodySmall" color="text.secondary">
-                    {t[`trigger_${perk.trigger}`]}
-                  </Typography>
+                  {!repeatsCondition(perk.text, t[`trigger_${perk.trigger}`]) && (
+                    <Typography variant="bodySmall" color="text.secondary">
+                      {t[`trigger_${perk.trigger}`]}
+                    </Typography>
+                  )}
                 </Box>
               </Stack>
             ))}
           </Box>
+          {perks.length > PERKS_SHOWN && (
+            <Button
+              size="small"
+              onClick={() => setAllPerks((value) => !value)}
+              aria-expanded={allPerks}
+              aria-controls={perksId}
+              sx={{ minHeight: 48, mt: 1 }}
+            >
+              {allPerks ? t.showFewerPerks : t.showMorePerks}
+            </Button>
+          )}
         </>
       )}
       <Stack direction="row" sx={{ mt: 2, gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>

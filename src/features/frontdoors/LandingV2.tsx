@@ -1,3 +1,4 @@
+import { AppHeader } from '../../design/AppHeader'
 import { Fragment, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { Button, Typography, useTheme } from '@mui/material'
 import type { Theme } from '@mui/material'
@@ -20,12 +21,11 @@ import { AppearanceToggle } from './AppearanceToggle'
 import { FlowVideo, TrustTags } from './HowItWorks'
 import { BrandLogo } from '../../design/BrandLogo'
 import { LanguagePicker } from './LanguagePicker'
+import { useBusinessLink } from './businessLink'
 import { pagesCopyFor, type PagesCopy } from './howItWorksCopy'
 import './landing-v2.css'
 import './landing-v2-desktop.css'
 
-const businessUrl = 'https://business.chalkboard.shreyaan.work'
-const demoUrl = `${businessUrl}/demo`
 const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches
 
 // The app's semantic roles and remembered light/dark choice, as on the classic landing.
@@ -108,12 +108,13 @@ function useJourney(stops: number) {
 
 /** Two actions side by side: the demo first, then finding shops. */
 function Actions({ t, className = '' }: { t: PagesCopy; className?: string }) {
+  const businessLink = useBusinessLink()
   return (
     <div className={`l2-actions ${className}`}>
       <Button
         variant="contained"
         size="large"
-        href={businessUrl}
+        href={businessLink()}
         endIcon={<ArrowUpRight size={18} />}
       >
         {t.businessShort}
@@ -254,6 +255,7 @@ function Videos({ t }: { t: PagesCopy }) {
 
 /** The new landing: what it does in plain words, then one cup of chai, then the videos. */
 export default function LandingV2({ preview = false }: { preview?: boolean }) {
+  const businessLink = useBusinessLink()
   const theme = useTheme()
   const t = pagesCopyFor(useLocale())
   const page = useRef<HTMLDivElement>(null)
@@ -289,13 +291,13 @@ export default function LandingV2({ preview = false }: { preview?: boolean }) {
       <a className="l2-skip" href="#l2-main">
         {t.skip}
       </a>
-      <header className="l2-nav">
+      <AppHeader className="l2-nav">
         <BrandLogo name={t.brand} href="/" />
         <nav aria-label={t.brand}>
           <LanguagePicker variant="nav" />
           <AppearanceToggle inline />
         </nav>
-      </header>
+      </AppHeader>
       {preview && (
         <p className="l2-banner" role="note">
           {t.previewBanner}
@@ -360,12 +362,12 @@ export default function LandingV2({ preview = false }: { preview?: boolean }) {
             <Button
               variant="contained"
               size="large"
-              href={businessUrl}
+              href={businessLink()}
               endIcon={<ArrowUpRight size={18} />}
             >
               {t.forBusiness}
             </Button>
-            <Button variant="outlined" size="large" href={demoUrl}>
+            <Button variant="outlined" size="large" href={businessLink('/demo')}>
               {t.tryShort}
             </Button>
           </div>

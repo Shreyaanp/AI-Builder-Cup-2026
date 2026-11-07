@@ -2,6 +2,7 @@ import { mkdir } from 'node:fs/promises'
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
 import { enter, image, localOnly } from './stories/support.js'
+import { showInGrow } from './support/grow.js'
 
 // The Coach tab's first view ("Today"): day one, items that need the owner, all set, and the
 // pill it shrinks to while chatting. Server facts are the real endpoint unless a test needs
@@ -69,7 +70,16 @@ async function shop(
       await route.fulfill({ response, json: { ...(await response.json()), face: 'verified' } })
     })
   const prepared = await page.request.post('/api/v1/proposals', {
-    data: { kind: 'business', revision: 0, business: fields, products },
+    data: {
+      kind: 'business',
+      revision: 0,
+      business: fields,
+      products,
+      // OB-168: a shared shop needs the owner's pin, not only address text.
+      ...(options.share
+        ? { owner_location: { lat: 12.9716, lng: 77.6412, accuracy_m: 0, source: 'pin' } }
+        : {}),
+    },
   })
   expect(prepared.ok()).toBe(true)
   const proposal = await prepared.json()
@@ -175,13 +185,22 @@ test('needs you now: at most three, most urgent first, each leaves when done', a
   await expect(rows).toHaveCount(3)
   await expect(rows.nth(0)).toContainText('Still the same menu today?')
   await expect(rows.nth(1)).toContainText('Masala chai: only 4 left')
+  // OB-243: a low row without a made/bought answer asks; it never offers Order.
+  await expect(rows.nth(1)).toContainText('Do you make it or buy it? Choose in Shop › Menu.')
+  await expect(rows.nth(1).getByRole('button', { name: 'Order', exact: true })).toHaveCount(0)
   await expect(rows.nth(2)).toContainText('Add a phone number')
   // One primary action: only the top row's button is filled.
   await expect(card.locator('.MuiButton-contained')).toHaveCount(1)
+  // Simplify batch 5: one short pulse row of the two numbers that matter most; the coach line
+  // is its reason and takes the place of the shop's own busiest hours. Setup left is a row in
+  // the card (Add a phone number), not a separate bar.
   const pulse = page.getByTestId('today-pulse')
-  await expect(pulse).toContainText('Yesterday: ₹4,200 · 38 saw your page · 3 asked')
-  await expect(pulse).toContainText('Today: about 45 Masala chai, busiest')
-  await expect(page.getByTestId('today-progress')).toContainText('5/6')
+  await expect(pulse).toContainText('Yesterday: ₹4,200 · 38 saw your page')
+  await expect(pulse).not.toContainText('3 asked')
+  await expect(pulse).toContainText('Today: about 45 Masala chai')
+  await expect(pulse).not.toContainText('busiest')
+  await expect(pulse.getByTestId('today-line')).toHaveText('Diwali in 3 days: plan your stock')
+  await expect(page.getByTestId('today-progress')).toHaveCount(0)
   await axe(page)
   await shot(page, 'needs')
   // Answer the daily question: the row leaves and the next item takes its place.
@@ -189,6 +208,180 @@ test('needs you now: at most three, most urgent first, each leaves when done', a
   await expect(card).not.toContainText('Still the same menu today?')
   await expect(rows).toHaveCount(3)
   await expect(rows.nth(2)).toContainText('Share your page')
+})
+
+// SIMPLIFY Batch 5: one lead card plus "N more things" in it, so nothing drops off Coach.
+for (const [language, preview, more, hide, rowNames] of [
+  [
+    'en',
+    'Continue local preview',
+    '5 more things',
+    'Hide',
+    [
+      /Still the same menu today?/,
+      /Masala chai: only 4 left/,
+      /Sugar: only 2 left/,
+      /Kulhad chai/,
+      /phone number/i,
+      /share your page/i,
+    ],
+  ],
+  [
+    'hi',
+    'स्थानीय प्रीव्यू जारी रखें',
+    '5 और काम',
+    'छिपाएँ',
+    [/मेन्यू/, /Masala chai/, /Sugar/, /Kulhad chai/, /फ़ोन/, /पेज/],
+  ],
+] as const) {
+  test(`N more things: eight needs, every one reachable in the one card (${language})`, async ({
+    page,
+  }) => {
+    await facts(page, {
+      yesterday: { sales: 420000, items: 210, views: 38, questions: 3, stamps: 9, returning: 4 },
+      forecast: { item: 'Masala chai', quantity: 45, unit: 'cup' },
+      low_stock: [
+        { name: 'Masala chai', stock: 4, runs_out: null, source: 'made' },
+        { name: 'Sugar', stock: 2, runs_out: null, source: 'bought' },
+      ],
+    })
+    const id = await shop(page, { name: 'Courtyard Chai', ...FULL, phone: '' }, [
+      ...PRODUCTS,
+      { name: 'Sugar', price: 4800, unit: 'kg', stock: 2 },
+      { name: 'Kulhad chai', price: 3000, unit: 'cup', category: 'Drinks' },
+    ])
+    const inventory = await (await page.request.get(`/api/v1/businesses/${id}/inventory`)).json()
+    const kulhad = inventory.find((item: { name: string }) => item.name === 'Kulhad chai')
+    const sold = await page.request.post(
+      `/api/v1/businesses/${id}/inventory/${kulhad.id}/availability`,
+      { data: { available: false } },
+    )
+    expect(sold.ok()).toBe(true)
+    await page.evaluate(
+      (value) => localStorage.setItem('niva.starter.preferences', JSON.stringify(value)),
+      { language },
+    )
+    await page.reload()
+    await page.getByRole('button', { name: preview }).click()
+    const today = page.getByTestId('today')
+    const card = page.getByTestId('today-needs')
+    const toggle = card.getByRole('button', { name: more })
+    for (const width of [360, 390, 412]) {
+      await page.setViewportSize({ width, height: 844 })
+      // Three lead rows, then the disclosure that names how many more there are.
+      await expect(card.locator('[data-need]')).toHaveCount(3)
+      await expect(toggle).toHaveAttribute('aria-expanded', 'false')
+      await toggle.click()
+      const hider = card.getByRole('button', { name: hide, exact: true })
+      await expect(hider).toHaveAttribute('aria-expanded', 'true')
+      const all = card.locator('[data-need]')
+      await expect(all).toHaveCount(8)
+      // Every need is in the card, each with a control found by role and name.
+      for (const name of rowNames) {
+        const row = all.filter({ hasText: name })
+        await expect(row, String(name)).toHaveCount(1)
+        expect(await row.getByRole('button').count(), String(name)).toBeGreaterThan(0)
+      }
+      // ...including the reminders past those (shop photo, face check).
+      for (const row of await all.all()) {
+        const buttons = await row.getByRole('button').all()
+        expect(buttons.length).toBeGreaterThan(0)
+        for (const button of buttons)
+          expect(
+            ((await button.getAttribute('aria-label')) ?? (await button.innerText())).trim(),
+          ).not.toBe('')
+      }
+      if (language === 'en') {
+        await expect(card.getByRole('button', { name: 'Yes', exact: true })).toBeVisible()
+        await expect(card.getByRole('button', { name: 'Order', exact: true })).toBeVisible()
+        await expect(card.getByRole('button', { name: 'Make more', exact: true })).toBeVisible()
+        await expect(card.getByRole('button', { name: 'Back in stock' })).toBeVisible()
+      }
+      // Still one filled button on the card, on the first row; the rest are outlined or text.
+      await expect(today.locator('.MuiButton-contained')).toHaveCount(1)
+      await expect(all.first().locator('.MuiButton-contained')).toHaveCount(1)
+      for (const button of await card.getByRole('button').all())
+        expect(Math.round((await button.boundingBox())!.height)).toBeGreaterThanOrEqual(48)
+      expect(
+        await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1),
+      ).toBe(true)
+      if (width === 390) {
+        await axe(page)
+        await shot(page, `more-things-${language}`)
+      }
+      await hider.click()
+      await expect(card.locator('[data-need]')).toHaveCount(3)
+    }
+  })
+}
+
+for (const [language, preview, pointer, shopTile, tile, menu, draft] of [
+  [
+    'en',
+    'Continue local preview',
+    'Do you make it or buy it? Choose in Shop › Services.',
+    'Shop',
+    'Services',
+    'Menu',
+    'Draft a reorder',
+  ],
+  [
+    'hi',
+    'स्थानीय प्रीव्यू जारी रखें',
+    'आप इसे बनाते हैं या खरीदते हैं? दुकान › सेवाएँ में चुनें।',
+    'दुकान',
+    'सेवाएँ',
+    'मेन्यू',
+    'फिर से सामान मँगाएँ',
+  ],
+] as const) {
+  test(`OB-243: a salon is pointed to its real tile, 390 px ${language}`, async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await facts(page, { low_stock: [{ name: 'Shampoo', stock: 2, runs_out: null }] })
+    await shop(page, { name: 'Courtyard Salon', ...FULL, category: 'Hair salon' }, [
+      { name: 'Haircut', price: 30000, unit: 'service', category: 'Hair' },
+      { name: 'Shampoo', price: 20000, unit: 'bottle', category: 'Supplies', stock: 2 },
+    ])
+    await page.evaluate(
+      (value) => localStorage.setItem('niva.starter.preferences', JSON.stringify(value)),
+      { language },
+    )
+    await page.reload()
+    await page.getByRole('button', { name: preview }).click()
+    await expect(page.getByTestId('today-needs')).toContainText(pointer)
+    await axe(page)
+    await shot(page, `salon-pointer-${language}`)
+    await page.locator('[data-tour="nav-shop"]').click()
+    await expect(page.getByTestId('shop-tiles').getByText(tile, { exact: true })).toBeVisible()
+    // The reorder's question names the same tile.
+    await page.route('**/supply/reorder', (route) =>
+      route.fulfill({ json: { status: 'ask_source', item: 'Shampoo' } }),
+    )
+    await page.locator('[data-tour="nav-grow"]').click()
+    await (await showInGrow(page, page.locator('[data-tour="supply"]'))).click()
+    const sheet = page.getByRole('dialog')
+    await sheet.getByRole('button', { name: draft }).click()
+    await expect(sheet.getByRole('status')).toContainText(`${shopTile} › ${tile}`)
+    await expect(sheet.getByRole('status')).not.toContainText(menu)
+  })
+}
+
+// Low stock keeps "Order" and asks to order more.
+test('low stock: a kirana keeps Order and asks to order more', async ({ page }) => {
+  await facts(page, {
+    low_stock: [{ name: 'Toothpaste', stock: 4, runs_out: null, source: 'bought' }],
+  })
+  await shop(page, { name: 'Corner Kirana', ...FULL, category: 'Grocery', phone: '' }, [
+    { name: 'Toothpaste', price: 9000, unit: 'tube', category: 'Care', stock: 4 },
+  ])
+  const row = page
+    .getByTestId('today-needs')
+    .getByRole('listitem')
+    .filter({ hasText: 'Toothpaste: only 4 left' })
+  await expect(row.getByRole('button', { name: 'Order', exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Make more' })).toHaveCount(0)
+  await row.getByRole('button', { name: 'Order', exact: true }).click()
+  await expect(page.getByRole('log')).toContainText('Order more Toothpaste')
 })
 
 test('all set: nothing pending means no card, one calm line and the pulse', async ({ page }) => {
@@ -288,9 +481,9 @@ test('GAP 8: Close the day appears in evening needs you now and opens modal, Gro
   await closeButton.click()
   const dialog = page.getByRole('dialog', { name: 'Close the day' })
   await expect(dialog).toBeVisible()
-  await expect(dialog.getByText('Till or POS report')).toBeVisible()
+  await expect(dialog.getByText('Sales slip or notebook')).toBeVisible()
 
-  await dialog.getByRole('button', { name: 'Close' }).click()
+  await dialog.getByRole('button', { name: 'Not now' }).click()
   await expect(dialog).toHaveCount(0)
 
   // 3. Grow tab still has Close the day tile intact and functional

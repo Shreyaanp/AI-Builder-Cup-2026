@@ -5,6 +5,7 @@ from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
 from google.adk.events import Event
 from google.adk.sessions import InMemorySessionService
@@ -361,3 +362,266 @@ def test_received_order_prepares_a_stock_update_for_review(ctx) -> None:
     assert store.inventory("alice", ctx.business_id)[0]["stock"] == 2
     store.commit("alice", result["proposal"]["id"], result["proposal"]["digest"])
     assert store.inventory("alice", ctx.business_id)[0]["stock"] == 22
+
+
+def test_ob222_an_edited_draft_retires_the_old_one_at_once(ctx) -> None:
+    """#593: "change onions to 30 kg" replaces draft A on the server right away, so A's card can
+    never offer a Send that is bound to fail, and only B can reach the supplier."""
+    found = asyncio.run(find_suppliers("onions"))
+    first = prepare_order(found["suppliers"][0]["id"], [{"name": "onions", "quantity": 20}])
+    old = ctx.cards[first["card_id"]][1]
+    second = prepare_order(
+        found["suppliers"][0]["id"],
+        [{"name": "onions", "quantity": 30, "unit": "kg"}],
+        replaces_order_id=first["order_id"],
+    )
+    new = ctx.cards[second["card_id"]][1]
+    assert new["replaces"] == old["id"]
+    stale = sourcing.get_order(ctx.store, "alice", ctx.business_id, old["id"])
+    assert stale["status"] == "replaced"
+    # The old card says it was replaced by the edit, not that the owner discarded it (#603).
+    assert stale["replaced_by"] == new["id"]
+    with pytest.raises(HTTPException) as error:
+        sourcing.confirm(ctx.store, "alice", ctx.business_id, old["id"], stale["version"])
+    assert error.value.status_code == 409
+    sent = sourcing.confirm(ctx.store, "alice", ctx.business_id, new["id"], new["version"])
+    assert sent["status"] == "sent"
+    assert [o["id"] for o in sourcing.orders(ctx.store, "alice", ctx.business_id)] == [new["id"]]
+
+
+def test_ob225_a_sent_order_can_be_cancelled_or_changed_over_http(settings, monkeypatch) -> None:  # noqa: F811
+    """#596: the Orders detail cancels a sent order or changes its quantity; the supplier is told
+    each time, and a draft or a cancelled order refuses both."""
+    import json
+
+    monkeypatch.setattr(sourcing, "DEMO_REPLY_SECONDS", 0.0)
+    app = create_app(settings, InMemorySessionService())
+
+    def stream(client: TestClient, body: dict[str, object]) -> list[dict[str, object]]:
+        response = client.post("/api/v1/coach/stream", json=body)
+        assert response.status_code == 200
+        return [
+            json.loads(line.removeprefix("data: "))
+            for line in response.text.splitlines()
+            if line.startswith("data: ")
+        ]
+
+    with TestClient(app) as client:
+        join(client)
+        proposal = client.post(
+            "/api/v1/proposals", json={"kind": "business", "business": {"name": "Kopi Corner"}}
+        ).json()
+        bid = approve(client, proposal)["business_id"]
+        base = f"/api/v1/businesses/{bid}/orders"
+        first = stream(client, {"message": "My flour is running low", "business_id": bid})
+        session = next(event["session_id"] for event in first if event["kind"] == "ready")
+        second = stream(
+            client,
+            {"message": "order 20 kg flour from them", "business_id": bid, "session_id": session},
+        )
+        draft: dict = next(event["data"] for event in second if event["kind"] == "order")
+        refused = client.post(f"{base}/{draft['id']}/cancel", json={"version": draft["version"]})
+        assert refused.status_code == 409
+        sent = client.post(f"{base}/{draft['id']}/send", json={"version": draft["version"]})
+        assert sent.status_code == 200, sent.text
+        confirmed = client.get(f"{base}/{draft['id']}").json()
+        assert confirmed["status"] == "confirmed"
+        price = confirmed["lines"][0]["price"]
+        changed = client.post(
+            f"{base}/{draft['id']}/change",
+            json={"version": confirmed["version"], "lines": [{"line": 0, "quantity": 30}]},
+        )
+        assert changed.status_code == 200, changed.text
+        body = changed.json()
+        assert body["status"] == "sent"
+        assert body["lines"][0]["quantity"] == 30 and body["total"] == round(price * 30)
+        told = body["messages"][-1]
+        assert told["author"] == "owner"
+        name = body["lines"][0]["name"]
+        assert told["text"] == f"Please change my order: {name} 30 kg (was 20 kg)."
+        reply = client.get(f"{base}/{draft['id']}").json()
+        assert reply["status"] == "confirmed" and reply["messages"][-1]["author"] == "supplier"
+        stale = client.post(f"{base}/{draft['id']}/cancel", json={"version": body["version"]})
+        assert stale.status_code == 409  # the supplier's reply moved the version on
+        cancelled = client.post(f"{base}/{draft['id']}/cancel", json={"version": reply["version"]})
+        assert cancelled.status_code == 200, cancelled.text
+        done = cancelled.json()
+        assert done["status"] == "cancelled"
+        assert done["messages"][-1] == {
+            **done["messages"][-1],
+            "author": "owner",
+            "kind": "cancel",
+            "text": sourcing.CANCEL_TEXT,
+        }
+        again = client.post(f"{base}/{draft['id']}/cancel", json={"version": done["version"]})
+        assert again.status_code == 409
+
+
+def sent_onions(ctx: MerchantContext, quantity: float = 20) -> dict:
+    found = asyncio.run(find_suppliers("onions"))
+    made = prepare_order(found["suppliers"][0]["id"], [{"name": "onions", "quantity": quantity}])
+    order = sourcing.get_order(ctx.store, "alice", ctx.business_id, made["order_id"])
+    return sourcing.confirm(ctx.store, "alice", ctx.business_id, order["id"], order["version"])
+
+
+def test_603_a_quantity_change_keeps_the_message_waiting_for_the_owner(ctx) -> None:
+    """#603: changing quantities on a sent order must not drop a message the coach prepared and
+    the owner has not sent yet."""
+    sent = sent_onions(ctx)
+    order = sourcing.get_order(ctx.store, "alice", ctx.business_id, sent["id"])
+    waiting = {"kind": "text", "text": "Please deliver before 9 am.", "created": 1.0}
+    order["pending"] = waiting
+    order = sourcing.save(ctx.store, "alice", ctx.business_id, order, 1.0)
+    changed = sourcing.change_quantities(
+        ctx.store, "alice", ctx.business_id, order["id"], order["version"], {0: 30}
+    )
+    assert changed["lines"][0]["quantity"] == 30
+    assert changed["pending"] == waiting
+
+
+def test_603_cancelling_a_sent_order_respects_the_message_limit(ctx) -> None:
+    sent = sent_onions(ctx)
+    order = sourcing.get_order(ctx.store, "alice", ctx.business_id, sent["id"])
+    filler = order["messages"][-1]
+    order["messages"] = [filler] * sourcing.MAX_MESSAGES
+    order = sourcing.save(ctx.store, "alice", ctx.business_id, order, 1.0)
+    with pytest.raises(HTTPException) as error:
+        sourcing.cancel_sent(ctx.store, "alice", ctx.business_id, order["id"], order["version"])
+    assert error.value.status_code == 409
+    kept = sourcing.get_order(ctx.store, "alice", ctx.business_id, order["id"])
+    assert kept["status"] != "cancelled" and len(kept["messages"]) == sourcing.MAX_MESSAGES
+
+
+class FixtureSuppliers:
+    """The offline supplier generator, whatever COACH_MODE the test run has."""
+
+    async def generate(
+        self, item: str, unit: str, currency: str, location: str, shop_category: str
+    ) -> tuple[sourcing.DemoSuppliers, str]:
+        return sourcing.fixture_suppliers(item, unit, currency), "fixture"
+
+
+def neighbour(store: MerchantStore, uid: str, name: str) -> str:
+    """Another shop in the same ~2 km area as the ctx bakery."""
+    proposal = store.propose(
+        uid,
+        ProposalRequest(
+            kind="business",
+            business=BusinessFields(
+                name=name,
+                category="Cafe",
+                location="Indiranagar, Bengaluru",
+                lat=BENGALURU[0] + 0.001,
+                lng=BENGALURU[1],
+                currency="INR",
+                timezone="Asia/Kolkata",
+            ),
+        ),
+    )
+    return str(store.commit(uid, proposal["id"], proposal["digest"])["business_id"])
+
+
+def catalogue(store: MerchantStore, cards: list[dict]) -> dict[str, list[tuple[str, int]]]:
+    """Each supplier's items and prices, as the owner who found them would see them."""
+    return {
+        card["id"]: sorted(
+            (p["name"], p["price"]) for p in store.public_shop(card["id"])["products"]
+        )
+        for card in cards
+    }
+
+
+def find(store: MerchantStore, uid: str, bid: str, item: str) -> dict:
+    return asyncio.run(
+        sourcing.find(store, uid, bid, item, None, "", FixtureSuppliers(), DEMO_OWNER_UID)
+    )
+
+
+def test_OB_260_one_shops_search_never_changes_a_neighbours_suppliers(ctx) -> None:  # noqa: N802
+    store = ctx.store
+    other = neighbour(store, "carol", "Carol Cafe")
+    mine = find(store, "alice", ctx.business_id, "zorblax syrup")
+    assert mine["generated_demo_suppliers"] is True
+    before = catalogue(store, mine["suppliers"])
+    assert any(name == "Zorblax syrup" for rows in before.values() for name, _ in rows)
+
+    # A neighbour searching another unknown item gets suppliers of its own: it never sees
+    # Alice's free text, and her suppliers' items and prices stay exactly as they were.
+    theirs = find(store, "carol", other, "quuxberry jam")
+    assert theirs["generated_demo_suppliers"] is True
+    assert not {c["id"] for c in theirs["suppliers"]} & {c["id"] for c in mine["suppliers"]}
+    assert catalogue(store, mine["suppliers"]) == before
+    seen = catalogue(store, theirs["suppliers"])
+    assert not any("zorblax" in name.casefold() for rows in seen.values() for name, _ in rows)
+    # Even searching the same words, Carol is never offered Alice's suppliers.
+    assert not {c["id"] for c in find(store, "carol", other, "zorblax syrup")["suppliers"]} & set(
+        before
+    )
+
+
+def test_OB_260_a_later_search_only_adds_to_the_shops_own_suppliers(ctx) -> None:  # noqa: N802
+    store = ctx.store
+    first = find(store, "alice", ctx.business_id, "zorblax syrup")
+    before = catalogue(store, first["suppliers"])
+    again = find(store, "alice", ctx.business_id, "quuxberry jam")
+    assert again["generated_demo_suppliers"] is True
+    after = catalogue(store, first["suppliers"])
+    # Nothing the owner already saw is dropped or repriced; the new item is added.
+    for sid, rows in before.items():
+        assert set(rows) <= set(after[sid])
+    assert any(name == "Quuxberry jam" for rows in after.values() for name, _ in rows)
+    assert find(store, "alice", ctx.business_id, "zorblax syrup")["suppliers"]
+
+
+def test_OB_260_prices_are_the_same_whatever_ran_before(tmp_path: Path) -> None:  # noqa: N802
+    """The same shop finds the same suppliers at the same prices, in any run order."""
+
+    def cheapest(path: Path, earlier: list[str]) -> tuple[str, float]:
+        store = MerchantStore(str(path))
+        for index, item in enumerate(earlier):
+            find(store, f"n{index}", neighbour(store, f"n{index}", f"Neighbour {index}"), item)
+        bid = neighbour(store, "alice", "Asha Bakery")
+        card = min(find(store, "alice", bid, "atta")["suppliers"], key=lambda c: c["item"]["price"])
+        return card["name"], card["item"]["price"]
+
+    alone = cheapest(tmp_path / "a.sqlite3", [])
+    assert cheapest(tmp_path / "b.sqlite3", ["zorblax syrup", "flour", "sugar"]) == alone
+
+
+def test_OB_260_old_shared_area_suppliers_are_never_offered(ctx) -> None:  # noqa: N802
+    """Suppliers made per area before OB-260 still serve their orders, but new searches skip
+    them: their catalogue held other visitors' words."""
+    legacy = "demo-sup-0123456789-0"
+    sid, fields, products = sourcing.demo_records(
+        sourcing.fixture_suppliers("zorblax syrup", "kg", "INR"),
+        *BENGALURU,
+        "INR",
+        "Asia/Kolkata",
+        "someone",
+    )[0]
+    ctx.store.seed_demo_shop(DEMO_OWNER_UID, legacy, fields, products)
+    found = find(ctx.store, "alice", ctx.business_id, "zorblax syrup")
+    assert legacy not in {card["id"] for card in found["suppliers"]}
+    assert ctx.store.public_shop(legacy)
+
+
+def test_OB_260_two_demo_sandboxes_never_see_each_others_suppliers() -> None:  # noqa: N802
+    from app.public_demo import sandbox
+
+    first, _ = sandbox("Asia/Kolkata")
+    second, _ = sandbox("Asia/Kolkata")
+    try:
+        assert first.store and second.store
+        one = find(first.store, first.uid, first.bid, "zorblax syrup")
+        before = catalogue(first.store, one["suppliers"])
+        two = find(second.store, second.uid, second.bid, "quuxberry jam")
+        assert two["suppliers"]
+        names = {n for rows in catalogue(second.store, two["suppliers"]).values() for n, _ in rows}
+        assert not any("zorblax" in n.casefold() for n in names)
+        # A second search in the other sandbox (once a reset of shared suppliers) changes
+        # nothing in the first.
+        find(second.store, second.uid, second.bid, "flour")
+        assert catalogue(first.store, one["suppliers"]) == before
+    finally:
+        first.close()
+        second.close()

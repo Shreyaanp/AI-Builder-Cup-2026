@@ -1,8 +1,8 @@
 import { alpha, createTheme, darken } from '@mui/material/styles'
 import type { CSSProperties } from 'react'
-import { FONT_STACK } from '../i18n/fonts'
-import { chalkDust, chalkRoles, chalkTones } from './chalkboard'
-import type { ChalkTone, FeatureKey } from './chalkboard'
+import { FONT_STACK } from '../i18n/fonts.js'
+import { chalkDust, chalkRoles, chalkTones } from './chalkboard.js'
+import type { ChalkTone, FeatureKey } from './chalkboard.js'
 
 export type Appearance = 'light' | 'dark'
 /** Owner tools stay calm; the customer app gets the full chalk energy (owner decision). */
@@ -11,7 +11,7 @@ export type Audience = 'owner' | 'customer'
 export const HAND_FONT = `"Caveat", ${FONT_STACK}`
 /** The user's choice; `system` follows prefers-color-scheme. */
 export type ColorMode = Appearance | 'system'
-export const layout = { pageWidth: 1160, edge: 4, cardPadding: 6, gap: 4, target: 48 }
+export const layout = { pageWidth: 1160, edge: 4, cardPadding: 6, gap: 4, target: 48, appBar: 64 }
 
 /** M3 shape scale (dp). Components pick a step by size and role, never "max radius everywhere". */
 export const shape = { xs: 4, sm: 8, md: 12, lg: 16, lgIncreased: 20, xl: 28, full: 9999 }
@@ -120,27 +120,84 @@ const typeScale: Record<TypeRole, TypeStyle> = {
   titleMedium: role(16, 24, 600, 0.15),
   titleSmall: role(14, 20, 600, 0.1),
   bodyLarge: role(16, 24, 400, 0.5),
-  bodyMedium: role(14, 20, 400, 0.25),
-  bodySmall: role(12, 16, 400, 0.4),
+  bodyMedium: role(16, 24, 400, 0.25),
+  bodySmall: role(14, 20, 400, 0.25),
   labelLarge: role(14, 20, 500, 0.1),
-  labelMedium: role(12, 16, 500, 0.5),
-  labelSmall: role(11, 16, 500, 0.5),
+  labelMedium: role(14, 20, 500, 0.3),
+  labelSmall: role(12, 16, 500, 0.5),
 }
 
-// Compact windows: slightly tighter body/label sizes and tracking. Sizes stay ≥ 12px.
+/** The one size the handwritten font is set at: the scale's headlineLarge (A-22: three sizes per screen). */
+export const HAND_SIZE = typeScale.headlineLarge.fontSize
+
+// Phones (below 600px): the whole scale one step smaller, with slightly tighter tracking (OB-198).
+// Roles that share a size on larger windows still share one here, so a screen keeps the same
+// number of sizes: body 15px, labels and small text 13px, nothing below 12px (OB-116, OB-103).
+// Controls keep their 48px height; only their text shrinks.
 const compactQuery = `@media (max-width:${windowClass.medium - 1}px)`
-const compactScale: Partial<Record<TypeRole, TypeStyle>> = {
+const compactScale: Record<TypeRole, TypeStyle> = {
+  displaySmall: role(32, 40, 700, -0.5),
+  headlineLarge: role(28, 36, 700, -0.25),
+  headlineMedium: role(24, 32, 650, 0),
+  headlineSmall: role(22, 28, 650, 0),
+  titleLarge: role(20, 28, 600, 0),
+  titleMedium: role(15, 22, 600, 0.1),
+  titleSmall: role(13, 18, 600, 0.1),
   bodyLarge: role(15, 22, 400, 0.15),
-  bodyMedium: role(14, 20, 400, 0.1),
-  labelLarge: role(14, 20, 500, 0.05),
-  labelMedium: role(12, 16, 500, 0.3),
+  bodyMedium: role(15, 22, 400, 0.1),
+  bodySmall: role(13, 18, 400, 0.2),
+  labelLarge: role(13, 18, 500, 0.05),
+  labelMedium: role(13, 18, 500, 0.3),
+  labelSmall: role(12, 16, 500, 0.4),
 }
+// The owner app (simplify batch 1) reads at 16px body and 14px labels on phones, the same as the
+// desktop scale for those roles; only the headings step down. The customer app keeps the scale above.
+const ownerCompactScale: Record<TypeRole, TypeStyle> = {
+  ...compactScale,
+  titleMedium: typeScale.titleMedium,
+  titleSmall: typeScale.titleSmall,
+  bodyLarge: typeScale.bodyLarge,
+  bodyMedium: typeScale.bodyMedium,
+  bodySmall: typeScale.bodySmall,
+  labelLarge: typeScale.labelLarge,
+  labelMedium: typeScale.labelMedium,
+}
+// The phone sizes are CSS variables set on :root under the phone query (CssBaseline below), with
+// the larger sizes as fallbacks. A media query inside a variant would come after a component's own
+// sx in the same rule and override it (a 22px handwritten line set at the 15px body size).
+const typeVar = (key: TypeRole, part: string, fallback: string) =>
+  `var(--type-${key}-${part}, ${fallback})`
 const responsiveScale = Object.fromEntries(
   (Object.keys(typeScale) as TypeRole[]).map((key) => [
     key,
-    compactScale[key] ? { ...typeScale[key], [compactQuery]: compactScale[key] } : typeScale[key],
+    {
+      fontSize: typeVar(key, 'size', typeScale[key].fontSize),
+      lineHeight: typeVar(key, 'line', typeScale[key].lineHeight),
+      fontWeight: typeScale[key].fontWeight,
+      letterSpacing: typeVar(key, 'tracking', typeScale[key].letterSpacing),
+    },
   ]),
-) as Record<TypeRole, CSSProperties>
+) as Record<TypeRole, TypeStyle>
+// The front doors' headline keeps its full display size on phones (36px, 1.1 leading, tight tracking).
+// It is not a role, so the 13 roles stay as they are: --type-hero-size/-line/-tracking.
+const heroPhone = role(36, 40, 700, -1.6)
+const compactTypeVars = (scale: Record<TypeRole, TypeStyle>) =>
+  Object.fromEntries(
+    [
+      ['--type-hero-size', heroPhone.fontSize],
+      ['--type-hero-line', heroPhone.lineHeight],
+      ['--type-hero-tracking', heroPhone.letterSpacing],
+    ].concat(
+      (Object.keys(scale) as TypeRole[]).flatMap((key) => [
+        [`--type-${key}-size`, scale[key].fontSize],
+        [`--type-${key}-line`, scale[key].lineHeight],
+        [`--type-${key}-tracking`, scale[key].letterSpacing],
+      ]),
+    ),
+  )
+// Fields stay 16px on phones (OB-198): iOS zooms into smaller inputs, and the floating label (75%
+// of this) stays at 12px.
+const fieldText = { fontSize: '1rem', lineHeight: '1.5rem' }
 
 export function nivaTheme(
   mode: Appearance,
@@ -196,10 +253,10 @@ export function nivaTheme(
         letterSpacing: '-0.015em',
       },
       h3: { fontSize: '1rem', lineHeight: '1.5rem', fontWeight: 600 },
-      body1: typeScale.bodyLarge,
-      body2: typeScale.bodyMedium,
-      button: { ...typeScale.labelLarge, textTransform: 'none' },
-      caption: typeScale.bodySmall,
+      body1: responsiveScale.bodyLarge,
+      body2: responsiveScale.bodyMedium,
+      button: { ...responsiveScale.labelLarge, textTransform: 'none' },
+      caption: responsiveScale.bodySmall,
     },
     components: {
       MuiTypography: {
@@ -224,8 +281,14 @@ export function nivaTheme(
       MuiCssBaseline: {
         styleOverrides: {
           ':root': {
+            [compactQuery]: compactTypeVars(
+              audience === 'customer' ? compactScale : ownerCompactScale,
+            ),
+            // The logo's size, which the front doors' lead lines match on every window.
+            '--type-logo-size': typeScale.titleLarge.fontSize,
             '--scrollbar-thumb': roles.outlineVariant,
             '--scrollbar-thumb-hover': roles.outline,
+            '--art-filter': mode === 'dark' ? 'brightness(0.72) saturate(0.8)' : 'none',
           },
           html: {
             colorScheme: mode,
@@ -258,6 +321,8 @@ export function nivaTheme(
           '*::-webkit-scrollbar-thumb:hover': {
             backgroundColor: roles.outline,
           },
+          // Pastel illustrations glare on the dark board: tone them down with one token (OB-100).
+          'img[src^="/art/"], img[src^="/icons/"]': { filter: 'var(--art-filter)' },
           'button, a, input, textarea': { WebkitTapHighlightColor: 'transparent' },
           ':focus-visible': { outline: `3px solid ${roles.primary}`, outlineOffset: '2px' },
           '::selection': {
@@ -269,6 +334,10 @@ export function nivaTheme(
             left: -10000,
             top: 8,
             zIndex: 2000,
+            // A 48px target whatever the text size (OB-198 made phone text smaller).
+            display: 'flex',
+            alignItems: 'center',
+            minHeight: layout.target,
             padding: '12px 16px',
             borderRadius: shape.sm,
             backgroundColor: roles.inverseSurface,
@@ -292,6 +361,12 @@ export function nivaTheme(
             minHeight: layout.target,
             borderRadius: shape.full,
             paddingInline: 24,
+            paddingBlock: 8,
+            // OB-156: control sizes change containers, not the screen's type scale.
+            '&.MuiButton-sizeSmall, &.MuiButton-sizeLarge': {
+              ...responsiveScale.labelLarge,
+              paddingBlock: 8,
+            },
             fontWeight: 600,
             transition:
               'background-color 150ms ease, box-shadow 120ms ease, border-color 150ms ease, transform 120ms ease',
@@ -321,6 +396,14 @@ export function nivaTheme(
             }
           },
           outlined: { borderColor: roles.outline, borderWidth: audience === 'customer' ? 2 : 1 },
+          // A-25: a text button's label sits one 16px step inside its box; 24px left the icon
+          // 40px in from the gutter.
+          text: {
+            paddingInline: 16,
+            // The icon is not pulled out past the label's padding either: it sits on the 16px.
+            '& .MuiButton-startIcon': { marginLeft: 0 },
+            '& .MuiButton-endIcon': { marginRight: 0 },
+          },
         },
       },
       MuiIconButton: {
@@ -335,23 +418,69 @@ export function nivaTheme(
           input: { fontSize: '1rem' },
         },
       },
+      MuiInputBase: { styleOverrides: { root: fieldText } },
+      MuiInputLabel: { styleOverrides: { root: fieldText } },
       MuiCard: {
         defaultProps: { elevation: 0 },
         styleOverrides: { root: { borderRadius: shape.lgIncreased, backgroundImage: 'none' } },
       },
       MuiPaper: { styleOverrides: { root: { backgroundImage: 'none' } } },
-      MuiChip: {
+      // OB-156: feedback and control internals follow the shared 4px grid.
+      MuiAlert: {
         styleOverrides: {
-          root: { borderRadius: audience === 'customer' ? shape.full : shape.sm, fontWeight: 500 },
+          root: { paddingBlock: 8 },
+          icon: { paddingBlock: 8 },
+          action: { paddingTop: 0 },
         },
       },
+      // Owner app: count badges read at the 14px label size, not MUI's 12px (simplify batch 1).
+      ...(audience === 'customer'
+        ? {}
+        : { MuiBadge: { styleOverrides: { badge: { fontSize: typeScale.labelLarge.fontSize } } } }),
+      MuiChip: {
+        styleOverrides: {
+          label: { paddingInline: 12 },
+          root: {
+            ...responsiveScale.labelLarge,
+            borderRadius: audience === 'customer' ? shape.full : shape.sm,
+            fontWeight: 500,
+            // Chips you can tap are 48px tall, like every other control (OB-115).
+            '&.MuiChip-clickable, &.MuiChip-deletable': { minHeight: layout.target },
+          },
+        },
+      },
+      // Switches, checkboxes, radios and their labels are 48px targets (OB-115).
+      MuiSwitch: {
+        styleOverrides: {
+          // 48px target on the 4px grid: 24px thumb (12px ring) on a 44x16 track.
+          root: {
+            width: 60,
+            height: layout.target,
+            padding: '16px 8px',
+            '& .MuiSwitch-switchBase': {
+              padding: '12px 8px',
+              '&.Mui-checked': { transform: 'translateX(20px)' },
+            },
+            '& .MuiSwitch-thumb': { width: 24, height: 24 },
+          },
+        },
+      },
+      MuiCheckbox: { styleOverrides: { root: { padding: 12 } } },
+      MuiRadio: { styleOverrides: { root: { padding: 12 } } },
+      MuiFormControlLabel: { styleOverrides: { root: { minHeight: layout.target } } },
+      MuiToggleButton: { styleOverrides: { root: { minHeight: layout.target } } },
       MuiDialog: {
         defaultProps: { fullWidth: true, maxWidth: 'sm' },
         styleOverrides: {
-          paper: { borderRadius: shape.xl, backgroundColor: roles.surfaceContainerHigh },
+          paper: {
+            borderRadius: shape.xl,
+            backgroundColor: roles.surfaceContainerHigh,
+            // A-38: a full-screen dialog has no outer corners (grey slivers showed at the edges).
+            '&.MuiDialog-paperFullScreen': { borderRadius: 0 },
+          },
         },
       },
-      MuiDialogTitle: { styleOverrides: { root: typeScale.headlineSmall } },
+      MuiDialogTitle: { styleOverrides: { root: responsiveScale.headlineSmall } },
       MuiDrawer: { styleOverrides: { paper: { backgroundColor: roles.surfaceContainerLow } } },
       MuiMenu: {
         styleOverrides: {

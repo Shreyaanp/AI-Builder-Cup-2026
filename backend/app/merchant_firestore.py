@@ -6,12 +6,15 @@ on a revision, a proposal digest or a single-use challenge runs in one Firestore
 
 from __future__ import annotations
 
+import copy
 import hashlib
 import json
 import re
 import secrets
 import time
-from threading import Lock
+from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
+from threading import Lock, Thread
 from typing import Any, cast
 from uuid import NAMESPACE_URL, UUID, uuid4, uuid5
 
@@ -24,6 +27,7 @@ from .customer import Inquiry, InquiryInput, InquiryReceipt
 from .merchant import (
     CHALLENGE_SECONDS,
     DEMO_ID,
+    PIN_REQUIRED,
     PROPOSAL_SECONDS,
     SUPPLY_KINDS,
     BusinessFields,
@@ -31,6 +35,8 @@ from .merchant import (
     ProposalRequest,
     challenge_prompts,
     check_demo_seed,
+    has_pin,
+    kept_source,
     preserve_profile,
     public_projection,
     require_name,
@@ -49,6 +55,8 @@ from .stock_alerts import (
 )
 from .threads import change_thread, contact_hash, new_thread
 from .vendor_profile import migrate_profile
+
+SHARED_FRESH_SECONDS = 20.0
 
 
 def document_id(value: str | None, missing: str) -> str:
@@ -81,6 +89,10 @@ class FirestoreMerchantStore:
         # still enforce deduplication and sharing across independent server processes.
         self.inquiry_lock = Lock()
         self.stock_alert_lock = Lock()
+        self.shared_lock = Lock()
+        self.shared_cache: tuple[float, list[dict[str, Any]]] | None = None
+        self.shared_loading = False
+        self.shared_generation = 0
 
     def person_ref(self, uid: str) -> Any:
         return self.people.document(hashlib.sha256(uid.encode()).hexdigest())
@@ -125,9 +137,10 @@ class FirestoreMerchantStore:
             "last_confirmed": data.get("last_confirmed"),
             "coach_notes": data.get("coach_notes") or [],
             "gallery": data.get("gallery") or [],
+            "photo_kinds": data.get("photo_kinds") or {},
             "icon": data.get("icon"),
             "registration": data["status"],
-            "public": bool(data.get("public")),
+            "public": bool(data.get("public")) and has_pin(data["fields"]),
             "google_publication": "not_connected",
         }
 
@@ -261,7 +274,12 @@ class FirestoreMerchantStore:
                 data["business"] = migrate_profile(data["business"])
             if data["kind"] == "business" and business.exists:
                 transaction.update(
-                    business_ref, {"fields": data["business"], "revision": data["revision"] + 1}
+                    business_ref,
+                    {
+                        "fields": data["business"],
+                        "revision": data["revision"] + 1,
+                        **({"public": False} if not has_pin(data["business"]) else {}),
+                    },
                 )
             elif data["kind"] == "business":
                 transaction.create(
@@ -285,6 +303,16 @@ class FirestoreMerchantStore:
                     created = (old[previous.id].to_dict() or {}).get("created", created)
                     transaction.delete(previous)
                 fields = {key: value for key, value in product.items() if key != "previous_unit"}
+                saved = (
+                    prior
+                    if prior.exists
+                    else old[previous.id]
+                    if previous is not None and old[previous.id].exists
+                    else None
+                )
+                fields = kept_source(
+                    fields, ((saved.to_dict() or {}).get("fields")) if saved else None
+                )
                 transaction.set(ref, {"fields": fields, "created": created, "updated": now})
             receipt = {
                 "business_id": bid,
@@ -295,7 +323,9 @@ class FirestoreMerchantStore:
             transaction.update(proposal_ref, {"receipt": json.dumps(receipt)})
             return receipt
 
-        return run(self.client.transaction())
+        result = run(self.client.transaction())
+        self.forget_shared()
+        return result
 
     def challenge(
         self, uid: str, bid: str, exclude_prompts: list[str] | None = None
@@ -389,7 +419,15 @@ class FirestoreMerchantStore:
             # Seal the parent before enumerating children: racing transactions either commit
             # before this update (and are enumerated) or retry against the deletion marker.
             snapshot.reference.update({"deleting": True, "public": False})
-            for kind in ("rescue", "brief", "brief_wording", "shop_daily", *SUPPLY_KINDS):
+            for kind in (
+                "rescue",
+                "brief",
+                "brief_wording",
+                "shop_daily",
+                "owner_habit",
+                "owner_promise",
+                *SUPPLY_KINDS,
+            ):
                 self.feature_docs.delete_scope(kind, snapshot.id)
             owned.append(snapshot.id)
             refs += [item.reference for item in snapshot.reference.collection("inventory").stream()]
@@ -423,6 +461,7 @@ class FirestoreMerchantStore:
             for ref in refs[start : start + 400]:
                 batch.delete(ref)
             batch.commit()
+        self.forget_shared()
         return owned
 
     def set_availability(
@@ -462,19 +501,89 @@ class FirestoreMerchantStore:
             transaction.update(business_ref, {"revision": business["revision"] + 1})
             return {"id": product_id, **fields, "revision": business["revision"] + 1}
 
-        return run(self.client.transaction())
+        result = run(self.client.transaction())
+        self.forget_shared()
+        return result
+
+    def set_source(self, uid: str, bid: str, product_id: str, source: str) -> dict[str, Any]:
+        business_ref = self.businesses.document(document_id(bid, "Business not found."))
+        if not re.fullmatch(r"[0-9a-f]{64}", product_id):
+            raise HTTPException(404, "Product not found.")
+        item_ref = business_ref.collection("inventory").document(product_id)
+
+        @firestore.transactional
+        def run(transaction: Any) -> dict[str, Any]:
+            business = self.owned(business_ref.get(transaction=transaction), uid)
+            item = item_ref.get(transaction=transaction)
+            if not item.exists:
+                raise HTTPException(404, "Product not found.")
+            fields = {**(item.to_dict() or {})["fields"], "source": source}
+            transaction.update(item_ref, {"fields": fields, "updated": time.time()})
+            # A new revision, like the sold-out switch: the app reloads the item at once.
+            transaction.update(business_ref, {"revision": business["revision"] + 1})
+            return {"id": product_id, **fields, "revision": business["revision"] + 1}
+
+        result = run(self.client.transaction())
+        self.forget_shared()
+        return result
 
     def share(self, uid: str, bid: str, public: bool) -> dict[str, Any]:
         ref = self.businesses.document(document_id(bid, "Business not found."))
-        self.owned(ref.get(), uid)
-        ref.update({"public": public})
+
+        @firestore.transactional
+        def run(transaction: Any) -> None:
+            data = self.owned(ref.get(transaction=transaction), uid)
+            if public and not has_pin(data["fields"]):
+                raise HTTPException(422, PIN_REQUIRED)
+            transaction.update(ref, {"public": public})
+
+        run(self.client.transaction())
+        self.forget_shared()
         return {"business_id": ref.id, "public": public}
 
     def shared_shops(self) -> list[dict[str, Any]]:
-        from google.cloud.firestore_v1.base_query import FieldFilter
+        """Every shared shop. Served from a short-lived copy (OB-97): reading each shop's menu
+        one by one took seconds on every Ask. A stale copy is returned at once while a fresh one
+        loads in the background, so a request almost never waits on Firestore."""
+        now = time.monotonic()
+        with self.shared_lock:
+            held = self.shared_cache
+            if held is not None and now - held[0] < SHARED_FRESH_SECONDS:
+                return copy.deepcopy(held[1])
+            if held is not None and not self.shared_loading:
+                self.shared_loading = True
+                Thread(target=self.refresh_shared, daemon=True).start()
+            if held is not None:
+                return copy.deepcopy(held[1])
+        return copy.deepcopy(self.refresh_shared())
 
-        rows = self.businesses.where(filter=FieldFilter("public", "==", True)).stream()
-        return [shop for row in rows if (shop := self.public_shop(row.id)) is not None]
+    def refresh_shared(self) -> list[dict[str, Any]]:
+        with self.shared_lock:
+            generation = self.shared_generation
+        try:
+            shops = self.load_shared_shops()
+            with self.shared_lock:
+                # A refresh started before a write must never put its old snapshot back.
+                if generation == self.shared_generation:
+                    self.shared_cache = (time.monotonic(), shops)
+            return shops
+        finally:
+            with self.shared_lock:
+                self.shared_loading = False
+
+    def forget_shared(self) -> None:
+        with self.shared_lock:
+            self.shared_generation += 1
+            self.shared_cache = None
+
+    def load_shared_shops(self) -> list[dict[str, Any]]:
+        rows = list(self.businesses.where(filter=FieldFilter("public", "==", True)).stream())
+
+        def one(row: Any) -> dict[str, Any] | None:
+            return self.shop_view(row.reference, row.to_dict())
+
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            return [shop for shop in pool.map(one, rows) if shop is not None]
 
     def seed_demo_shop(
         self,
@@ -534,7 +643,10 @@ class FirestoreMerchantStore:
                 )
             return True
 
-        return bool(run(self.client.transaction()))
+        changed = bool(run(self.client.transaction()))
+        if changed:
+            self.forget_shared()
+        return changed
 
     def attach_demo_owner(self, uid: str, bid: str, owner_uid: str) -> bool:
         if not owner_uid.strip():
@@ -578,14 +690,21 @@ class FirestoreMerchantStore:
         snapshot = ref.get()
         return list((snapshot.to_dict() or {}).get("owners") or []) if snapshot.exists else []
 
+    def sealed_shops(self) -> list[str]:
+        # An erasure that stopped half way, or a shop hidden by hand (OB-136).
+        query = self.businesses.where(filter=FieldFilter("deleting", "==", True))
+        return [snapshot.id for snapshot in query.select(["owners"]).stream()]
+
     def public_shop(self, bid: str) -> dict[str, Any] | None:
         try:
             ref = self.businesses.document(document_id(bid, "Not found."))
         except HTTPException:
             return None
         snapshot = ref.get()
-        data = snapshot.to_dict() if snapshot.exists else None
-        if not data or not data.get("public"):
+        return self.shop_view(ref, snapshot.to_dict() if snapshot.exists else None)
+
+    def shop_view(self, ref: Any, data: dict[str, Any] | None) -> dict[str, Any] | None:
+        if not data or not data.get("public") or not has_pin(data["fields"]):
             return None
         rows = [s.to_dict() or {} for s in ref.collection("inventory").limit(500).stream()]
         rows.sort(key=lambda row: row.get("created", 0))
@@ -743,7 +862,9 @@ class FirestoreMerchantStore:
             transaction.update(ref, {"last_confirmed": day})
             return {"business_id": bid, "last_confirmed": day}
 
-        return run(self.client.transaction())
+        result = run(self.client.transaction())
+        self.forget_shared()
+        return result
 
     def set_notes(self, uid: str, bid: str, notes: list[dict[str, Any]]) -> list[dict[str, Any]]:
         ref = self.businesses.document(document_id(bid, "Business not found."))
@@ -780,18 +901,48 @@ class FirestoreMerchantStore:
             transaction.update(ref, {"icon": icon})
             return icon
 
-        return cast(str | None, run(self.client.transaction()))
+        result = cast(str | None, run(self.client.transaction()))
+        self.forget_shared()
+        return result
 
-    def set_gallery(self, uid: str, bid: str, photos: list[str]) -> list[str]:
+    def set_gallery(
+        self, uid: str, bid: str, photos: list[str], kinds: dict[str, str] | None = None
+    ) -> list[str]:
         ref = self.businesses.document(document_id(bid, "Business not found."))
 
         @firestore.transactional
         def run(transaction: Any) -> list[str]:
             self.owned(ref.get(transaction=transaction), uid)
-            transaction.update(ref, {"gallery": photos})
+            transaction.update(
+                ref,
+                {"gallery": photos} if kinds is None else {"gallery": photos, "photo_kinds": kinds},
+            )
             return photos
 
-        return cast(list[str], run(self.client.transaction()))
+        result = cast(list[str], run(self.client.transaction()))
+        self.forget_shared()
+        return result
+
+    def edit_gallery(
+        self,
+        uid: str,
+        bid: str,
+        edit: Callable[[list[str], dict[str, str]], tuple[list[str], dict[str, str]]],
+    ) -> list[str]:
+        ref = self.businesses.document(document_id(bid, "Business not found."))
+
+        @firestore.transactional
+        def run(transaction: Any) -> list[str]:
+            data = self.owned(ref.get(transaction=transaction), uid)
+            photos, kinds = edit(
+                list(data.get("gallery") or []), dict(data.get("photo_kinds") or {})
+            )
+            transaction.update(ref, {"gallery": photos, "photo_kinds": kinds})
+            return photos
+
+        result = cast(list[str], run(self.client.transaction()))
+        self.forget_shared()
+        return result
 
     def analytics_shops(self, limit: int) -> list[tuple[str, str]]:
         return [
@@ -900,6 +1051,14 @@ class FirestoreMerchantStore:
     def complete_inquiry(self, uid: str, bid: str, iid: str) -> Inquiry:
         return self.thread_action(uid, bid, iid, "", "close")
 
+    def thread_exists(self, bid: str, iid: str) -> bool:
+        try:
+            business = self.businesses.document(document_id(bid, "Business not found."))
+            iid = document_id(iid, "Conversation not found.")
+        except HTTPException:
+            return False  # Not a name any stored chat can have.
+        return bool(business.collection("inquiries").document(iid).get().exists)
+
     def thread_action(
         self, uid: str | None, bid: str, iid: str, token: str, action: str, text: str = ""
     ) -> Inquiry:
@@ -911,7 +1070,9 @@ class FirestoreMerchantStore:
             shop = business.get(transaction=transaction)
             if uid is not None:
                 self.owned(shop, uid)
-            elif not shop.exists or (shop.to_dict() or {}).get("deleting"):
+            elif action != "delete" and (not shop.exists or (shop.to_dict() or {}).get("deleting")):
+                # A sealed shop takes no new writes; the customer's own delete is the erasure
+                # itself (OB-96), so it still removes the chat if it is stored.
                 raise HTTPException(404, "Conversation not found.")
             data = ref.get(transaction=transaction).to_dict()
             if data is None:
