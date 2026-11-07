@@ -215,8 +215,12 @@ function ProductForm({ product }: { product: Product | null }) {
               category: item.category.trim(),
               available: product?.available ?? true,
               ...(source ? { source } : {}),
-              // Sent only when the owner changed it, so a saved item keeps the app's own guess.
-              ...(forSale !== (product?.for_sale !== false) ? { for_sale: forSale } : {}),
+              // A new item saves the switch as shown, so "Milk" left on "Customers can buy this"
+              // stays on the menu; a saved item sends it only when the owner changed it, so it
+              // keeps the app's own guess.
+              ...(!product || forSale !== (product.for_sale !== false)
+                ? { for_sale: forSale }
+                : {}),
             },
           ],
         }),

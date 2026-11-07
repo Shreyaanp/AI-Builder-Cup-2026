@@ -82,6 +82,9 @@ export function MakeNow({
         >
           {copy.planTomorrow}
         </Button>
+        <Button sx={{ minHeight: 48 }} data-uncounted onClick={onDone}>
+          {copy.notNow}
+        </Button>
       </Stack>
     </Stack>
   )

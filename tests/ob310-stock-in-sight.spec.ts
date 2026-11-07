@@ -146,6 +146,11 @@ test('OB-310: Make more asks about now and Made adds to the stock', async ({ pag
   // Never tomorrow's question (that plan is one tap away, on its own button).
   await expect(row).not.toContainText('prep for tomorrow')
   await expect(panel.getByRole('button', { name: 'Plan for tomorrow' })).toBeVisible()
+  // "Not now" closes it with nothing saved; Make more opens it again.
+  await panel.getByRole('button', { name: 'Not now' }).click()
+  await expect(panel).toBeHidden()
+  await row.getByRole('button', { name: 'Make more' }).click()
+  await expect(panel).toBeVisible()
   const made = panel.getByRole('button', { name: /^Made \d+$/ })
   const amount = Number((await made.innerText()).replace(/\D/g, ''))
   await page.screenshot({ path: test.info().outputPath('make-now-390.png') })
