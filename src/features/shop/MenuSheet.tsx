@@ -30,8 +30,8 @@ import { StockNote } from './StockNote'
 import { useStockCopy } from './stockCopy'
 
 /**
- * The full menu: one section per category, each a grid of compact item cards (two per row on
- * a phone, three or more when wider). Tap a name to edit the item, tap a price to change it in
+ * The full menu: one section per category, each a grid of item cards (one per row on a phone so
+ * the stock and its − / + fit, two or more when wider). Tap a name to edit the item, tap a price to change it in
  * place. Import and Add product share one compact row of actions.
  */
 export function MenuSheet({

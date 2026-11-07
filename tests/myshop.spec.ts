@@ -170,7 +170,7 @@ async function openMenu(page: Page) {
   return sheet
 }
 
-test('B28: every item lands in a category; sections are grids of 2 per row with sold-out marked', async ({
+test('B28: every item lands in a category; one card per row on a phone with sold-out marked', async ({
   page,
 }) => {
   await enter(page)
@@ -185,10 +185,13 @@ test('B28: every item lands in a category; sections are grids of 2 per row with 
   const [a, b, c] = await Promise.all(
     [0, 1, 2].map(async (i) => (await cards.nth(i).boundingBox())!),
   )
-  // Two per row on a phone, the third on the next row; names and prices fit.
-  expect(Math.abs(a.y - b.y)).toBeLessThan(1)
-  expect(c.y).toBeGreaterThan(a.y + a.height - 1)
-  expect(b.x).toBeGreaterThan(a.x + a.width - 1)
+  // One per row on a phone so each card's stock and its 48 px − / + fit beside each other
+  // (OB-310); cards stack in order, full width, with names and prices inside.
+  expect(Math.abs(a.x - b.x)).toBeLessThan(1)
+  expect(b.y).toBeGreaterThan(a.y + a.height - 1)
+  expect(c.y).toBeGreaterThan(b.y + b.height - 1)
+  expect(Math.abs(a.width - b.width)).toBeLessThan(1)
+  await expect(cards.filter({ hasText: 'Kaya toast' }).getByRole('group')).toBeVisible()
   const eggs = cards.filter({ hasText: 'Soft-boiled eggs' })
   await expect(eggs.getByText('Sold out', { exact: true })).toBeVisible()
   await expect(cards.filter({ hasText: 'Kaya toast' })).toContainText('$2.50')
