@@ -44,6 +44,7 @@ from .merchant import (
     validate_proposal,
 )
 from .playbook import migrate_stored
+from .product_source import needs_sales, sold_names
 from .sales import check_import, prepare_import, sales_days, today_for, validate_capacity
 from .stock_alerts import (
     ALERT_SECONDS,
@@ -713,8 +714,19 @@ class FirestoreMerchantStore:
             return None
         rows = [s.to_dict() or {} for s in ref.collection("inventory").limit(500).stream()]
         rows.sort(key=lambda row: row.get("created", 0))
+        products = [row["fields"] for row in rows]
+        # Sales are read only when an item's place on the menu depends on them (OB-310).
+        sold = (
+            sold_names(
+                sale
+                for day in ref.collection("sales_days").stream()
+                for sale in (day.to_dict() or {}).get("sales") or []
+            )
+            if needs_sales(products, str(data["fields"].get("category") or ""))
+            else set()
+        )
         return {
-            **public_projection(ref.id, data["fields"], [row["fields"] for row in rows]),
+            **public_projection(ref.id, data["fields"], products, sold),
             "last_confirmed": data.get("last_confirmed"),
             "gallery": data.get("gallery") or [],
             "icon": data.get("icon"),

@@ -8,6 +8,7 @@ question ("Do you make it or buy it?") that is saved on the product.
 
 import re
 import unicodedata
+from collections.abc import Callable, Collection, Iterable
 from typing import Any, Literal
 
 Source = Literal["made", "bought", "unknown"]
@@ -383,20 +384,109 @@ def source_of(product: dict[str, Any], category: str = "") -> Source:
     return "unknown"
 
 
-def for_sale(product: dict[str, Any], category: str = "") -> bool:
-    """Whether customers can buy this item, or it is one of the "Things I buy" (OB-310): tea dust
-    or milk a tea stall makes chai from. The owner's own switch first; else a raw supply the shop
-    buys is kept off the customer menu, only at a shop that makes what it sells: a kirana or a
-    dairy of no known kind sells its milk. Nothing is rewritten: items saved before this keep
-    their records and only move lists."""
+# Supplies no customer buys at a shop that makes things: tea dust, a paper cup, cooking oil
+# (OB-310). Only these are kept off the menu without the owner saying so; "Milk", "Paneer" or
+# "Fresh cream" are sold by real sweet shops, bakeries and cafés, so those stay on the menu and the
+# owner is asked once instead.
+SUPPLY_ONLY = (
+    "tea dust",
+    "tea leaves",
+    "tea powder",
+    "kopi powder",
+    "coffee powder",
+    "milk powder",
+    "cocoa powder",
+    "baking powder",
+    "paper cup",
+    "paper cups",
+    "carry bag",
+    "carry bags",
+    "takeaway box",
+    "takeaway boxes",
+    "cooking oil",
+    "refined oil",
+    "sunflower oil",
+    "mustard oil",
+    "groundnut oil",
+    "table salt",
+    "iodised salt",
+    "iodized salt",
+    "dry yeast",
+    "active dry yeast",
+    "instant yeast",
+)
+
+
+def supply_only(name: str) -> bool:
+    """'Tea dust', 'Tata tea dust', 'Paper cups (100)': a supply that can't be a menu item."""
+    words = re.findall(r"[\w-]+", re.sub(r"\(.*?\)", " ", (name or "").casefold()))
+    while len(words) > 1 and words[0] in SUPPLY_WORDS:
+        words = words[1:]
+    return " ".join(words) in SUPPLY_ONLY
+
+
+def inferred_supply(product: dict[str, Any], category: str = "") -> bool:
+    """One of the "Things I buy" by the app's own guess, before sales are checked (OB-310): at a
+    shop that makes what it sells, a supply that can't be a menu item, or a raw ingredient the
+    owner said they buy. Never by a bare name alone, never when the owner set the switch."""
+    from .sourcing import unit_of
+
+    if isinstance(product.get("for_sale"), bool) or product.get("source") == "made":
+        return False
+    if shop_kind(category) not in FOOD | SERVICES:
+        return False
+    if unit_of(product.get("unit") or "") in SERVED_UNITS:
+        return False
+    name = product.get("name") or ""
+    return supply_only(name) or (product.get("source") == "bought" and raw_ingredient(name))
+
+
+def sold_names(sales: Iterable[dict[str, Any]]) -> set[str]:
+    """Every item name with a saved sale: those are on the menu, whatever their name says."""
+    return {str(row.get("item") or "").casefold() for row in sales if row.get("item")}
+
+
+def needs_sales(products: Iterable[dict[str, Any]], category: str = "") -> bool:
+    """Whether any item's place depends on its sales; the sales are only read then."""
+    return any(inferred_supply(product, category) for product in products)
+
+
+def sold_for(
+    products: Iterable[dict[str, Any]],
+    category: str,
+    load_sales: Callable[[], Iterable[dict[str, Any]]],
+) -> set[str]:
+    """`sold_names` of the shop's sales, read through `load_sales` only when `needs_sales`."""
+    return sold_names(load_sales()) if needs_sales(products, category) else set()
+
+
+def for_sale(product: dict[str, Any], category: str = "", sold: Collection[str] = ()) -> bool:
+    """Whether customers can buy this item, or it is one of the "Things I buy" (OB-310): the
+    owner's own switch first; else only a supply that can't be a menu item (tea dust, a paper cup)
+    or a raw ingredient the owner said they buy, at a shop that makes what it sells, and never
+    one that has sold (`sold`: casefolded names from `sold_names`). Nothing sellable is hidden by
+    its name: "Paneer" at a sweet shop stays on the menu. Nothing is rewritten either."""
     saved = product.get("for_sale")
     if isinstance(saved, bool):
         return saved
-    if shop_kind(category) not in FOOD | SERVICES:
+    if not inferred_supply(product, category):
         return True
-    return not (
-        source_of(product, category) == "bought" and raw_ingredient(product.get("name") or "")
-    )
+    return (product.get("name") or "").casefold() in sold
+
+
+def asks_for_sale(product: dict[str, Any], category: str = "") -> bool:
+    """A bare supply name on a maker's menu ("Paneer", "Ghee", "Eggs"): it stays on the menu,
+    and the owner is asked once "Do customers buy Paneer from you?" until they answer (OB-310)."""
+    from .sourcing import unit_of
+
+    if isinstance(product.get("for_sale"), bool) or product.get("source") == "made":
+        return False
+    if shop_kind(category) not in FOOD:
+        return False
+    if unit_of(product.get("unit") or "") in SERVED_UNITS:
+        return False
+    name = product.get("name") or ""
+    return raw_ingredient(name) and not inferred_supply(product, category)
 
 
 def same_kind(category: str, other: str, other_is_supplier: bool = False) -> bool:

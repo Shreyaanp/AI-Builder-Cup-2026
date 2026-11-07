@@ -8,7 +8,7 @@ import re
 import secrets
 import sqlite3
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Collection
 from pathlib import Path
 from typing import Annotated, Any, Literal, Protocol
 from uuid import NAMESPACE_URL, UUID, uuid4, uuid5
@@ -30,7 +30,7 @@ from .community import Documents, SqliteDocuments
 from .customer import Inquiry, InquiryInput, InquiryReceipt
 from .money import exponent
 from .playbook import migrate_stored
-from .product_source import for_sale
+from .product_source import for_sale, needs_sales, sold_names
 from .region import (
     country_at,
     country_of_timezone,
@@ -380,9 +380,21 @@ class StockRequest(BaseModel):
 
     def apply(self, fields: dict[str, Any]) -> dict[str, Any]:
         if self.add is None:
-            return {**fields, "stock": self.stock}
-        stock = (fields.get("stock") or 0) + self.add
-        return {**fields, "stock": min(max(stock, 0), 1_000_000)}
+            stock = self.stock
+        else:
+            stock = min(max((fields.get("stock") or 0) + self.add, 0), 1_000_000)
+        return with_stock(fields, stock)
+
+
+def with_stock(fields: dict[str, Any], stock: int | None) -> dict[str, Any]:
+    """A new count, and what customers are told with it (OB-310): 0 left is sold out, never
+    "0 left · Running low" with the item still on offer; more made after 0 is back on sale."""
+    changed = {**fields, "stock": stock}
+    if stock == 0:
+        changed["available"] = False
+    elif fields.get("stock") == 0 and fields.get("available") is False:
+        changed["available"] = True
+    return changed
 
 
 class ForSaleRequest(BaseModel):
@@ -637,9 +649,10 @@ class MerchantRepository(Protocol):
 
 
 def public_projection(
-    bid: str, fields: dict[str, Any], products: list[dict[str, Any]]
+    bid: str, fields: dict[str, Any], products: list[dict[str, Any]], sold: Collection[str] = ()
 ) -> dict[str, Any]:
-    """Only what a customer should see: no owners, revisions, stock counts or internal status."""
+    """Only what a customer should see: no owners, revisions, stock counts or internal status.
+    `sold`: names with saved sales (`product_source.sold_names`), which stay on the menu."""
     return {
         "id": bid,
         "name": fields["name"],
@@ -683,8 +696,8 @@ def public_projection(
                 "available": product.get("available", True),
             }
             for product in products
-            # Things the shop buys to make others (tea dust, milk) are never on its menu (OB-310).
-            if for_sale(product, fields.get("category", ""))
+            # Things the shop buys to make others (tea dust) are never on its menu (OB-310).
+            if for_sale(product, fields.get("category", ""), sold)
         ],
     }
 
@@ -1372,8 +1385,21 @@ class MerchantStore:
                     "SELECT fields FROM inventory WHERE business_id=? ORDER BY rowid", (bid,)
                 )
             ]
+            fields = json.loads(row[0])
+            # Sales are read only when an item's place on the menu depends on them (OB-310).
+            sold = (
+                sold_names(
+                    sale
+                    for day in db.execute(
+                        "SELECT fields FROM sales_days WHERE business_id=?", (bid,)
+                    )
+                    for sale in json.loads(day[0])
+                )
+                if needs_sales(products, str(fields.get("category") or ""))
+                else set()
+            )
         return {
-            **public_projection(bid, json.loads(row[0]), products),
+            **public_projection(bid, fields, products, sold),
             "last_confirmed": row[1],
             "gallery": json.loads(row[2] or "[]"),
             "icon": row[3],

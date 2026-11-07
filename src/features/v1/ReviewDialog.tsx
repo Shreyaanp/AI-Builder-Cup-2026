@@ -263,7 +263,7 @@ export function ReviewDialog({
                   )}
                   {(product.stock != null || product.available === false) && (
                     <Typography variant="bodySmall" color="text.secondary">
-                      {product.available === false
+                      {product.available === false || product.stock === 0
                         ? t.soldOut
                         : `${t.stock}: ${product.stock} ${unitLabel(product.unit, shopCopy)}`}
                     </Typography>

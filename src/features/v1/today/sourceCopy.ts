@@ -5,12 +5,18 @@ import { useLocale } from '../../../state/hooks'
  * gets "Make more"; an item the app cannot tell about asks once. Hindi and English are complete;
  * other languages show English until translated, like the supply screens' copy.
  */
+// 0 left is "sold out", never "only 0 left" (OB-310).
+const leftEn = (item: string, left: number) =>
+  left === 0 ? `${item}: sold out.` : `${item}: only ${left} left.`
+const leftHi = (item: string, left: number) =>
+  left === 0 ? `${item}: ख़त्म।` : `${item}: सिर्फ़ ${left} बचे।`
+
 const en = {
-  ask: (item: string, left: number) => `${item}: only ${left} left. Do you make it or buy it?`,
+  ask: (item: string, left: number) => `${leftEn(item, left)} Do you make it or buy it?`,
   // No item to save the answer on here: the owner answers in the menu tile, called Services at
   // a service shop (OB-243).
   askInMenu: (item: string, left: number, services: boolean) =>
-    `${item}: only ${left} left. Do you make it or buy it? Choose in Shop › ${services ? 'Services' : 'Menu'}.`,
+    `${leftEn(item, left)} Do you make it or buy it? Choose in Shop › ${services ? 'Services' : 'Menu'}.`,
   // The menu item editor's control: the same saved answer, changeable any time.
   question: 'Do you make it or buy it?',
   make: 'Make',
@@ -27,9 +33,9 @@ const en = {
 export type SourceCopy = typeof en
 
 const hi: SourceCopy = {
-  ask: (item, left) => `${item}: सिर्फ़ ${left} बचे। आप इसे बनाते हैं या खरीदते हैं?`,
+  ask: (item, left) => `${leftHi(item, left)} आप इसे बनाते हैं या खरीदते हैं?`,
   askInMenu: (item, left, services) =>
-    `${item}: सिर्फ़ ${left} बचे। आप इसे बनाते हैं या खरीदते हैं? दुकान › ${services ? 'सेवाएँ' : 'मेन्यू'} में चुनें।`,
+    `${leftHi(item, left)} आप इसे बनाते हैं या खरीदते हैं? दुकान › ${services ? 'सेवाएँ' : 'मेन्यू'} में चुनें।`,
   question: 'आप इसे बनाते हैं या खरीदते हैं?',
   make: 'बनाते हैं',
   buy: 'खरीदते हैं',

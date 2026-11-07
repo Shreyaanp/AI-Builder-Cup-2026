@@ -9,11 +9,12 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.merchant import MerchantStore, ProductFields, ProposalRequest
-from app.product_source import for_sale
+from app.product_source import asks_for_sale, for_sale, sold_names
 from app.shop_today import usual_sales
 from tests.test_coach_owner_words import ENGLISH_WORD, cards, demo, reply_of  # noqa: F401
 from tests.test_imports import make_shop
 from tests.test_ob239_made_or_bought import open_shop
+from tests.test_owner_features import setup  # noqa: F401
 from tests.test_photos import app, join  # noqa: F401
 from tests.test_public_demo import open_demo, owner
 
@@ -21,15 +22,18 @@ from tests.test_public_demo import open_demo, owner
 @pytest.mark.parametrize(
     ("name", "unit", "category", "expected"),
     [
+        # Supplies no customer buys at a shop that makes things.
         ("Tea dust", "kg", "Tea stall", False),
-        ("Milk", "l", "Tea stall", False),
-        ("Wheat flour (atta)", "kg", "Bakery", False),
+        ("Tata tea dust", "kg", "Tea stall", False),
+        ("Paper cups (100)", "pack", "Cafe", False),
+        ("Coffee powder", "kg", "Cafe", False),
         ("Masala chai", "cup", "Tea stall", True),
         ("Bun maska", "piece", "Tea stall", True),
         # A shop that resells what it buys, or one of no known kind, sells its milk.
         ("Milk", "l", "Kirana store", True),
         ("Milk", "l", "Ravi Dairy", True),
         ("Milk", "l", "", True),
+        ("Tea dust", "kg", "Kirana store", True),
         # "Dal" by the plate at a restaurant may be the dish: still on the menu.
         ("Dal", "plate", "Restaurant", True),
     ],
@@ -38,9 +42,72 @@ def test_ob310_things_i_buy_are_inferred_without_rewriting_items(name, unit, cat
     assert for_sale({"name": name, "unit": unit}, category) is expected
 
 
+# The review's real menus (HOLD 1): a bare name is never hidden by its name alone.
+SELLABLE = [
+    ("Paneer", "kg", "Sweets & dairy"),
+    ("Paneer", "kg", "Sweet shop"),
+    ("Ghee", "kg", "Sweet shop"),
+    ("Milk", "litre", "Sweet shop"),
+    ("Paneer", "kg", "Mithai"),
+    ("Ghee", "kg", "Mithai"),
+    ("Milk", "litre", "Mithai"),
+    ("Eggs", "dozen", "Bakery"),
+    ("Butter", "pack", "Bakery"),
+    ("Cheese", "pack", "Bakery"),
+    ("Milk", "bottle", "Cafe"),
+    ("Ghee", "kg", "Home kitchen"),
+    ("Milk", "l", "Tea stall"),
+]
+
+
+@pytest.mark.parametrize(("name", "unit", "category"), SELLABLE)
+def test_ob310_a_bare_name_stays_on_the_menu_and_is_asked(name, unit, category):
+    item = {"name": name, "unit": unit}
+    assert for_sale(item, category) is True
+    # The owner is asked once ("Do customers buy Paneer from you?") until they answer.
+    assert asks_for_sale(item, category) is True
+    assert asks_for_sale({**item, "for_sale": True}, category) is False
+    assert asks_for_sale({**item, "for_sale": False}, category) is False
+
+
+def test_ob310_nothing_else_is_asked():
+    assert not asks_for_sale({"name": "Masala chai", "unit": "cup"}, "Tea stall")
+    assert not asks_for_sale({"name": "Tea dust", "unit": "kg"}, "Tea stall")
+    assert not asks_for_sale({"name": "Milk", "unit": "l"}, "Kirana store")
+    assert not asks_for_sale({"name": "Paneer", "unit": "kg", "source": "made"}, "Sweet shop")
+
+
+def test_ob310_a_supply_that_has_sold_stays_on_the_menu():
+    tea = {"name": "Tea dust", "unit": "kg"}
+    assert for_sale(tea, "Tea stall", sold_names([{"item": "tea dust", "quantity": 1}])) is True
+    # The owner's "I buy it" on a raw ingredient keeps it off, unless customers bought it.
+    eggs = {"name": "Eggs", "unit": "dozen", "source": "bought"}
+    assert for_sale(eggs, "Bakery") is False
+    assert for_sale(eggs, "Bakery", sold_names([{"item": "Eggs", "quantity": 2}])) is True
+    # "I make it" never hides anything; nor "I buy it" on something that isn't a raw supply.
+    assert for_sale({**tea, "source": "made"}, "Tea stall") is True
+    assert for_sale({"name": "Biscuits", "unit": "pack", "source": "bought"}, "Tea stall")
+
+
 def test_ob310_the_owners_own_switch_wins():
     assert for_sale({"name": "Tea dust", "unit": "kg", "for_sale": True}, "Tea stall") is True
     assert for_sale({"name": "Samosa", "unit": "piece", "for_sale": False}, "Tea stall") is False
+
+
+@pytest.mark.parametrize(("name", "unit", "category"), SELLABLE)
+def test_ob310_existing_shops_keep_every_sellable_item_public(tmp_path: Path, name, unit, category):
+    store = MerchantStore(str(tmp_path / "merchant.sqlite3"))
+    bid = open_shop(
+        store,
+        "Ravi's",
+        category,
+        [ProductFields(name=name, price=5000, unit=unit, stock=4)],
+        [],
+    )
+    store.share("alice", bid, True)
+    shop = store.public_shop(bid)
+    assert shop is not None and [p["name"] for p in shop["products"]] == [name]
+    assert [p["name"] for s in store.shared_shops() for p in s["products"]] == [name]
 
 
 def tea_stall(store: MerchantStore) -> str:
@@ -64,10 +131,58 @@ def test_ob310_customer_page_never_shows_things_i_buy(tmp_path: Path):
     bid = tea_stall(store)
     shop = store.public_shop(bid)
     assert shop is not None
-    assert [p["name"] for p in shop["products"]] == ["Masala chai"]
+    # Tea dust is off the page; Milk, a bare name, stays on it until the owner says otherwise.
+    assert [p["name"] for p in shop["products"]] == ["Masala chai", "Milk"]
     # Nothing was lost: the owner still has all three items.
     assert {p["name"] for p in store.inventory("alice", bid)} == {"Masala chai", "Tea dust", "Milk"}
-    assert all(p["name"] == "Masala chai" for s in store.shared_shops() for p in s["products"])
+    assert all(p["name"] != "Tea dust" for s in store.shared_shops() for p in s["products"])
+
+
+def test_ob310_a_supply_with_sales_stays_on_the_customer_page(tmp_path: Path):
+    store = MerchantStore(str(tmp_path / "merchant.sqlite3"))
+    bid = open_shop(
+        store,
+        "Lantern Chai",
+        "Tea stall",
+        [
+            ProductFields(name="Masala chai", price=2000, unit="cup"),
+            ProductFields(name="Tea dust", price=32000, unit="kg"),
+            ProductFields(name="Cocoa powder", price=9000, unit="pack"),
+        ],
+        [("Masala chai", 30, 20), ("Tea dust", 1, 320)],
+    )
+    store.share("alice", bid, True)
+    shop = store.public_shop(bid)
+    assert shop is not None
+    assert [p["name"] for p in shop["products"]] == ["Masala chai", "Tea dust"]
+
+
+def test_ob310_the_owner_is_asked_about_a_bare_name_once(app):  # noqa: F811
+    with TestClient(app) as client:
+        join(client)
+        proposal = client.post(
+            "/api/v1/proposals",
+            json={
+                "kind": "business",
+                "revision": 0,
+                "business": {"name": "Ravi Sweets", "category": "Sweet shop"},
+                "products": [
+                    {"name": "Paneer", "price": 40000, "unit": "kg"},
+                    {"name": "Kaju katli", "price": 1200, "unit": "piece"},
+                ],
+            },
+        ).json()
+        bid = client.post(
+            f"/api/v1/proposals/{proposal['id']}/approve", json={"digest": proposal["digest"]}
+        ).json()["business_id"]
+        items = {p["name"]: p for p in client.get(f"/api/v1/businesses/{bid}/inventory").json()}
+        assert items["Paneer"]["for_sale"] is True and items["Paneer"]["ask_for_sale"] is True
+        assert "ask_for_sale" not in items["Kaju katli"]
+        url = f"/api/v1/businesses/{bid}/inventory/{items['Paneer']['id']}/for-sale"
+        assert client.post(url, json={"for_sale": True}).status_code == 200
+        items = {p["name"]: p for p in client.get(f"/api/v1/businesses/{bid}/inventory").json()}
+        # Answered once, never asked again.
+        assert items["Paneer"]["for_sale"] is True and "ask_for_sale" not in items["Paneer"]
 
 
 def test_ob310_a_menu_edit_keeps_the_for_sale_switch(tmp_path: Path):
@@ -143,6 +258,11 @@ def test_ob310_stock_saves_at_once_and_adds_from_the_saved_count(app):  # noqa: 
         # Undo of the first tap on an item nobody counted: not counted again.
         assert client.post(url, json={"stock": None}).json()["stock"] is None
         assert client.post(url, json={"add": 2}).json()["stock"] == 2
+        # 0 left is sold out, so customers are not offered it; more made puts it back on sale.
+        gone = client.post(url, json={"add": -4}).json()
+        assert gone["stock"] == 0 and gone["available"] is False
+        back = client.post(url, json={"add": 3}).json()
+        assert back["stock"] == 3 and back["available"] is True
         missing = f"/api/v1/businesses/{bid}/inventory/nope/stock"
         assert client.post(missing, json={"stock": 1}).status_code == 404
 
@@ -218,6 +338,8 @@ def test_ob310_chat_adds_what_the_owner_made(demo, message, language, item, adde
         ("set stock of samosa to 20", "en"),
         ("समोसा स्टॉक 20", "hi"),
         ("समोसे 20 बचे हैं", "hi"),
+        ("samosa stock 20 pieces", "en"),
+        ("समोसा स्टॉक 20 पीस", "hi"),
     ],
 )
 def test_ob310_chat_sets_a_stock_count(demo, message, language):  # noqa: F811
@@ -248,3 +370,35 @@ def test_ob310_chat_reads_grouped_numbers(demo, message, count):  # noqa: F811
 )
 def test_ob310_a_question_or_a_not_never_changes_stock(demo, message):  # noqa: F811
     assert cards(demo(message, "en")) == []
+
+
+def test_ob310_a_rescue_deal_never_offers_things_i_buy(setup):  # noqa: F811
+    client, store, bid, _ = setup
+    path = f"/api/v1/businesses/{bid}/rescue"
+    items = {p["name"]: p for p in store.inventory("owner", bid)}
+    deal = {"discount_pct": 30, "until": "19:45"}
+    # Milk at a bakery stays on the menu, so it may go on a deal...
+    milk = {"items": [{"name": "Milk", "qty": 2}], **deal}
+    assert client.post(path, json=milk).status_code == 200
+    # ...until the owner moves it to Things I buy.
+    store.edit_item("owner", bid, items["Milk"]["id"], lambda f: {**f, "for_sale": False})
+    refused = client.post(path, json=milk)
+    assert refused.status_code == 422 and "Things I buy" in refused.text
+    # A supply no customer buys is never offered either, without any switch.
+    store.edit_item("owner", bid, items["Croissant"]["id"], lambda f: {**f, "name": "Cocoa powder"})
+    cocoa = {"items": [{"name": "Cocoa powder", "qty": 2}], **deal}
+    refused = client.post(path, json=cocoa)
+    assert refused.status_code == 422 and "Things I buy" in refused.text
+
+
+@pytest.mark.parametrize(
+    ("message", "language"), [("samosa stock 0", "en"), ("समोसा स्टॉक 0", "hi")]
+)
+def test_ob310_chat_stock_0_is_sold_out(demo, message, language):  # noqa: F811
+    events = demo(message, language)
+    [card] = cards(events)
+    [samosa] = card["products"]
+    assert samosa["stock"] == 0 and samosa["available"] is False
+    reply = reply_of(events)
+    assert "0 left" not in reply and "0 बचे" not in reply, reply
+    assert ("ख़त्म" if language == "hi" else "sold out") in reply, reply

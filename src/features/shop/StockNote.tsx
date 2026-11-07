@@ -24,7 +24,14 @@ export function StockNote({ inSheet = false }: { inSheet?: boolean }) {
         if (reason !== 'clickaway') note?.close()
       }}
       anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      sx={{ bottom: { xs: 'calc(96px + env(safe-area-inset-bottom))', sm: 24 } }}
+      // In a sheet it sits over the sheet's own action row, never over the next item's − / +
+      // (OB-310); elsewhere above the app's bottom bar.
+      sx={{
+        bottom: {
+          xs: `calc(${inSheet ? 8 : 96}px + env(safe-area-inset-bottom))`,
+          sm: 24,
+        },
+      }}
       action={
         <Button
           color="inherit"

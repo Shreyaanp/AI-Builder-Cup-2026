@@ -665,6 +665,11 @@ function NeedRow({
     icon = <PackageMinus size={20} />
     const name = productName(need.item, locale)
     const productId = need.productId
+    // 0 left is sold out, never "only 0 left" with Make more beside it (OB-310).
+    const lowText =
+      need.left === 0
+        ? tt.soldOut(name, productFeminine(need.item, locale))
+        : tt.low(name, need.left)
     if (need.source === 'unknown' && productId) {
       // One question, saved on the item so it is never asked again (OB-239).
       text = sc.ask(name, need.left)
@@ -702,7 +707,7 @@ function NeedRow({
     } else if (need.source === 'made') {
       // Made here: never a supplier order (OB-239). "Make more" asks about now, with what
       // usually sells today, and "Made 20" adds to the stock (OB-310).
-      text = tt.low(name, need.left)
+      text = lowText
       buttons = making ? null : (
         <Button variant={primary} sx={{ minHeight: 48 }} onClick={() => setMaking(true)}>
           {sc.makeMore}
@@ -722,7 +727,7 @@ function NeedRow({
       // Not said, and no item to save the answer on: never an Order button (OB-243).
       text = sc.askInMenu(name, need.left, isServiceShop(ws.active?.fields.category))
     } else {
-      text = tt.low(name, need.left)
+      text = lowText
       buttons = (
         <Button
           variant={primary}

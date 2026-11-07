@@ -28,6 +28,7 @@ import { useNextStepsCopy } from '../v1/nextStepsCopy'
 import { fill, useOwnerCopy } from './copy'
 import { defaultUntil, shopNow } from './time'
 import { shopZone } from '../../region/region'
+import { onMenu } from '../shop/stock'
 
 type Deal = components['schemas']['Deal']
 type Suggestions = components['schemas']['Suggestions']
@@ -145,7 +146,7 @@ function RescueSheet({
           </Box>
         )}
         {open &&
-          (ws.products.length === 0 ? (
+          (!ws.products.some(onMenu) ? (
             <NoItems onClose={onClose} />
           ) : (
             <NewRescue used={used} onSent={onChanged} onClose={onClose} />
@@ -309,8 +310,10 @@ function NewRescue({
     return () => abort.abort()
   }, [ws, shop.id, usedKey])
   const product = (name: string) => ws.products.find((p) => p.name === name)
+  // A deal is for customers: never one of the "Things I buy" (tea dust), OB-310.
   const choices = ws.products.filter(
     (p) =>
+      onMenu(p) &&
       p.available !== false &&
       !used.has(p.name.toLowerCase()) &&
       !rows.some((r) => r.name === p.name),

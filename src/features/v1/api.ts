@@ -72,6 +72,8 @@ export interface Product {
   /** False for "Things I buy" (tea dust, milk): never on the customer menu or page (OB-310). The
    * owner's inventory always says; a proposal may leave it out to keep the saved choice. */
   for_sale?: boolean
+  /** A bare supply name on a maker's menu ("Paneer"): asked once whether customers buy it. */
+  ask_for_sale?: boolean
 }
 export interface Proposal {
   /** Client-only guided completion marker, outside the sealed snapshot. */

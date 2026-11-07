@@ -25,6 +25,8 @@ import { groupProducts } from './groupProducts'
 import { categoryLabel, useShopCopy } from './strings'
 import { unitLabel } from './units'
 import { onMenu, useUsualSales } from './stock'
+import { productName } from '../../i18n/productNames'
+import { useLocale } from '../../state/hooks'
 import { StockLine } from './stockLine'
 import { StockNote } from './StockNote'
 import { useStockCopy } from './stockCopy'
@@ -63,6 +65,8 @@ export function MenuSheet({
   const menu = ws.products.filter(onMenu)
   const bought = ws.products.length - menu.length
   const unsorted = menu.filter((product) => !product.category?.trim()).length
+  // A bare supply name ("Paneer") stays on the menu; the owner is asked about one at a time.
+  const asked = menu.find((product) => product.ask_for_sale)
 
   async function sortMenu() {
     if (!shop || sorting) return
@@ -129,6 +133,7 @@ export function MenuSheet({
             }}
           />
         )}
+        {asked && <AskForSale product={asked} />}
         {unsorted > 0 && (
           <Alert
             severity="info"
@@ -198,7 +203,11 @@ export function MenuSheet({
         )}
         {bought > 0 && onThingsIBuy && (
           <ButtonBase
-            onClick={onThingsIBuy}
+            onClick={() => {
+              // A menu tap's note is about the menu: it never follows into Things I buy.
+              ws.stockNote?.close()
+              onThingsIBuy()
+            }}
             aria-haspopup="dialog"
             sx={{
               mt: 4,
@@ -226,6 +235,57 @@ export function MenuSheet({
   )
 }
 
+/**
+ * "Do customers buy Paneer from you?" (OB-310): asked once for a bare supply name on a maker's
+ * menu, saved on the item like the make-or-buy answer. Until then it stays on the menu.
+ */
+function AskForSale({ product }: { product: Product }) {
+  const copy = useStockCopy()
+  const ws = useWorkspace()
+  const locale = useLocale()
+  const [busy, setBusy] = useState(false)
+  const answer = (forSale: boolean) => {
+    setBusy(true)
+    void ws.setForSale(product, forSale).finally(() => setBusy(false))
+  }
+  return (
+    <Alert
+      severity="info"
+      icon={false}
+      role="group"
+      aria-labelledby="ask-for-sale"
+      sx={{ mb: 4, '& .MuiAlert-message': { width: '100%' } }}
+    >
+      <Typography id="ask-for-sale" variant="bodyLarge" sx={{ fontWeight: 500 }}>
+        {copy.askForSale(productName(product.name, locale))}
+      </Typography>
+      <Typography variant="bodyMedium" sx={{ display: 'block', mb: 2 }}>
+        {copy.askForSaleHint}
+      </Typography>
+      <Stack direction="row" sx={{ gap: 2, flexWrap: 'wrap' }}>
+        <Button
+          variant="outlined"
+          color="inherit"
+          disabled={busy}
+          onClick={() => answer(true)}
+          sx={{ minHeight: 48 }}
+        >
+          {copy.yesSell}
+        </Button>
+        <Button
+          variant="outlined"
+          color="inherit"
+          disabled={busy}
+          onClick={() => answer(false)}
+          sx={{ minHeight: 48 }}
+        >
+          {copy.noSell}
+        </Button>
+      </Stack>
+    </Alert>
+  )
+}
+
 /** One item: name and price on top, its stock with − / + below (OB-310). */
 export function ItemCard({
   product,
@@ -242,7 +302,10 @@ export function ItemCard({
   const t = useCopy()
   const copy = useShopCopy()
   const roles = useTheme().material
-  const soldOut = product.available === false
+  const locale = useLocale()
+  // The same Hindi name the note, the − / + and the editor's title use (OB-74).
+  const name = productName(product.name, locale)
+  const soldOut = product.available === false || product.stock === 0
   return (
     <Box
       component="li"
@@ -263,7 +326,7 @@ export function ItemCard({
         <ButtonBase
           onClick={onEdit}
           data-menu-item={product.name}
-          aria-label={`${t.editProduct} ${product.name}`}
+          aria-label={`${t.editProduct} ${name}`}
           sx={{
             display: 'block',
             flex: '1 1 120px',
@@ -285,7 +348,7 @@ export function ItemCard({
               color: soldOut ? roles.onSurfaceVariant : roles.onSurface,
             }}
           >
-            {product.name}
+            {name}
           </Typography>
           <Typography component="span" variant="bodyMedium" color="text.secondary">
             {unitLabel(product.unit, copy)}
@@ -317,6 +380,7 @@ function PriceField({ product }: { product: Product }) {
   const copy = useShopCopy()
   const ws = useWorkspace()
   const roles = useTheme().material
+  const name = productName(product.name, useLocale())
   const [state, setState] = useState<PriceState>({ mode: 'view' })
   const shop = ws.active
   const currency = shopCurrency(shop)
@@ -388,7 +452,7 @@ function PriceField({ product }: { product: Product }) {
             </InputAdornment>
           }
           inputProps={{
-            'aria-label': copy.editPrice(product.name),
+            'aria-label': copy.editPrice(name),
             'aria-invalid': state.error,
             'aria-describedby': state.error ? `price-error-${product.id}` : undefined,
             inputMode: 'decimal',
@@ -459,7 +523,7 @@ function PriceField({ product }: { product: Product }) {
         setState({ mode: 'edit', text: String(toMajor(product.price, currency)), error: false })
       }
       // The name says what the button does; the visible price stays part of it.
-      aria-label={`${copy.editPrice(product.name)}, ${shown}`}
+      aria-label={`${copy.editPrice(name)}, ${shown}`}
       sx={{
         alignSelf: 'flex-start',
         minHeight: 48,

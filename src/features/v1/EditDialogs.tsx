@@ -196,6 +196,7 @@ function ProductForm({ product }: { product: Product | null }) {
     if (!item.name.trim()) return setError(t.enterName)
     if (!item.price.trim() || !Number.isFinite(price) || price < 0) return setError(t.enterPrice)
     if (!active || busy) return
+    const count = item.stock.trim() ? Number(item.stock) : null
     setBusy(true)
     try {
       const proposal = await api<Proposal>('/proposals', {
@@ -211,9 +212,15 @@ function ProductForm({ product }: { product: Product | null }) {
               unit: item.unit,
               // A new unit for a saved item changes that item instead of adding a copy.
               ...(product && product.unit !== item.unit ? { previous_unit: product.unit } : {}),
-              stock: item.stock.trim() ? Number(item.stock) : null,
+              stock: count,
               category: item.category.trim(),
-              available: product?.available ?? true,
+              // 0 left is sold out; more after 0 is on sale again, as the − / + do (OB-310).
+              available:
+                count === 0
+                  ? false
+                  : product?.stock === 0 && product.available === false && count !== null
+                    ? true
+                    : (product?.available ?? true),
               ...(source ? { source } : {}),
               // A new item saves the switch as shown, so "Milk" left on "Customers can buy this"
               // stays on the menu; a saved item sends it only when the owner changed it, so it

@@ -1,5 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import { enter, localOnly } from './stories/support.js'
+import { FIRST_QUESTION } from './newShopTopics.js'
+import { startNewShop } from './support/newShop.js'
 
 // OB-310: stock in plain sight. Every menu item shows "4 left" with − / + that save at once and
 // a named note with Undo; tea dust and milk the shop buys live in "Things I buy", never on the
@@ -178,7 +180,9 @@ for (const language of ['en', 'hi'] as const)
     await page.screenshot({ path: test.info().outputPath(`menu-360-${language}.png`) })
   })
 
-test('OB-310: the customer page never shows tea dust or milk', async ({ page }) => {
+test('OB-310: the customer page never shows tea dust; milk stays and is asked about', async ({
+  page,
+}) => {
   await localOnly(page)
   await enter(page)
   const prepared = await (
@@ -213,12 +217,156 @@ test('OB-310: the customer page never shows tea dust or milk', async ({ page }) 
   expect(
     (await page.request.post(`/api/v1/businesses/${id}/share`, { data: { public: true } })).ok(),
   ).toBe(true)
+  // Tea dust can't be a menu item. Milk is a bare name a shop may sell, so it is never hidden
+  // by its name: it stays, and the owner is asked once.
   const shop = await (await page.request.get(`/api/v1/public/shops/${id}`)).json()
-  expect(shop.products.map((p: { name: string }) => p.name)).toEqual(['Masala chai'])
+  expect(shop.products.map((p: { name: string }) => p.name)).toEqual(['Masala chai', 'Milk'])
+  const items = await (await page.request.get(`/api/v1/businesses/${id}/inventory`)).json()
+  const milk = items.find((p: { name: string }) => p.name === 'Milk')
+  expect([milk.for_sale, milk.ask_for_sale]).toEqual([true, true])
   await page.addInitScript(() => localStorage.setItem('chalkboard.customer.journey', 'done'))
   await page.goto(`/explore/s/${id}`)
   await expect(page.getByRole('heading', { name: 'Stock Sight Chai', exact: true })).toBeVisible()
   await expect(page.getByText('Masala chai').first()).toBeVisible()
   await expect(page.getByText('Tea dust')).toHaveCount(0)
-  await expect(page.getByText('Milk', { exact: true })).toHaveCount(0)
+})
+
+test('OB-310: a count of 0 is Sold out, with a named Undo', async ({ page }) => {
+  await openDemo(page, 360)
+  const sheet = await openMenu(page)
+  const bun = sheet.locator('[data-menu-card="Bun maska"]')
+  const count = bun.locator('[data-stock="Bun maska"]')
+  await expect(count).toHaveText('4 left')
+  const minus = bun.getByRole('button', { name: 'One less Bun maska' })
+  for (const left of [3, 2, 1]) {
+    await minus.click()
+    await expect(count).toHaveText(`${left} left`)
+  }
+  // Taps save in turn: wait for the one that reaches 0.
+  const saved = page.waitForResponse(
+    async (r) =>
+      r.url().includes('/stock') && r.request().method() === 'POST' && (await r.json()).stock === 0,
+  )
+  await minus.click()
+  // Never "0 left · Running low": sold out, and customers are no longer offered it.
+  await expect(count).toHaveText('Sold out')
+  await expect(bun.getByText('Running low')).toHaveCount(0)
+  expect(await (await saved).json()).toMatchObject({ stock: 0, available: false })
+  const note = page.getByRole('alert').filter({ hasText: 'Bun maska: sold out' })
+  await expect(note).toBeVisible()
+  // At 360 the note sits over the sheet's own buttons, never over the items and their − / +:
+  // it starts below the bottom of the scrolling item list.
+  const noteBox = (await note.boundingBox())!
+  const listBottom = await bun.evaluate((card) => {
+    let box: HTMLElement | null = card.parentElement
+    while (box && !['auto', 'scroll'].includes(getComputedStyle(box).overflowY))
+      box = box.parentElement
+    return box!.getBoundingClientRect().bottom
+  })
+  expect(noteBox.y).toBeGreaterThanOrEqual(listBottom - 1)
+  await page.screenshot({ path: test.info().outputPath('sold-out-360.png') })
+  await note.getByRole('button', { name: 'Undo' }).click()
+  await expect(count).toHaveText('4 left')
+})
+
+test('OB-310: Hindi stock cards and Things I buy use Hindi names', async ({ page }) => {
+  await openDemo(page, 360, 'hi')
+  const sheet = await openMenu(page, 'मेन्यू')
+  const bun = sheet.locator('[data-menu-card="Bun maska"]')
+  await expect(bun).toContainText('बन मस्का')
+  await expect(bun).not.toContainText('Bun maska')
+  await expect(bun.getByRole('button', { name: 'बदलें बन मस्का' })).toBeVisible()
+  await sheet.getByRole('button', { name: /^ख़रीदा हुआ सामान/ }).click()
+  const things = page.getByRole('dialog', { name: 'ख़रीदा हुआ सामान' })
+  await expect(things).toHaveCSS('transform', 'none')
+  await expect(things.locator('[data-menu-card="Tea dust"]')).toContainText('चाय पत्ती')
+  await expect(things).not.toContainText('Tea dust')
+  await page.screenshot({ path: test.info().outputPath('things-i-buy-360-hi.png') })
+})
+
+test('OB-310: Things I buy never reach the Google Maps details of a new shop', async ({
+  page,
+  context,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await localOnly(page)
+  await context.grantPermissions(['geolocation'])
+  // What the owner copies into Google's public form.
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'clipboard', {
+      value: {
+        writeText: async (text: string) => {
+          ;(window as unknown as { copied: string }).copied = text
+        },
+      },
+    })
+  })
+  // The new shop's menu had tea dust on it: the stall buys it, customers never see it.
+  await page.route('**/api/v1/businesses/*/inventory', async (route) => {
+    if (route.request().method() !== 'GET') return route.fallback()
+    await route.fulfill({
+      json: [
+        { id: 'a'.repeat(64), name: 'Masala chai', price: 2000, unit: 'cup', stock: null },
+        {
+          id: 'b'.repeat(64),
+          name: 'Tea dust',
+          price: 32000,
+          unit: 'kg',
+          stock: 3,
+          for_sale: false,
+        },
+      ],
+    })
+  })
+  await enter(page)
+  await startNewShop(page)
+  await page.getByRole('button', { name: 'Let’s begin' }).click()
+  await expect(page.getByRole('log')).toContainText(FIRST_QUESTION)
+  await page
+    .getByLabel('Message', { exact: true })
+    .fill('name: Lakshmi Tea Stall; category: Tea stall; location: Indiranagar metro')
+  await page.getByRole('button', { name: 'Send', exact: true }).click()
+  await expect(page.getByTestId('shop-live')).toHaveText('Saved')
+  await page.getByTestId('end-conversation').click()
+  await page.getByTestId('finish-review').click()
+  await expect(
+    page.getByRole('heading', { name: 'Congratulations, Lakshmi Tea Stall is live!' }),
+  ).toBeVisible()
+  // The hand-off sits under Share on the ready screen (OB-292).
+  await page.locator('summary').filter({ hasText: 'Share' }).click()
+  await page.getByTestId('maps-handoff').getByRole('button', { name: 'Copy details' }).click()
+  const copied = () => page.evaluate(() => (window as unknown as { copied?: string }).copied ?? '')
+  await expect.poll(copied).toContain('Masala chai')
+  expect(await copied()).not.toContain('Tea dust')
+})
+
+test('OB-310: a bare name stays on the menu and is asked about once', async ({ page }) => {
+  // A bakery's "Eggs" would be asked about by the server; the demo's Samosa stands in for it.
+  let answered = false
+  await page.route('**/businesses/*/inventory', async (route) => {
+    if (route.request().method() !== 'GET') return route.fallback()
+    const response = await route.fetch()
+    const items = (await response.json()) as { name: string; ask_for_sale?: boolean }[]
+    await route.fulfill({
+      response,
+      json: items.map((item) =>
+        item.name === 'Samosa' && !answered ? { ...item, ask_for_sale: true } : item,
+      ),
+    })
+  })
+  page.on('request', (request) => {
+    if (request.url().includes('/for-sale') && request.method() === 'POST') answered = true
+  })
+  await openDemo(page, 360)
+  const sheet = await openMenu(page)
+  const ask = sheet.getByRole('group', { name: 'Do customers buy Samosa from you?' })
+  await expect(ask).toBeVisible()
+  // Until the owner answers, it stays on the menu.
+  await expect(sheet.locator('[data-menu-card="Samosa"]')).toBeVisible()
+  await page.screenshot({ path: test.info().outputPath('ask-for-sale-360.png') })
+  const saved = page.waitForResponse((r) => r.url().includes('/for-sale'))
+  await ask.getByRole('button', { name: 'Yes, they do' }).click()
+  expect(await (await saved).json()).toMatchObject({ for_sale: true })
+  await expect(ask).toHaveCount(0)
+  await expect(sheet.locator('[data-menu-card="Samosa"]')).toBeVisible()
 })

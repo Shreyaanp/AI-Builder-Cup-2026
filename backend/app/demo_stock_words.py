@@ -36,6 +36,9 @@ MADE = (
 MORE = r"(?:more|aur|extra|zyada|jyada)"
 LEFT = r"(?:left|bache|bacha|bachi|remaining|in\s+stock)"
 TAIL = r"(?:\s+(?:hai|hain|now|ab|kar\s+do|karo|please|only))*"
+# "samosa stock 20 pieces": the unit after the count says nothing more.
+UNIT = r"(?:\s+(?:pieces?|pcs|nos?|plates?|cups?|packs?|packets?|kgs?|kilos?|litres?|liters?))?"
+HI_UNIT = r"(?:\s+(?:पीस|नग|प्लेट|कप|पैकेट|किलो|लीटर))?"
 ADD = (
     re.compile(rf"{LEAD}(?P<name>{NAME})\s+{N}\s+{MORE}\s+{MADE}", re.I),
     re.compile(rf"{LEAD}{N}\s+{MORE}\s+(?P<name>{NAME})\s+{MADE}", re.I),
@@ -48,14 +51,14 @@ ADD = (
 SET = (
     re.compile(
         rf"{LEAD}(?P<name>{NAME})\s+(?:ka\s+|ki\s+|ke\s+)?(?:stock|count)\s+"
-        rf"(?:(?:is|hai|now|ab|to|=)\s+)*{N}{TAIL}",
+        rf"(?:(?:is|hai|now|ab|to|=)\s+)*{N}{UNIT}{TAIL}",
         re.I,
     ),
     re.compile(rf"{LEAD}(?P<name>{NAME})\s+{N}\s+{LEFT}{TAIL}", re.I),
     re.compile(rf"(?:only\s+)?{N}\s+(?P<name>{NAME})\s+{LEFT}{TAIL}", re.I),
     re.compile(
         rf"(?:please\s+)?(?:set|change|make)\s+(?:the\s+)?stock\s+(?:of\s+|for\s+)?"
-        rf"(?P<name>{NAME})\s+(?:to|=)\s+{N}",
+        rf"(?P<name>{NAME})\s+(?:to|=)\s+{N}{UNIT}",
         re.I,
     ),
 )
@@ -70,7 +73,7 @@ HI_ADD = (
 )
 HI_SET = (
     re.compile(
-        rf"{HI_LEAD}(?P<name>{HI_NAME})\s+(?:का\s+|की\s+|के\s+)?(?:स्टॉक|स्टाक)\s+(?:अब\s+)?{N}"
+        rf"{HI_LEAD}(?P<name>{HI_NAME})\s+(?:का\s+|की\s+|के\s+)?(?:स्टॉक|स्टाक)\s+(?:अब\s+)?{N}{HI_UNIT}"
         r"(?:\s+(?:है|हैं|कर\s+दो|करो|बचे|बचा|बची))*"
     ),
     re.compile(rf"{HI_LEAD}(?P<name>{HI_NAME})\s+(?:अब\s+)?{N}\s+(?:बचे|बचा|बची)(?:\s+(?:हैं|है))?"),
@@ -92,6 +95,7 @@ def stock_change(ctx: Any, question: str) -> list[StreamEvent] | None:
     """A stock count for one saved item, for the owner to confirm (OB-310)."""
     from .coordinator import ProductInput
     from .demo_coach import DEMO_NOTE_HI, _priced, _teach
+    from .merchant import with_stock
 
     text = bare(question)
     if "?" in question or ASKED.match(text) or NEGATION.search(text):
@@ -124,15 +128,17 @@ def stock_change(ctx: Any, question: str) -> list[StreamEvent] | None:
         name=item["name"],
         unit=item["unit"],
         stock=after,
-        available=item.get("available") is not False,
+        # 0 left is sold out, and more made after 0 is on sale again (OB-310).
+        available=with_stock(item, after).get("available") is not False,
     )
     events = _priced(ctx, [change])
     if not events:
         return None
     if hindi:
-        was = "गिनती नहीं" if before is None else f"{before} बचे"
+        was = "गिनती नहीं" if before is None else "ख़त्म" if before == 0 else f"{before} बचे"
+        now = "ख़त्म" if after == 0 else f"{after} बचे"
         text_hi = (
-            f"मैंने यह आपके जाँचने के लिए तैयार किया है: {shown} {was} → {after} बचे। स्क्रीन पर "
+            f"मैंने यह आपके जाँचने के लिए तैयार किया है: {shown} {was} → {now}। स्क्रीन पर "
             f"पक्का करें। {DEMO_NOTE_HI} {next_line_hi('price_change')}"
         )
         return [*events[:-1], _reply(text_hi)]

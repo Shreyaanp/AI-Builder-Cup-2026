@@ -34,7 +34,7 @@ from .merchant import (
 from .money import to_minor
 from .photos import PhotoExtraction, PhotoPipeline, PhotoRejected, header_gps
 from .product_categories import suggest_category
-from .product_source import for_sale
+from .product_source import asks_for_sale, for_sale, sold_for
 from .product_units import normalize_unit
 from .region import new_shop_currency, shop_currency, shop_zone
 from .sales import daily_sales
@@ -116,10 +116,23 @@ async def businesses(request: Request) -> list[dict[str, Any]]:
 @router.get("/businesses/{business_id}/inventory")
 async def inventory(business_id: str, request: Request) -> list[dict[str, Any]]:
     uid = await owner(request)
-    context = await anyio.to_thread.run_sync(store(request).context, uid, business_id)
+    service = store(request)
+    context = await anyio.to_thread.run_sync(service.context, uid, business_id)
     category = str(context["business"]["fields"].get("category") or "")
-    # The owner's own list says which items customers can buy: "Things I buy" are the rest.
-    return [{**item, "for_sale": for_sale(item, category)} for item in context["inventory"]]
+    items = context["inventory"]
+    sold = await anyio.to_thread.run_sync(
+        sold_for, items, category, lambda: service.sales_history(uid, business_id)
+    )
+    # The owner's own list says which items customers can buy: "Things I buy" are the rest. A
+    # bare supply name on a maker's menu ("Paneer") stays there and is asked about once.
+    return [
+        {
+            **item,
+            "for_sale": for_sale(item, category, sold),
+            **({"ask_for_sale": True} if asks_for_sale(item, category) else {}),
+        }
+        for item in items
+    ]
 
 
 @router.post("/proposals")

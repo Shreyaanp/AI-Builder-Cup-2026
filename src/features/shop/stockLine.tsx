@@ -17,8 +17,9 @@ export function StockLine({ product, usual }: { product: Product; usual?: number
   const roles = useTheme().material
   const name = productName(product.name, locale)
   const stock = product.stock ?? null
-  // The owner's sold-out switch, what customers see; 0 left is a count, not that switch.
-  const soldOut = product.available === false
+  // The owner's sold-out switch, or nothing left: "Sold out", never "0 left · Running low"
+  // (OB-310). A − to 0 also turns the switch, so customers are not offered it.
+  const soldOut = product.available === false || stock === 0
   const low = !soldOut && stock !== null && usual !== undefined && stock < usual
   return (
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, minWidth: 0 }}>

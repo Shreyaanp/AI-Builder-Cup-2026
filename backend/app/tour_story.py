@@ -302,11 +302,14 @@ def seed_supply(store: MerchantRepository, uid: str, demo: DemoShop, day: date) 
             "lng": (demo.fields.lng or 0) + 0.002,
         }
     )
+    # The wholesaler sells what the stall buys: its own copy is for sale (OB-310).
     supplier_product = product.model_copy(
-        update={"price": round(product.price * 0.7), "stock": 500}
+        update={"price": round(product.price * 0.7), "stock": 500, "for_sale": None}
     )
     stock = [supplier_product] + [
-        product.model_copy(update={"name": n, "unit": u, "price": c, "stock": 500})
+        product.model_copy(
+            update={"name": n, "unit": u, "price": c, "stock": 500, "for_sale": None}
+        )
         for n, u, _, c in extras
     ]
     store.seed_demo_shop(SEED_OWNER, sid, fields, stock)

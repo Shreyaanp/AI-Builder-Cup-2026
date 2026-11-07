@@ -35,6 +35,16 @@ function readSpeak() {
   }
 }
 
+/**
+ * A new count and what customers are told with it, as the server saves it (OB-310): 0 left is
+ * sold out; more made after 0 is on sale again.
+ */
+function withStock(product: Product, stock: number | null): Partial<Product> {
+  if (stock === 0) return { stock, available: false }
+  if (product.stock === 0 && product.available === false) return { stock, available: true }
+  return { stock }
+}
+
 export function WorkspaceProvider({
   api,
   me,
@@ -264,7 +274,12 @@ export function WorkspaceProvider({
         await reload()
         return true
       } catch {
-        patch({ stock: product.stock, for_sale: product.for_sale })
+        patch({
+          stock: product.stock,
+          for_sale: product.for_sale,
+          ask_for_sale: product.ask_for_sale,
+          available: product.available,
+        })
         setToast(t.actionFailed)
         return false
       }
@@ -276,7 +291,7 @@ export function WorkspaceProvider({
       const before = product.stock ?? null
       const after =
         'add' in change ? Math.max(0, (before ?? 0) + change.add) : (change.stock ?? null)
-      const done = await saveItem(product, 'stock', change, { stock: after })
+      const done = await saveItem(product, 'stock', change, withStock(product, after))
       if (done && product.id) {
         const id = product.id
         // A run of taps on one item keeps the first count, so Undo goes back to it.
@@ -308,7 +323,7 @@ export function WorkspaceProvider({
         const item = inventory.items.find((entry) => entry.id === stockUndo.id)
         if (!item) return
         const before = stockUndo.before
-        void saveItem(item, 'stock', { stock: before }, { stock: before }).then((done) => {
+        void saveItem(item, 'stock', { stock: before }, withStock(item, before)).then((done) => {
           if (done) setToast(named(before))
         })
       },
@@ -316,7 +331,12 @@ export function WorkspaceProvider({
   }, [stockUndo, inventory.items, saveItem, stockCopy, locale, t.saved])
   const setForSale = useCallback(
     (product: Product, forSale: boolean) =>
-      saveItem(product, 'for-sale', { for_sale: forSale }, { for_sale: forSale }),
+      saveItem(
+        product,
+        'for-sale',
+        { for_sale: forSale },
+        { for_sale: forSale, ask_for_sale: false },
+      ),
     [saveItem],
   )
   const confirm = useCallback(

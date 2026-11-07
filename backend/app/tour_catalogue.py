@@ -3,7 +3,7 @@
 from .demo_catalogue import DemoShop, item, shop
 from .merchant import Understanding
 from .money import to_minor
-from .product_source import SERVED_UNITS, source_of
+from .product_source import SERVED_UNITS, inferred_supply, source_of
 from .region import profile
 from .vendor_profile import allowed_facts, infer_profile
 
@@ -39,6 +39,10 @@ def local_shop(
     # so the tour never shows "Order Bread" at a bakery or a supplier for a tailor's hem.
     for product, (*_, made_or_bought) in zip(products, menu, strict=True):
         product.source = "made" if made_or_bought == "made" else "bought"
+        # Tea dust is used up, not sold: its "sales" are what the stall brews with, so the
+        # switch is set like an owner would, and it stays in Things I buy (OB-310).
+        if inferred_supply(product.model_dump(), category):
+            product.for_sale = False
     if category == "Bakery":
         for product in products:
             product.category = (
