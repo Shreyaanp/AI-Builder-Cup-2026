@@ -119,6 +119,17 @@ test('OB-263 Goods arrived: what came and the stock now, Undo, then topped up on
   await expect(page.getByText('Check before saving')).toHaveCount(0)
   await expect(page.locator('body')).not.toContainText('₹320')
   expect(await teaDustStock(page)).toBe(Number(now))
+  // Over the order sheet the note keeps off its header: the title and the back arrow stay
+  // uncovered and tappable (360 wide).
+  const header = page.getByRole('dialog').getByRole('heading', { level: 2, name: /Tea dust from/ })
+  const noteOnSheet = (await note.boundingBox())!
+  const headerBox = (await header.boundingBox())!
+  expect(
+    noteOnSheet.y >= headerBox.y + headerBox.height ||
+      noteOnSheet.y + noteOnSheet.height <= headerBox.y,
+    'the Undo note covers the order sheet header',
+  ).toBe(true)
+  await page.screenshot({ path: test.info().outputPath('ob263-note-on-sheet.png') })
 
   await backToToday(page)
   // The Undo note is still up, and it does not cover the "topped up" row (360 wide).

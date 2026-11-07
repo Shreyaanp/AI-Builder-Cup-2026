@@ -141,11 +141,8 @@ def test_OB_263_demo_reorder_then_arrival_then_undo(live_parent_demo, instant) -
     assert again.status_code == 409
 
 
-def test_OB_263_undo_after_some_stock_was_used_takes_off_only_what_came(
-    live_parent_demo,  # noqa: F811
-    instant,  # noqa: F811
-) -> None:
-    client, _app, session, bid = live_parent_demo
+def receive_and_save(client, session, bid, save: bool = True):
+    """Order, let the demo supplier dispatch, then Goods arrived (saved unless save=False)."""
     sent = draft_and_send(client, session, bid)
     oid = sent["id"]
     order_of(client, session, bid, oid)
@@ -158,18 +155,19 @@ def test_OB_263_undo_after_some_stock_was_used_takes_off_only_what_came(
         json={"version": on_the_way["version"]},
     ).json()
     proposal = came["proposal"]
-    owner(
-        client,
-        session,
-        f"proposals/{proposal['id']}/approve",
-        "POST",
-        json={"digest": proposal["digest"]},
-    )
-    before = stock_of(client, session, bid, "Tea dust")
-    added = round(sent["lines"][0]["quantity"])
-    assert before > added
+    if save:
+        owner(
+            client,
+            session,
+            f"proposals/{proposal['id']}/approve",
+            "POST",
+            json={"digest": proposal["digest"]},
+        )
+    return oid, round(sent["lines"][0]["quantity"])
 
-    # One kg is used after the delivery was saved.
+
+def use(client, session, bid, amount: float) -> None:
+    """Some tea dust is used: the stock goes down by amount through the usual save."""
     row = next(
         item
         for item in owner(client, session, f"businesses/{bid}/inventory").json()
@@ -188,7 +186,7 @@ def test_OB_263_undo_after_some_stock_was_used_takes_off_only_what_came(
             "products": [
                 {
                     **{k: v for k, v in row.items() if k in ProductFields.model_fields},
-                    "stock": before - 1,
+                    "stock": row["stock"] - amount,
                 }
             ],
         },
@@ -200,8 +198,9 @@ def test_OB_263_undo_after_some_stock_was_used_takes_off_only_what_came(
         "POST",
         json={"digest": used["digest"]},
     )
-    assert stock_of(client, session, bid, "Tea dust") == before - 1
 
+
+def undo(client, session, bid, oid) -> dict:
     latest = order_of(client, session, bid, oid)
     undone = owner(
         client,
@@ -211,4 +210,59 @@ def test_OB_263_undo_after_some_stock_was_used_takes_off_only_what_came(
         json={"version": latest["version"]},
     )
     assert undone.status_code == 200, undone.text
+    return undone.json()
+
+
+def test_OB_263_undo_after_some_stock_was_used_takes_off_only_what_came(
+    live_parent_demo,  # noqa: F811
+    instant,  # noqa: F811
+) -> None:
+    client, _app, session, bid = live_parent_demo
+    oid, added = receive_and_save(client, session, bid)
+    before = stock_of(client, session, bid, "Tea dust")
+    assert before > added
+
+    use(client, session, bid, 1)  # one kg is used after the delivery was saved
+    assert stock_of(client, session, bid, "Tea dust") == before - 1
+    undo(client, session, bid, oid)
     assert stock_of(client, session, bid, "Tea dust") == before - 1 - added
+
+
+def test_OB_263_undo_after_exactly_what_came_was_used_takes_it_all_off(
+    live_parent_demo,  # noqa: F811
+    instant,  # noqa: F811
+) -> None:
+    """Receive 6 (6 -> 12), use 6 (back to 6), Undo: the stock is 0, not 6, because the 6 kg
+    is on order again. The stock being back where it started does not mean it was never saved."""
+    client, _app, session, bid = live_parent_demo
+    start = stock_of(client, session, bid, "Tea dust")
+    oid, added = receive_and_save(client, session, bid)
+    assert stock_of(client, session, bid, "Tea dust") == start + added
+
+    use(client, session, bid, added)
+    assert stock_of(client, session, bid, "Tea dust") == start
+    reopened = undo(client, session, bid, oid)
+    assert not reopened["received"] and reopened["status"] in {"dispatched", "invoiced"}
+    assert stock_of(client, session, bid, "Tea dust") == max(0, start - added)
+
+
+def test_OB_263_undo_floors_the_stock_at_zero(live_parent_demo, instant) -> None:  # noqa: F811
+    client, _app, session, bid = live_parent_demo
+    oid, added = receive_and_save(client, session, bid)
+    use(client, session, bid, stock_of(client, session, bid, "Tea dust") - 1)
+    undo(client, session, bid, oid)
+    assert stock_of(client, session, bid, "Tea dust") == 0
+
+
+def test_OB_263_undo_of_an_unsaved_review_leaves_the_stock(
+    live_parent_demo,  # noqa: F811
+    instant,  # noqa: F811
+) -> None:
+    """The stock update was never saved, then some was used: Undo takes nothing off."""
+    client, _app, session, bid = live_parent_demo
+    start = stock_of(client, session, bid, "Tea dust")
+    oid, _added = receive_and_save(client, session, bid, save=False)
+    assert stock_of(client, session, bid, "Tea dust") == start
+    use(client, session, bid, 1)
+    undo(client, session, bid, oid)
+    assert stock_of(client, session, bid, "Tea dust") == start - 1

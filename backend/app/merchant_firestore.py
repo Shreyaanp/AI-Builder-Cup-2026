@@ -226,6 +226,11 @@ class FirestoreMerchantStore:
 
         return run(self.client.transaction())
 
+    def proposal_saved(self, uid: str, pid: str) -> bool:
+        snapshot = self.proposals.document(document_id(pid, "Proposal not found.")).get()
+        proposal = snapshot.to_dict() if snapshot.exists else None
+        return bool(proposal and proposal["uid"] == uid and proposal.get("receipt"))
+
     def commit(self, uid: str, pid: str, digest: str) -> dict[str, Any]:
         proposal_ref = self.proposals.document(document_id(pid, "Proposal not found."))
 

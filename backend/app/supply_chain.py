@@ -1732,6 +1732,9 @@ def receive(
     po["received"] = True
     po["received_at"] = time.time()
     po["received_stock"] = {name: product.stock for name, product in changed.items()}
+    # Undo asks the store whether this stock update was saved; the stock value alone cannot
+    # tell "never saved" from "saved, then used back down" (OB-263).
+    po["received_proposal"] = proposal["id"] if proposal else ""
     if po["status"] == "dispatched":
         po["status"] = "received"
     from .supply_io import direction_of
@@ -1767,13 +1770,18 @@ def undo_receive(
         raise HTTPException(409, "Nothing to undo.")
     before = po.get("received_before") or {}
     after = po.get("received_stock") or {}
+    pid = po.get("received_proposal")
+    # Only stock the owner saved goes back; an unsaved review left it as it was. Some or all of
+    # it used since is fine: what the delivery added comes off whatever is there now, never
+    # below zero. Orders received before the flag existed fall back to the stock value.
+    saved = store.proposal_saved(uid, pid) if pid else None
     products = []
     for product in context["inventory"]:
         name = product["name"]
         stock = product.get("stock")
-        # Only stock the owner saved goes back; an unsaved review left it as it was. Some used
-        # since is fine: what the delivery added comes off whatever is there now.
-        if name not in after or stock is None or stock == (before.get(name) or 0):
+        if name not in after or stock is None or saved is False:
+            continue
+        if saved is None and stock == (before.get(name) or 0):
             continue
         fields = {k: v for k, v in product.items() if k in ProductFields.model_fields}
         added = after[name] - (before.get(name) or 0)
@@ -1791,7 +1799,14 @@ def undo_receive(
         store.commit(uid, proposal["id"], proposal["digest"])
     receipt = po.pop("received_receipt", None)
     po["documents"] = [d for d in po["documents"] if d.get("id") != receipt]
-    for key in ("received_at", "received_stock", "received_before", "received_from", "closed_at"):
+    for key in (
+        "received_at",
+        "received_stock",
+        "received_before",
+        "received_from",
+        "received_proposal",
+        "closed_at",
+    ):
         po.pop(key, None)
     po["received"] = False
     po["status"] = reopen
