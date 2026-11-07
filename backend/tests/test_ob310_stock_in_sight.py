@@ -11,6 +11,7 @@ from fastapi.testclient import TestClient
 from app.merchant import MerchantStore, ProductFields, ProposalRequest
 from app.product_source import asks_for_sale, for_sale, sold_names
 from app.shop_today import usual_sales
+from tests.pins import OWNER_PIN
 from tests.test_coach_owner_words import ENGLISH_WORD, cards, demo, reply_of  # noqa: F401
 from tests.test_imports import make_shop
 from tests.test_ob239_made_or_bought import open_shop
@@ -80,10 +81,10 @@ def test_ob310_nothing_else_is_asked():
 def test_ob310_a_supply_that_has_sold_stays_on_the_menu():
     tea = {"name": "Tea dust", "unit": "kg"}
     assert for_sale(tea, "Tea stall", sold_names([{"item": "tea dust", "quantity": 1}])) is True
-    # The owner's "I buy it" on a raw ingredient keeps it off, unless customers bought it.
+    # "I buy it" says how the item is restocked, not that customers can't buy it: still asked.
     eggs = {"name": "Eggs", "unit": "dozen", "source": "bought"}
-    assert for_sale(eggs, "Bakery") is False
-    assert for_sale(eggs, "Bakery", sold_names([{"item": "Eggs", "quantity": 2}])) is True
+    assert for_sale(eggs, "Bakery") is True
+    assert asks_for_sale(eggs, "Bakery") is True
     # "I make it" never hides anything; nor "I buy it" on something that isn't a raw supply.
     assert for_sale({**tea, "source": "made"}, "Tea stall") is True
     assert for_sale({"name": "Biscuits", "unit": "pack", "source": "bought"}, "Tea stall")
@@ -185,6 +186,51 @@ def test_ob310_the_owner_is_asked_about_a_bare_name_once(app):  # noqa: F811
         assert items["Paneer"]["for_sale"] is True and "ask_for_sale" not in items["Paneer"]
 
 
+# HOLD 1 (7 Nov 21:16): the make-or-buy answer "Buy" never moves an item to Things I buy.
+BOUGHT = [
+    ("Paneer", "kg", "Sweet shop"),
+    ("Eggs", "dozen", "Bakery"),
+    ("Butter", "pack", "Bakery"),
+    ("Cheese", "pack", "Bakery"),
+    ("Milk", "bottle", "Cafe"),
+    ("Ghee", "kg", "Home kitchen"),
+]
+
+
+@pytest.mark.parametrize(("name", "unit", "category"), BOUGHT)
+def test_ob310_answering_buy_keeps_the_item_on_the_menu_and_asked(
+    app,  # noqa: F811
+    name,
+    unit,
+    category,
+):
+    with TestClient(app) as client:
+        join(client)
+        proposal = client.post(
+            "/api/v1/proposals",
+            json={
+                "kind": "business",
+                "revision": 0,
+                **OWNER_PIN,
+                "business": {"name": "Ravi's", "category": category},
+                "products": [{"name": name, "price": 40000, "unit": unit, "stock": 3}],
+            },
+        ).json()
+        bid = client.post(
+            f"/api/v1/proposals/{proposal['id']}/approve", json={"digest": proposal["digest"]}
+        ).json()["business_id"]
+        [item] = client.get(f"/api/v1/businesses/{bid}/inventory").json()
+        assert item["for_sale"] is True and item["ask_for_sale"] is True
+        url = f"/api/v1/businesses/{bid}/inventory/{item['id']}/source"
+        assert client.post(url, json={"source": "bought"}).status_code == 200
+        [item] = client.get(f"/api/v1/businesses/{bid}/inventory").json()
+        assert item["source"] == "bought"
+        assert item["for_sale"] is True and item["ask_for_sale"] is True
+        assert client.post(f"/api/v1/businesses/{bid}/share", json={"public": True}).is_success
+        shop = client.get(f"/api/v1/public/shops/{bid}").json()
+        assert [p["name"] for p in shop["products"]] == [name]
+
+
 def test_ob310_a_menu_edit_keeps_the_for_sale_switch(tmp_path: Path):
     store = MerchantStore(str(tmp_path / "merchant.sqlite3"))
     bid = tea_stall(store)
@@ -236,6 +282,24 @@ def stocked(client: TestClient) -> tuple[str, dict]:
     client.post(f"/api/v1/proposals/{proposal['id']}/approve", json={"digest": proposal["digest"]})
     [item] = client.get(f"/api/v1/businesses/{bid}/inventory").json()
     return bid, item
+
+
+def test_ob310_undo_keeps_the_owners_sold_out_switch(app):  # noqa: F811
+    with TestClient(app) as client:
+        join(client)
+        bid, item = stocked(client)
+        url = f"/api/v1/businesses/{bid}/inventory/{item['id']}/stock"
+        client.post(url, json={"stock": 1})
+        toggle = f"/api/v1/businesses/{bid}/inventory/{item['id']}/availability"
+        client.post(toggle, json={"available": False})
+        assert client.post(url, json={"stock": 0}).json()["available"] is False
+        # Undo sends the count and the switch it had: switched off stays off.
+        undone = client.post(url, json={"stock": 1, "available": False}).json()
+        assert undone["stock"] == 1 and undone["available"] is False
+        # Without the switch, more after 0 is on sale again; 0 left is sold out whatever is sent.
+        client.post(url, json={"stock": 0})
+        assert client.post(url, json={"stock": 1}).json()["available"] is True
+        assert client.post(url, json={"stock": 0, "available": True}).json()["available"] is False
 
 
 def test_ob310_stock_saves_at_once_and_adds_from_the_saved_count(app):  # noqa: F811

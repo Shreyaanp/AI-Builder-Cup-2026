@@ -143,6 +143,8 @@ export function WorkspaceProvider({
     name: string
     before: number | null
     after: number | null
+    // The sold-out switch before the run of taps: Undo puts it back with the count.
+    available: boolean
   } | null>(null)
   const stockCopy = useStockCopy()
   const locale = useLocale()
@@ -300,6 +302,7 @@ export function WorkspaceProvider({
           name: product.name,
           before: last?.id === id ? last.before : before,
           after,
+          available: last?.id === id ? last.available : product.available !== false,
         }))
       }
       return done
@@ -322,8 +325,10 @@ export function WorkspaceProvider({
         setStockUndo(null)
         const item = inventory.items.find((entry) => entry.id === stockUndo.id)
         if (!item) return
-        const before = stockUndo.before
-        void saveItem(item, 'stock', { stock: before }, withStock(item, before)).then((done) => {
+        const { before, available } = stockUndo
+        // 0 left is sold out whatever the switch was; any other count gets the saved switch back.
+        const change = before === 0 ? withStock(item, 0) : { stock: before, available }
+        void saveItem(item, 'stock', { stock: before, available }, change).then((done) => {
           if (done) setToast(named(before))
         })
       },

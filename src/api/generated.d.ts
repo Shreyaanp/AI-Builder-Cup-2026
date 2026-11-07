@@ -7018,12 +7018,16 @@ export interface components {
          * StockRequest
          * @description The owner's − / + or "Made 20": a new count, or an amount added (OB-310). No AI involved.
          *     `stock: null` is "not counted" again: Undo of the first tap on an item nobody counted.
+         *     `available` is Undo's saved sold-out switch, so it never puts back on sale an item the owner
+         *     had switched off; 0 left is still sold out.
          */
         StockRequest: {
             /** Stock */
             stock?: number | null;
             /** Add */
             add?: number | null;
+            /** Available */
+            available?: boolean | null;
         };
         /** Streak */
         Streak: {

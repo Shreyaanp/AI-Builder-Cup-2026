@@ -135,6 +135,9 @@ function ProductForm({ product }: { product: Product | null }) {
   const [source, setSource] = useState(product?.source)
   // "Customers can buy this": off keeps it in Things I buy, off the menu and page (OB-310).
   const [forSale, setForSale] = useState(product?.for_sale !== false)
+  // The saved switch, refreshed with the answer below, so the dialog never shows a stale "on".
+  const [savedForSale, setSavedForSale] = useState(product?.for_sale !== false)
+  const forSaleTapped = useRef(false)
   const [savingSource, setSavingSource] = useState(false)
   // The tap saves at once, so Cancel does not undo it: the note says so (OB-243).
   const [sourceSaved, setSourceSaved] = useState(false)
@@ -148,7 +151,10 @@ function ProductForm({ product }: { product: Product | null }) {
     void api<Product[]>(`/businesses/${shopId}/inventory`, { signal: abort.signal })
       .then((items) => {
         const saved = items.find((entry) => entry.id === productId)
-        if (saved && !abort.signal.aborted && !sourceTapped.current) setSource(saved.source)
+        if (!saved || abort.signal.aborted) return
+        if (!sourceTapped.current) setSource(saved.source)
+        setSavedForSale(saved.for_sale !== false)
+        if (!forSaleTapped.current) setForSale(saved.for_sale !== false)
       })
       // The menu's copy stays: a tap still saves, and the answer is changed, never cleared.
       .catch(() => undefined)
@@ -160,9 +166,7 @@ function ProductForm({ product }: { product: Product | null }) {
   useBackClose(
     true,
     close,
-    JSON.stringify(item) !== JSON.stringify(initial) ||
-      unsavedSource ||
-      forSale !== (product?.for_sale !== false),
+    JSON.stringify(item) !== JSON.stringify(initial) || unsavedSource || forSale !== savedForSale,
   )
   const [error, setError] = useState('')
   // One request at a time: repeated taps must not create competing proposals.
@@ -225,9 +229,7 @@ function ProductForm({ product }: { product: Product | null }) {
               // A new item saves the switch as shown, so "Milk" left on "Customers can buy this"
               // stays on the menu; a saved item sends it only when the owner changed it, so it
               // keeps the app's own guess.
-              ...(!product || forSale !== (product.for_sale !== false)
-                ? { for_sale: forSale }
-                : {}),
+              ...(!product || forSale !== savedForSale ? { for_sale: forSale } : {}),
             },
           ],
         }),
@@ -381,7 +383,10 @@ function ProductForm({ product }: { product: Product | null }) {
                   control={
                     <Switch
                       checked={forSale}
-                      onChange={(_, checked) => setForSale(checked)}
+                      onChange={(_, checked) => {
+                        forSaleTapped.current = true
+                        setForSale(checked)
+                      }}
                       slotProps={{ input: { 'aria-describedby': 'product-for-sale-hint' } }}
                     />
                   }

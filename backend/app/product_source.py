@@ -427,8 +427,9 @@ def supply_only(name: str) -> bool:
 
 def inferred_supply(product: dict[str, Any], category: str = "") -> bool:
     """One of the "Things I buy" by the app's own guess, before sales are checked (OB-310): at a
-    shop that makes what it sells, a supply that can't be a menu item, or a raw ingredient the
-    owner said they buy. Never by a bare name alone, never when the owner set the switch."""
+    shop that makes what it sells, a supply that can't be a menu item. Never by a bare name alone,
+    never when the owner set the switch, and never by the make-or-buy answer: "Buy" says how the
+    item is restocked, not that customers can't buy it."""
     from .sourcing import unit_of
 
     if isinstance(product.get("for_sale"), bool) or product.get("source") == "made":
@@ -438,7 +439,7 @@ def inferred_supply(product: dict[str, Any], category: str = "") -> bool:
     if unit_of(product.get("unit") or "") in SERVED_UNITS:
         return False
     name = product.get("name") or ""
-    return supply_only(name) or (product.get("source") == "bought" and raw_ingredient(name))
+    return supply_only(name)
 
 
 def sold_names(sales: Iterable[dict[str, Any]]) -> set[str]:
@@ -463,7 +464,7 @@ def sold_for(
 def for_sale(product: dict[str, Any], category: str = "", sold: Collection[str] = ()) -> bool:
     """Whether customers can buy this item, or it is one of the "Things I buy" (OB-310): the
     owner's own switch first; else only a supply that can't be a menu item (tea dust, a paper cup)
-    or a raw ingredient the owner said they buy, at a shop that makes what it sells, and never
+    at a shop that makes what it sells, and never
     one that has sold (`sold`: casefolded names from `sold_names`). Nothing sellable is hidden by
     its name: "Paneer" at a sweet shop stays on the menu. Nothing is rewritten either."""
     saved = product.get("for_sale")

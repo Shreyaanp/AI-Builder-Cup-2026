@@ -366,11 +366,14 @@ class SourceRequest(BaseModel):
 
 class StockRequest(BaseModel):
     """The owner's − / + or "Made 20": a new count, or an amount added (OB-310). No AI involved.
-    `stock: null` is "not counted" again: Undo of the first tap on an item nobody counted."""
+    `stock: null` is "not counted" again: Undo of the first tap on an item nobody counted.
+    `available` is Undo's saved sold-out switch, so it never puts back on sale an item the owner
+    had switched off; 0 left is still sold out."""
 
     model_config = ConfigDict(extra="forbid")
     stock: int | None = Field(default=None, ge=0, le=1_000_000)
     add: int | None = Field(default=None, ge=-1_000_000, le=1_000_000)
+    available: bool | None = None
 
     @model_validator(mode="after")
     def one_change(self) -> StockRequest:
@@ -383,7 +386,10 @@ class StockRequest(BaseModel):
             stock = self.stock
         else:
             stock = min(max((fields.get("stock") or 0) + self.add, 0), 1_000_000)
-        return with_stock(fields, stock)
+        changed = with_stock(fields, stock)
+        if self.available is not None and stock != 0:
+            changed["available"] = self.available
+        return changed
 
 
 def with_stock(fields: dict[str, Any], stock: int | None) -> dict[str, Any]:

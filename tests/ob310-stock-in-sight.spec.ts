@@ -370,3 +370,81 @@ test('OB-310: a bare name stays on the menu and is asked about once', async ({ p
   await expect(ask).toHaveCount(0)
   await expect(sheet.locator('[data-menu-card="Samosa"]')).toBeVisible()
 })
+
+// Review HOLD of 7 Nov 21:16: "Buy" says how Paneer is restocked, not that customers can't buy
+// it. The tap keeps it on the menu grid and the public page, still asked about, switch on.
+test('OB-310: answering Buy in the editor keeps the item on the menu and page', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 360, height: 800 })
+  await localOnly(page)
+  await enter(page)
+  const prepared = await (
+    await page.request.post('/api/v1/proposals', {
+      data: {
+        kind: 'business',
+        revision: 0,
+        business: {
+          name: 'Buy Sweets',
+          category: 'Sweet shop',
+          location: 'Indiranagar, Bengaluru',
+          currency: 'INR',
+          timezone: 'Asia/Kolkata',
+          hours: '07:00–21:00',
+          phone: '+91 80 4000 1234',
+        },
+        owner_location: { lat: 12.9716, lng: 77.6412, accuracy_m: 0, source: 'pin' },
+        products: [
+          { name: 'Kaju katli', price: 1200, unit: 'piece', category: 'Sweets', stock: 40 },
+          { name: 'Paneer', price: 40000, unit: 'kg', category: 'Dairy', stock: 3 },
+        ],
+      },
+    })
+  ).json()
+  const saved = await (
+    await page.request.post(`/api/v1/proposals/${prepared.id}/approve`, {
+      data: { digest: prepared.digest },
+    })
+  ).json()
+  const id = saved.business_id as string
+  expect(
+    (await page.request.post(`/api/v1/businesses/${id}/share`, { data: { public: true } })).ok(),
+  ).toBe(true)
+  const paneer = async () =>
+    (
+      (await (await page.request.get(`/api/v1/businesses/${id}/inventory`)).json()) as {
+        name: string
+        source?: string
+        for_sale: boolean
+        ask_for_sale?: boolean
+      }[]
+    ).find((p) => p.name === 'Paneer')!
+  await page.reload()
+  await page.getByRole('button', { name: 'Continue local preview' }).click()
+  await expect(page.getByTestId('today')).toBeVisible({ timeout: 15_000 })
+  const sheet = await openMenu(page)
+  await sheet.getByRole('button', { name: 'Edit Paneer' }).click()
+  const form = page.getByRole('dialog', { name: 'Edit Paneer' })
+  const answer = form.getByRole('group', { name: 'Do you make it or buy it?' })
+  await answer.scrollIntoViewIfNeeded()
+  await answer.getByRole('button', { name: 'Buy', exact: true }).click()
+  await expect(form.getByTestId('product-source-saved')).toHaveText('Saved')
+  await expect.poll(async () => (await paneer()).source).toBe('bought')
+  expect(await paneer()).toMatchObject({ for_sale: true, ask_for_sale: true })
+  await expect(form.getByRole('switch', { name: 'Customers can buy this' })).toBeChecked()
+  await form.getByRole('button', { name: 'Cancel' }).click()
+  await expect(form).toHaveCount(0)
+  await expect(
+    page.getByTestId('shop-tiles').getByRole('button', { name: /^Menu.*2 items/ }),
+  ).toBeVisible()
+  const menu = await openMenu(page)
+  await expect(menu.locator('[data-menu-card="Paneer"]')).toBeVisible()
+  await expect(menu.getByRole('group', { name: 'Do customers buy Paneer from you?' })).toBeVisible()
+  await page.screenshot({ path: test.info().outputPath('buy-stays-on-menu-360.png') })
+  const shop = await (await page.request.get(`/api/v1/public/shops/${id}`)).json()
+  expect(shop.products.map((p: { name: string }) => p.name)).toContain('Paneer')
+  await page.addInitScript(() => localStorage.setItem('chalkboard.customer.journey', 'done'))
+  await page.goto(`/explore/s/${id}`)
+  await expect(page.getByRole('heading', { name: 'Buy Sweets', exact: true })).toBeVisible()
+  await expect(page.getByText('Paneer').first()).toBeVisible()
+})

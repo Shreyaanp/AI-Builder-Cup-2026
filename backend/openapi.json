@@ -19005,12 +19005,23 @@
               }
             ],
             "title": "Add"
+          },
+          "available": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Available"
           }
         },
         "additionalProperties": false,
         "type": "object",
         "title": "StockRequest",
-        "description": "The owner's − / + or \"Made 20\": a new count, or an amount added (OB-310). No AI involved.\n`stock: null` is \"not counted\" again: Undo of the first tap on an item nobody counted."
+        "description": "The owner's − / + or \"Made 20\": a new count, or an amount added (OB-310). No AI involved.\n`stock: null` is \"not counted\" again: Undo of the first tap on an item nobody counted.\n`available` is Undo's saved sold-out switch, so it never puts back on sale an item the owner\nhad switched off; 0 left is still sold out."
       },
       "Streak": {
         "properties": {
