@@ -18,13 +18,17 @@ from fastapi import APIRouter, Request
 from pydantic import BaseModel
 
 from . import brief
+from .close_reward import CloseReward, close_reward
 from .limits import enforce_limits
 from .merchant import MerchantRepository
 from .merchant_routes import owner, store
+from .owner_promise import Promise, promise_for
 from .playbook import LineTopic, TodayHints, migrate_stored, today_hints
+from .product_source import Source, source_of
 from .region import shop_currency, shop_zone
 from .rescue import buffer_for, local_now
 from .shop_time import shop_timezone
+from .supply_chain import runs_out
 
 router = APIRouter(prefix="/api/v1/businesses", tags=["today"])
 log = structlog.get_logger(__name__)
@@ -77,6 +81,9 @@ class LowItem(BaseModel):
     name: str
     stock: int
     runs_out: date | None
+    # Bought stock is ordered, made items are made again, unknown ones ask once (OB-239).
+    source: Source = "bought"
+    product_id: str | None = None
 
 
 class CoachLine(BaseModel):
@@ -102,6 +109,8 @@ class Today(BaseModel):
     hints: TodayHints | None = None
     # None: feature disabled; never infer zero from missing facts.
     has_customer_stamp: bool | None = None
+    # What the owner wrote down last night for this morning, while still open (HABIT change 4).
+    promise: Promise | None = None
 
 
 def _day(fields: dict[str, Any], at: float | None = None) -> str:
@@ -149,27 +158,36 @@ def pulse(
     )
 
 
-def low_stock(inventory: list[dict[str, Any]], forecast: brief.Forecast) -> list[LowItem]:
-    """Items that run out within two days of forecast demand, or have 5 or fewer left."""
+def low_stock(
+    inventory: list[dict[str, Any]], forecast: brief.Forecast, today: date, category: str = ""
+) -> list[LowItem]:
+    """Stock that runs out by tomorrow, or has 5 or fewer left. The run-out day is the supply
+    tile's (OB-238). Each row says if the shop buys it (an order), makes it (make more) or has
+    not said (one question), so a made item never becomes a supplier order (OB-239)."""
+    predictions = {"predictions": [p.model_dump(mode="json") for p in forecast.predictions]}
     out = []
     for product in inventory:
         stock = product.get("stock")
         if stock is None or product.get("available") is False:
             continue
-        total, runs_out = 0.0, None
-        for row in sorted(
-            (p for p in forecast.predictions if p.item.casefold() == product["name"].casefold()),
-            key=lambda p: p.date,
-        ):
-            total += row.quantity
-            if total >= stock:
-                runs_out = row.date
-                break
-        first = forecast.predictions[0].date if forecast.predictions else None
-        soon = runs_out is not None and first is not None and runs_out <= first + timedelta(days=1)
-        if stock <= 5 or soon:
-            out.append(LowItem(name=product["name"], stock=stock, runs_out=runs_out))
-    return sorted(out, key=lambda item: item.stock)[:3]
+        found = runs_out(product, predictions, today)
+        day = date.fromisoformat(found) if found else None
+        if stock <= 5 or (day is not None and day <= today + timedelta(days=1)):
+            out.append(
+                LowItem(
+                    name=product["name"],
+                    stock=stock,
+                    runs_out=day,
+                    source=source_of(product, category),
+                    product_id=product.get("id"),
+                )
+            )
+    # Made items never push out a supply the shop must order: what it buys or has not said comes
+    # first, the one that runs out first leading, then the fewest left (OB-244).
+    return sorted(
+        out,
+        key=lambda item: (item.source == "made", item.runs_out or date.max, item.stock),
+    )[:3]
 
 
 def coach_line(
@@ -292,9 +310,30 @@ async def today_page(business_id: str, request: Request) -> Today:
         )
         if top and top.quantity >= 1
         else None,
-        low_stock=low_stock(context["inventory"], forecast),
+        low_stock=low_stock(
+            context["inventory"], forecast, today, str(fields.get("category") or "")
+        ),
         line=coach_line(fields, today, sales, weather, hints.line_topics if hints else None),
         demo=bool(fields.get("demo")),
         hints=hints,
         has_customer_stamp=customer_stamp,
+        promise=await anyio.to_thread.run_sync(promise_for, service, business_id, today),
     )
+
+
+@router.get("/{business_id}/day/{day}/reward", response_model=CloseReward | None)
+async def day_reward(business_id: str, day: date, request: Request) -> CloseReward | None:
+    uid = await owner(request)
+    await enforce_limits(request, [("owner:read", uid)])
+    service = store(request)
+    context = await anyio.to_thread.run_sync(service.context, uid, business_id)
+    fields = context["business"]["fields"]
+    if day == local_now(fields).date():
+        # Same forecast and cache as Today, so the number matches what the owner saw there.
+        sales, forecast = await brief.today_forecast(
+            service, uid, business_id, request.app.state.forecaster, context
+        )
+    else:
+        sales = await anyio.to_thread.run_sync(service.sales_history, uid, business_id)
+        forecast = None
+    return close_reward(sales, day, shop_currency(fields), forecast)

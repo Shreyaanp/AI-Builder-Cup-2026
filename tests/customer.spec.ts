@@ -29,7 +29,7 @@ async function sharedShop(page: Page, phone = '+65 6123 4567') {
   await page.getByLabel('I agree to the Terms').check()
   await page.getByLabel('I have read the Privacy Notice').check()
   await page.getByRole('button', { name: 'Agree and continue' }).click()
-  await expect(page.getByRole('heading', { name: 'What shall we work on today?' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Let’s put your shop online' })).toBeVisible()
   const prepared = await page.request.post('/api/v1/proposals', {
     data: {
       kind: 'business',
@@ -139,9 +139,7 @@ test('Signed-in customer and owner have a live two-way conversation', async ({
     await page.reload()
     await page.getByRole('button', { name: 'Continue local preview' }).click()
     await page.getByRole('button', { name: 'Shop', exact: true }).click()
-    // The pending card says who is waiting; its Reply opens the same inbox sheet.
-    const waiting = page.getByRole('region', { name: '1 customer is waiting' })
-    await expect(waiting).toBeVisible()
+    // Who is waiting shows once, on Coach Today; Shop keeps the count on its Messages row.
     // The Messages tile shows the unread count and opens the inbox sheet.
     await page.getByRole('button', { name: /^Messages 1/ }).click()
     const messages = page.getByRole('region', { name: /Messages/ })
@@ -149,8 +147,9 @@ test('Signed-in customer and owner have a live two-way conversation', async ({
     await expect(messages).toContainText('Asha')
     await expect(messages).toContainText('Could I ask about kopi? <script>hello</script>')
     await expect(messages).toContainText('Unread')
-    await messages.getByRole('button', { name: 'Open conversation', exact: true }).click()
-    await expect(page.getByRole('heading', { name: 'Messages (0)' })).toBeVisible()
+    await messages.getByRole('button', { name: /^Open conversation/ }).click()
+    // Inside a conversation the header is the customer's name (simplify batch 3).
+    await expect(messages.getByRole('heading', { name: 'Asha', exact: true })).toBeVisible()
     await messages
       .getByLabel('Reply', { exact: true })
       .fill('Yes, kopi is available. How can I help?')
@@ -160,14 +159,22 @@ test('Signed-in customer and owner have a live two-way conversation', async ({
       timeout: 5_000,
     })
     const composer = customer.getByRole('textbox', { name: 'Message', exact: true })
-    await composer.fill('Thank you!')
+    // OB-303: "See translation" is offered for a customer's words in another language only,
+    // never for English in an English app or on the owner's own reply.
+    await expect(
+      messages.getByRole('button', { name: 'See translation', exact: true }),
+    ).toHaveCount(0)
+    await composer.fill('धन्यवाद!')
     await composer.press('Enter')
-    await expect(messages).toContainText('Thank you!', { timeout: 5_000 })
-    await messages.getByRole('button', { name: 'See translation', exact: true }).last().click()
-    await expect(messages).toContainText(
-      'Simulated translation \u00b7 offline fixture, no live AI connected',
-    )
-    await messages.getByRole('button', { name: 'Close conversation', exact: true }).click()
+    await expect(messages).toContainText('धन्यवाद!', { timeout: 5_000 })
+    await expect(
+      messages.getByRole('button', { name: 'See translation', exact: true }),
+    ).toHaveCount(1)
+    await messages.getByRole('button', { name: 'See translation', exact: true }).click()
+    await expect(messages).toContainText('Sample translation for the demo')
+    // OB-305: More options sits beside Dialog's Close button on desktop without being intercepted.
+    await messages.getByRole('button', { name: 'More options', exact: true }).click()
+    await page.getByRole('menuitem', { name: 'Close conversation', exact: true }).click()
     await expect(customer.getByText('This conversation is closed.')).toBeVisible({
       timeout: 5_000,
     })
@@ -290,11 +297,13 @@ test('Polling recovers when the live stream fails, and a blocked customer cannot
     await page.getByRole('button', { name: 'Shop', exact: true }).click()
     await page.getByRole('button', { name: /^Messages 1/ }).click()
     const messages = page.getByRole('region', { name: /Messages/ })
-    await messages.getByRole('button', { name: 'Open conversation', exact: true }).click()
+    await messages.getByRole('button', { name: /^Open conversation/ }).click()
     await messages.getByLabel('Reply', { exact: true }).fill('Reply through polling')
     await messages.getByRole('button', { name: 'Send message', exact: true }).click()
     await expect(thread).toContainText('Reply through polling', { timeout: 12_000 })
-    await messages.getByRole('button', { name: 'Block customer', exact: true }).click()
+    // OB-305: More options is reachable on desktop and phone to block a customer.
+    await messages.getByRole('button', { name: 'More options', exact: true }).click()
+    await page.getByRole('menuitem', { name: 'Block customer', exact: true }).click()
     await messages
       .getByRole('group', { name: 'Block this customer from sending more messages?' })
       .getByRole('button', { name: 'Block customer', exact: true })

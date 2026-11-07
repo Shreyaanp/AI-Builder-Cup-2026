@@ -69,10 +69,11 @@ def test_demo_is_the_full_owner_app_on_a_private_sandbox(app, monkeypatch):  # n
         assert sap.status_code == 200 and sap.json()["source"] == "recorded"
         drafted = owner(client, session, f"businesses/{bid}/supply/reorder", "POST", json={})
         assert drafted.status_code == 200, drafted.text
-        # Sandbox writes stay in the session; anything that would leave it is refused.
+        # Sandbox writes stay in the session (the real store below is never called); anything
+        # that would leave it is refused. OB-248: sharing is one of those sandbox writes.
         assert owner(client, session, "me/data", "DELETE").status_code == 403
         shared = owner(client, session, f"businesses/{bid}/share", "POST", json={"public": True})
-        assert shared.status_code == 403 and shared.json()["detail"] == "DEMO_NOT_SENT"
+        assert shared.status_code == 200 and shared.json()["public"] is True
         assert owner(client, session, "businesses/someone-else/inventory").status_code in {
             403,
             404,
@@ -163,7 +164,8 @@ def test_demo_coach_answers_offline(app, monkeypatch):  # noqa: F811
 def test_OB_59_public_demo_coach_answers_Hindi_in_Hindi(app):  # noqa: N802, F811
     prompts = [
         ("Help me update my products", "demo menu"),
-        ("Help me close the day", "demo sales"),
+        # Closing the day opens Close the day, never a sales total (S2-9).
+        ("Help me close the day", "saves your sales"),
         ("Forecast demand for Masala chai", "demo forecast"),
         ("Reorder milk for tomorrow", "Demo supply records"),
         ("My flour is running low", "Demo supply records"),
@@ -179,11 +181,13 @@ def test_OB_59_public_demo_coach_answers_Hindi_in_Hindi(app):  # noqa: N802, F81
         ("आज बिक्री कैसी रही?", "आज डेमो में"),
         ("कल क्या तैयारी करूँ?", "कल"),
         ("ग्राहक क्या पूछ रहे हैं?", "ग्राहक सवाल"),
-        ("नमक खत्म है", "डेमो में"),
+        ("नमक खत्म है", "डेमो दुकान में नमक का स्टॉक दर्ज नहीं है"),
         ("कीमत बदलो", "कीमत"),
         ("ऑर्डर और सामान", "डेमो सप्लायर"),
-        ("We are closed today", "Demo shop hours"),
-        ("What is my business called?", "I can help with"),
+        # Closed for today only is prepared for review, as on Shop details (#633).
+        ("We are closed today", "Closed today ("),
+        # Unsure: one short question, never the old examples list (S2-9).
+        ("What is my business called?", "What would you like to do"),
     ]
     with TestClient(app) as client:
         app.state.v1_settings.public_demo_enabled = True
@@ -202,7 +206,7 @@ def test_OB_59_public_demo_coach_answers_Hindi_in_Hindi(app):  # noqa: N802, F81
             reply = " ".join(event.get("text", "") for event in events)
             assert expected in reply, (message, events)
             assert "What is your business called?" not in reply
-            if expected != "I can help with" and not any(
+            if expected != "What would you like to do" and not any(
                 "\u0900" <= ch <= "\u097f" for ch in message
             ):
                 assert "next" in reply.lower()
@@ -302,6 +306,125 @@ def test_failed_seed_releases_capacity(app, monkeypatch):  # noqa: F811
         assert app.state.public_demos == {}
         monkeypatch.setattr("app.public_demo.MAX_SESSIONS", 0)
         assert open_demo(client).status_code == 429
+
+
+def test_OB_255_a_full_instance_still_opens_the_demo_for_a_new_visitor(app, monkeypatch):  # noqa: N802, F811
+    monkeypatch.setattr(public_demo, "MAX_SESSIONS", 3)
+    with TestClient(app) as client:
+        app.state.v1_settings.public_demo_enabled = True
+        opened = []
+        for _ in range(public_demo.MAX_SESSIONS + 2):
+            response = open_demo(client)
+            assert response.status_code == 200
+            opened.append(response.json()["session_id"])
+        # The newest visitor got a demo and memory still holds at most MAX_SESSIONS sandboxes.
+        assert opened[-1] in app.state.public_demos
+        assert len(app.state.public_demos) == public_demo.MAX_SESSIONS
+        # The least recently used were released from memory, not lost: they restore and still write.
+        assert opened[0] not in app.state.public_demos
+        assert owner(client, opened[0], "businesses").status_code == 200
+        saved = owner(client, opened[0], "reminders", "PUT", json={"enabled": True})
+        assert saved.status_code == 200
+        assert owner(client, opened[0], "reminders").json()["subscriptions"] == ["demo"]
+
+
+def test_OB_255_a_demo_in_use_is_never_released(app, monkeypatch):  # noqa: N802, F811
+    monkeypatch.setattr(public_demo, "MAX_SESSIONS", 2)
+    with TestClient(app) as client:
+        app.state.v1_settings.public_demo_enabled = True
+        first, second = [open_demo(client).json()["session_id"] for _ in range(2)]
+        # The oldest sandbox is answering a request, so the next least recently used one goes.
+        app.state.public_demos[first].busy = 1
+        assert open_demo(client).status_code == 200
+        assert first in app.state.public_demos and second not in app.state.public_demos
+        # Every sandbox in use at once: the visitor waits instead of memory growing.
+        for entry in app.state.public_demos.values():
+            entry.busy = 1
+        busy = open_demo(client)
+        assert busy.status_code == 429 and busy.json()["detail"] == "DEMO_BUSY"
+        assert len(app.state.public_demos) == public_demo.MAX_SESSIONS
+        for entry in app.state.public_demos.values():
+            entry.busy = 0
+        assert owner(client, first, "businesses").status_code == 200
+        assert app.state.public_demos[first].busy == 0
+
+
+def test_OB_256_exit_waits_for_a_request_in_flight(app):  # noqa: N802, F811
+    with TestClient(app) as client:
+        app.state.v1_settings.public_demo_enabled = True
+        session = open_demo(client).json()["session_id"]
+        entry = app.state.public_demos[session]
+        # A request (or a streamed coach answer) is using the sandbox when the visitor leaves.
+        entry.busy = 1
+        assert client.delete(f"/api/v1/demo/sessions/{session}").json() == {"exited": True}
+        assert session not in app.state.public_demos
+        assert entry.directory is not None and entry.closing
+        # The in-flight request finishes against its files; the last one out removes them.
+        assert entry.store is not None
+        entry.store.list_businesses(entry.uid)
+        entry.release()
+        assert entry.directory is None
+        # Later requests take the normal "demo ended" path.
+        assert read(client, session, "/shops").status_code == 410
+        assert owner(client, session, "businesses").status_code == 410
+
+
+def test_OB_256_expiry_waits_for_a_coach_stream(app):  # noqa: N802, F811
+    with TestClient(app) as client:
+        app.state.v1_settings.public_demo_enabled = True
+        session = open_demo(client).json()["session_id"]
+        entry = app.state.public_demos[session]
+        entry.busy = 2
+        entry.expires = time.time() - 1
+        assert read(client, session, "/shops").status_code == 410
+        assert session not in app.state.public_demos
+        assert entry.directory is not None
+        entry.release()
+        assert entry.directory is not None  # one request is still using it
+        entry.release()
+        assert entry.directory is None
+
+
+def test_OB_256_an_idle_demo_closes_at_once(app):  # noqa: N802, F811
+    with TestClient(app) as client:
+        app.state.v1_settings.public_demo_enabled = True
+        session = open_demo(client).json()["session_id"]
+        entry = app.state.public_demos[session]
+        assert entry.busy == 0
+        client.delete(f"/api/v1/demo/sessions/{session}")
+        assert entry.directory is None
+
+
+def test_OB_256_leaving_during_requests_never_breaks_one(app):  # noqa: N802, F811
+    import threading
+
+    with TestClient(app, raise_server_exceptions=False) as client:
+        app.state.v1_settings.public_demo_enabled = True
+        statuses: list[int] = []
+        bodies: list[str] = []
+
+        def use(session: str) -> None:
+            for _ in range(8):
+                response = owner(client, session, "businesses")
+                statuses.append(response.status_code)
+                bodies.append(response.text)
+
+        def leave(session: str) -> None:
+            statuses.append(client.delete(f"/api/v1/demo/sessions/{session}").status_code)
+
+        threads = []
+        for _ in range(3):
+            session = open_demo(client).json()["session_id"]
+            threads += [threading.Thread(target=use, args=(session,)) for _ in range(3)]
+            threads.append(threading.Thread(target=leave, args=(session,)))
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+        # Requests before the exit succeed; those after it get "demo ended", never a 500.
+        assert all(code < 500 for code in statuses), statuses
+        assert not any("unable to open database file" in body for body in bodies)
+        assert {200, 410} >= set(statuses) - {200}
 
 
 def test_session_and_safe_writes_survive_instance_cache_loss(app):  # noqa: F811

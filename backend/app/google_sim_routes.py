@@ -1,6 +1,6 @@
 """Owner-only simulator endpoints; all storage is separate from merchant records."""
 
-from typing import cast
+from typing import Any, cast
 
 import anyio
 from fastapi import APIRouter, HTTPException, Request
@@ -11,10 +11,19 @@ from .merchant_firestore import document_id
 from .merchant_routes import consented_owner, store
 
 router = APIRouter(prefix="/api/v1/businesses/{business_id}/google-sim")
+PRACTICE_PHONE = "000 000 0000"
 
 
 def adapter(request: Request) -> BusinessProfileAdapter:
     return cast(BusinessProfileAdapter, request.app.state.google_profile)
+
+
+def practice_facts(fields: dict[str, Any]) -> SimFacts:
+    """A sample shop has no public phone, so the practice alone fills in a clearly pretend one."""
+    facts = SimFacts(**{k: fields[k] for k in ("name", "location", "hours", "phone")})
+    if fields.get("demo") and not facts.phone:
+        facts.phone = PRACTICE_PHONE
+    return facts
 
 
 def load(request: Request, uid: str, bid: str) -> SimState:
@@ -26,7 +35,7 @@ def load(request: Request, uid: str, bid: str) -> SimState:
     facts = service.context(uid, bid)["business"]["fields"]
     # Merchant category text is never inferred to be a destination category ID.
     result = adapter(request).initial(
-        SimFacts(**{k: facts[k] for k in ("name", "location", "hours", "phone")}),
+        practice_facts(facts),
         "new-store-success",
     )
     result.business_id = bid
@@ -65,7 +74,7 @@ async def reset(business_id: str, body: SimReset, request: Request) -> SimState:
             raise HTTPException(409, "SIM_STALE")
         facts = store(request).context(uid, business_id)["business"]["fields"]
         updated = adapter(request).initial(
-            SimFacts(**{k: facts[k] for k in ("name", "location", "hours", "phone")}),
+            practice_facts(facts),
             body.scenario,
         )
         updated.version = current.version + 1

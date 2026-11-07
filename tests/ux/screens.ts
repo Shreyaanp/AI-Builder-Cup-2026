@@ -1,4 +1,5 @@
 import { expect, type Page } from '@playwright/test'
+import { pinShopTime } from '../support/shopClock.ts'
 
 export type Screen = {
   name: string
@@ -17,8 +18,11 @@ async function settle(page: Page) {
 }
 
 async function demoTab(page: Page, tab: 'coach' | 'shop' | 'grow' | 'you') {
+  // The demo's Coach changes with the shop's hour (the close window leads from 20:00): measure the
+  // same screen on every run, whenever CI happens to start.
+  await pinShopTime(page, '10:00')
   await page.goto(tab === 'coach' ? '/demo' : `/demo?tab=${tab}`, { waitUntil: 'domcontentloaded' })
-  await expect(page.getByText('Demo shop – nothing here is real', { exact: true })).toBeVisible({
+  await expect(page.getByText('Demo shop · sample data', { exact: true })).toBeVisible({
     timeout: 30_000,
   })
   const skip = page.getByRole('dialog').getByRole('button', { name: 'Skip', exact: true })

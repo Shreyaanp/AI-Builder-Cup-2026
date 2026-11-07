@@ -67,6 +67,8 @@ export interface Product {
   unit: string
   stock: number | null
   available?: boolean
+  /** The owner's "Do you make it or buy it?" answer; only bought stock is reordered (OB-239). */
+  source?: 'made' | 'bought'
 }
 export interface Proposal {
   /** Client-only guided completion marker, outside the sealed snapshot. */

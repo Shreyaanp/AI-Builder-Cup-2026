@@ -149,7 +149,7 @@ test('S3 · nearby discovery, facts, owner reply and QR stamps', async ({ page, 
       await page.getByRole('button', { name: /^Messages 1/ }).click()
       const messages = page.getByRole('region', { name: /Messages/ })
       await expect(messages).toContainText('Can I collect two chai today?')
-      await messages.getByRole('button', { name: 'Open conversation', exact: true }).click()
+      await messages.getByRole('button', { name: /^Open conversation/ }).click()
       await messages
         .getByLabel('Reply', { exact: true })
         .fill('Yes, ready at 4 pm. UPI is welcome.')

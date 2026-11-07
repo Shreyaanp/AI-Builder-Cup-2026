@@ -24,7 +24,7 @@ async function open(page: Page) {
   await page.getByLabel('I agree to the Terms').check()
   await page.getByLabel('I have read the Privacy Notice').check()
   await agree.click()
-  await expect(page.getByRole('heading', { name: 'What shall we work on today?' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Let’s put your shop online' })).toBeVisible()
 }
 
 async function addShop(page: Page, name: string) {
@@ -142,7 +142,7 @@ test('Google flow: details, photos, preview, then official links', async ({ page
   await expect(flow.getByRole('heading', { name: 'Your profile' })).toBeVisible()
   await expect(flow.getByRole('heading', { name: 'Morning Crumb' })).toBeVisible()
   await flow.getByRole('button', { name: 'Next' }).click()
-  await expect(flow.getByText('Waiting for Google API access')).toBeVisible()
+  await expect(flow.getByText('Waiting for Google’s permission')).toBeVisible()
   await expect(page.getByRole('link', { name: 'Add on Google' })).toHaveAttribute(
     'href',
     'https://business.google.com/add',
@@ -197,11 +197,14 @@ test('customer facts: the card starts the chat, the owner confirms, customers se
   await page.reload()
   await page.getByRole('button', { name: 'Continue local preview' }).click()
   await expect(page.getByRole('button', { name: 'Choose shop: Halal Corner' })).toBeVisible()
-  // Before the page is shared, what customers ask waits on Shop (Today shows setup first).
+  // Before the page is shared, what customers ask waits in Shop → Shop details (Today shows
+  // setup first). Simplify batch 3 folded Shop's banner into that sheet.
   await page.getByRole('button', { name: 'Shop', exact: true }).click()
-  const card = page.getByRole('region', { name: 'Customers ask: halal? payment?' })
-  await expect(card).toBeVisible()
-  await card.getByRole('button', { name: 'Answer' }).click()
+  await page.getByRole('button', { name: /^Shop details/ }).click()
+  await page
+    .getByRole('dialog', { name: 'Halal Corner' })
+    .getByRole('button', { name: /^Customers ask: halal\?/ })
+    .click()
   const message = page.getByLabel('Message', { exact: true })
   await expect(message).toHaveValue('Halal: ')
   await expect(message).toBeFocused()
@@ -221,7 +224,7 @@ test('customer facts: the card starts the chat, the owner confirms, customers se
   await page.keyboard.press('Escape')
   await expect(page.getByRole('dialog')).toHaveCount(0)
 
-  await page.getByRole('button', { name: /^Customer page/ }).click()
+  await page.getByRole('button', { name: /^Your shop page/ }).click()
   await page.getByRole('switch', { name: 'Share customer page' }).click()
   await expect(
     page.getByRole('img', { name: 'QR code for Halal Corner’s customer page' }),
@@ -254,27 +257,21 @@ test('busy-hours sweep asks about top items; Sold out uses the owner switch', as
   ).json()
   await page.reload()
   await page.getByRole('button', { name: 'Continue local preview' }).click()
-  // The busy-hours sweep lives on Shop; Today asks about sold out items directly.
+  // The busy-hours sweep is Shop's Sold out row status (simplify batch 3: rows, not banners);
+  // Today asks about sold out items directly.
   await page.getByRole('button', { name: 'Shop', exact: true }).click()
-  const kopi = page.getByRole('region', { name: 'Still have Kopi?' })
-  await expect(kopi).toBeVisible()
-  await kopi.getByRole('button', { name: 'Sold out' }).click()
-  const teh = page.getByRole('region', { name: 'Still have Teh?' })
-  await expect(teh).toBeVisible()
+  const soldOut = page.getByRole('button', { name: /^Sold out/ })
+  await expect(soldOut).toContainText('Still have Kopi?')
+  await soldOut.click()
+  await page.getByRole('switch', { name: 'Available: Kopi' }).click()
   await expect
     .poll(async () => {
       const items = await (await page.request.get(`/api/v1/businesses/${id}/inventory`)).json()
       return items.find((item: { name: string }) => item.name === 'Kopi').available
     })
     .toBe(false)
-  // "Yes" hides that item until the next busy window; nothing else is left to sweep.
-  await teh.getByRole('button', { name: 'Yes' }).click()
-  await expect(page.getByRole('region', { name: /^Still have/ })).toHaveCount(0)
-  await expect(page.getByRole('region', { name: /^Customers ask:/ })).toBeVisible()
-  // Remembered for this shop today.
-  await page.reload()
-  await page.getByRole('button', { name: 'Continue local preview' }).click()
-  await page.getByRole('button', { name: 'Shop', exact: true }).click()
-  await expect(page.getByRole('region', { name: /^Customers ask:/ })).toBeVisible()
-  await expect(page.getByRole('region', { name: /^Still have/ })).toHaveCount(0)
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  // The next top item that is still available is asked next.
+  await expect(soldOut).toContainText('Still have Teh?')
 })

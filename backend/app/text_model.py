@@ -88,13 +88,20 @@ class Tries:
         return False
 
 
-def tries(settings: Settings, flow: str) -> Tries:
+def tries(settings: Settings, flow: str, *, lite: bool = False) -> Tries:
+    """The busy-model policy for a flow. lite=True marks a simple one-shot call that may use
+    GOOGLE_LITE_MODEL when it is set; the full text model is then its fallback. Unset, it is the
+    ordinary policy."""
+    if lite and settings.google_lite_model:
+        return Tries(flow, settings.google_lite_model, settings.google_text_model)
     return Tries(flow, settings.google_text_model, settings.google_text_fallback_model)
 
 
-async def generate(client: Any, settings: Settings, flow: str, **request: Any) -> Any:
+async def generate(
+    client: Any, settings: Settings, flow: str, *, lite: bool = False, **request: Any
+) -> Any:
     """`client.aio.models.generate_content` with the busy-model policy (no `model` argument)."""
-    plan = tries(settings, flow)
+    plan = tries(settings, flow, lite=lite)
     while True:
         try:
             return await client.aio.models.generate_content(model=plan.model, **request)
@@ -104,11 +111,11 @@ async def generate(client: Any, settings: Settings, flow: str, **request: Any) -
 
 
 async def generate_stream(
-    client: Any, settings: Settings, flow: str, **request: Any
+    client: Any, settings: Settings, flow: str, *, lite: bool = False, **request: Any
 ) -> AsyncIterator[types.GenerateContentResponse]:
     """`generate_content_stream` with the busy-model policy: a busy model refuses before the
     first chunk, so only the opening is tried again (a stream never restarts half-way)."""
-    plan = tries(settings, flow)
+    plan = tries(settings, flow, lite=lite)
     while True:
         try:
             chunks = await client.aio.models.generate_content_stream(model=plan.model, **request)

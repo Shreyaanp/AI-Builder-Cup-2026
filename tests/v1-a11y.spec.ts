@@ -28,7 +28,7 @@ async function open(page: Page) {
   await page.getByLabel('I agree to the Terms').check()
   await page.getByLabel('I have read the Privacy Notice').check()
   await agree.click()
-  await expect(page.getByRole('heading', { name: 'What shall we work on today?' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Let’s put your shop online' })).toBeVisible()
 }
 
 async function addShop(page: Page, name: string) {
@@ -60,7 +60,7 @@ async function sharedShop(page: Page) {
   await expect(page.getByRole('button', { name: 'Edit price: Chai, S$15.00' })).toBeVisible()
   await page.keyboard.press('Escape')
   await expect(page.getByRole('dialog')).toHaveCount(0)
-  await page.getByRole('button', { name: /^Customer page/ }).click()
+  await page.getByRole('button', { name: /^Your shop page/ }).click()
   // Onboarding put the shop live by itself (name + kind + place): the page is already shared.
   const sharing = page.getByRole('switch', { name: 'Share customer page' })
   await expect(sharing).toBeChecked()
@@ -112,7 +112,7 @@ for (const colorScheme of ['light', 'dark'] as const) {
           await open(page)
           await expect(page.getByRole('log')).toHaveCount(0)
           await expect(
-            page.getByRole('region', { name: 'Scan your menu or shop board' }),
+            page.getByRole('region', { name: 'Take a photo of your shop board or menu.' }),
           ).toBeVisible()
           break
         case 'Review':

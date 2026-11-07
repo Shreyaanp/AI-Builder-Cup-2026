@@ -409,7 +409,7 @@ export function ShopFill({ draft, onReview }: { draft: Draft; onReview: () => vo
             component="p"
             sx={{
               fontFamily: HAND_FONT,
-              typography: 'headlineSmall',
+              typography: 'headlineMedium',
               // Room for the hand font's descenders.
               lineHeight: 1.25,
               overflowWrap: 'anywhere',
@@ -472,7 +472,7 @@ export function ShopFill({ draft, onReview }: { draft: Draft; onReview: () => vo
           size="small"
           onClick={onReview}
           data-testid="review-my-shop"
-          sx={{ flexShrink: 0, ml: 'auto' }}
+          sx={{ flexShrink: 0, ml: 'auto', minHeight: 48 }}
         >
           {o.review}
         </Button>
@@ -615,7 +615,7 @@ export function VoiceAlert({
         : problem.kind === 'connection'
           ? [v.connectionTitle, v.connectionBody, v.reconnect]
           : problem.kind === 'rate-limited'
-            ? [v.rateTitle, v.rateBody(Math.max(wait, 0)), v.tryAgain]
+            ? [v.rateTitle, wait > 0 ? v.rateBody(wait) : v.rateReady, v.tryAgain]
             : problem.kind === 'session-cap'
               ? [o.capTitle, o.capBody, o.talkAgain]
               : problem.kind === 'slow'

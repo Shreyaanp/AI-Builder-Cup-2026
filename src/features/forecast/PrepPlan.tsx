@@ -1,86 +1,50 @@
-import { useEffect, useState } from 'react'
-import { Button, Stack, Typography } from '@mui/material'
-import { CalendarClock, PackageSearch } from 'lucide-react'
-import type { components } from '../../api/generated'
+import { Box, Button, Collapse, Stack, Typography } from '@mui/material'
+import { ChefHat, PackageSearch, SlidersHorizontal } from 'lucide-react'
 import { useLocale } from '../../state/hooks'
+import { productName } from '../../i18n/productNames'
 import { Tile, Supporting } from '../v1/ShopTiles'
 import { useCopy } from '../v1/strings'
+import { useGrowCopy } from '../v1/growCopy'
 import { useWorkspace } from '../v1/workspaceContext'
 import { useSourcingCopy } from '../sourcing/copy'
 import { Sheet } from '../v1/Sheet'
-import { dayLabel } from '../supply/supplyData'
+import { PlanTomorrow } from '../planning/PlanTomorrow'
+import { useOrderUnit } from '../supply/supplyData'
+import { useForecast, useRunsOut } from './forecastData'
+import { useOrderChangeCopy } from '../supply/orderChangeCopy'
 
-type Forecast = components['schemas']['Forecast']
-const LOW_STOCK = 5
-
-export function PrepPlanTile() {
-  const { api, active, products, startCoachDraft, readOnlyMessage } = useWorkspace()
-  // Only the public demo (a read-only workspace) gets the shared rule and the detail sheet.
-  const demo = Boolean(readOnlyMessage)
+/**
+ * Grow's How much to make row (simplify batch 4b): tomorrow's numbers on the row; the sheet holds
+ * the whole list and, under "Change the numbers", what was Plan tomorrow. `sheet` says what is
+ * open: the list, or the list with the numbers open (the coach's and the brief's "plan").
+ */
+export function MakeRow({
+  sheet,
+  onSheet,
+}: {
+  sheet: 'list' | 'numbers' | null
+  onSheet: (sheet: 'list' | 'numbers' | null) => void
+}) {
+  const { products, startCoachDraft } = useWorkspace()
   const t = useCopy()
-  const s = useSourcingCopy()
+  const grow = useGrowCopy()
   const locale = useLocale()
-  const [loaded, setLoaded] = useState<{
-    id: string
-    revision: number
-    value?: Forecast
-    error?: boolean
-  } | null>(null)
-  const [attempt, retry] = useState(0)
-  const [open, setOpen] = useState(false)
-  const id = active?.id
-  const revision = active?.revision
-  useEffect(() => {
-    if (!id || revision === undefined) return
-    const controller = new AbortController()
-    void api<Forecast>(`/businesses/${encodeURIComponent(id)}/forecast`, {
-      signal: controller.signal,
-    })
-      .then((value) => {
-        if (!controller.signal.aborted) setLoaded({ id, revision, value })
-      })
-      .catch(() => {
-        if (!controller.signal.aborted) setLoaded({ id, revision, error: true })
-      })
-    return () => controller.abort()
-  }, [api, id, revision, attempt])
-  const state = loaded?.id === id && loaded?.revision === revision ? loaded : null
-  const value = state?.value
+  const unit = useOrderUnit()
+  const { state, value, retry } = useForecast()
   const tomorrow = value?.predictions?.[0]?.date
   const tomorrowRows = value?.predictions?.filter((row) => row.date === tomorrow) ?? []
-  const rows = tomorrowRows.slice(0, 3)
   const number = new Intl.NumberFormat(locale, { maximumFractionDigits: 1 })
-  // Runs out: the first forecast day on which the week's predicted demand passes a counted
-  // stock ("Croissant runs out Thu, Oct 23"). Same rule and same date format as the supply card
-  // on Today (the forecast's upper bound), so the two never disagree. With no forecast for it,
-  // a stock of at most 5 is running low. Items without a stock count never show here.
-  const weekday = new Intl.DateTimeFormat(locale, { weekday: 'short', timeZone: 'UTC' })
-  const low = products.flatMap((product) => {
-    if (product.stock == null) return []
-    const days = (value?.predictions ?? [])
-      .filter((row) => row.item.toLowerCase() === product.name.toLowerCase())
-      .sort((a, b) => a.date.localeCompare(b.date))
-    let demand = 0
-    for (const row of days) {
-      if (demo) {
-        demand += row.upper ?? row.quantity
-        if (demand > product.stock) return [{ name: product.name, day: dayLabel(row.date, locale) }]
-      } else {
-        demand += row.quantity
-        if (demand >= product.stock)
-          return [{ name: product.name, day: weekday.format(new Date(`${row.date}T00:00:00Z`)) }]
-      }
-    }
-    return days.length === 0 && product.stock <= LOW_STOCK ? [{ name: product.name, day: '' }] : []
-  })
-  const first = low[0]
+  // The row's one line: the first two items, "Masala chai 89 cup, Ginger chai 73 cup".
+  const line = (row: (typeof tomorrowRows)[number]) =>
+    `${productName(row.item, locale)} ${number.format(row.quantity)} ${unit(row.unit)}`
+  const list = new Intl.ListFormat(locale, { style: 'narrow', type: 'unit' })
+  const method = value ? (value.method === 'timesfm' ? t.prepTimesfm : t.prepWeekday) : ''
   return (
     <>
       <Tile
-        wide
         tour="prep"
-        icon={<CalendarClock size={20} />}
-        label={t.prepPlan}
+        icon={<ChefHat size={20} />}
+        label={grow.make}
         value={
           state?.error
             ? t.actionFailed
@@ -88,48 +52,28 @@ export function PrepPlanTile() {
               ? t.prepLoading
               : value.status === 'insufficient'
                 ? t.prepEmpty
-                : t.prepTomorrow
+                : tomorrowRows.length
+                  ? list.format(tomorrowRows.slice(0, 2).map(line))
+                  : t.prepTomorrow
         }
-        onClick={() => {
-          if (state?.error) retry((n) => n + 1)
-          else if (demo) setOpen(true)
-          else startCoachDraft(t.prepQuestion)
-        }}
-      >
-        {rows.length > 0 && (
-          <Stack component="span" spacing={1}>
-            {rows.map((row) => (
-              <Typography
-                key={row.item}
-                component="span"
-                variant="bodyMedium"
-                sx={{ overflowWrap: 'anywhere', fontVariantNumeric: 'tabular-nums' }}
-              >
-                {row.item} · {number.format(row.quantity)} {row.unit}
-              </Typography>
-            ))}
-          </Stack>
-        )}
-        {value && (
-          <Supporting>{value.method === 'timesfm' ? t.prepTimesfm : t.prepWeekday}</Supporting>
-        )}
-        {state?.error && <Supporting>{t.retry}</Supporting>}
-      </Tile>
+        onClick={() => (state?.error ? retry() : onSheet('list'))}
+      />
       <Sheet
-        open={demo && open}
-        onClose={() => setOpen(false)}
-        titleId="prep-plan-title"
-        title={t.prepPlan}
+        open={sheet !== null}
+        onClose={() => onSheet(null)}
+        titleId="make-title"
+        ask="forecast"
+        title={grow.make}
         actions={
           <Button
             variant="contained"
             sx={{ minHeight: 48 }}
             onClick={() => {
-              setOpen(false)
+              onSheet(null)
               startCoachDraft(t.prepQuestion)
             }}
           >
-            {t.navCoach}
+            {grow.askCoach}
           </Button>
         }
       >
@@ -146,43 +90,74 @@ export function PrepPlanTile() {
                 sx={{ gap: 2, justifyContent: 'space-between', alignItems: 'baseline' }}
               >
                 <Typography variant="bodyLarge" sx={{ minWidth: 0, overflowWrap: 'anywhere' }}>
-                  {row.item}
+                  {productName(row.item, locale)}
                 </Typography>
                 <Typography
                   variant="bodyLarge"
                   sx={{ whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}
                 >
-                  {number.format(row.quantity)} {row.unit}
+                  {number.format(row.quantity)} {unit(row.unit)}
                 </Typography>
               </Stack>
             ))}
           </Stack>
         ) : (
-          <Typography variant="bodyLarge">{t.prepEmpty}</Typography>
-        )}
-        {value && (
-          <Typography variant="bodySmall" color="text.secondary" sx={{ mt: 3 }}>
-            {value.method === 'timesfm' ? t.prepTimesfm : t.prepWeekday}
+          <Typography variant="bodyLarge">
+            {state?.error ? t.actionFailed : value ? t.prepEmpty : t.prepLoading}
           </Typography>
         )}
+        {method && (
+          <Typography variant="bodySmall" color="text.secondary" sx={{ mt: 3 }}>
+            {method}
+          </Typography>
+        )}
+        {/* What was Plan tomorrow: the owner's own numbers per item, on the same sheet. */}
+        <Button
+          variant="outlined"
+          aria-expanded={sheet === 'numbers'}
+          startIcon={<SlidersHorizontal size={18} />}
+          onClick={() => onSheet(sheet === 'numbers' ? 'list' : 'numbers')}
+          sx={{ mt: 4, minHeight: 48 }}
+        >
+          {grow.changeNumbers}
+        </Button>
+        <Collapse in={sheet === 'numbers'} unmountOnExit>
+          <Box sx={{ pt: 4 }}>
+            {products.some((product) => product.id) ? (
+              <PlanTomorrow title={grow.changeNumbers} />
+            ) : (
+              <Typography variant="bodyMedium" color="text.secondary">
+                {t.productsEmpty}
+              </Typography>
+            )}
+          </Box>
+        </Collapse>
       </Sheet>
-      {first && (
-        <Tile
-          icon={<PackageSearch size={20} />}
-          label={
-            first.day
-              ? s.runsOut(first.name, first.day)
-              : s.runningLow(
-                  low
-                    .map((item) => item.name)
-                    .slice(0, 3)
-                    .join(', '),
-                )
-          }
-          value={s.findSuppliers}
-          onClick={() => startCoachDraft(s.lowMessage(first.name.toLowerCase()), { send: true })}
-        />
-      )}
     </>
+  )
+}
+
+/** Buy stock → To do: "Tea dust runs out Thu · Find suppliers", leading what needs buying now. */
+export function RunsOutCard({ onAct }: { onAct: () => void }) {
+  const s = useSourcingCopy()
+  const c = useOrderChangeCopy()
+  const runsOut = useRunsOut()
+  if (!runsOut) return null
+  const { need, more, onOrder } = runsOut
+  return (
+    <Tile
+      alert
+      icon={<PackageSearch size={20} />}
+      label={runsOut.label}
+      value={need?.covered ? onOrder : s.findSuppliers}
+      onClick={() => {
+        onAct()
+        runsOut.act()
+      }}
+    >
+      {/* Partly on order still needs ordering: what is coming shows under Find suppliers. */}
+      {need && !need.covered && onOrder && <Supporting>{onOrder}</Supporting>}
+      {more > 0 && <Supporting>{c.moreRunOut(more)}</Supporting>}
+    </Tile>
   )
 }

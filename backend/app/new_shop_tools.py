@@ -159,19 +159,17 @@ async def update_shop(
     """Record what the owner just said about their new shop, all fields at once, silently (in
     the same turn as your reply). Pass ONLY the fields they said; one sentence can give several.
     name: the shop's real name, only when clearly a name (never invent one). category: what
-    they offer, in THEIR words, a few words ("chai aur samosa", "silai ka kaam", "self-cleaning
-    helmet station"). location: the area or street and a landmark, only when they are not at the
-    shop or GPS was refused. hours: as said ("subah 6 se raat 10, Sunday band"), and
-    weekly_hours: one record per weekday (day: mon..sun, closed: true, or open/close HH:MM;
-    overnight closing belongs to the opening day). description: one short line for customers
-    from what they told you, keeping the details customers care about (seating, brands, home
-    visits, orders ahead). kind: only when the owner says what kind of business it is or
-    corrects it ("nahi, yeh service hai"): product, service, food or mixed. extra_answers: the
-    answer to an extra question listed in still_missing ({key, answer}; answer "" when they do
-    not know). A correction ("nahi, Lakshmi Chai Point") is just a new value: pass it, do not
-    confirm it aloud. skip: steps the owner put off or does not know ("pata nahi", "baad
-    mein", silence twice): hours, photo, face. The same answer twice changes nothing. Never pass
-    prices or menu items here."""
+    they offer, in THEIR words, a few words ("chai aur samosa", "silai ka kaam"). location: the
+    area or street and a landmark, only when they are not at the shop or GPS was refused.
+    hours: as said ("subah 6 se raat 10, Sunday band"), and weekly_hours: one record per weekday
+    (day: mon..sun, closed: true, or open/close HH:MM; overnight closing belongs to the opening
+    day). description: one short line for customers from what they told you, keeping the
+    details customers care about (seating, brands, home visits, orders ahead). kind: only when
+    the owner says or corrects what kind of business it is: product, service, food or mixed.
+    extra_answers: the answer to an extra question listed in still_missing ({key, answer};
+    answer "" when they do not know). A correction is just a new value: pass it, do not confirm
+    it aloud. skip: steps the owner put off or does not know ("pata nahi", "baad mein", silence
+    twice): hours, photo, face. Never pass prices or menu items here."""
     ctx = current.get()
     if not ctx:
         return {"status": "unavailable"}

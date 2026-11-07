@@ -17,7 +17,7 @@ export const conversationEnglish = {
   translate: 'See translation',
   original: 'See original',
   ai: 'AI translation · may be inaccurate',
-  fixture: 'Simulated translation · offline fixture, no live AI connected',
+  fixture: 'Sample translation for the demo',
   remove: 'Delete this conversation',
   confirmDelete: 'Delete this conversation permanently?',
   confirmBlock: 'Block this customer from sending more messages?',

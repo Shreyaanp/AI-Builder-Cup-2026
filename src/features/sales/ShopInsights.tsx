@@ -13,74 +13,18 @@ import {
   Typography,
   useTheme,
 } from '@mui/material'
-import { BarChart3, X } from 'lucide-react'
+import { X } from 'lucide-react'
 import { useIdentity } from '../../auth/useIdentity'
 import { readDismissal, dismissFreshness, subscribeDismissal } from './freshnessDismissal'
+import { useFreshness, weekRange } from './freshness'
 import type { components } from '../../api/generated'
-import { formatLocale, type Locale } from '../../i18n/locales'
 import { useLocale } from '../../state/hooks'
 import { shape } from '../../design/theme'
-import { Sheet } from '../v1/Sheet'
-import { Tile, Supporting } from '../v1/ShopTiles'
 import { formatShopPrice } from '../v1/format'
 import { useCopy } from '../v1/strings'
 import { useWorkspace } from '../v1/workspaceContext'
 
-interface Freshness {
-  today: string
-  monday: boolean
-  recap_week?: string
-  last_confirmed: string | null
-}
 type Recap = components['schemas']['Recap']
-
-/** ISO weeks are Monday–Sunday; UTC keeps date-only boundaries stable on every device. */
-function weekRange(week: string, locale: Locale) {
-  const year = Number(week.slice(0, 4))
-  const january4 = new Date(Date.UTC(year, 0, 4))
-  const monday = new Date(january4)
-  monday.setUTCDate(4 - ((january4.getUTCDay() + 6) % 7) + (Number(week.slice(-2)) - 1) * 7)
-  const sunday = new Date(monday)
-  sunday.setUTCDate(monday.getUTCDate() + 6)
-  return new Intl.DateTimeFormat(formatLocale(locale), {
-    day: 'numeric',
-    month: 'short',
-    year: monday.getUTCFullYear() !== sunday.getUTCFullYear() ? 'numeric' : undefined,
-    timeZone: 'UTC',
-  }).formatRange(monday, sunday)
-}
-
-function useFreshness() {
-  const { api, active } = useWorkspace()
-  const [value, setValue] = useState<Freshness | null>(null)
-  const [error, setError] = useState(false)
-  const [attempt, retry] = useState(0)
-  const id = active?.id
-  const confirmed = active?.last_confirmed
-  useEffect(() => {
-    if (!id) return
-    const controller = new AbortController()
-    const load = () => {
-      void api<Freshness>(`/businesses/${id}/freshness`, { signal: controller.signal })
-        .then((next) => {
-          if (!controller.signal.aborted) {
-            setValue(next)
-            setError(false)
-          }
-        })
-        .catch(() => {
-          if (!controller.signal.aborted) setError(true)
-        })
-    }
-    load()
-    const timer = window.setInterval(load, 60_000)
-    return () => {
-      controller.abort()
-      window.clearInterval(timer)
-    }
-  }, [api, id, confirmed, attempt])
-  return { value, error, retry: () => retry((n) => n + 1) }
-}
 
 export function FreshnessCard({ compact = false }: { compact?: boolean }) {
   const ws = useWorkspace()
@@ -171,32 +115,8 @@ export function FreshnessCard({ compact = false }: { compact?: boolean }) {
   )
 }
 
-/** Monday placement is a rule in shop time; the recap itself is only fetched on opening. */
-export function RecapTile({ mondayOnly = false }: { mondayOnly?: boolean }) {
-  const t = useCopy()
-  const locale = useLocale()
-  const { value } = useFreshness()
-  const [open, setOpen] = useState(false)
-  if (!value?.recap_week || (mondayOnly && !value.monday)) return null
-  return (
-    <>
-      <Tile
-        wide
-        icon={<BarChart3 size={20} />}
-        label={t.recapTitle}
-        value={weekRange(value.recap_week, locale)}
-        onClick={() => setOpen(true)}
-      >
-        <Supporting>{t.recapHint}</Supporting>
-      </Tile>
-      <Sheet open={open} onClose={() => setOpen(false)} titleId="recap-title" title={t.recapTitle}>
-        {open && <RecapDetails week={value.recap_week} />}
-      </Sheet>
-    </>
-  )
-}
-
-function RecapDetails({ week }: { week: string }) {
+/** Last week's summary: revenue against the week before, top sellers and slow movers. */
+export function RecapDetails({ week }: { week: string }) {
   const { api, activeId } = useWorkspace()
   const locale = useLocale()
   const t = useCopy()

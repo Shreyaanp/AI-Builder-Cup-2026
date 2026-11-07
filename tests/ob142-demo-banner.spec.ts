@@ -28,14 +28,14 @@ for (const appearance of ['light', 'dark']) {
             : route.abort(),
         )
         await page.goto(path, { waitUntil: 'domcontentloaded' })
-        const notice = page.getByText('Demo shop – nothing here is real', { exact: true })
+        const notice = page.getByText('Demo shop · sample data', { exact: true })
         await expect(notice).toBeVisible()
         await page.evaluate(() => document.fonts.ready)
         const header = notice.locator('xpath=ancestor::header')
-        await expect(header.getByRole('link')).toHaveAttribute(
-          'href',
-          path === '/demo' ? '/explore/demo' : '/demo',
-        )
+        // Simplify batch 5: the owner side's "Browse shops" moved to the shop switcher; the
+        // customer side keeps its link back to the owner's view.
+        if (path === '/demo') await expect(header.getByRole('link')).toHaveCount(0)
+        else await expect(header.getByRole('link')).toHaveAttribute('href', '/demo')
         await expect(header.getByRole('button', { name: 'Exit demo', exact: true })).toBeVisible()
         await expect
           .poll(() =>
@@ -78,7 +78,8 @@ for (const language of ['en', 'hi', 'ja']) {
       )
       await page.goto(path, { waitUntil: 'domcontentloaded' })
       const header = page.locator('header').first()
-      await expect(header.locator('a')).toBeVisible()
+      if (path === '/demo') await expect(header.getByRole('button')).toBeVisible()
+      else await expect(header.locator('a')).toBeVisible()
       await page.evaluate(() => document.fonts.ready)
       await page.evaluate(() => {
         document.documentElement.style.fontSize = '200%'

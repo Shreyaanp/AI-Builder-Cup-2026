@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useWorkspace } from '../v1/workspaceContext'
 import type { Proposal } from '../v1/api'
 import type { Order } from './types'
+import { supplyChanged } from '../supply/supplyEvents'
 
 const POLL_MS = 2000
 
@@ -9,13 +10,16 @@ const POLL_MS = 2000
 export function useOrders(live: boolean) {
   const { api, activeId } = useWorkspace()
   const [orders, setOrders] = useState<Order[] | null>(null)
-  const refresh = useCallback(async () => {
-    if (!activeId) return
+  /** Resolves true once a fetch that started now has returned, false if it failed. */
+  const refresh = useCallback(async (): Promise<boolean> => {
+    if (!activeId) return false
     try {
       const items = await api<Order[]>(`/businesses/${encodeURIComponent(activeId)}/orders`)
       setOrders(items)
+      return true
     } catch {
       // Keep the last list; the tile shows it until the next refresh.
+      return false
     }
   }, [api, activeId])
   useEffect(() => {
@@ -57,6 +61,7 @@ export function useReceiveOrder() {
           { method: 'POST', body: JSON.stringify({ version: order.version }) },
         )
         if (result.proposal) review(result.proposal)
+        supplyChanged()
         return result.order
       } catch (cause) {
         notify(cause instanceof Error ? cause.message : String(cause))

@@ -4,11 +4,13 @@ import { hasHours } from '../../shop/hoursModel'
 import { closingMinutes, shopNow } from '../../owner/time'
 import { isFood, missingFacts, timeRanges, type AskFact } from '../shopProgress'
 import type { DayPart } from './todayCopy'
+import { leadSplit } from './leadOrder'
 
 export type TodayFacts = components['schemas']['Today']
 export type CoachLine = components['schemas']['CoachLine']
 type Pulse = components['schemas']['Pulse']
 type TodayHints = components['schemas']['TodayHints']
+export type TodayPromise = components['schemas']['Promise']
 
 export type StepId =
   'items' | 'category' | 'location' | 'hours' | 'photo' | 'phone' | 'share' | 'face'
@@ -16,9 +18,27 @@ export type StepId =
 const REMINDERS: StepId[] = ['photo', 'face']
 export type Need =
   | { id: string; kind: 'reply'; count: number }
+  /** What the owner wrote down last night for this morning (HABIT change 4). */
+  | {
+      id: string
+      kind: 'promise'
+      promise: TodayPromise
+      /** It names the supply row's item: the row carries the run-out day and its Reorder too. */
+      supply?: boolean
+    }
+  /** The supply that runs out first, with its run-out day: the one stock row with a date. */
+  | { id: string; kind: 'supply'; item: string }
   | { id: string; kind: 'closeDay' }
   | { id: string; kind: 'menu' }
-  | { id: string; kind: 'low'; item: string; left: number }
+  | {
+      id: string
+      kind: 'low'
+      item: string
+      left: number
+      /** Bought: Order. Made: Make more. Unknown: "Do you make it or buy it?" (OB-239). */
+      source: 'bought' | 'made' | 'unknown'
+      productId: string | null
+    }
   | { id: string; kind: 'soldOut'; items: Product[] }
   | { id: string; kind: 'step'; step: StepId }
   | { id: string; kind: 'facts'; facts: AskFact[] }
@@ -35,8 +55,10 @@ export interface TodayPlan {
   food: boolean
   /** Setup progress while unfinished; null once complete. */
   progress: { done: number; total: number } | null
-  /** At most three live items, most urgent first. */
+  /** At most three live items, most urgent first; the first is the one lead action. */
   needs: Need[]
+  /** Everything else that needs the owner, behind "N more things" in the same card. */
+  more: Need[]
   line: CoachLine | null
   pulse: PulseLine | null
   forecast: { quantity: number; item: string; busy: [number, number] | null } | null
@@ -58,6 +80,11 @@ export interface TodayInput {
   now: Date
   /** The owner's face check (null while unknown): skipped at onboarding → a reminder. */
   face?: 'not_started' | 'verified' | 'in_review' | 'not_verified' | null
+  /** The supply card's lead item (null while unknown or nothing runs out); `soon` when it runs
+   * out within 2 days, the brief's rule for "Order now" (brief.py best_action). */
+  supply?: { item: string; soon?: boolean } | null
+  /** This morning's promise was done or cleared here (before the server facts reload). */
+  promiseAnswered?: boolean
 }
 
 export function isCloseDayWindow(fields: Business['fields'], now: Date): boolean {
@@ -68,7 +95,6 @@ export function isCloseDayWindow(fields: Business['fields'], now: Date): boolean
   return currentMinutes >= threshold
 }
 
-const MAX_NEEDS = 3
 const MAX_PULSE_VALUES = 3
 
 export function dayPart(now: Date): DayPart {
@@ -132,6 +158,8 @@ export function metricsFor(shop: TodayInput['shop'], hints?: TodayHints | null):
 // The playbook's "needs you now" kinds, mapped onto what Today can show.
 const NEED_HINT: Record<Need['kind'], TodayHints['needs_you'][number] | null> = {
   reply: 'questions',
+  promise: null,
+  supply: 'low_stock',
   closeDay: null,
   menu: 'menu_check',
   low: 'low_stock',
@@ -178,10 +206,14 @@ export function todayPlan(input: TodayInput): TodayPlan {
   const total = 6
   const done = total - steps.filter((step) => step !== 'share' && !REMINDERS.includes(step)).length
   const metrics = metricsFor(shop, facts?.hints)
-  const pulse = facts
-    ? (pulseLine(facts.yesterday, 'yesterday', metrics) ??
-      (facts.today ? pulseLine(facts.today, 'today', metrics) : null))
-    : null
+  const serverClosed = Boolean(
+    facts?.today && (facts.today.sales != null || facts.today.items != null),
+  )
+  const isClosed = Boolean(input.dayClosed || serverClosed)
+  // Once today is closed, the pulse is today's: the owner just saved it (OB-237).
+  const todayLine = facts?.today ? pulseLine(facts.today, 'today', metrics) : null
+  const yesterdayLine = facts ? pulseLine(facts.yesterday, 'yesterday', metrics) : null
+  const pulse = isClosed ? (todayLine ?? yesterdayLine) : (yesterdayLine ?? todayLine)
   const busy = timeRanges(shop.fields.busy_hours ?? '')[0] ?? null
   const forecast = facts?.forecast
     ? { quantity: facts.forecast.quantity, item: facts.forecast.item, busy }
@@ -192,31 +224,59 @@ export function todayPlan(input: TodayInput): TodayPlan {
   const setup = steps.filter((step) => !REMINDERS.includes(step))
   const dayOne = fresh && setup.length ? { step: setup[0]! } : null
 
-  const serverClosed = Boolean(
-    facts?.today && (facts.today.sales != null || facts.today.items != null),
-  )
-  const isClosed = Boolean(input.dayClosed || serverClosed)
   const closeWindow = isCloseDayWindow(shop.fields, input.now)
 
   const all: Need[] = []
+  const promise = facts?.promise && !input.promiseAnswered ? facts.promise : null
+  const supply = input.supply?.item ?? null
+  const same = (a?: string | null, b?: string | null) =>
+    Boolean(a && b && a.toLocaleLowerCase() === b.toLocaleLowerCase())
+  // Last night's promise already names the supply ("Order milk"): it leads, said once, and
+  // carries the supply row's run-out day, on-order line and Reorder. It keeps the supply row's
+  // id, so the purchase order opened from it stays open once the promise is answered.
+  const merged = Boolean(promise && same(supply, promise.item))
+  if (promise)
+    all.push(
+      merged
+        ? { id: 'supply', kind: 'promise', promise, supply: true }
+        : { id: 'promise', kind: 'promise', promise },
+    )
   if (unread) all.push({ id: 'reply', kind: 'reply', count: unread })
   if (closeWindow && !isClosed) all.push({ id: 'close-day', kind: 'closeDay' })
+  const supplyRow: Need | null =
+    supply && !merged ? { id: 'supply', kind: 'supply', item: supply } : null
+  // A supply that runs out within 2 days leads before the daily menu question, as in the brief.
+  if (supplyRow && input.supply?.soon) all.push(supplyRow)
   if (products.length && facts && shop.last_confirmed !== facts.date && !input.menuAnswered)
     all.push({ id: 'menu', kind: 'menu' })
   const soldOut = products.filter((product) => product.available === false)
-  for (const low of facts?.low_stock ?? [])
-    all.push({ id: `low-${low.name}`, kind: 'low', item: low.name, left: low.stock })
+  if (supplyRow && !input.supply?.soon) all.push(supplyRow)
+  // The supply row (with its run-out day) or last night's promise already names this item:
+  // never twice on Today.
+  const named = [supply, promise?.item]
+  for (const low of (facts?.low_stock ?? []).filter((low) => !named.some((n) => same(n, low.name))))
+    all.push({
+      id: `low-${low.name}`,
+      kind: 'low',
+      item: low.name,
+      left: low.stock,
+      // Not said is never bought: an older answer without it asks, never offers Order (OB-243).
+      source: low.source ?? 'unknown',
+      productId: low.product_id ?? null,
+    })
   if (soldOut.length) all.push({ id: 'sold-out', kind: 'soldOut', items: soldOut })
   // On day one the hero carries the next step; elsewhere missing steps wait their turn here.
   if (!dayOne) for (const step of steps) all.push({ id: `step-${step}`, kind: 'step', step })
   const asked = shop.public ? missingFacts(shop.fields) : []
   if (asked.length) all.push({ id: 'facts', kind: 'facts', facts: asked.slice(0, 2) })
 
+  const { lead, more } = leadSplit(byPlaybook(all, facts?.hints))
   return {
     part: dayPart(input.now),
     food,
     progress: done < total ? { done, total } : null,
-    needs: byPlaybook(all, facts?.hints).slice(0, MAX_NEEDS),
+    needs: lead,
+    more,
     line: facts?.line ?? null,
     pulse,
     forecast,

@@ -93,9 +93,8 @@ for (const scheme of ['light', 'dark'] as const) {
         .poll(() =>
           tiles.evaluate((grid) => {
             const prep = grid.querySelector('[data-tour="prep"]')
-            const close = Array.from(grid.children).find((tile) =>
-              tile.textContent?.includes('Close the day'),
-            )
+            // How much to make (the prep plan, batch 4b) leads Close the day: the row order.
+            const close = grid.querySelector('[data-tour="closeday"]')
             return Boolean(
               prep &&
               close &&

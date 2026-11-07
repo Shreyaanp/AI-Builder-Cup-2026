@@ -23,7 +23,10 @@ from .customer import (
     TranslationInput,
 )
 from .limits import client_ip, enforce_limits
+from .merchant import public_projection
 from .merchant_routes import consented_owner, owner, store
+from .product_source import source_of
+from .reply_suggestions import ReplySuggestions, templates
 from .threads import thread_signals, token_hash
 
 router = APIRouter(prefix="/api/v1")
@@ -188,6 +191,31 @@ async def unblock_conversation(business_id: str, inquiry_id: str, request: Reque
     )
     thread_signals(request).wake(business_id)
     return result
+
+
+@router.get(
+    "/businesses/{business_id}/inquiries/{inquiry_id}/replies", response_model=ReplySuggestions
+)
+async def reply_suggestions(
+    business_id: str, inquiry_id: str, request: Request
+) -> ReplySuggestions:
+    """One-tap reply drafts for the customer's latest words (OB-303); never sent from here."""
+    uid = await owner(request)
+    record = await anyio.to_thread.run_sync(
+        store(request).thread_action, uid, business_id, inquiry_id, "", "get"
+    )
+    humans = [m for m in record.messages if m.kind != "ai"]
+    if not humans or humans[-1].author != "customer" or record.done or record.blocked:
+        return ReplySuggestions(language="en")
+    context = await anyio.to_thread.run_sync(store(request).context, uid, business_id)
+    fields = context["business"]["fields"]
+    inventory = context["inventory"]
+    # The customer-facing projection only, plus made/bought to pick a sold-out item's stand-in.
+    shop = public_projection(business_id, fields, inventory)
+    for product, item in zip(shop["products"], inventory, strict=True):
+        product["source"] = source_of(item, fields.get("category", ""))
+    # The fixed templates for every shop: no model text can reach a suggestion (OB-326).
+    return templates(shop, humans[-1].text)
 
 
 async def translate_record(

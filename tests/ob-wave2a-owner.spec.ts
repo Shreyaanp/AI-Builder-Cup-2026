@@ -1,5 +1,6 @@
 ﻿import { expect, test } from '@playwright/test'
 import { enter, localOnly, seedShop } from './stories/support.js'
+import { openBuyStock } from './support/grow.js'
 
 const suppliers = {
   item: 'tea leaves',
@@ -24,7 +25,7 @@ const suppliers = {
   })),
 }
 
-test('OB-108: supplier cards scroll inside the coach at phone widths', async ({ page }) => {
+test('OB-108: the supplier list fits inside the coach at phone widths', async ({ page }) => {
   await localOnly(page)
   await page.setViewportSize({ width: 360, height: 800 })
   await enter(page)
@@ -52,13 +53,18 @@ test('OB-108: supplier cards scroll inside the coach at phone widths', async ({ 
     await expect
       .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1))
       .toBe(true)
-    const button = row.getByRole('button', { name: 'Choose' }).first()
+    const button = row.getByRole('button', { name: 'Order' }).first()
     await expect
       .poll(() => button.evaluate((node) => node.getBoundingClientRect().height))
       .toBeGreaterThanOrEqual(48)
-    expect(await row.evaluate((node) => node.scrollWidth)).toBeGreaterThan(
+    // The vendor list (simplify batch 4b) is rows, not a sideways carousel: every supplier fits
+    // inside the coach at this width, nothing scrolls sideways or is cut off.
+    expect(await row.evaluate((node) => node.scrollWidth)).toBeLessThanOrEqual(
       await row.evaluate((node) => node.clientWidth),
     )
+    const box = await row.boundingBox()
+    expect(box!.x).toBeGreaterThanOrEqual(0)
+    expect(box!.x + box!.width).toBeLessThanOrEqual(width)
   }
 })
 
@@ -81,8 +87,7 @@ test('OB-110: Purchase orders do not show SAP sample orders for a small shop', a
   await enter(page)
   await seedShop(page)
   await page.getByRole('button', { name: 'Grow', exact: true }).click()
-  await page.getByRole('button', { name: /^Purchase orders/ }).click()
-  await expect(page.getByRole('dialog', { name: 'Purchase orders' })).toBeVisible()
+  await openBuyStock(page)
   await expect(page.getByText('Live from SAP sandbox')).toHaveCount(0)
   await expect(page.getByText(/\$332\.50/)).toHaveCount(0)
 })

@@ -183,3 +183,44 @@ def test_close_the_day_uses_document_ai_when_its_reading_is_complete(app) -> Non
         app.state.document_ai = FakeReader(MERGED, "invoice")
         fallback = photo(client, bid, "delivery").json()
         assert fallback["reader"] == "fixture" and fallback["fixture"] is True
+
+
+def test_each_photo_costs_one_processor_call_never_both_ob182(app) -> None:  # noqa: F811
+    """OB-182 / #542: the type is decided by the upload (sales or delivery), so one photo is one
+    HTTP call to one processor, even when that reading is incomplete (Gemini takes over, the
+    other parser is not tried)."""
+    urls: list[str] = []
+    document: dict[str, Any] = {"entities": []}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        urls.append(str(request.url).split("/processors/")[1])
+        return httpx.Response(200, json={"document": document})
+
+    with TestClient(app) as client:
+        join(client)
+        first = upload(client, located_jpeg(None)).json()["proposal"]
+        bid = client.post(
+            f"/api/v1/proposals/{first['id']}/approve", json={"digest": first["digest"]}
+        ).json()["business_id"]
+        app.state.document_ai = DocumentAIReader(settings(), transport=httpx.MockTransport(handler))
+
+        document.update(TWO_ROW_RECEIPT)
+        assert photo(client, bid, "sales").json()["reader"] == "document_ai"
+        assert urls == ["abc123:process"]  # Expense parser only
+
+        document.update(INVOICE)
+        assert photo(client, bid, "delivery").json()["reader"] == "document_ai"
+        assert urls == ["abc123:process", "def456:process"]  # Invoice parser only
+
+        # An unreadable delivery note falls to Gemini/fixture, not to the Expense parser.
+        app.state.document_ai = DocumentAIReader(settings(), transport=httpx.MockTransport(handler))
+        document.clear()
+        document["entities"] = []
+        before = len(urls)
+        assert photo(client, bid, "delivery").json()["reader"] == "fixture"
+        assert urls[before:] == ["def456:process"]
+
+        # A stock count sheet never reaches Document AI.
+        before = len(urls)
+        assert photo(client, bid, "stock_count").json()["reader"] == "fixture"
+        assert len(urls) == before

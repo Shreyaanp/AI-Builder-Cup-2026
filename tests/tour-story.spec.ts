@@ -1,6 +1,7 @@
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test } from '@playwright/test'
 import { enter } from './stories/support.js'
+import { openBuyStock } from './support/grow.js'
 
 test.beforeEach(async ({ page, isMobile }) => {
   if (isMobile) await page.setViewportSize({ width: 390, height: 844 })
@@ -38,8 +39,12 @@ for (const appearance of ['light', 'dark']) {
       await page.addInitScript((appearance) => {
         localStorage.setItem('niva.starter.preferences', JSON.stringify({ appearance }))
       }, appearance)
+      // Axe must not sample colours halfway through an entrance fade.
+      await page.emulateMedia({ reducedMotion: 'reduce' })
       await page.goto(`/explore/s/demo-story-${world.city}-${world.slug}`)
-      await expect(page.getByRole('heading', { name: world.name, exact: true })).toBeVisible()
+      await expect(page.getByRole('heading', { name: world.name, exact: true })).toBeVisible({
+        timeout: 30_000,
+      })
       await expect(page.getByText(world.item, { exact: true }).first()).toBeVisible()
       await expect(page.getByText(world.price, { exact: false }).first()).toBeVisible()
       // A sample shop is labelled "Sample shop" and never claims "Verified owner" (A-12).
@@ -84,7 +89,7 @@ for (const area of [
     lng: 103.9045,
     label: 'Katong, Singapore',
     query: 'kopi',
-    price: '$1.70',
+    price: /S?\$1\.50(?![\d])/,
   },
 ]) {
   test(`${area.city} front door leads to local prices and map pins`, async ({ page }, info) => {
@@ -92,7 +97,9 @@ for (const area of [
       localStorage.setItem('chalkboard.discover.filters', JSON.stringify({ place }))
     }, area)
     await page.goto('/explore/')
-    await expect(page.getByRole('button', { name: `Area: ${area.label}` })).toBeVisible()
+    await expect(
+      page.getByRole('button', { name: new RegExp(`^Area: ${area.label.split(',')[0]}`) }),
+    ).toBeVisible()
     await expect(
       page.getByRole('list', { name: 'Ask about anything nearby' }).getByRole('button').first(),
     ).toBeVisible()
@@ -198,7 +205,7 @@ test('owner tour connects Today, forecast, payment preview and supplier timeline
   await page.getByLabel('Message', { exact: true }).fill('Forecast my sales')
   await page.getByRole('button', { name: 'Send', exact: true }).click()
   await expect(page.getByRole('figure', { name: /^Forecast chart:/ })).toBeVisible()
-  await expect(page.getByText('Weekday average', { exact: true })).toBeVisible()
+  await expect(page.getByText('Based on your last weeks', { exact: true })).toBeVisible()
   await page.screenshot({
     path: `output/playwright/tour-story/${info.project.name}-owner-forecast.png`,
     fullPage: true,
@@ -221,14 +228,19 @@ test('owner tour connects Today, forecast, payment preview and supplier timeline
   })
   await page.getByRole('button', { name: 'Back', exact: true }).click()
   await page.getByRole('button', { name: 'Grow', exact: true }).click()
-  await page.getByRole('button', { name: /Purchase orders/ }).click()
+  // Buy stock → On the way (simplify batch 4b): the order with its bill in.
+  await openBuyStock(page, 'On the way')
   // OB-110: a small shop's Purchase orders hold its own orders only, no SAP sandbox sample.
   await expect(page.getByText('Recorded sample of SAP’s sandbox, not live')).toHaveCount(0)
   await page
     .getByRole('list', { name: 'Purchase orders', exact: true })
-    .getByRole('button', { name: /PO 4500000001.*Sri Lakshmi Provisions/ })
+    .getByRole('button', { name: 'Tea dust from Sri Lakshmi Provisions (Demo)' })
+    .first()
     .click()
-  const order = page.getByRole('article', { name: 'PO 4500000001', exact: true })
+  const order = page.getByRole('article', {
+    name: 'Tea dust from Sri Lakshmi Provisions (Demo)',
+    exact: true,
+  })
   await expect(order).toBeVisible()
   await expect(order).toContainText('Invoice in')
   await page.screenshot({

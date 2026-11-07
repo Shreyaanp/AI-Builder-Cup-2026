@@ -55,7 +55,7 @@ export const ownerStrings = {
   weather: 'Weather',
   rain: 'Chance of rain: {pct}%',
   weatherCredit: 'Weather data by {source}',
-  weatherDemoCredit: 'Offline weather fixture. Live weather uses {source}.',
+  weatherDemoCredit: 'Sample weather for the demo.',
   lowStock: 'Running low',
   stockLeft: 'Left: {n}',
   runsOut: 'Runs out {date}',

@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
+import { growTool, showInGrow } from './support/grow.js'
 
 // Owner app polish from the live walk-through (O-6..O-15), in the public demo at 390x844.
 // OB-212 (#569): a touch phone in both projects, so the desktop run can tap() as well.
@@ -29,7 +30,7 @@ test('O-6: the Shop details card opens the details sheet', async ({ page }, info
 test('O-7: switching to Hindi shows no reminder error', async ({ page }, info) => {
   await openDemo(page, info)
   await page.locator('[data-tour="nav-you"]').click()
-  await expect(page.locator('#reminder-status')).toContainText('Demo')
+  await expect(page.locator('#reminder-status')).toContainText('In the demo')
   await page.getByRole('combobox', { name: /Language/ }).click()
   await page.getByRole('option', { name: 'हिन्दी' }).click()
   await expect(page.locator('html')).toHaveAttribute('lang', 'hi')
@@ -38,20 +39,22 @@ test('O-7: switching to Hindi shows no reminder error', async ({ page }, info) =
   await expect(page.getByText('बदलाव नहीं हुआ')).toHaveCount(0)
 })
 
-test('O-8: the demo explains that deleting data is not available', async ({ page }, info) => {
+test('O-8: deleting data in the demo says plainly it is pretend', async ({ page }, info) => {
   await openDemo(page, info)
   await page.locator('[data-tour="nav-you"]').click()
   await page.getByRole('button', { name: /Privacy & your data/ }).tap()
-  await expect(page.getByText("Deleting data isn't available in the demo.")).toBeVisible()
+  await expect(page.getByText('In the demo this is pretend: nothing is sent')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Delete all my data' })).toHaveCount(0)
 })
 
 test('O-9: How this works opens the forecast explainer', async ({ page }, info) => {
   await openDemo(page, info)
-  await page.getByRole('button', { name: 'How this works' }).first().tap()
-  const sheet = page.getByRole('dialog', { name: 'How this works' })
-  await expect(sheet).toContainText('TimesFM on BigQuery')
-  await sheet.getByRole('button', { name: 'Close', exact: true }).tap()
+  // Simplify batch 5: Coach Today has no help line; the coach's ⋯ sheet explains the forecast.
+  await page.getByRole('button', { name: 'More options', exact: true }).tap()
+  const sheet = page.getByRole('dialog', { name: 'Start again' })
+  await sheet.getByRole('button', { name: 'How this works' }).tap()
+  await expect(sheet).toContainText('based on how your shop sold in recent weeks')
+  await sheet.getByRole('button', { name: 'Cancel', exact: true }).tap()
   await expect(sheet).toHaveCount(0)
 })
 
@@ -62,11 +65,16 @@ test('O-10 and O-11: approving a reorder says it is sent; whole rupees have no .
   await page.locator('[data-tour="nav-grow"]').click()
   // OB-212 (#569): the demo week is the last 7 days of date-seeded sales, so the total moves
   // every day (₹44,552 was 25 Oct only). Assert a whole-rupee amount, never one day's figure.
+  // The week is the My sales row (simplify batch 4b): "This week ₹43,883 · -2%".
   await expect(
-    page.getByRole('button', { name: /Your week\D*₹\d{1,3}(,\d{2,3})*(?![\d.,])/ }),
+    await showInGrow(
+      page,
+      page.getByRole('button', { name: /My sales\D*₹\d{1,3}(,\d{2,3})*(?![\d.,])/ }),
+    ),
   ).toBeVisible()
   await expect(page.getByText(/₹[\d,]+\.00/)).toHaveCount(0)
-  await page.getByRole('button', { name: /^Purchase orders/ }).tap()
+  // Purchase orders are Buy stock → To do.
+  await (await growTool(page, /^Buy stock/)).tap()
   await page.getByRole('button', { name: 'Draft a reorder' }).tap()
   const order = page.getByRole('dialog').getByRole('article').first()
   await expect(order.getByText(/₹[\d,]+\.00/)).toHaveCount(0)

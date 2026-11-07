@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { enter, localOnly, seedShop } from './stories/support.js'
+import { showInGrow } from './support/grow.js'
 
 const widths = [360, 390, 412]
 const languages = ['en', 'hi'] as const
@@ -134,7 +135,8 @@ for (const width of widths) {
 
         // Supply orders and purchase orders
         await page.locator('[data-tour="nav-grow"]').click()
-        await page.locator('[data-tour="supply"]').click()
+        // Grow → Buy stock (simplify batch 4b) holds the purchase orders.
+        await (await showInGrow(page, page.locator('[data-tour="supply"]'))).click()
         await page.getByRole('button', { name: /Try supply demo|डेमो/ }).click()
         await assertPhoneLayout(page, 'Supply orders')
         const supply = page.getByRole('region', { name: /Supply chain|सामान मँगाना/ })

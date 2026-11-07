@@ -133,6 +133,7 @@ class Check(BaseModel):
         "over_approval",
         "new_supplier",
         "no_price",
+        "too_big",  # flagged on read only, never by evaluate (OB-250)
     ]
     line: int | None = None
     item: str = ""

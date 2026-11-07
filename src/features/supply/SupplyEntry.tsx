@@ -9,8 +9,11 @@ import { OrderCard, TaskCard } from './IoParts'
 import { OnceOpened } from '../../app/OnceOpened'
 import { OrderSheet, SupplyHub } from './supplyDeferred'
 
-/** Today: exceptions float up (shortages, changes, late, unsent); on-time documents stay quiet. */
-export function TodaySupplyNeeds() {
+/**
+ * Today: exceptions float up (shortages, changes, late, unsent); on-time documents stay quiet.
+ * Inside "Needs you now" (`inCard`) it is part of Today's one stock surface (HABIT change 2).
+ */
+export function TodaySupplyNeeds({ inCard = false }: { inCard?: boolean }) {
   const c = useIoCopy()
   const roles = useTheme().material
   const { board } = useBoard(true)
@@ -25,7 +28,12 @@ export function TodaySupplyNeeds() {
         component="section"
         aria-label={c.question.needs}
         spacing={2}
-        sx={{ p: 4, borderRadius: `${shape.lg}px`, bgcolor: roles.surfaceContainerLow }}
+        data-testid="today-supply-needs"
+        sx={
+          inCard
+            ? { px: 1, pt: 3, pb: 1, borderTop: `1px solid ${roles.outlineVariant}` }
+            : { p: 4, borderRadius: `${shape.lg}px`, bgcolor: roles.surfaceContainerLow }
+        }
       >
         <Typography variant="titleMedium" component="h2">
           {c.needsNow(tasks.length)}

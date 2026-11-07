@@ -5,7 +5,7 @@ test('sourcing labels demo suppliers, reviews exact quantities, receives reply a
 }, info) => {
   await owner(page)
   await say(page, 'My flour is running low')
-  const suppliers = page.getByRole('list', { name: /suppliers nearby/ })
+  const suppliers = page.getByRole('list', { name: /suppliers? nearby/ })
   await expect(suppliers).toBeVisible()
   await expect(suppliers.getByRole('listitem').first()).toContainText('Demo')
   const message = page.getByRole('textbox', { name: 'Message', exact: true })
@@ -28,7 +28,7 @@ test('sourcing labels demo suppliers, reviews exact quantities, receives reply a
 test('supplier results leave the touch Send control reachable', async ({ page }) => {
   await owner(page)
   await say(page, 'My flour is running low')
-  await expect(page.getByRole('list', { name: /suppliers nearby/ })).toBeVisible()
+  await expect(page.getByRole('list', { name: /suppliers? nearby/ })).toBeVisible()
   await page
     .getByRole('textbox', { name: 'Message', exact: true })
     .fill('Order from the first supplier')

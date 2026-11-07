@@ -34,8 +34,9 @@ def tool_names() -> set[str]:
 def test_cases_are_a_usable_set() -> None:
     ids = [case.id for case in CASES]
     assert len(ids) == len(set(ids)), "case ids must be unique"
-    assert 25 <= len(CASES) <= 40
-    assert sum(case.id.startswith("hinglish") for case in CASES) <= 5
+    assert 25 <= len(CASES) <= 50
+    # Hinglish is how owners talk, not an edge case (owner audit, 3 Nov), yet English leads.
+    assert sum(case.id.startswith("hinglish") for case in CASES) <= 8
     groups = {case.group for case in CASES}
     for group in ("ambiguous", "unsupported", "no_action", "suppliers", "purchase_orders"):
         assert group in groups

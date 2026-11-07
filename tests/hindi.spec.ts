@@ -1,6 +1,7 @@
 import { mkdirSync } from 'node:fs'
 import { expect, test, type Page } from '@playwright/test'
 import { enter, image, localOnly, otherOwnersWords, seedShop, share } from './stories/support.js'
+import { growTool, openGrowTool } from './support/grow.js'
 
 // Hindi end to end at 360px. The owner app set to Hindi and a customer
 // whose phone is in Hindi walk the main screens; each must read in Hindi: no English UI words
@@ -128,7 +129,8 @@ const tab = (page: Page, name: string) =>
 
 async function growCard(page: Page, name: RegExp) {
   await tab(page, 'बढ़ाएँ').click()
-  await page.getByRole('button', { name }).click()
+  // कितना बनाना है, माल मँगाएँ and मेरी बिक्री each open one sheet (batch 4b).
+  await openGrowTool(page, name)
   await expect(page.getByRole('dialog')).toBeVisible()
 }
 
@@ -148,7 +150,7 @@ test('the owner app reads in Hindi: Today, coach, Shop, Grow tools, You, privacy
   await test.step('coach text turn', async () => {
     await page.getByLabel('संदेश', { exact: true }).fill('आज कितने कप चाय बिकी?')
     await page.getByRole('button', { name: 'भेजें', exact: true }).click()
-    await expect(page.getByRole('log')).toContainText('ऑफ़लाइन नमूना')
+    await expect(page.getByRole('log')).toContainText('आपकी बात मिली')
     await readsInHindi(page, '02-coach-reply')
   })
 
@@ -171,20 +173,32 @@ test('the owner app reads in Hindi: Today, coach, Shop, Grow tools, You, privacy
 
   await test.step('Shop: ₹ prices', async () => {
     await tab(page, 'दुकान').click()
-    await expect(page.getByText('₹18', { exact: true })).toBeVisible()
+    const menu = page.locator('[data-tour="menu"]').filter({ visible: true })
+    await expect(menu).toBeVisible()
     await readsInHindi(page, '04-shop')
+    // Prices live in the Menu sheet (Shop shows one row per part of the shop).
+    await menu.click()
+    await expect(page.getByRole('dialog').getByText('₹18', { exact: true })).toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('dialog')).toHaveCount(0)
   })
 
   await test.step('Grow: Hindi dates', async () => {
     await tab(page, 'बढ़ाएँ').click()
-    await expect(page.getByRole('button', { name: /^हफ़्ते का सार/ })).toContainText('अक्टू')
+    await expect(await growTool(page, /^मेरी बिक्री/)).toBeVisible()
     await readsInHindi(page, '05-grow')
+    // The week's summary sits in मेरी बिक्री under its name and dates (batch 4b).
+    await growCard(page, /^मेरी बिक्री/)
+    await expect(
+      page.getByRole('dialog').getByRole('button', { name: /^हफ़्ते का सार/ }),
+    ).toContainText('अक्टू')
+    await closeSheet(page)
   })
 
   await test.step('Close the day: photo read and review', async () => {
     await growCard(page, /^दिन बंद करें/)
     const dialog = page.getByRole('dialog')
-    await dialog.getByRole('button', { name: /बिलिंग या POS रिपोर्ट/ }).click()
+    await dialog.getByRole('button', { name: /बिक्री पर्ची या कॉपी/ }).click()
     await dialog
       .locator('input[type=file]')
       .first()
@@ -195,7 +209,8 @@ test('the owner app reads in Hindi: Today, coach, Shop, Grow tools, You, privacy
   })
 
   await test.step('Plan tomorrow: units in Hindi', async () => {
-    await growCard(page, /^कल की योजना/)
+    await growCard(page, /^कितना बनाना है/)
+    await page.getByRole('dialog').getByRole('button', { name: 'संख्या बदलें' }).click()
     await expect(page.getByLabel('तैयार स्टॉक (कप)')).toBeVisible()
     await readsInHindi(page, '07-plan-tomorrow')
     await closeSheet(page)
@@ -207,13 +222,15 @@ test('the owner app reads in Hindi: Today, coach, Shop, Grow tools, You, privacy
     await closeSheet(page)
   })
 
-  await test.step('purchase order', async () => {
-    const purchaseCard = page
-      .getByRole('button')
-      .filter({ has: page.getByText('खरीद पर्चियाँ', { exact: true }) })
-    await expect(purchaseCard).toHaveCount(1)
-    await purchaseCard.click()
-    await expect(page.getByRole('dialog')).toBeVisible()
+  await test.step('purchase order: Buy stock → My suppliers', async () => {
+    // Purchase orders now live in माल मँगाएँ (Buy stock) → मेरे सप्लायर (batch 4b).
+    await growCard(page, /^माल मँगाएँ/)
+    const suppliers = page
+      .getByRole('dialog')
+      .getByRole('button', { name: /^मेरे सप्लायर/ })
+      .first()
+    await suppliers.click()
+    await expect(suppliers).toHaveAttribute('aria-pressed', 'true')
     // The sandbox supplier's name comes from the imported SAP document (data, not interface copy).
     await readsInHindi(page, '09-purchase-order', ['SAP supplier'])
     await closeSheet(page)

@@ -4,6 +4,7 @@ import { FIRST_QUESTION } from '../newShopTopics.js'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import zlib from 'node:zlib'
+import { startNewShop } from '../support/newShop.js'
 
 export const gpsBoard = new URL('./fixtures/bengaluru-board.jpg', import.meta.url)
 export const gpsBoardPath = fileURLToPath(gpsBoard)
@@ -76,13 +77,26 @@ export async function shot(page: Page, story: number, step: string | number) {
   ).toBe(true)
 }
 
-export async function enter(page: Page) {
+export async function enter(
+  page: Page,
+  copy?: {
+    continuePreview: string
+    acceptTerms: string
+    acceptPrivacy: string
+    agree: string
+    firstTitle: string
+  },
+) {
   await page.goto('/')
-  await page.getByRole('button', { name: 'Continue local preview' }).click()
-  await page.getByLabel('I agree to the Terms').check()
-  await page.getByLabel('I have read the Privacy Notice').check()
-  await page.getByRole('button', { name: 'Agree and continue' }).click()
-  await expect(page.getByRole('heading', { name: 'What shall we work on today?' })).toBeVisible()
+  await page
+    .getByRole('button', { name: copy?.continuePreview ?? 'Continue local preview' })
+    .click()
+  await page.getByLabel(copy?.acceptTerms ?? 'I agree to the Terms').check()
+  await page.getByLabel(copy?.acceptPrivacy ?? 'I have read the Privacy Notice').check()
+  await page.getByRole('button', { name: copy?.agree ?? 'Agree and continue' }).click()
+  await expect(
+    page.getByRole('heading', { name: copy?.firstTitle ?? 'Let’s put your shop online' }),
+  ).toBeVisible()
 }
 
 /** A chat photo is first sorted in one line; the owner picks Menu to open the menu review. */
@@ -109,8 +123,7 @@ export async function openNewShopReview(
 ) {
   await suggestShopPin(page, point)
   const begin = page.getByRole('button', { name: 'Let’s begin' })
-  if (!(await begin.isVisible()))
-    await page.getByRole('banner').getByRole('button', { name: 'Add shop details' }).click()
+  if (!(await begin.isVisible())) await startNewShop(page)
   await begin.click()
   await expect(page.getByRole('log')).toContainText(FIRST_QUESTION)
   await page.getByLabel('Message', { exact: true }).fill(details)
@@ -298,7 +311,7 @@ export async function seedShop(
 
 export async function share(page: Page) {
   await page.getByRole('button', { name: 'Shop', exact: true }).click()
-  await page.getByRole('button', { name: /^Customer page/ }).click()
+  await page.getByRole('button', { name: /^Your shop page/ }).click()
   const sharing = page.getByRole('switch', { name: 'Share customer page' })
   if (!(await sharing.isChecked())) await sharing.click()
   await expect(sharing).toBeChecked()

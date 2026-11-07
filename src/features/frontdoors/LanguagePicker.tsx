@@ -11,10 +11,13 @@ import { useCopy } from '../v1/strings'
 
 export function LanguagePicker({
   variant = 'fixed',
+  plainName,
   sx,
 }: {
   /** `row`: a full-width settings row (the profile sheet) naming the language in use. */
   variant?: 'fixed' | 'nav' | 'inline' | 'row'
+  /** Name the button "Language" alone, for pages that show no current choice. */
+  plainName?: boolean
   sx?: SxProps<Theme>
 }) {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
@@ -93,7 +96,7 @@ export function LanguagePicker({
         <HoverTip title={`${t.language}: ${currentLabel}`}>
           <IconButton
             id={ids.button}
-            aria-label={`${t.language}: ${currentLabel}`}
+            aria-label={plainName ? t.language : `${t.language}: ${currentLabel}`}
             aria-haspopup="true"
             aria-expanded={open ? 'true' : undefined}
             aria-controls={open ? ids.menu : undefined}

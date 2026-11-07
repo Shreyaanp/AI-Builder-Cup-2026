@@ -36,6 +36,7 @@ from .merchant import (
     challenge_prompts,
     check_demo_seed,
     has_pin,
+    kept_source,
     preserve_profile,
     public_projection,
     require_name,
@@ -302,6 +303,16 @@ class FirestoreMerchantStore:
                     created = (old[previous.id].to_dict() or {}).get("created", created)
                     transaction.delete(previous)
                 fields = {key: value for key, value in product.items() if key != "previous_unit"}
+                saved = (
+                    prior
+                    if prior.exists
+                    else old[previous.id]
+                    if previous is not None and old[previous.id].exists
+                    else None
+                )
+                fields = kept_source(
+                    fields, ((saved.to_dict() or {}).get("fields")) if saved else None
+                )
                 transaction.set(ref, {"fields": fields, "created": created, "updated": now})
             receipt = {
                 "business_id": bid,
@@ -408,7 +419,15 @@ class FirestoreMerchantStore:
             # Seal the parent before enumerating children: racing transactions either commit
             # before this update (and are enumerated) or retry against the deletion marker.
             snapshot.reference.update({"deleting": True, "public": False})
-            for kind in ("rescue", "brief", "brief_wording", "shop_daily", *SUPPLY_KINDS):
+            for kind in (
+                "rescue",
+                "brief",
+                "brief_wording",
+                "shop_daily",
+                "owner_habit",
+                "owner_promise",
+                *SUPPLY_KINDS,
+            ):
                 self.feature_docs.delete_scope(kind, snapshot.id)
             owned.append(snapshot.id)
             refs += [item.reference for item in snapshot.reference.collection("inventory").stream()]
@@ -479,6 +498,28 @@ class FirestoreMerchantStore:
             if not available and (item.to_dict() or {})["fields"].get("available", True):
                 transaction.set(signal_ref, {"count": signal.get("count", 0) + 1})
             transaction.update(item_ref, {"fields": fields, "updated": time.time()})
+            transaction.update(business_ref, {"revision": business["revision"] + 1})
+            return {"id": product_id, **fields, "revision": business["revision"] + 1}
+
+        result = run(self.client.transaction())
+        self.forget_shared()
+        return result
+
+    def set_source(self, uid: str, bid: str, product_id: str, source: str) -> dict[str, Any]:
+        business_ref = self.businesses.document(document_id(bid, "Business not found."))
+        if not re.fullmatch(r"[0-9a-f]{64}", product_id):
+            raise HTTPException(404, "Product not found.")
+        item_ref = business_ref.collection("inventory").document(product_id)
+
+        @firestore.transactional
+        def run(transaction: Any) -> dict[str, Any]:
+            business = self.owned(business_ref.get(transaction=transaction), uid)
+            item = item_ref.get(transaction=transaction)
+            if not item.exists:
+                raise HTTPException(404, "Product not found.")
+            fields = {**(item.to_dict() or {})["fields"], "source": source}
+            transaction.update(item_ref, {"fields": fields, "updated": time.time()})
+            # A new revision, like the sold-out switch: the app reloads the item at once.
             transaction.update(business_ref, {"revision": business["revision"] + 1})
             return {"id": product_id, **fields, "revision": business["revision"] + 1}
 

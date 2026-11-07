@@ -148,8 +148,8 @@ for (const world of [
       })
 
       for (const title of [
-        'Tomorrow’s prep plan',
         'Your menu, by category',
+        'Tomorrow’s prep plan',
         'Close the day in a minute',
         'Just talk or type',
       ]) {

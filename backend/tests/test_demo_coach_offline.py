@@ -4,6 +4,7 @@ example chips for anything else, and never a model or paid Maps call (OB-155).""
 import json
 from unittest.mock import AsyncMock
 
+import pytest
 from fastapi.testclient import TestClient
 
 from app.demo_coach import SUGGESTIONS
@@ -244,7 +245,8 @@ def test_O_2_demo_coach_reads_hours_items_and_visits_as_meant(app, monkeypatch):
         app.state.rate_limiter.counters.clear()
 
 
-EXAMPLES = "I can help with these in the demo"
+# Unsure: one short question, never a guessed card, with the examples as chips under it (S2-9).
+EXAMPLES = "?"
 CLOSE_22 = {"line": "Closing time 21:00 → 22:00 on every open day", "close": "22:00"}
 NEW_PRICE = {
     "line": "Samosa: price ₹20 → ₹25 per piece",
@@ -387,7 +389,14 @@ DEMO_COACH_PHRASINGS: list[tuple[str, dict]] = [
     ("samosa sold out tomorrow", {"reply": EXAMPLES}),
     ("samosa sold out on Sunday", {"reply": EXAMPLES}),
     ("Kaya toast sold out", {"reply": EXAMPLES}),
-    ("Samosa sold out and masala chai price 25", {"reply": EXAMPLES}),
+    # Two changes in one message are one card (OB-262).
+    (
+        "Samosa sold out and masala chai price 25",
+        {
+            "line": "Samosa: sold out; Masala chai: price ₹20 → ₹25 per cup",
+            "products": [("Samosa", 2000, "piece", False), ("Masala chai", 2500, "cup", True)],
+        },
+    ),
     ("samosa back in stock", {"reply": "Samosa is already available on your demo menu"}),
     ("Is samosa sold out?", {"reply": "Demo stock shows Samosa: on sale"}),
     ("samosa is 25 years old", {"reply": "demo price for Samosa is ₹20."}),
@@ -398,6 +407,10 @@ DEMO_COACH_PHRASINGS: list[tuple[str, dict]] = [
     ("How many people visited my shop this week?", {"reply": "page was opened"}),
     ("what are my best sellers?", {"reply": "best sellers: Masala chai"}),
     ("What sells the most?", {"reply": "best sellers: Masala chai"}),
+    (
+        "सबसे ज़्यादा क्या बिकता है?",
+        {"reply": "पिछले 7 दिनों में डेमो के सबसे ज़्यादा बिकने वाले आइटम: मसाला चाय"},
+    ),
     ("how many people bought samosa", {"absent": "page was opened"}),
     ("Should I visit the wholesaler tomorrow?", {"absent": "page was opened"}),
     ("most popular supplier", {"absent": "best sellers:"}),
@@ -513,18 +526,22 @@ def test_O_2_demo_coach_builds_a_card_only_for_an_exact_request(app):  # noqa: N
                     wrong.append((message, expected, got))
                 elif expected.get("absent", "\0") in text:
                     wrong.append((message, expected, got))
-                elif expected.get("reply") == EXAMPLES and offered != {
-                    "suggestions": list(SUGGESTIONS)
-                }:
+                elif expected.get("reply") == EXAMPLES and (
+                    text.count("?") != 1 or offered != {"suggestions": list(SUGGESTIONS)}
+                ):
                     wrong.append((message, expected, got))
                 continue
             if len(cards) != 1 or f"check: {expected['line']}." not in text:
                 wrong.append((message, expected, got))
                 continue
             card = cards[0]
-            if "product" in expected:
-                name, price, unit, available = expected["product"]
-                want = [{"name": name, "price": price, "unit": unit, "available": available}]
+            if "product" in expected or "products" in expected:
+                want = [
+                    {"name": name, "price": price, "unit": unit, "available": available}
+                    for name, price, unit, available in expected.get(
+                        "products", [expected.get("product")]
+                    )
+                ]
                 have = [
                     {key: p[key] for key in ("name", "price", "unit", "available")}
                     for p in card["products"]
@@ -554,3 +571,114 @@ def test_O_4_demo_pin_address_is_answered_offline(app, monkeypatch):  # noqa: N8
         pin = owner(client, session, "places/pin?q=Indiranagar")
         assert pin.status_code == 200, pin.text
         paid.assert_not_called()
+
+
+def _sale(day: str, item: str, quantity: float) -> dict:
+    return {"date": day, "item": item, "quantity": quantity, "revenue": int(quantity * 2000)}
+
+
+def test_best_sellers_use_the_last_7_days_so_monday_is_never_empty():
+    """Frozen to a Monday with no sales today (Sunday too): best sellers are still listed."""
+    from datetime import date
+
+    from app.recap import recap_facts
+
+    signals = {"fields": {}, "questions": [], "sold_out": {}}
+    sales = [
+        _sale("2026-11-01", "Masala chai", 30),  # Sunday
+        _sale("2026-10-30", "Samosa", 12),
+        _sale("2026-10-27", "Masala chai", 5),  # Tuesday of last week, 6 days before Monday
+        _sale("2026-10-26", "Old item", 99),  # 7 days before Monday: outside the window
+    ]
+    for today in (date(2026, 11, 2), date(2026, 11, 1)):  # Monday, Sunday
+        week = f"{today.isocalendar()[0]}-W{today.isocalendar()[1]:02d}"
+        facts = recap_facts(week, sales, signals, through=today)
+        names = [row["item"] for row in facts["top_sellers"]]
+        assert names, today
+        assert names[0] == ("Masala chai" if today.weekday() == 0 else "Old item")
+    monday = recap_facts("2026-W45", sales, signals, through=date(2026, 11, 2))
+    assert "Old item" not in {r["item"] for r in monday["top_sellers"] + monday["slow_movers"]}
+    # The calendar week still works for the weekly recap.
+    assert recap_facts("2026-W45", sales, signals)["top_sellers"] == []
+
+
+def test_OB_303_demo_drafts_replies_and_prepares_a_dictated_reply_offline(app, monkeypatch):  # noqa: N802, F811
+    """OB-303: Priya's question gets three template drafts (never a model); "reply to Priya:
+    yes we have samosa" becomes a reply card that waits for the owner's Send."""
+    from app import text_model
+
+    async def model_called(*_: object, **__: object) -> object:
+        pytest.fail("The public demo asked the model for reply drafts")
+
+    # Suggestions are templates only (OB-326); a spy on the text model proves none is asked.
+    monkeypatch.setattr(text_model, "generate", model_called)
+    with TestClient(app) as client:
+        app.state.v1_settings.public_demo_enabled = True
+        app.state.rate_limiter.counters.clear()
+        session = open_demo(client).json()["session_id"]
+        bid = owner(client, session, "businesses").json()[0]["id"]
+        threads = owner(client, session, f"businesses/{bid}/inquiries").json()
+        priya = next(t for t in threads if t["name"] == "Priya")
+        drafts = owner(client, session, f"businesses/{bid}/inquiries/{priya['id']}/replies")
+        assert drafts.status_code == 200, drafts.text
+        body = drafts.json()
+        assert body["mode"] == "template" and body["language"] == "en"
+        assert len(body["replies"]) == 3
+        assert body["replies"][0].startswith("Yes, Masala chai is available today: ₹20 per cup")
+        # Asha already has a reply: nothing to draft.
+        asha = next(t for t in threads if t["name"] == "Asha")
+        assert (
+            owner(client, session, f"businesses/{bid}/inquiries/{asha['id']}/replies").json()[
+                "replies"
+            ]
+            == []
+        )
+        for message in ("reply to Priya: yes we have samosa", "Priya ko bolo haan samosa hai"):
+            events = coach_events(client, session, message)
+            card = next(e["data"] for e in events if e["kind"] == "action")
+            assert card["target"] == "reply" and card["thread_id"] == priya["id"], message
+            assert card["text"].casefold().rstrip(".") in (
+                "yes we have samosa",
+                "haan samosa hai",
+            )
+            reply = " ".join(e.get("text") or "" for e in events)
+            assert "Nothing goes until you do" in reply or "अपने-आप नहीं जाता" in reply
+        hindi = coach_events(client, session, "प्रिया को जवाब दो: हाँ, समोसा है")
+        card = next(e["data"] for e in hindi if e["kind"] == "action")
+        assert card["thread_id"] == priya["id"] and card["label"] == "Priya को जवाब दें"
+        # A real "no" for the customer is a reply, not a "don't".
+        for message, said in (
+            ("Priya ko bolo ki nahi, samosa khatam hai", "nahi, samosa khatam hai"),
+            ("reply to Priya don't come today, we are closed", "don't come today, we are closed"),
+        ):
+            events = coach_events(client, session, message)
+            card = next(e["data"] for e in events if e["kind"] == "action")
+            assert card["thread_id"] == priya["id"], message
+            assert card["text"].casefold().rstrip(".") == said, message
+        for refused in (
+            "don't reply to Priya",
+            "Priya ko reply mat karo",
+            "Priya ko jawab nahi dena",
+            "reply to Priya don't send",
+            "reply to Zed: hi",
+            "राहुल को जवाब दो: हाँ, समोसा है",
+        ):
+            events = coach_events(client, session, refused)
+            assert not any(
+                e["kind"] == "action" and (e.get("data") or {}).get("target") == "reply"
+                for e in events
+            ), refused
+        # A name that matches nobody asks which customer, naming the one who is waiting.
+        rahul = " ".join(
+            e.get("text") or "" for e in coach_events(client, session, "राहुल को जवाब दो: हाँ")
+        )
+        assert "किस ग्राहक" in rahul and "Priya" in rahul
+        zed = " ".join(
+            e.get("text") or "" for e in coach_events(client, session, "reply to Zed: hi")
+        )
+        assert "Which customer?" in zed and "Priya" in zed
+        # Preparing a reply never sends it.
+        threads = owner(client, session, f"businesses/{bid}/inquiries").json()
+        priya = next(t for t in threads if t["name"] == "Priya")
+        assert [m["author"] for m in priya["messages"]] == ["customer"]
+        app.state.rate_limiter.counters.clear()

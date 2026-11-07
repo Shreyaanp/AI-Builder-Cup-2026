@@ -1,5 +1,6 @@
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
+import { growTool } from './support/grow.js'
 
 /** ISO date `back` days ago in UTC: a shop made through page.request sends no timezone, so its day is UTC's. */
 function shopDay(back: number) {
@@ -17,7 +18,7 @@ async function shopWithTwoWeeksOfSales(page: Page) {
   await page.getByLabel('I agree to the Terms').check()
   await page.getByLabel('I have read the Privacy Notice').check()
   await page.getByRole('button', { name: 'Agree and continue' }).click()
-  await expect(page.getByRole('heading', { name: 'What shall we work on today?' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Let’s put your shop online' })).toBeVisible()
   const prepared = await page.request.post('/api/v1/proposals', {
     data: {
       kind: 'business',
@@ -62,10 +63,11 @@ test('Your week: yesterday and this week against last week, from saved sales', a
   await page.getByRole('button', { name: 'Continue local preview' }).click()
   // Insights live on Grow.
   await page.getByRole('button', { name: 'Grow', exact: true }).click()
-  const tile = page.getByRole('button', { name: /^Your week/ })
-  await expect(tile).toContainText(/\+\d+% vs last week/)
+  // My sales (simplify batch 4b): this week and the change on the row, the week in the sheet.
+  const tile = await growTool(page, /^My sales/)
+  await expect(tile).toContainText(/This week .* · \+\d+%/)
   await tile.click()
-  const sheet = page.getByRole('dialog', { name: 'Your week' })
+  const sheet = page.getByRole('dialog', { name: 'My sales' })
   await expect(sheet.getByText('Yesterday')).toBeVisible()
   await expect(sheet.getByRole('definition').first()).toHaveText(/73.80/)
   await expect(sheet.getByText('This week', { exact: true }).first()).toBeVisible()

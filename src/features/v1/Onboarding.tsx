@@ -194,9 +194,11 @@ export function ConsentScreen({
           {t.notNow}
         </Button>
       </Stack>
-      <Typography variant="bodySmall" color="text.secondary" sx={{ textAlign: 'center' }}>
-        {t.draftLegal}
-      </Typography>
+      {import.meta.env.DEV && (
+        <Typography variant="bodySmall" color="text.secondary" sx={{ textAlign: 'center' }}>
+          {t.draftLegal}
+        </Typography>
+      )}
       <LegalDialog open={legal} onClose={() => setLegal(null)} />
     </Frame>
   )

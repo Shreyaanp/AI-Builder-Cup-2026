@@ -6,7 +6,7 @@ import anyio
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, ConfigDict, Field
 
-from . import coordinator, supply_chain, supply_io, supply_outbound
+from . import coordinator, demo_supplier, supply_chain, supply_coming, supply_io, supply_outbound
 from .forecast import ForecastService
 from .limits import enforce_limits
 from .merchant_routes import consented_owner, owner, store
@@ -37,6 +37,10 @@ class ReorderBody(BaseModel):
     item: str = Field(default="", max_length=80)
     quantity: float | None = Field(default=None, gt=0, le=100_000)
     supplier_id: str = Field(default="", max_length=120)
+    # Yes to "2 pack is already on order, order more?" when the units do not compare (#603).
+    anyway: bool = False
+    # The owner's answer to "Do you make it or buy it?", saved on the item (OB-239).
+    source: Literal["", "made", "bought"] = ""
 
 
 class Fix(BaseModel):
@@ -64,6 +68,10 @@ class InboundBody(BaseModel):
     text: str = Field(min_length=10, max_length=20_000)
 
 
+class TalkBody(Version):
+    text: str = Field(pattern=r"\S", max_length=300)
+
+
 class FlagBody(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
     version: int = Field(ge=1)
@@ -89,26 +97,62 @@ async def overview(business_id: str, request: Request) -> dict[str, Any]:
     history = await anyio.to_thread.run_sync(store(request).sales_history, uid, business_id)
     today = supply_chain.shop_today(context)
     forecast = await forecaster(request).forecast(history, today, context["inventory"])
+    predicted = forecast.model_dump(mode="json")
+    # A draft of a wrong size shows flagged, with Send off, even if no reorder has run since it
+    # was saved (OB-242). Reading never writes: the next reorder withdraws it (OB-250).
+    orders = await anyio.to_thread.run_sync(
+        supply_coming.flag_wrong_sizes,
+        store(request),
+        business_id,
+        orders,
+        context["inventory"],
+        predicted,
+        today,
+    )
+    category = str(context["business"]["fields"].get("category") or "")
     needs = [
         {"item": product["name"], **need}
         for product in context["inventory"]
-        if (
-            need := supply_chain.need_from_forecast(
-                product, forecast.model_dump(mode="json"), product["name"], today
-            )
-        )["runs_out"]
+        # Only stock the shop buys runs out here: a menu item is made from it (OB-239).
+        if supply_chain.bought(product, category)
+        and (need := supply_chain.need_from_forecast(product, predicted, product["name"], today))[
+            "runs_out"
+        ]
         and need["stock_known"]
     ]
     currency = supply_chain.shop_currency(context["business"]["fields"])
 
     def supplied(item: str) -> bool:
         product = next(p for p in context["inventory"] if p["name"] == item)
-        return supply_chain.can_supply(store(request), business_id, product, currency)
+        return supply_chain.can_supply(store(request), business_id, product, currency, category)
 
+    # What is already on its way, so Today does not ask for the same milk twice (OB-226); the
+    # orders are read once for every need.
+    known = (
+        await anyio.to_thread.run_sync(
+            supply_coming.coming_orders, store(request), uid, business_id
+        )
+        if needs
+        else ([], [])
+    )
     for need in needs:
         need["supplied"] = await anyio.to_thread.run_sync(supplied, need["item"])
-    # Today leads with what a linked supplier can bring: chai runs out because tea dust does.
-    needs.sort(key=lambda need: (not need["supplied"], need["runs_out"]))
+        unit = (
+            next((p.get("unit") for p in context["inventory"] if p["name"] == need["item"]), None)
+            or "kg"
+        )
+        coming = supply_coming.on_order(store(request), uid, business_id, need["item"], unit, known)
+        need["on_order"], need["arrives"] = coming["quantity"], coming["arrives"]
+        need["on_order_other"] = [
+            {"quantity": row["quantity"], "unit": row["unit"], "arrives": row["arrives"]}
+            for row in coming["other"]
+        ]
+        # The one answer to "is this handled?": Today and Grow both lead with the first need
+        # that is not, so milk on order never hides the sugar that still runs out (#603).
+        need["cover"] = supply_coming.cover(need, coming)
+        need["covered"] = need["cover"] in {"full", "units"}
+    # Then what a linked supplier can bring first: chai runs out because tea dust does.
+    needs.sort(key=lambda need: (need["covered"], not need["supplied"], need["runs_out"]))
     return {"suppliers": rows, "orders": orders, "needs": needs}
 
 
@@ -179,15 +223,39 @@ async def reorder(business_id: str, body: ReorderBody, request: Request) -> dict
         coordinator._generator(),
         coordinator.DEMO_OWNER_UID,
         body.supplier_id,
+        body.anyway,
+        body.source,
     )
+
+
+async def _flagged(request: Request, uid: str, bid: str, po: dict[str, Any]) -> dict[str, Any]:
+    """One order as the overview shows it: a draft of a wrong size flagged, with Send off, so a
+    card refreshed from it never offers Send (OB-250). Nothing is saved."""
+    if po["status"] != "draft" or (po.get("reason") or {}).get("owner_quantity"):
+        return po
+    context = await anyio.to_thread.run_sync(store(request).context, uid, bid)
+    history = await anyio.to_thread.run_sync(store(request).sales_history, uid, bid)
+    today = supply_chain.shop_today(context)
+    forecast = await forecaster(request).forecast(history, today, context["inventory"])
+    shown = await anyio.to_thread.run_sync(
+        supply_coming.flag_wrong_sizes,
+        store(request),
+        bid,
+        [po],
+        context["inventory"],
+        forecast.model_dump(mode="json"),
+        today,
+    )
+    return shown[0]
 
 
 @router.get("/businesses/{business_id}/supply/orders/{order_id}")
 async def read_order(business_id: str, order_id: str, request: Request) -> dict[str, Any]:
     uid = await owner(request)
-    return await anyio.to_thread.run_sync(
+    po = await anyio.to_thread.run_sync(
         supply_chain.get_po, store(request), uid, business_id, order_id
     )
+    return await _flagged(request, uid, business_id, po)
 
 
 @router.post("/businesses/{business_id}/supply/orders/{order_id}/fix")
@@ -195,7 +263,7 @@ async def fix_order(
     business_id: str, order_id: str, body: FixBody, request: Request
 ) -> dict[str, Any]:
     uid = await consented_owner(request)
-    return await anyio.to_thread.run_sync(
+    po = await anyio.to_thread.run_sync(
         supply_chain.apply_fix,
         store(request),
         uid,
@@ -204,6 +272,7 @@ async def fix_order(
         body.version,
         body.fix.model_dump(),
     )
+    return await _flagged(request, uid, business_id, po)
 
 
 @router.post("/businesses/{business_id}/supply/orders/{order_id}/approve")
@@ -211,8 +280,8 @@ async def approve_order(
     business_id: str, order_id: str, body: Version, request: Request
 ) -> dict[str, Any]:
     uid = await consented_owner(request)
-    return await anyio.to_thread.run_sync(
-        supply_chain.approve, store(request), uid, business_id, order_id, body.version
+    return await supply_chain.approve_checked(
+        store(request), uid, business_id, order_id, body.version, forecaster(request)
     )
 
 
@@ -223,6 +292,23 @@ async def cancel_order(
     uid = await consented_owner(request)
     return await anyio.to_thread.run_sync(
         supply_chain.cancel, store(request), uid, business_id, order_id, body.version
+    )
+
+
+@router.post("/businesses/{business_id}/supply/orders/{order_id}/again")
+async def order_again(business_id: str, order_id: str, request: Request) -> dict[str, Any]:
+    uid = await consented_owner(request)
+    return await anyio.to_thread.run_sync(
+        supply_chain.order_again, store(request), uid, business_id, order_id
+    )
+
+
+@router.post("/businesses/{business_id}/supply/orders/{order_id}/talk")
+async def talk(business_id: str, order_id: str, body: TalkBody, request: Request) -> dict[str, Any]:
+    """Public demo only: a message to the scripted supplier. Nothing is sent to anyone."""
+    uid = await consented_owner(request)
+    return await anyio.to_thread.run_sync(
+        demo_supplier.write, store(request), uid, business_id, order_id, body.version, body.text
     )
 
 

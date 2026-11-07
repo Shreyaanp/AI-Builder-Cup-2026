@@ -9,7 +9,7 @@ test('public demo tour reaches step five without page errors (OB-51: 7 real step
   const errors: string[] = []
   page.on('pageerror', (error) => errors.push(error.message))
   await page.goto('/demo')
-  await expect(page.getByText('Demo shop – nothing here is real', { exact: true })).toBeVisible({
+  await expect(page.getByText('Demo shop · sample data', { exact: true })).toBeVisible({
     timeout: 30_000,
   })
   const welcome = page.getByRole('dialog')
@@ -20,7 +20,8 @@ test('public demo tour reaches step five without page errors (OB-51: 7 real step
     await tour.getByRole('button', { name: 'Next' }).click()
   }
   await expect(tour.getByText('4 of 7')).toBeVisible()
-  await expect(tour.getByText('Tomorrow’s prep plan', { exact: true })).toBeVisible()
+  // Simplify batch 5: the menu (Shop) comes before the prep plan (Grow, beside Close the day).
+  await expect(tour.getByText('Your menu, by category', { exact: true })).toBeVisible()
   await tour.getByRole('button', { name: 'Next' }).click()
   await expect(tour.getByText('5 of 7')).toBeVisible()
   await page.waitForTimeout(500)

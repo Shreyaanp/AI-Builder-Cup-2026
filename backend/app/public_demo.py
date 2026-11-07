@@ -3,8 +3,9 @@
 Each visitor gets a throwaway SQLite store seeded with the tour shop (Lantern Chai Corner and its
 WhatsApp wholesaler) plus the labelled chains. Owner API calls are forwarded to the real routes
 with the sandbox as the merchant store and offline copies of every paid service. Only an
-allowlist of reads and safe local writes runs; anything that would leave the sandbox (a real
-message, push, payment, face check) answers DEMO_NOT_SENT.
+allowlist of reads and local writes runs, so every owner feature works here (OB-248). Only what
+would touch the real world (a face check, voice, deleting an account, reviewer tools) answers
+DEMO_NOT_SENT, and the app shows a plain "this is pretend" note for it.
 """
 
 import hashlib
@@ -23,7 +24,9 @@ from typing import Annotated, Any
 from uuid import uuid4
 
 import anyio
+import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
+from fastapi.responses import JSONResponse
 from itsdangerous import URLSafeTimedSerializer
 from pydantic import BaseModel, ConfigDict, Field
 from sse_starlette import EventSourceResponse
@@ -31,13 +34,16 @@ from starlette.datastructures import State
 from starlette.types import Receive, Scope, Send
 
 from .auth import Principal
+from .community import Community
 from .demo_chains import CHAINS
 from .demo_data import SHOPS
 from .demo_sessions import KIND, repository, restore_files, save
+from .demo_supplier import settle as settle_supplier_replies
 from .demo_uploads import demo_upload, is_upload
 from .limits import Bucket, RateLimiter, client_ip, local_test_rate_limit_bypass
 from .merchant import MerchantStore
 from .merchant_routes import LEGAL_VERSION
+from .passport import PassportStore
 from .tour_catalogue import TOUR_SHOPS
 from .tour_story import (
     SEED_OWNER,
@@ -64,6 +70,8 @@ CHAIN_OWNER = "demo-world-owner"
 
 _ID = r"[A-Za-z0-9_.-]{1,120}"
 _BIZ = rf"businesses/{_ID}"
+log = structlog.get_logger()
+SUPPLY_READ = re.compile(rf"^businesses/(?P<bid>{_ID})/supply(?:/.*)?$")
 # Reads and writes that stay inside the sandbox store.
 ALLOWED: tuple[tuple[str, re.Pattern[str]], ...] = tuple(
     (method, re.compile(f"^(?:{pattern})$"))
@@ -78,27 +86,43 @@ ALLOWED: tuple[tuple[str, re.Pattern[str]], ...] = tuple(
         ("GET", "places/(?:reverse|pin)"),
         ("POST", "proposals"),
         ("POST", rf"proposals/{_ID}/approve"),
-        ("POST", rf"{_BIZ}/inventory/{_ID}/availability"),
+        ("POST", rf"{_BIZ}/inventory/{_ID}/(?:availability|source)"),
+        ("POST", rf"{_BIZ}/(?:share|sort-menu|update)"),
+        ("PUT", rf"{_BIZ}/perks"),
+        ("DELETE", rf"{_BIZ}/notes/{_ID}"),
+        # Files added to the gallery or icon are answered in demo_uploads; these only rearrange.
+        ("DELETE", rf"{_BIZ}/gallery/{_ID}"),
+        ("POST", rf"{_BIZ}/gallery/{_ID}/(?:cover|kind)"),
+        ("DELETE", rf"{_BIZ}/icon"),
+        ("POST", rf"{_BIZ}/connect/(?:analyze|mapping|sync)"),
+        ("POST", rf"{_BIZ}/connect/live/{_ID}/{_ID}"),
+        ("POST", rf"{_BIZ}/google-sim(?:/reset)?"),
         ("POST", rf"{_BIZ}/freshness/confirm"),
+        # Tomorrow's promise: kept in the visitor's sandbox, never counted (a demo shop).
+        ("POST", rf"{_BIZ}/promise(?:/{_ID}/(?:done|skipped))?"),
         ("POST", rf"{_BIZ}/import/{_ID}/approve"),
         ("POST", rf"{_BIZ}/day/(?:read|prepare)"),
         ("POST", rf"{_BIZ}/supply/reorder"),
         ("POST", rf"{_BIZ}/supply/demo/next"),
+        ("POST", rf"{_BIZ}/supply/(?:inbound|send-all)"),
         ("POST", rf"{_BIZ}/supply/inbox/{_ID}/dismiss"),
         (
             "POST",
             rf"{_BIZ}/supply/orders/{_ID}/"
-            r"(?:accept|approve|asn|cancel|change|fix|inbound|receipt|received|simulate)",
+            r"(?:accept|again|approve|asn|cancel|change|fix|inbound|receipt|received|send|simulate|talk)",
         ),
         ("POST", rf"{_BIZ}/supply/orders/{_ID}/flags/{_ID}"),
         ("POST", rf"{_BIZ}/supply/suppliers/{_ID}/rules/confirm"),
         ("PUT", rf"{_BIZ}/supply/suppliers/{_ID}/rules"),
-        ("POST", rf"{_BIZ}/orders/{_ID}/(?:read|received|discard)"),
-        ("POST", rf"{_BIZ}/inquiries/{_ID}/(?:read|messages|done|complete)"),
+        ("POST", rf"{_BIZ}/orders/{_ID}/(?:read|received|discard|send|cancel|change|messages)"),
+        ("POST", rf"{_BIZ}/inquiries/{_ID}/(?:read|messages|done|complete|block|unblock)"),
+        ("POST", rf"{_BIZ}/inquiries/{_ID}/messages/{_ID}/translation"),
         ("POST", rf"{_BIZ}/rescue(?:/{_ID}/approve)?"),
         ("DELETE", rf"{_BIZ}/rescue/{_ID}"),
-        ("POST", rf"{_BIZ}/planning/{_ID}/(?:decision|approve|observations)"),
+        ("POST", rf"{_BIZ}/planning/{_ID}/(?:decision|approve|observations|demo|forecast)"),
         ("PATCH", rf"{_BIZ}/playbook(?:/items/{_ID})?"),
+        ("DELETE", rf"{_BIZ}/playbook/items/{_ID}"),
+        ("POST", rf"{_BIZ}/playbook/regenerate"),
     )
 )
 
@@ -132,11 +156,28 @@ class DemoSession:
     turns: int = 0
     reminders: dict[str, Any] = field(default_factory=dict)
     revision: int = 0
+    # The last request that used this sandbox, and how many are using it right now.
+    used: float = 0.0
+    busy: int = 0
+    # OB-256: set when the sandbox was dropped (exit, expiry) while a request was still using it.
+    closing: bool = False
 
     def close(self) -> None:
         if self.directory is not None:
             self.directory.cleanup()
             self.directory = None
+
+    def retire(self) -> None:
+        """Drops the sandbox now, or when the last request using it finishes."""
+        if self.busy > 0:
+            self.closing = True
+        else:
+            self.close()
+
+    def release(self) -> None:
+        self.busy -= 1
+        if self.closing and self.busy <= 0:
+            self.close()
 
 
 def sessions(request: Request) -> dict[str, DemoSession]:
@@ -146,8 +187,23 @@ def sessions(request: Request) -> dict[str, DemoSession]:
     request.app.state.public_demos = saved
     for key in list(saved):
         if saved[key].expires <= time.time():
-            saved.pop(key).close()
+            saved.pop(key).retire()
     return saved
+
+
+def make_room(saved: dict[str, DemoSession]) -> bool:
+    """OB-255: frees the least recently used sandbox that no request is using.
+
+    Every change is already saved (demo_sessions), so that visitor's next request restores the
+    sandbox from its snapshot: a new visitor still gets a demo, nobody loses theirs, and the
+    sandboxes held in memory stay at MAX_SESSIONS.
+    """
+    idle = [key for key, entry in saved.items() if not entry.busy]
+    if not idle:
+        return False
+    saved.pop(min(idle, key=lambda key: saved[key].used)).close()
+    log.info("demo_sandbox_released")
+    return True
 
 
 def sandbox(zone: str) -> tuple[DemoSession, date]:
@@ -224,16 +280,20 @@ async def open_workspace(request: Request, zone: str) -> dict[str, Any]:
         raise HTTPException(429, "RATE_LIMITED", headers={"Retry-After": str(retry)})
     await anyio.to_thread.run_sync(repository(request).purge_before, KIND, time.time())
     # Reserve before yielding so concurrent allocations cannot exceed the memory bound.
-    if len(saved) >= MAX_SESSIONS:
+    # Only when every sandbox is answering a request at once does a visitor wait.
+    if len(saved) >= MAX_SESSIONS and not make_room(saved):
         raise HTTPException(429, "DEMO_BUSY", headers={"Retry-After": "60"})
     key = token_urlsafe(24)
-    saved[key] = DemoSession(time.time() + TTL_SECONDS, {})
+    # Busy until its first snapshot is saved: before that there is nothing to restore it from.
+    reserved = DemoSession(time.time() + TTL_SECONDS, {}, busy=1)
+    saved[key] = reserved
     try:
         entry, _today = await anyio.to_thread.run_sync(sandbox, zone)
     except BaseException:
         saved.pop(key, None)
         raise
-    entry.expires = saved[key].expires
+    entry.expires = reserved.expires
+    entry.used, entry.busy = time.time(), 1
     if key in saved:
         saved[key] = entry
     else:
@@ -244,7 +304,33 @@ async def open_workspace(request: Request, zone: str) -> dict[str, Any]:
         saved.pop(key, None)
         entry.close()
         raise
+    finally:
+        entry.busy -= 1
     return {"session_id": key, "expires_at": entry.expires}
+
+
+def restore(docs: Any, session_id: str) -> DemoSession:
+    """The visitor's sandbox as last saved, in a fresh directory of its own."""
+    data = docs.get(KIND, session_id)
+    if not data or data["expires"] <= time.time():
+        raise HTTPException(410, "DEMO_EXPIRED")
+    directory = TemporaryDirectory(prefix="chalkboard-demo-", ignore_cleanup_errors=True)
+    try:
+        store = SandboxStore(restore_files(data, directory.name))
+        return DemoSession(
+            data["expires"],
+            data["reads"],
+            data["uid"],
+            data["bid"],
+            store,
+            directory,
+            turns=data["turns"],
+            reminders=data["reminders"],
+            revision=data["revision"],
+        )
+    except BaseException:
+        directory.cleanup()
+        raise
 
 
 async def live(request: Request, session_id: str) -> AsyncIterator[DemoSession]:
@@ -256,33 +342,18 @@ async def live(request: Request, session_id: str) -> AsyncIterator[DemoSession]:
     # restore the shared revision, including writes made by another instance.
     cached = saved.get(session_id)
     hosted = request.app.state.v1_settings.merchant_backend == "firestore"
+    if cached is not None:
+        cached.used = time.time()
     if cached is not None and not hosted:
-        yield cached
+        # Never released while a request (or a streamed coach answer) is using it.
+        cached.busy += 1
+        try:
+            yield cached
+        finally:
+            cached.release()
         return
 
-    def load() -> DemoSession:
-        data = repository(request).get(KIND, session_id)
-        if not data or data["expires"] <= time.time():
-            raise HTTPException(410, "DEMO_EXPIRED")
-        directory = TemporaryDirectory(prefix="chalkboard-demo-", ignore_cleanup_errors=True)
-        try:
-            store = SandboxStore(restore_files(data, directory.name))
-            return DemoSession(
-                data["expires"],
-                data["reads"],
-                data["uid"],
-                data["bid"],
-                store,
-                directory,
-                turns=data["turns"],
-                reminders=data["reminders"],
-                revision=data["revision"],
-            )
-        except BaseException:
-            directory.cleanup()
-            raise
-
-    entry = await anyio.to_thread.run_sync(load)
+    entry = await anyio.to_thread.run_sync(restore, repository(request), session_id)
     try:
         yield entry
     finally:
@@ -308,7 +379,7 @@ async def read_demo(
 async def exit_demo(session_id: str, request: Request) -> dict[str, bool]:
     entry = sessions(request).pop(session_id, None)
     if entry:
-        entry.close()
+        entry.retire()
     await anyio.to_thread.run_sync(repository(request).delete, KIND, session_id)
     return {"exited": True}
 
@@ -377,9 +448,11 @@ def offline(app: Any) -> dict[str, Any]:
     from .analytics import AnalyticsReader
     from .brief import BriefWriter, WeatherService
     from .business_profile import QuestionPlanner
+    from .customer import CustomerAnswers
     from .discover import MapsService
     from .forecast import ForecastService
     from .fraud import FraudReviewer
+    from .google_profile import SimulatedBusinessProfile
     from .imports import ColumnMapper
     from .photos import PhotoPipeline
     from .playbook import PlaybookWriter
@@ -429,6 +502,8 @@ def offline(app: Any) -> dict[str, Any]:
         "maps": MapsService(settings),
         "column_mapper": ColumnMapper(settings),
         "fraud_reviewer": FraudReviewer(settings),
+        "customer_answers": CustomerAnswers(settings),
+        "google_profile": SimulatedBusinessProfile(),
         "document_ai": None,
         "day_genai": None,
         "recall": None,
@@ -448,13 +523,28 @@ class Forward(Response):
         self.key = key
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        lost = False
+
         async def persist(message: Any) -> None:
+            nonlocal lost
+            if lost:
+                return  # The rest of the answer whose save failed.
             if message["type"] == "http.response.start":
                 message["headers"].append((b"cache-control", b"no-store"))
                 if self.request.method != "GET" and message["status"] < 400:
-                    await anyio.to_thread.run_sync(
-                        save, repository(self.request), self.key, self.entry
-                    )
+                    try:
+                        await anyio.to_thread.run_sync(
+                            save, repository(self.request), self.key, self.entry
+                        )
+                    except HTTPException as error:
+                        # The route has answered, so raising here would be a 500. Say why instead.
+                        lost = True
+                        await JSONResponse(
+                            {"detail": error.detail},
+                            error.status_code,
+                            headers={"cache-control": "no-store"},
+                        )(scope, receive, send)
+                        return
             await send(message)
 
         from .demo_context import services
@@ -502,14 +592,27 @@ async def owner_api(
         result = await demo_upload(request, entry, path)
         await anyio.to_thread.run_sync(save, repository(request), session_id, entry)
         return result
+    if path.startswith("reminders/") and method == "DELETE":
+        # A reminder here has no push subscription behind it: this only clears the demo's own.
+        await limit(request, "public-demo-write", 120)
+        result = reminders(entry, method, b"")
+        await anyio.to_thread.run_sync(save, repository(request), session_id, entry)
+        return result
     if not allowed(method, path):
         raise HTTPException(403, "DEMO_NOT_SENT")
     if method != "GET":
         await limit(request, "public-demo-write", 120)
     app = request.scope["app"]
+    if method == "GET" and (supply := SUPPLY_READ.match(path)):
+        await deliver_replies(request, entry, session_id, supply["bid"])
     state = State({**app.state._state, **offline(app)})
     state.rate_limiter = DemoReadLimiter(app.state.rate_limiter)
     state.merchant = entry.store
+    # Tips, updates, perks and listing reviews stay in the sandbox too: a route (or the check that
+    # follows a saved change) must never write a visitor's demo into the shared community store.
+    assert entry.store is not None
+    state.community = Community(entry.store.feature_docs)
+    state.passport = PassportStore(entry.store.feature_docs)
     state.services = replace(app.state.services, identity=DemoIdentity(entry.uid, demo_secret(app)))
     inner = dict(request.scope)
     for key in ("route", "endpoint", "path_params", "router"):
@@ -525,6 +628,46 @@ async def owner_api(
         ],
     )
     return Forward(inner, request, entry, session_id)
+
+
+async def deliver_replies(request: Request, entry: DemoSession, session_id: str, bid: str) -> None:
+    """The demo supplier's replies that are due arrive with the read that asks for them.
+
+    This writes during a GET, so it must never fail the read. On the hosted path each request
+    restores its own copy: when reads overlap only one save wins, and the others answer from the
+    winner's copy instead of a 409. A sandbox at its size limit still shows the reply, unsaved.
+    """
+    from .demo_context import services
+
+    docs = repository(request)
+    for _attempt in range(3):
+        assert entry.store is not None
+        token = services.set(offline(request.scope["app"]))
+        try:
+            changed = await settle_supplier_replies(entry.store, entry.uid, bid)
+        finally:
+            services.reset(token)
+        if not changed:
+            return
+        try:
+            await anyio.to_thread.run_sync(save, docs, session_id, entry)
+            return
+        except HTTPException as error:
+            if error.status_code != 409:
+                log.info("demo_supplier_reply_unsaved", status=error.status_code)
+                return
+        # Another request saved first: carry on from its copy, which may already hold the reply.
+        try:
+            latest = await anyio.to_thread.run_sync(restore, docs, session_id)
+        except HTTPException:
+            return
+        entry.close()
+        entry.store, entry.directory = latest.store, latest.directory
+        entry.revision, entry.turns, entry.reminders = (
+            latest.revision,
+            latest.turns,
+            latest.reminders,
+        )
 
 
 def reminders(entry: DemoSession, method: str, body: bytes) -> Any:

@@ -8,6 +8,7 @@ import {
   seedShop,
   shopName,
 } from './stories/support.js'
+import { startNewShop } from './support/newShop.js'
 
 // OB-165 (#505) and OB-78 (#387): the owner app was one 561 kB chunk that even the welcome page
 // waited for, so the first visit after a deploy sat on "Getting things ready…". The welcome now
@@ -78,7 +79,7 @@ test('OB-165: consent, the coach and Today paint without the code behind a tap',
 
 test('OB-165: "+" opens the new-shop conversation and a shop goes live', async ({ page }) => {
   await enter(page)
-  await page.getByRole('banner').getByRole('button', { name: 'Add shop details' }).click()
+  await startNewShop(page)
   await expect(page.getByRole('button', { name: 'Let’s begin' })).toBeVisible()
   // The coach greets with its first question, then the shop card fills from one message.
   await openNewShopReview(page)

@@ -2,6 +2,7 @@ import { AxeBuilder } from '@axe-core/playwright'
 import { FIRST_QUESTION } from './newShopTopics.js'
 import { expect, test, type Page } from '@playwright/test'
 import { enter, inChatFixtures, localOnly } from './stories/support.js'
+import { startNewShop } from './support/newShop.js'
 
 // The camera, the map and the step-by-step form inside the new-shop conversation (owner brief
 // 16 Oct): light and dark, phone and desktop, axe on every state, and the failure paths.
@@ -22,7 +23,7 @@ async function open(page: Page, scheme: 'light' | 'dark') {
     localStorage.setItem('niva.starter.preferences', JSON.stringify({ appearance }))
   }, scheme)
   await enter(page)
-  await page.getByRole('banner').getByRole('button', { name: 'Add shop details' }).click()
+  await startNewShop(page)
   await page.getByRole('button', { name: 'Let’s begin' }).click()
   await expect(page.getByRole('log')).toContainText(FIRST_QUESTION)
 }

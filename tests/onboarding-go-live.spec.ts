@@ -2,6 +2,7 @@ import { expect, test, type Page } from '@playwright/test'
 import { enter, localOnly } from './stories/support.js'
 import { FIRST_QUESTION } from './newShopTopics.js'
 import { missingForListing } from '../src/features/v1/goLive.js'
+import { startNewShop } from './support/newShop.js'
 
 // Issue #180: finishing the conversation leads to Review my shop → List my shop → the
 // congratulations page with the shop link and QR. Phone first.
@@ -38,7 +39,7 @@ for (const viewport of [
     })
 
     async function begin(page: Page) {
-      await page.getByRole('banner').getByRole('button', { name: 'Add shop details' }).click()
+      await startNewShop(page)
       await page.getByRole('button', { name: 'Let’s begin' }).click()
       await expect(page.getByRole('log')).toContainText(FIRST_QUESTION)
     }
@@ -51,14 +52,18 @@ for (const viewport of [
       await enter(page)
       await begin(page)
       await say(page, 'name: Lakshmi Tea Stall; category: Tea stall; location: Indiranagar metro')
-      await expect(page.getByTestId('shop-live')).toHaveText('Live')
+      await expect(page.getByTestId('shop-live')).toHaveText('Saved')
       await page.getByTestId('end-conversation').click()
       await expect(page.getByTestId('conversation-ended')).toBeVisible()
       await page.getByTestId('finish-review').click()
       await expect(
         page.getByRole('heading', { name: 'Congratulations, Lakshmi Tea Stall is live!' }),
       ).toBeVisible()
-      await expect(page.getByTestId('shop-link')).toContainText('/s/')
+      // OB-292: sharing is optional and opened on demand; the raw identifier stays in the href.
+      await page.locator('summary').filter({ hasText: 'Share' }).click()
+      await expect(
+        page.getByTestId('shop-link').getByRole('link', { name: 'Your shop link' }),
+      ).toHaveAttribute('href', /\/s\//)
       await expect(page.getByTestId('shop-qr').getByRole('img')).toBeVisible()
       await expect(page.getByRole('link', { name: 'Open my shop page' })).toBeVisible()
       await expect(page.getByRole('button', { name: 'Add your menu' })).toBeVisible()
@@ -92,14 +97,14 @@ test.describe('ready moment at 1280', () => {
   test('OB-112 the title lines have room between them', async ({ page }) => {
     await localOnly(page)
     await enter(page)
-    await page.getByRole('banner').getByRole('button', { name: 'Add shop details' }).click()
+    await startNewShop(page)
     await page.getByRole('button', { name: 'Let’s begin' }).click()
     await expect(page.getByRole('log')).toContainText(FIRST_QUESTION)
     await page
       .getByLabel('Message', { exact: true })
       .fill('name: Lakshmi Tea Stall; category: Tea stall; location: Indiranagar metro')
     await page.getByRole('button', { name: 'Send', exact: true }).click()
-    await expect(page.getByTestId('shop-live')).toHaveText('Live')
+    await expect(page.getByTestId('shop-live')).toHaveText('Saved')
     await page.getByTestId('end-conversation').click()
     await page.getByTestId('finish-review').click()
     const title = page.getByRole('heading', { name: 'Congratulations, Lakshmi Tea Stall is live!' })

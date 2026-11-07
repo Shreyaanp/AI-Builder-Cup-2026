@@ -2,6 +2,7 @@ import { createShop, detailsStep, editShopDetails } from './stories/support.js'
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
 import type { components } from '../src/api/generated.js'
+import { growTool, openMySales } from './support/grow.js'
 
 type DayHours = components['schemas']['DayHours']
 const weekdays = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const
@@ -110,15 +111,16 @@ async function proof(page: Page, id: string) {
 test('B8: compact pending, freshness and completed readiness', async ({ page }) => {
   await enter(page)
   await page.getByRole('button', { name: 'Shop', exact: true }).click()
-  const pending = page.getByRole('region', { name: '1 customer is waiting' })
-  await expect(pending).toBeVisible()
-  expect((await pending.boundingBox())!.height).toBeLessThanOrEqual(80)
+  // Simplify batch 3: who is waiting shows once, on Coach Today; Shop's Messages row counts it.
+  const shop = page.locator('section[aria-label="Shop"]')
+  await expect(shop.getByRole('button', { name: /^Messages 1 new/ })).toBeVisible()
+  await expect(shop.getByRole('region', { name: '1 customer is waiting' })).toHaveCount(0)
   await proof(page, 'B8')
   // Readiness lives on Grow now, as the Get on Google card.
   await page.getByRole('button', { name: 'Grow', exact: true }).click()
   await expect(page.getByRole('button', { name: /^Get on Google Ready to list/ })).toBeVisible()
   await page.getByRole('button', { name: 'Shop', exact: true }).click()
-  await page.getByRole('button', { name: /^Customer page/ }).click()
+  await page.getByRole('button', { name: /^Your shop page/ }).click()
   const sharing = page.getByText('Customers with this link see your shop and live prices.', {
     exact: true,
   })
@@ -159,20 +161,21 @@ test('B10: empty recap is compact, has no empty headings and uses a date range',
     }),
   )
   await page.getByRole('button', { name: 'Grow', exact: true }).click()
-  const tile = page.getByRole('button', { name: /^Weekly recap/ })
-  await expect(tile).not.toContainText('2026-W42')
-  await expect(tile).toContainText('12–18 Oct')
-  await tile.click()
-  const sheet = page.getByRole('dialog', { name: 'Weekly recap' })
-  await expect(sheet).toContainText('12–18 Oct')
+  // The recap is My sales → Week summary (simplify batch 4b).
+  const sheet = await openMySales(page, true)
+  const summary = sheet.getByRole('button', { name: /^Week summary/ })
+  await expect(summary).not.toContainText('2026-W42')
+  await expect(summary).toContainText('12–18 Oct')
   await expect(sheet.getByRole('alert')).toContainText('No saved sales this week')
   await expect(sheet).toContainText('Recorded sold-out switches: 0')
   await expect(sheet).toContainText('Customer messages: 0')
   await expect(sheet.getByRole('heading', { level: 3 })).toHaveCount(0)
   await expect(sheet.getByText('Written by AI', { exact: true })).toHaveCount(0)
-  await expect(sheet.getByText('Offline template', { exact: true })).toHaveCount(0)
+  await expect(sheet.getByText('Quick summary', { exact: true })).toHaveCount(0)
   await expect(sheet).not.toContainText('Import your sales to prepare')
-  expect((await sheet.boundingBox())!.height).toBeLessThan(360)
+  // Compact: the empty summary under its name, no taller than before inside My sales.
+  const recap = sheet.locator(`[id="${await summary.getAttribute('aria-controls')}"]`)
+  expect((await recap.boundingBox())!.height).toBeLessThan(240)
   await proof(page, 'B10')
 })
 
@@ -196,7 +199,8 @@ test('#150: recap with omitted recap_week stays hidden', async ({ page }) => {
     route.fulfill({ json: { today: '2026-10-14', last_confirmed: null, monday: false } }),
   )
   await page.getByRole('button', { name: 'Grow', exact: true }).click()
-  await expect(page.getByRole('button', { name: /^Weekly recap/ })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: /^My sales/ })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: /^Week summary/ })).toHaveCount(0)
 })
 
 for (const mode of ['offline', 'gemini']) {
@@ -224,13 +228,12 @@ for (const mode of ['offline', 'gemini']) {
       }),
     )
     await page.getByRole('button', { name: 'Grow', exact: true }).click()
-    await page.getByRole('button', { name: /^Weekly recap/ }).click()
-    const sheet = page.getByRole('dialog', { name: 'Weekly recap' })
+    const sheet = await openMySales(page, true)
     await expect(
-      sheet.getByText(mode === 'offline' ? 'Offline template' : 'Written by AI', { exact: true }),
+      sheet.getByText(mode === 'offline' ? 'Quick summary' : 'Written by AI', { exact: true }),
     ).toBeVisible()
     await expect(
-      sheet.getByText(mode === 'offline' ? 'Written by AI' : 'Offline template', { exact: true }),
+      sheet.getByText(mode === 'offline' ? 'Written by AI' : 'Quick summary', { exact: true }),
     ).toHaveCount(0)
     await expect(sheet.getByRole('heading', { name: 'Top sellers' })).toBeVisible()
     await expect(sheet.getByRole('heading', { name: 'Slow movers' })).toHaveCount(0)
@@ -410,7 +413,8 @@ for (const locale of [
             }).formatRange(new Date(`${first}T00:00:00Z`), new Date(`${last}T00:00:00Z`)),
           { first, last },
         )
-        await expect(page.getByRole('button', { name: /^Weekly recap/ })).toContainText(expected)
+        // My sales says the summary's dates on its row when there is no week to show yet.
+        await expect(await growTool(page, /^My sales/)).toContainText(expected)
         await page.getByRole('button', { name: 'Coach', exact: true }).click()
       }
     })

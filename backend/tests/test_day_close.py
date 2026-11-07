@@ -13,6 +13,33 @@ def photo(client: TestClient, bid: str, kind: str):
     )
 
 
+def test_ob267_close_same_day_replaces_sales_instead_of_duplicating(app) -> None:  # noqa: F811
+    """OB-267: editing the day replaces its rows, including after a lost save reply."""
+    with TestClient(app) as client:
+        join(client)
+        proposal = upload(client, located_jpeg(None)).json()["proposal"]
+        bid = client.post(
+            f"/api/v1/proposals/{proposal['id']}/approve", json={"digest": proposal["digest"]}
+        ).json()["business_id"]
+        base = f"/api/v1/businesses/{bid}"
+        for day, amount in [("2026-11-02", 100), ("2026-11-03", 200), ("2026-11-03", 250)]:
+            prepared = client.post(
+                f"{base}/day/prepare",
+                json={"date": day, "sales": [{"item": "Chai", "quantity": 10, "amount": amount}]},
+            )
+            assert prepared.status_code == 200, prepared.text
+            sale = prepared.json()["sales"]
+            path = f"{base}/import/{sale['import_id']}/approve"
+            saved = client.post(path, json={"digest": sale["digest"]})
+            assert saved.status_code == 200, saved.text
+            retry = client.post(path, json={"digest": sale["digest"]})
+            assert retry.status_code == 200 and retry.json() == saved.json()
+        assert client.get(f"{base}/sales").json() == [
+            {"date": "2026-11-02", "item": "Chai", "quantity": 10, "revenue": 10000},
+            {"date": "2026-11-03", "item": "Chai", "quantity": 10, "revenue": 25000},
+        ]
+
+
 def test_close_the_day_reads_photos_then_saves_sales_and_stock_after_one_review(app) -> None:  # noqa: F811
     with TestClient(app) as client:
         join(client)

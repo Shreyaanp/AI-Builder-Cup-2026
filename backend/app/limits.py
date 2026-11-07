@@ -55,6 +55,8 @@ LIMITS: dict[str, tuple[tuple[int, int], ...]] = {
     # Morning brief wording: one Gemini call per shop per day at most, only on a cache miss.
     "brief": ((30, 3_600), (200, 86_400)),
     "owner:write": ((30, 60), (200, 86_400)),
+    # Owner habit counts (HABIT section 9): a few small batches per visit, no paid call.
+    "owner:habit": ((60, 60), (600, 86_400)),
     "rescue:write": ((30, 60), (200, 86_400)),
     "rescue:public": ((30, 60),),
     "rescue:hold": ((20, 60), (100, 86_400)),

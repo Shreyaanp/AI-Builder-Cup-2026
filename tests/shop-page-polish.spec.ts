@@ -289,14 +289,14 @@ test('A-16: the customer demo keeps its banner and Exit demo on every step', asy
   test.skip(info.project.name !== 'phone', 'The demo steps are the phone journey')
   await page.goto('/explore/demo')
   await expect(page.getByRole('heading', { name: 'Browse shops' })).toBeVisible({ timeout: 30_000 })
-  await expect(banner(page)).toContainText('Demo shop – nothing here is real')
+  await expect(banner(page)).toContainText('Demo shop · sample data')
   await expect(exitDemo(page)).toBeVisible()
 
   // Step 2: the counter stamp opens the shop page; the banner and Exit demo come with it.
   await page.getByRole('link', { name: /Collect a stamp$/ }).click()
   await expect(page).toHaveURL(new RegExp(`/explore/s/${SAMPLE}\\?source=qr`))
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Lantern Chai Corner')
-  await expect(banner(page)).toContainText('Demo shop – nothing here is real')
+  await expect(banner(page)).toContainText('Demo shop · sample data')
   await expect(exitDemo(page)).toBeVisible()
 
   // Step 3: the Passport too.
@@ -307,7 +307,7 @@ test('A-16: the customer demo keeps its banner and Exit demo on every step', asy
   await expect(page.getByRole('heading', { name: 'Your passport' })).toBeVisible({
     timeout: 30_000,
   })
-  await expect(banner(page)).toContainText('Demo shop – nothing here is real')
+  await expect(banner(page)).toContainText('Demo shop · sample data')
   await expect(exitDemo(page)).toBeVisible()
 
   // Exit demo leaves for the real customer app, with no banner left behind.

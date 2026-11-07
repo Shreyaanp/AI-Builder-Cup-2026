@@ -23,7 +23,7 @@ async function openDemo(page: Page) {
     if (path.startsWith('/api/v1/demo/sessions/') && response.status() === 403) refused.push(path)
   })
   await page.goto('/demo')
-  await expect(page.getByText('Demo shop – nothing here is real', { exact: true })).toBeVisible({
+  await expect(page.getByText('Demo shop · sample data', { exact: true })).toBeVisible({
     timeout: 30_000,
   })
   await page.getByRole('dialog').getByRole('button', { name: 'Skip', exact: true }).click()
@@ -146,7 +146,8 @@ test('O-3 the Shop tab Photos card opens the shop photos', async ({ page }) => {
 test('O-4 a demo location is found under the pin and saves', async ({ page }) => {
   const refused = await openDemo(page)
   await page.locator('[data-tour="nav-shop"]').click()
-  await page.locator('[data-tour="customer"] button').first().click()
+  // The page card's pencil edits the details (the card itself opens the page sheet).
+  await page.locator('[data-tour="customer"] button').last().click()
   const wizard = page.getByTestId('guided-details')
   await wizard.getByRole('button', { name: 'Location', exact: true }).click()
   await expect(wizard).toHaveAttribute('data-step', 'location')

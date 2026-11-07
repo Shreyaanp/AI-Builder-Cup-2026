@@ -129,7 +129,19 @@ def set_supplier_rules(
     }
 
 
-async def draft_reorder(item: str = "", quantity: float | None = None) -> dict[str, Any]:
+def _forecaster() -> Any:
+    from .forecast import ForecastService
+
+    if coordinator.forecaster is not None:
+        return coordinator.forecaster
+    from .settings import Settings
+
+    return ForecastService(Settings(_env_file=None))  # type: ignore[call-arg]
+
+
+async def draft_reorder(
+    item: str = "", quantity: float | None = None, anyway: bool = False, source: str = ""
+) -> dict[str, Any]:
     """Draft a purchase order from the forecast, stock and the supplier rules: how much to
     order (covering demand until delivery plus a week, rounded to the MOQ and packs), from the
     best supplier (price tier, arrives before the shop runs out, credit left). Use it for
@@ -137,18 +149,15 @@ async def draft_reorder(item: str = "", quantity: float | None = None) -> dict[s
     an item running out. item: only if the owner named one (else the item that runs out
     first); quantity only if they said it. Nothing is sent: the owner approves the card.
     Explain the choice in one line from reason (stock, runs_out, supplier, price tier, arrival,
-    credit) and name any broken rule. If the supplier is demo, say it is a simulated supplier."""
+    credit) and name any broken rule. If the supplier is demo, say it is a simulated supplier.
+    anyway: only after the owner said yes to ordering more of something already on order in
+    another unit (status on_order_other_unit). source: "made" or "bought", only as the owner's
+    answer to ask_make_or_buy."""
     from . import supply_chain
-    from .forecast import ForecastService
 
     ctx = current.get()
     if not ctx or not ctx.business_id:
         return {"status": "needs_business"}
-    service = coordinator.forecaster
-    if service is None:
-        from .settings import Settings
-
-        service = ForecastService(Settings(_env_file=None))  # type: ignore[call-arg]
     try:
         result = await supply_chain.draft_reorder(
             ctx.store,
@@ -156,9 +165,11 @@ async def draft_reorder(item: str = "", quantity: float | None = None) -> dict[s
             ctx.business_id,
             (item or "").strip()[:80],
             quantity if quantity and quantity > 0 else None,
-            service,
+            _forecaster(),
             _generator(),
             DEMO_OWNER_UID,
+            anyway=anyway,
+            source=source if source in {"made", "bought"} else "",
         )
     except HTTPException as error:
         return _invalid(error, ctx)
@@ -172,11 +183,80 @@ async def draft_reorder(item: str = "", quantity: float | None = None) -> dict[s
             "status": "no_supplier",
             "instruction": "Say no supplier near them stocks this item; ask for another name.",
         }
+    if result["status"] == "on_order":
+        return {
+            "status": "already_on_order",
+            "item": result["item"],
+            "on_order": result["quantity"],
+            "unit": result["unit"],
+            "arrives": result["arrives"] or None,
+            "instruction": "Say this much is already on order and when it arrives; no new order "
+            "is needed. Offer to draft one anyway only if the owner names a quantity.",
+        }
+    if result["status"] == "on_order_units":
+        return {
+            "status": "on_order_other_unit",
+            "item": result["item"],
+            "unit": result["unit"],
+            "on_order": [{**row, "arrives": row["arrives"] or None} for row in result["other"]],
+            "instruction": "Say this much is already on order, in its own unit, and when it "
+            "arrives; the app cannot tell if it is enough. Ask if they want to order more. Only "
+            "if they say yes, call draft_reorder again with anyway=true.",
+        }
+    if result["status"] == "made":
+        return {
+            "status": "made_here",
+            "item": result["item"],
+            "instruction": "The shop makes this itself: no supplier order. Offer to plan how many "
+            "to make (the prep plan), or to reorder what it is made from.",
+        }
+    if result["status"] == "ask_source":
+        return {
+            "status": "ask_make_or_buy",
+            "item": result["item"],
+            "instruction": "Ask once: do they make it or buy it ready-made? Then call "
+            "draft_reorder again with this item and source made or bought.",
+        }
+    if result["status"] == "which_item":
+        return {
+            "status": "which_item",
+            "item": result["item"],
+            "source": result["source"],
+            "choices": result["choices"],
+            "instruction": "Nothing was saved and nothing was drafted: no single menu item is "
+            "called that. Ask which item they mean (choices, if any), then call draft_reorder "
+            "again with its exact name and the same source.",
+        }
+    if result["status"] == "check":
+        return {
+            "status": "check_quantity",
+            "reason": result.get("reason", ""),
+            "item": result["item"],
+            "unit": result["unit"],
+            "quantity": result["quantity"],
+            "asked": result.get("asked"),
+            "days": result["days"],
+            "supplier": result["supplier"],
+            "supplier_quantity": result["supplier_quantity"],
+            "supplier_unit": result["supplier_unit"],
+            "instruction": "No order was drafted. reason month: more than a month of what the "
+            "shop uses; units: sold in a unit that does not compare; no_history: no use of "
+            "its own on record (never sold, or only made items sold from it), so the need is "
+            "unknown: say you can't tell how much they use and ask how much they buy a week; "
+            "named: the supplier cannot sell the amount the owner asked (asked) — say plainly "
+            "what it sells instead and never order a different amount unasked. Ask the owner "
+            "to check, or to name an amount the supplier sells.",
+        }
     order = result["order"]
     return {
         **supply_chain.summary(order),
         "card_id": _card(ctx, "purchase_order", order),
         "status": "sent_automatically" if order.get("auto_sent") else "needs_owner_tap",
+        **(
+            {"instruction": "This draft was already waiting; say so and do not make another."}
+            if result.get("existing")
+            else {}
+        ),
     }
 
 
@@ -248,6 +328,9 @@ UNIT_NOISE = re.compile(
     r"\d+(?:[.,]\d+)?|\b(?:kg|kgs|g|l|litres?|liters?|ltr|pcs?|pieces?|packs?|of)\b"
 )
 RECEIVABLE = {"sent", "changed", "confirmed", "dispatched", "invoiced", "received"}
+# The same words as tooBig in orderChangeCopy.ts (OB-242).
+TOO_BIG = "This order is much bigger than you use. Check the amount first."
+TOO_BIG_HI = "यह ऑर्डर आपके इस्तेमाल से बहुत बड़ा है। पहले मात्रा जाँच लें।"
 
 
 def _supply_card(
@@ -406,7 +489,7 @@ def accept_order_change(order: str = "", accept: bool = True) -> dict[str, Any]:
     }
 
 
-def approve_and_send_po(order: str = "") -> dict[str, Any]:
+async def approve_and_send_po(order: str = "") -> dict[str, Any]:
     """Approve a drafted purchase order and send it to the supplier in the supplier's format
     (SAP IDoc, CSV, chat text or JSON) when the owner says so: "approve it", "send the flour
     order". order: number, supplier or item; empty for the newest draft. If a rule is broken
@@ -426,8 +509,19 @@ def approve_and_send_po(order: str = "") -> dict[str, Any]:
             "card_id": _card(ctx, "purchase_order", po),
         }
     try:
-        saved = supply_chain.approve(ctx.store, ctx.uid, ctx.business_id, po["id"], po["version"])
+        saved = await supply_chain.approve_checked(
+            ctx.store, ctx.uid, ctx.business_id, po["id"], po["version"], _forecaster()
+        )
     except HTTPException as error:
+        if error.detail == "TOO_BIG":
+            return {
+                **supply_chain.summary(po),
+                "status": "too_big",
+                "message": TOO_BIG,
+                "message_hi": TOO_BIG_HI,
+                "instruction": "Nothing was sent. Say message, or message_hi to a Hindi speaker, "
+                "and ask how much they want. Their amount goes to draft_reorder as quantity.",
+            }
         return _invalid(error, ctx)
     return {
         **supply_chain.summary(saved),

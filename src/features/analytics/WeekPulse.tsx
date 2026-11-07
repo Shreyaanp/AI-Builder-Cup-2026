@@ -1,78 +1,15 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef } from 'react'
 import { Box, Chip, Stack, Typography } from '@mui/material'
 import { useTheme } from '@mui/material/styles'
 import { visuallyHidden } from '@mui/utils'
 import { gsap } from 'gsap'
-import { BarChart3, TrendingDown, TrendingUp } from 'lucide-react'
-import type { components } from '../../api/generated'
+import { TrendingDown, TrendingUp } from 'lucide-react'
 import { hits, useChalkTimeline } from '../../design/chalkMotion'
 import { HAND_FONT } from '../../design/theme'
 import { useLocale } from '../../state/hooks'
-import { Sheet } from '../v1/Sheet'
-import { Supporting, Tile } from '../v1/ShopTiles'
 import { formatShopPrice } from '../v1/format'
-import { useWorkspace } from '../v1/workspaceContext'
 import { useAnalyticsCopy } from './copy'
-
-type Analytics = components['schemas']['Analytics']
-type Day = components['schemas']['Day']
-
-function hasData(day: Day) {
-  return [day.sales, day.views, day.questions, day.stamps].some((v) => v != null)
-}
-
-/** Week-on-week change in percent, or null when either week has no sales. */
-function change(data: Analytics) {
-  const now = data.week.sales
-  const before = data.last_week.sales
-  return now != null && before ? Math.round(((now - before) / before) * 100) : null
-}
-
-/**
- * "Your week": yesterday's pulse and this week against last week, from the nightly BigQuery
- * analytics (or the saved sales when those are off). Shown only once there is something to show.
- */
-export function WeekPulseTile() {
-  const { api, activeId } = useWorkspace()
-  const t = useAnalyticsCopy()
-  const locale = useLocale()
-  const [data, setData] = useState<{ id: string; value: Analytics } | null>(null)
-  const [open, setOpen] = useState(false)
-  useEffect(() => {
-    if (!activeId) return
-    const controller = new AbortController()
-    void api<Analytics>(`/businesses/${activeId}/analytics`, { signal: controller.signal })
-      .then((value) => {
-        if (!controller.signal.aborted) setData({ id: activeId, value })
-      })
-      // A tile that cannot load stays hidden; the rest of the shop page is unaffected.
-      .catch(() => undefined)
-    return () => controller.abort()
-  }, [api, activeId])
-  const value = data?.id === activeId ? data.value : null
-  if (!value || !value.days.some(hasData)) return null
-  const delta = change(value)
-  return (
-    <>
-      <Tile
-        wide
-        icon={<BarChart3 size={20} />}
-        label={t.title}
-        value={
-          value.week.sales != null ? formatShopPrice(value.week.sales, value.currency, locale) : '—'
-        }
-        onClick={() => setOpen(true)}
-      >
-        <Supporting>
-          {delta != null ? `${delta > 0 ? '+' : ''}${delta}% ${t.vsLastWeek}` : t.hint}
-        </Supporting>
-      </Tile>
-      <Sheet open={open} onClose={() => setOpen(false)} titleId="week-pulse-title" title={t.title}>
-        {open && <WeekPulse data={value} />}
-      </Sheet>
-    </>
-  )
-}
+import { change, type Analytics } from './weekData'
 
 export function WeekPulse({ data }: { data: Analytics }) {
   const theme = useTheme()

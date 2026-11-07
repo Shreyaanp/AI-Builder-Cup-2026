@@ -1,8 +1,11 @@
 import { test, expect, type Page } from '@playwright/test'
+import { shopMore } from './support/shopMore.js'
+import { pinShopTime, SHOP_TIMES } from './support/shopClock.js'
+import { openGrowTool, showInGrow } from './support/grow.js'
 
 test.setTimeout(90_000)
 
-const NOTICE = "This is a demo shop; changes aren't saved"
+const NOTICE = 'In the demo this is pretend: nothing is sent'
 const errorsOf = new WeakMap<Page, string[]>()
 
 test.beforeEach(async ({ context, page }, info) => {
@@ -72,11 +75,31 @@ test('tabs stay tappable after load, also after a reload', async ({ page }) => {
 test('Coach: Reorder opens the purchase order draft', async ({ page }) => {
   await openDemo(page)
   await opensSheet(page, /^Reorder$/, /Purchase orders/)
-  await expect(page.getByRole('dialog').getByText(/PO /).first()).toBeVisible()
+  await expect(
+    page
+      .getByRole('dialog')
+      .getByText(/^Tea dust from Sri Lakshmi Provisions \(Demo\)$/)
+      .first(),
+  ).toBeVisible()
 })
 
-test('Coach: Reply opens the message thread', async ({ page }) => {
-  await openDemo(page)
+// A waiting customer is time-sensitive: Reply is on the card itself at every hour, never behind
+// "N more things", also in the evening when "Close the day" leads. One sandbox for all four hours
+// (the public demo caps live sandboxes): the clock moves and the page reloads.
+test('Coach: Reply opens the message thread, at every hour of the shop day', async ({ page }) => {
+  for (const [index, time] of SHOP_TIMES.entries()) {
+    await pinShopTime(page, time)
+    if (index === 0) await openDemo(page)
+    else await page.reload()
+    const card = page.getByTestId('today')
+    await expect(card.getByRole('button', { name: /^Reply$/ }), time).toBeVisible({
+      timeout: 15_000,
+    })
+    await expect(page.getByTestId('today-more'), time).toHaveCount(0)
+    // The close window really is on: "Close the day" leads, and Reply is still beside it.
+    if (time >= '20:00')
+      await expect(card.getByRole('button', { name: 'Close the day' }), time).toBeVisible()
+  }
   await opensSheet(page, /^Reply$/, /Messages/)
   await showsThread(page)
 })
@@ -84,6 +107,8 @@ test('Coach: Reply opens the message thread', async ({ page }) => {
 test('Grow: Open messages opens the message thread', async ({ page }) => {
   await openDemo(page)
   await tab(page, 'grow')
+  // The brief's best action, inside its Morning brief row (batch 4a).
+  await showInGrow(page, page.getByRole('button', { name: /^Open messages$/ }))
   await opensSheet(page, /^Open messages$/, /Messages/)
   await showsThread(page)
 })
@@ -94,11 +119,13 @@ test('Grow: Rescue deals opens the rescue screen', async ({ page }) => {
   await opensSheet(page, /Rescue deals/, /rescue/i)
 })
 
-test('Grow: Prep plan opens its own screen', async ({ page }) => {
+test('Grow: How much to make opens its own screen', async ({ page }) => {
   await openDemo(page)
   await tab(page, 'grow')
-  await page.getByRole('button', { name: /^Prep plan/ }).click()
-  await expect(page.getByRole('dialog').getByRole('heading', { name: 'Prep plan' })).toBeVisible()
+  await openGrowTool(page, /^How much to make/)
+  await expect(
+    page.getByRole('dialog').getByRole('heading', { name: 'How much to make' }),
+  ).toBeVisible()
   await expect(
     page
       .getByRole('dialog')
@@ -109,16 +136,30 @@ test('Grow: Prep plan opens its own screen', async ({ page }) => {
   await expect(page.getByTestId('today')).toBeHidden()
 })
 
-test('Shop: Customer page opens its sheet', async ({ page }) => {
+test('Shop: Your shop page opens its sheet', async ({ page }) => {
   await openDemo(page)
   await tab(page, 'shop')
-  await opensSheet(page, /^Customer page/, /Customer page/)
+  await opensSheet(page, /^Your shop page/, /Your shop page/)
 })
 
-test('Shop: Connect your system opens its sheet', async ({ page }) => {
+test('Shop: Show to customers opens the page switch', async ({ page }) => {
   await openDemo(page)
   await tab(page, 'shop')
-  await opensSheet(page, /Connect your system/, /Connect your system/)
+  await opensSheet(page, /^Show to customers$/, /Your shop page/)
+})
+
+test('Shop: More, Stamp card opens its sheet', async ({ page }) => {
+  await openDemo(page)
+  await tab(page, 'shop')
+  await shopMore(page)
+  await opensSheet(page, /^Stamp card/, /Stamp card/)
+})
+
+test('Shop: Link your billing app opens its sheet', async ({ page }) => {
+  await openDemo(page)
+  await tab(page, 'shop')
+  await shopMore(page)
+  await opensSheet(page, /Link your billing app/, /Link your billing app/)
 })
 
 test('Shop: Messages opens the message thread', async ({ page }) => {
@@ -135,7 +176,7 @@ test('You: Verify it is you answers with the demo note', async ({ page }) => {
     .getByRole('button', { name: /Verify it/ })
     .first()
     .click()
-  await expect(page.getByText(NOTICE)).toBeVisible()
+  await expect(page.locator('.MuiSnackbar-root', { hasText: NOTICE })).toBeVisible()
   await noErrors(page)
 })
 
@@ -152,13 +193,16 @@ test('You: Remind me turns on without an error', async ({ page }) => {
   await noErrors(page)
 })
 
-test('You: New shop answers with the demo note', async ({ page }) => {
-  await openDemo(page)
-  await tab(page, 'you')
-  await page.getByRole('button', { name: /New shop/ }).click()
-  await expect(page.getByText(NOTICE)).toBeVisible()
-  await noErrors(page)
-})
+// OB-248: a new shop is the visitor's own, so both rows leave the demo for the real start.
+for (const row of [/New shop/, /Start my own shop/]) {
+  test(`You: ${row.source} leaves the demo for the real start`, async ({ page }) => {
+    await openDemo(page)
+    await tab(page, 'you')
+    await page.getByRole('button', { name: row }).click()
+    await expect(page).not.toHaveURL(/\/demo/, { timeout: 15_000 })
+    expect(errorsOf.get(page)).toEqual([])
+  })
+}
 
 for (const shop of ['FreshMart', 'Metro Foods']) {
   test(`You: switch to ${shop}`, async ({ page }) => {
@@ -191,10 +235,11 @@ test('prep numbers and dates are identical on every reload', async ({ page }) =>
     const today = await page.getByTestId('today').innerText()
     const runsOut = /runs out ([A-Za-z]{3}, [A-Za-z]{3} \d+)/.exec(today)?.[1]
     await tab(page, 'grow')
-    const brief = page.locator('section', { hasText: 'Prep today' }).first()
-    await expect(brief).toBeVisible({ timeout: 15_000 })
+    // The brief opens in place from its Morning brief row (batch 4a).
+    const brief = page.getByRole('region', { name: 'Morning brief' })
+    await showInGrow(page, brief)
     const prep = (await brief.innerText()).replace(/\s+/g, ' ')
-    const low = /Tea dust Left: [\d.]+ Runs out ([A-Za-z]{3}, [A-Za-z]{3} \d+)/.exec(prep)?.[1]
+    const low = /Tea dust Left: [\d.]+ kg Runs out ([A-Za-z]{3}, [A-Za-z]{3} \d+)/.exec(prep)?.[1]
     // One source of truth: Today and the Grow brief name the same run-out day.
     expect(runsOut, 'Today names a run-out day').toBeTruthy()
     expect(low, 'The Grow brief names the same run-out day').toBe(runsOut)

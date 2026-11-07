@@ -30,10 +30,12 @@ from fastapi import HTTPException
 from pydantic import BaseModel, Field
 
 from .customer import InquiryInput
+from .demo_item_names import HINDI_UNITS, hindi_item
 from .gemini_schema import gemini_schema, parse_reply
 from .latin_names import sounds_like
 from .merchant import BusinessFields, CustomFact, MerchantRepository, ProductFields
 from .money import exponent, to_major, to_minor
+from .product_source import same_kind
 from .product_units import UNITS, normalize_unit
 from .region import shop_currency
 from .search_engine import (
@@ -436,10 +438,26 @@ ROLES: list[dict[str, Any]] = [
 SPREAD = [(1.4, 35.0), (4.6, 150.0), (2.9, 260.0), (2.2, 320.0)]
 
 
-def demo_supplier_id(lat: float, lng: float, index: int) -> str:
-    """One set per ~2 km cell, so neighbouring shops share (and reuse) the same suppliers."""
-    cell = f"{round(lat * 50) / 50:.2f},{round(lng * 50) / 50:.2f}"
-    return f"demo-sup-{hashlib.sha256(cell.encode()).hexdigest()[:10]}-{index}"
+DEMO_SUPPLIER = "demo-sup-"
+# A shop's own demo suppliers stop growing here (Firestore reads 500 items per shop).
+DEMO_CATALOGUE_MAX = 200
+
+
+def demo_supplier_id(buyer: str, index: int) -> str:
+    """One set per buying shop (OB-260): what one owner or demo visitor searches for never
+    changes the suppliers, items or prices another shop sees."""
+    return f"{DEMO_SUPPLIER}{demo_prefix(buyer)}-{index}"
+
+
+def demo_prefix(buyer: str) -> str:
+    return hashlib.sha256(f"buyer:{buyer}".encode()).hexdigest()[:10]
+
+
+def someone_elses_demo(shop_id: str, buyer: str) -> bool:
+    """A generated demo supplier made for another shop (or an old shared per-area one)."""
+    return shop_id.startswith(DEMO_SUPPLIER) and not shop_id.startswith(
+        f"{DEMO_SUPPLIER}{demo_prefix(buyer)}-"
+    )
 
 
 def fixture_suppliers(item: str, unit: str, currency: str) -> DemoSuppliers:
@@ -559,6 +577,7 @@ def demo_records(
     lng: float,
     currency: str,
     timezone: str,
+    buyer: str,
 ) -> list[tuple[str, BusinessFields, list[ProductFields]]]:
     records = []
     for index, supplier in enumerate(generated.suppliers[: len(SPREAD)]):
@@ -609,8 +628,38 @@ def demo_records(
                 ),
             ],
         )
-        records.append((demo_supplier_id(lat, lng, index), fields, products))
+        records.append((demo_supplier_id(buyer, index), fields, products))
     return records
+
+
+def seed_own_demo_supplier(
+    store: MerchantRepository,
+    owner: str,
+    sid: str,
+    fields: BusinessFields,
+    products: list[ProductFields],
+) -> bool:
+    """Create the shop's own demo supplier, or only add what it lacks: a later search never
+    renames it, drops an item or changes a price the owner already saw (OB-260)."""
+    try:
+        stored = store.owned_business(owner, sid)["fields"]
+        kept = store.inventory(owner, sid)
+    except HTTPException as error:
+        if error.status_code != 404:
+            raise
+        return store.seed_demo_shop(owner, sid, fields, products)
+    rows = [
+        ProductFields.model_validate(
+            {k: v for k, v in row.items() if k in ProductFields.model_fields}
+        )
+        for row in kept
+    ]
+    known = {(row.name.casefold(), row.unit) for row in rows}
+    added = [p for p in products if (p.name.casefold(), p.unit) not in known]
+    if not added or len(rows) >= DEMO_CATALOGUE_MAX:
+        return False
+    rows += added[: DEMO_CATALOGUE_MAX - len(rows)]
+    return store.seed_demo_shop(owner, sid, BusinessFields.model_validate(stored), rows)
 
 
 # ---------------------------------------------------------------------------------------------
@@ -667,7 +716,13 @@ def candidates(
     for shop in shops:
         if shop["id"] == own_id or shop.get("lat") is None or shop.get("lng") is None:
             continue
+        if someone_elses_demo(shop["id"], own_id):
+            # Generated for another shop's search: never shown here (OB-260).
+            continue
         if (shop_currency(shop)) != pin.currency:
+            continue
+        if same_kind(pin.category, str(shop.get("category") or ""), bool(shop.get("supplier"))):
+            # Never a rival of the shop's own kind: a bakery's bread is not a bakery's supply.
             continue
         km = haversine(pin.lat, pin.lng, shop["lat"], shop["lng"])
         if km > SEARCH_KM:
@@ -788,11 +843,11 @@ async def find(
         demo, source = await generator.generate(
             item, unit, pin.currency, pin.location, pin.category
         )
-        records = demo_records(demo, pin.lat, pin.lng, pin.currency, pin.timezone)
+        records = demo_records(demo, pin.lat, pin.lng, pin.currency, pin.timezone, bid)
         for sid, fields, products in records:
             try:
                 await anyio.to_thread.run_sync(
-                    store.seed_demo_shop, demo_owner, sid, fields, products
+                    seed_own_demo_supplier, store, demo_owner, sid, fields, products
                 )
             except HTTPException:
                 # A demo ID owned by someone else is never taken over; skip that one.
@@ -912,6 +967,7 @@ def new_order(
     delivery: str,
     distance_km: float | None,
     now: float,
+    lang: str | None = "en",
 ) -> dict[str, Any]:
     lines, total = build_lines(shop, items, own.currency)
     when, words_ = delivery_slot(shop, own.timezone, now)
@@ -928,6 +984,7 @@ def new_order(
             "min_order": shop.get("min_order", ""),
         },
         "shop_name": own.name,
+        "lang": (lang or "en").split("-")[0].lower(),
         "currency": own.currency,
         "lines": lines,
         "total": total,
@@ -994,8 +1051,92 @@ def message(
 HOUR = re.compile(r"\b(?:by|before|at|around)\s*(\d{1,2})(?::(\d{2}))?\s*(am|pm)?", re.I)
 
 
+DEVANAGARI = re.compile(r"[ऀ-ॿ]")
+HINDI_DAYS = {
+    "today": "आज",
+    "tomorrow": "कल",
+    "Monday": "सोमवार",
+    "Tuesday": "मंगलवार",
+    "Wednesday": "बुधवार",
+    "Thursday": "गुरुवार",
+    "Friday": "शुक्रवार",
+    "Saturday": "शनिवार",
+    "Sunday": "रविवार",
+}
+
+
+def _hindi_when(delivery: str) -> str:
+    """'tomorrow at 09:00' as 'कल सुबह 09:00 बजे'; words the owner typed stay as they are."""
+    match = re.fullmatch(r"(\w+) at (\d{1,2}):(\d{2})", delivery.strip())
+    if not match or match.group(1) not in HINDI_DAYS:
+        return delivery
+    hour = int(match.group(2))
+    part = "सुबह" if hour < 12 else "दोपहर" if hour < 16 else "शाम" if hour < 20 else "रात"
+    return f"{HINDI_DAYS[match.group(1)]} {part} {match.group(2)}:{match.group(3)} बजे"
+
+
+def _hindi_line(line: dict[str, Any]) -> str:
+    unit = HINDI_UNITS.get(line["unit"], line["unit"])
+    return f"{line['quantity']:g} {unit} {hindi_item(line['name'])}"
+
+
+def demo_reply_hindi(order: dict[str, Any], trigger: dict[str, Any]) -> tuple[str, str]:
+    """The demo wholesaler's answers in Hindi, with the screens' item names and units."""
+    currency = order["currency"]
+    when = _hindi_when(order["delivery"])
+    if trigger["kind"] == "order":
+        unavailable = [
+            line for line in order["lines"] if line["price"] is None or not line["available"]
+        ]
+        if unavailable:
+            names = ", ".join(hindi_item(line["name"]) for line in unavailable[:2])
+            return (
+                f"धन्यवाद! अभी हमारे पास {names} नहीं है। क्या बाकी ऑर्डर {when} भेज दें?",
+                "needs_reply",
+            )
+        items = ", ".join(_hindi_line(line) for line in order["lines"])
+        return (
+            f"पुष्टि: {items}, {money_text(order['total'], currency)}। {when} पहुँचेगा।",
+            "confirmed",
+        )
+    if trigger["kind"] == "cancel":
+        return ("कोई बात नहीं, ऑर्डर रद्द कर दिया गया है।", "cancelled")
+    text = trigger["text"].casefold()
+    if "sunday" in text or "रविवार" in text:
+        return (
+            "माफ़ कीजिए, हम रविवार को डिलीवरी नहीं करते। सोमवार सुबह हो सकती है। क्या वह ठीक रहेगा?",
+            "needs_reply",
+        )
+    hour = HOUR.search(trigger["text"])
+    if hour:
+        value = int(hour.group(1)) % 24
+        if (hour.group(3) or "").lower() == "pm" and value < 12:
+            value += 12
+        clock = f"{value}:{hour.group(2) or '00'}"
+        if 7 <= value <= 20:
+            return (f"जी, हम {clock} बजे तक पहुँचा देंगे। तब मिलते हैं।", "confirmed")
+        return (f"हमारी सबसे जल्दी डिलीवरी 7:00 बजे है। {clock} की जगह वह ठीक रहेगा?", "needs_reply")
+    if re.search(r"(change|make it|instead|update|quantity)", text) or "बदल" in text:
+        return ("ठीक है, आपका ऑर्डर बदल दिया है। डिलीवरी का समय वही रहेगा।", "confirmed")
+    if re.search(r"(price|discount|cheaper|rate)", text) or re.search(
+        r"दाम|कीमत|भाव|सस्ता|छूट", text
+    ):
+        return ("माफ़ कीजिए, यही हमारा सबसे अच्छा थोक भाव है।", order["status"])
+    if re.search(r"(thank|thanks|ok|okay|great)", text) or re.search(
+        r"धन्यवाद|शुक्रिया|ठीक|अच्छा", text
+    ):
+        return (
+            "आपका स्वागत है!",
+            order["status"] if order["status"] != "needs_reply" else "confirmed",
+        )
+    return ("ठीक है, हम इसका ध्यान रखेंगे।", "confirmed")
+
+
 def demo_reply(order: dict[str, Any], trigger: dict[str, Any]) -> tuple[str, str]:
-    """(reply, new status) of a demo wholesaler: plausible, deterministic, English."""
+    """(reply, new status) of a demo wholesaler: plausible, deterministic, in the owner's
+    language (Hindi, otherwise English)."""
+    if order.get("lang") == "hi" or DEVANAGARI.search(trigger.get("text") or ""):
+        return demo_reply_hindi(order, trigger)
     currency = order["currency"]
     if trigger["kind"] == "order":
         missing = [line for line in order["lines"] if line["price"] is None]
@@ -1168,6 +1309,7 @@ def confirm(
             for old in store.supplier_orders(uid, bid):
                 if old["id"] == order["replaces"] and old["status"] == "draft":
                     old["status"] = "replaced"
+                    old["replaced_by"] = order["id"]
                     save(store, uid, bid, old, now)
     elif order.get("pending"):
         pending = order["pending"]
@@ -1197,6 +1339,77 @@ def discard(store: MerchantRepository, uid: str, bid: str, oid: str, version: in
         order["pending"] = None
     else:
         raise HTTPException(409, "Nothing is waiting to be sent.")
+    return public_order(save(store, uid, bid, order, now))
+
+
+CANCEL_TEXT = "Sorry, please cancel this order."
+
+
+def cancel_sent(
+    store: MerchantRepository, uid: str, bid: str, oid: str, version: int
+) -> dict[str, Any]:
+    """The owner cancels a sent order from its detail (OB-225): the supplier is told at once and
+    the order is closed. A draft is discarded instead; nothing was sent."""
+    now = time.time()
+    order = get_order(store, uid, bid, oid, now)
+    if order["version"] != version:
+        raise HTTPException(409, "This order changed. Review it again.")
+    if order["status"] not in OPEN:
+        raise HTTPException(409, "Only a sent or confirmed order can be cancelled.")
+    if len(order["messages"]) >= MAX_MESSAGES:
+        raise HTTPException(409, "Conversation limit reached.")
+    deliver(store, uid, bid, order, CANCEL_TEXT, "cancel", now)
+    order["messages"].append(message("owner", CANCEL_TEXT, now, kind="cancel"))
+    order["pending"] = None
+    order["status"] = "cancelled"
+    return public_order(save(store, uid, bid, order, now))
+
+
+def change_text(changes: list[tuple[dict[str, Any], float]]) -> str:
+    parts = [
+        f"{line['name']} {quantity:g} {line['unit']} (was {line['quantity']:g} {line['unit']})"
+        for line, quantity in changes
+    ]
+    return f"Please change my order: {'; '.join(parts)}."[:500]
+
+
+def change_quantities(
+    store: MerchantRepository,
+    uid: str,
+    bid: str,
+    oid: str,
+    version: int,
+    quantities: dict[int, float],
+) -> dict[str, Any]:
+    """The owner changes quantities on a sent order (OB-225): the supplier is told what changed
+    and asked to confirm again; the order shows the new quantities and total."""
+    now = time.time()
+    order = get_order(store, uid, bid, oid, now)
+    if order["version"] != version:
+        raise HTTPException(409, "This order changed. Review it again.")
+    if order["status"] not in OPEN:
+        raise HTTPException(409, "Only a sent or confirmed order can be changed.")
+    if len(order["messages"]) >= MAX_MESSAGES:
+        raise HTTPException(409, "Conversation limit reached.")
+    changes = []
+    for index, quantity in quantities.items():
+        if not 0 <= index < len(order["lines"]):
+            raise HTTPException(422, "Pick a line of this order.")
+        line = order["lines"][index]
+        if line["price"] is not None and round(quantity, 3) != line["quantity"]:
+            changes.append((line, round(quantity, 3)))
+    if not changes:
+        raise HTTPException(422, "Nothing changed.")
+    text = change_text(changes)
+    deliver(store, uid, bid, order, text, "text", now)
+    for line, quantity in changes:
+        line["quantity"] = quantity
+        line["total"] = round(line["price"] * quantity)
+    order["total"] = sum(line["total"] or 0 for line in order["lines"])
+    order["messages"].append(message("owner", text, now))
+    # A message the coach prepared stays waiting for the owner's tap; the change does not
+    # replace it.
+    order["status"] = "sent"
     return public_order(save(store, uid, bid, order, now))
 
 

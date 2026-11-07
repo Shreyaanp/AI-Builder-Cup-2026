@@ -27,14 +27,13 @@ import { useLocale } from '../../state/hooks'
 import { AppearanceToggle } from './AppearanceToggle'
 import { BrandLogo } from '../../design/BrandLogo'
 import { LanguagePicker } from './LanguagePicker'
+import { useBusinessLink } from './businessLink'
 import { pagesCopyFor, posterSrc, videoSrc, type PagesCopy } from './howItWorksCopy'
 import './how-it-works.css'
 
 type Flow = 'vendor' | 'customer'
 type Page = 'how' | 'features'
 
-const businessUrl = 'https://business.chalkboard.shreyaan.work'
-const demoUrl = `${businessUrl}/demo`
 const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches
 
 // The app's semantic roles (and its remembered light/dark choice), as on the landing.
@@ -185,15 +184,21 @@ function FlowSection({ flow, t, cta }: { flow: Flow; t: PagesCopy; cta: ReactNod
 }
 
 function ShopsCta({ t }: { t: PagesCopy }) {
+  const businessLink = useBusinessLink()
   return (
     <div className="hw-cta-pair">
-      <Button variant="contained" size="large" href={demoUrl} endIcon={<ArrowRight size={18} />}>
+      <Button
+        variant="contained"
+        size="large"
+        href={businessLink('/demo')}
+        endIcon={<ArrowRight size={18} />}
+      >
         {t.tryDemo}
       </Button>
       <Button
         variant="outlined"
         size="large"
-        href={businessUrl}
+        href={businessLink()}
         endIcon={<ArrowUpRight size={18} />}
       >
         {t.forBusiness}

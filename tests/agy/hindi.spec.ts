@@ -38,11 +38,8 @@ test.describe('Hindi language flows on phone (390px)', () => {
     await page.getByLabel(/मैंने गोपनीयता सूचना पढ़ी है|Privacy Notice/i).check()
     await page.getByRole('button', { name: /सहमत होकर आगे बढ़ें|Agree and continue/i }).click()
 
-    // Add shop details
-    await page
-      .getByRole('banner')
-      .getByRole('button', { name: /दुकान की जानकारी जोड़ें|Add shop details/i })
-      .click()
+    // New shop: the first-run card's typed way in (the top bar has no "+", simplify batch 5)
+    await page.getByRole('button', { name: /दुकान का नाम लिखें|Type your shop name/i }).click()
     const beginBtn = page.getByRole('button', { name: /शुरू करें|Let’s begin/i })
     await expect(beginBtn).toBeVisible()
     await beginBtn.click()
@@ -88,7 +85,7 @@ test.describe('Hindi language flows on phone (390px)', () => {
     })
 
     await page.goto('/demo')
-    const banner = 'डेमो दुकान – यहाँ कुछ भी असली नहीं है'
+    const banner = 'डेमो दुकान · नमूना डेटा'
     await expect(page.getByText(banner, { exact: true })).toBeVisible({ timeout: 30_000 })
 
     // Exit demo button in Hindi

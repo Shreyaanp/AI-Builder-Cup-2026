@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import { enter, localOnly } from '../stories/support.js'
 import { FIRST_QUESTION } from '../newShopTopics.js'
+import { startNewShop as openNewShopFlow } from '../support/newShop.js'
 
 test.use({
   viewport: { width: 390, height: 844 },
@@ -14,7 +15,7 @@ test.beforeEach(async ({ page }) => {
 
 async function startNewShop(page: Page) {
   await enter(page)
-  await page.getByRole('banner').getByRole('button', { name: 'Add shop details' }).click()
+  await openNewShopFlow(page)
   await page.getByRole('button', { name: 'Let’s begin' }).click()
   await expect(page.getByRole('log')).toContainText(FIRST_QUESTION)
 }
@@ -72,7 +73,7 @@ test.describe('Onboarding end-to-end flows on phone (390px)', () => {
     await confirmPinBtn.click()
 
     // Now all 3 fields are present; shop is live
-    await expect(page.getByTestId('shop-live')).toHaveText('Live', { timeout: 15_000 })
+    await expect(page.getByTestId('shop-live')).toHaveText('Saved', { timeout: 15_000 })
 
     // Clicking end-conversation ends chat; then Review my shop goes to Congratulations
     await page.getByTestId('end-conversation').click()
@@ -83,7 +84,11 @@ test.describe('Onboarding end-to-end flows on phone (390px)', () => {
     await expect(
       page.getByRole('heading', { name: /Congratulations, Green Leaf Tea is live!/ }),
     ).toBeVisible({ timeout: 15_000 })
-    await expect(page.getByTestId('shop-link')).toContainText('/s/')
+    // OB-292: sharing opens on demand; the link keeps the shop's /s/ address.
+    await page.locator('summary').filter({ hasText: 'Share' }).click()
+    await expect(
+      page.getByTestId('shop-link').getByRole('link', { name: 'Your shop link' }),
+    ).toHaveAttribute('href', /\/s\//)
     await expect(page.getByTestId('shop-qr').getByRole('img')).toBeVisible()
     await expect(page.getByRole('link', { name: 'Open my shop page' })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Add your menu' })).toBeVisible()
@@ -106,7 +111,7 @@ test.describe('Onboarding end-to-end flows on phone (390px)', () => {
       page,
       'name: Golden Bakes; category: Bakery; location: Koramangala 4th Block, Bengaluru',
     )
-    await expect(page.getByTestId('shop-live')).toHaveText('Live', { timeout: 15_000 })
+    await expect(page.getByTestId('shop-live')).toHaveText('Saved', { timeout: 15_000 })
 
     // Ending conversation and reviewing goes directly to congratulations
     await page.getByTestId('end-conversation').click()
@@ -116,6 +121,7 @@ test.describe('Onboarding end-to-end flows on phone (390px)', () => {
     await expect(
       page.getByRole('heading', { name: /Congratulations, Golden Bakes is live!/ }),
     ).toBeVisible({ timeout: 15_000 })
+    await page.locator('summary').filter({ hasText: 'Share' }).click() // OB-292
     await expect(page.getByTestId('shop-link')).toBeVisible()
     await expect(page.getByTestId('shop-qr')).toBeVisible()
   })

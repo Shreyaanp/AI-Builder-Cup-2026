@@ -99,7 +99,8 @@ test('voice actions reach Today, the owner tabs, trust and games', async ({ page
     ['Open grow', 'Grow'],
     ['Open settings', 'You'],
     ['Show trust', 'You'],
-    ['Show games', 'Grow'],
+    // The stamp card and its perks live on Shop → More → Stamp card (simplify batch 3).
+    ['Show games', 'Shop'],
   ]) {
     await page.getByRole('button', { name: 'Coach', exact: true }).click()
     await say(page, request!)
@@ -114,7 +115,8 @@ test('voice actions reach Today, the owner tabs, trust and games', async ({ page
     if (request === 'Show trust')
       await expect(page.getByRole('region', { name: 'Verify it’s you' })).toBeVisible()
     if (request === 'Show games') {
-      await expect(page.getByRole('button', { name: /^Stamps & perks/ })).toBeVisible()
+      // Shop → More (named "More Stamp card · Billing app") leads to the stamp card.
+      await expect(page.getByRole('button', { name: /^More Stamp card/ })).toBeVisible()
     }
   }
 })

@@ -2,7 +2,7 @@
 """OB-220: board reads and weeks follow the shop's clock. OB-221: legacy demo cards stay hidden."""
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from types import SimpleNamespace
 from typing import Any
 
@@ -110,12 +110,12 @@ def test_ob220_owner_insights_week_is_the_shops_not_the_servers(
     )
     bid = store.commit("u", proposal["id"], proposal["digest"])["business_id"]
     assert store.context("u", bid)["business"]["fields"]["timezone"] == "America/Los_Angeles"
-    seen: list[str] = []
+    seen: list[Any] = []
     real_facts = coordinator.recap_facts
 
-    def spy(week: str, sales: Any, signals: Any) -> dict[str, Any]:
-        seen.append(week)
-        return real_facts(week, sales, signals)
+    def spy(week: str, sales: Any, signals: Any, through: Any = None) -> dict[str, Any]:
+        seen.append(through)
+        return real_facts(week, sales, signals, through)
 
     monkeypatch.setattr(coordinator, "recap_facts", spy)
     monkeypatch.setattr(
@@ -125,11 +125,13 @@ def test_ob220_owner_insights_week_is_the_shops_not_the_servers(
         coordinator.MerchantContext(store=store, uid="u", business_id=bid, recalled=[])
     )
     try:
-        coordinator.get_insights()
+        result = coordinator.get_insights()
     finally:
         coordinator.current.reset(token)
-    # Sunday 10:00 in Los Angeles is W42; the unread real shape fell back to Singapore's W43.
-    assert seen == ["2026-W42"]
+    # Sunday 10:00 in Los Angeles is still Sunday 2026-10-18 there; the unread real shape fell
+    # back to Singapore's Monday the 19th.
+    assert seen == [date(2026, 10, 18)]
+    assert result["period"] == "last_7_days" and "week" not in result
 
 
 def test_ob221_live_demo_rescue_card_still_shows(tmp_path, monkeypatch) -> None:

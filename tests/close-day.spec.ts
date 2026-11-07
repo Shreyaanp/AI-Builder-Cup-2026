@@ -1,3 +1,4 @@
+import { saveCloseDay } from './closeDaySupport.js'
 import { createShop } from './stories/support.js'
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test } from '@playwright/test'
@@ -25,24 +26,24 @@ test('Close the day: till photo, one review, saved', async ({ page }) => {
   await page.getByRole('button', { name: 'Grow', exact: true }).tap()
   await page.getByRole('button', { name: /^Close the day/ }).tap()
   const dialog = page.getByRole('dialog', { name: 'Close the day' })
-  await expect(dialog.getByText('Till or POS report')).toBeVisible()
+  await expect(dialog.getByText('Sales slip or notebook')).toBeVisible()
   await page.waitForTimeout(700)
   await page.screenshot({ path: 'docs/stories/S2-close-1-pick.png' })
-  await dialog.getByRole('button', { name: /Till or POS report/ }).tap()
+  await dialog.getByRole('button', { name: /Sales slip or notebook/ }).tap()
   await dialog
     .locator('input[type=file]')
     .setInputFiles({ name: 'till.jpg', mimeType: 'image/jpeg', buffer: PHOTO })
-  await expect(dialog.getByText(/\d+ lines$/)).toBeVisible({ timeout: 20_000 })
+  await expect(dialog.getByText(/\d+ lines?$/)).toBeVisible({ timeout: 20_000 })
   await page.screenshot({ path: 'docs/stories/S2-close-2-read.png' })
   await dialog.getByRole('button', { name: /^Review/ }).tap()
   await expect(dialog.getByText('Today’s sales')).toBeVisible()
-  await expect(dialog.getByText(/Offline mode/)).toBeVisible()
+  await expect(dialog.getByText(/samples from your own items/)).toBeVisible()
   await page.waitForTimeout(600)
   await page.screenshot({ path: 'docs/stories/S2-close-3-review.png' })
   expect(
     (await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze()).violations,
   ).toEqual([])
-  await dialog.getByRole('button', { name: 'Save day' }).tap()
+  await saveCloseDay(dialog)
   await expect(dialog.getByText('Day closed')).toBeVisible({ timeout: 20_000 })
   await page.waitForTimeout(1300)
   await page.screenshot({ path: 'docs/stories/S2-close-4-done.png' })

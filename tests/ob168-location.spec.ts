@@ -38,8 +38,8 @@ async function checkSavedShopPin(page: Page, width: number, appearance: 'light' 
   await page.reload()
   await page.getByRole('button', { name: 'Continue local preview' }).click()
   await page.getByRole('button', { name: 'Shop', exact: true }).click()
-  await page.getByRole('button', { name: 'Customer page', exact: true }).click()
-  const sheet = page.getByRole('dialog', { name: 'Customer page', exact: true })
+  await page.getByRole('button', { name: /^Your shop page/ }).click()
+  const sheet = page.getByRole('dialog', { name: 'Your shop page', exact: true })
   await expect(sheet).toContainText('Add your location so customers can find you.')
   await expect(sheet.getByRole('switch')).toHaveCount(0)
   expect(
@@ -57,7 +57,7 @@ async function checkSavedShopPin(page: Page, width: number, appearance: 'light' 
   await expect(review).toBeVisible()
   await review.getByRole('button', { name: 'Confirm and save', exact: true }).click()
   await expect(review).toHaveCount(0)
-  await page.getByRole('button', { name: 'Customer page', exact: true }).click()
+  await page.getByRole('button', { name: /^Your shop page/ }).click()
   await expect(sheet.getByRole('switch', { name: 'Share customer page' })).toBeVisible()
 }
 
@@ -105,10 +105,8 @@ for (const [width, height] of [
         await page.getByLabel('मैं शर्तों से सहमत हूँ').check()
         await page.getByLabel('मैंने गोपनीयता सूचना पढ़ी है').check()
         await page.getByRole('button', { name: 'सहमत होकर आगे बढ़ें' }).click()
-        await page
-          .getByRole('banner')
-          .getByRole('button', { name: 'दुकान की जानकारी जोड़ें' })
-          .click()
+        // First run: the start card's typed way in (simplify batch 5: no top-bar "+").
+        await page.getByRole('button', { name: 'दुकान का नाम लिखें' }).click()
         await page.getByRole('button', { name: 'शुरू करें', exact: true }).click()
         const message = page.getByLabel('संदेश', { exact: true })
         await expect(message).toBeEnabled()

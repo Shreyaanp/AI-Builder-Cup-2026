@@ -76,6 +76,8 @@ from .merchant_firestore import FirestoreMerchantStore
 from .merchant_routes import router as merchant_router
 from .new_shop_resume import is_empty, merge_drafts
 from .new_shop_tools import go_live, pin_typed_place
+from .owner_habit import router as owner_habit_router
+from .owner_promise import router as owner_promise_router
 from .owner_routes import router as owner_router
 from .passport_routes import router as passport_router
 from .photos import PhotoPipeline
@@ -319,6 +321,8 @@ def create_app(
     app.include_router(games_router)
     app.include_router(today_router)
     app.include_router(shop_today_router)
+    app.include_router(owner_habit_router)
+    app.include_router(owner_promise_router)
     app.include_router(analytics_router)
     app.include_router(playbook_router)
     app.include_router(sourcing_router)
@@ -428,6 +432,25 @@ def create_app(
                 principal.uid, str(body.session_id), bid, cursor
             )
             return stream_response(turn, after)
+        client_turn = str(body.turn_id) if body.turn_id else None
+        if client_turn and body.session_id:
+            # A reload sent a turn the server already has: replay its answer (or just end the
+            # turn when that has expired), never a second model call or a second owner line.
+            sent = str(body.session_id)
+            earlier = await services.replay.repeated(principal.uid, sent, bid, client_turn)
+            if earlier is not False:
+                if earlier is not True:
+                    return stream_response(earlier)
+
+                async def acknowledge(turn: TurnReplay) -> None:
+                    turn.append(
+                        StreamEvent(kind="ready", session_id=sent, mode=settings.coach_mode)
+                    )
+                    turn.append(StreamEvent(kind="turn_complete"))
+
+                return stream_response(
+                    services.replay.start(principal.uid, sent, bid, acknowledge, client_turn)
+                )
         await enforce_limits(request, [("coach", principal.uid)])
         sid, adopted = await new_shop_session(
             principal,
@@ -501,7 +524,7 @@ def create_app(
                 await services.registry.release_async(lease)
 
         try:
-            turn = services.replay.start(principal.uid, sid, bid, produce)
+            turn = services.replay.start(principal.uid, sid, bid, produce, client_turn)
         except Exception:
             await services.registry.release_async(lease)
             raise

@@ -41,6 +41,7 @@ from pydantic import ValidationError
 
 from .merchant import SUPPLY_KINDS, MerchantRepository, ProductFields
 from .money import exponent, to_major
+from .product_source import answered_item, same_kind, source_of
 from .region import shop_currency
 from .supply_docs import (
     MAPPING,
@@ -79,6 +80,9 @@ SEQUENCE = "supply_seq"
 INBOX = "supply_inbox"  # partner documents (supply_io.py)
 assert (RULES, ORDERS, SEQUENCE, INBOX) == SUPPLY_KINDS  # erased with the shop (merchant.py)
 COVER_DAYS = 7
+# More than a month of the shop's own use in one draft is a mistake to check, not an order: a
+# supplier's minimum or a unit mix-up must never draft 614 cups (OB-239).
+CHECK_DAYS = 30
 MAX_DOCUMENTS = 12
 MAX_ORDERS = 100
 CREDIT_OPEN = {"sent", "changed", "confirmed", "dispatched", "received", "invoiced"}
@@ -324,6 +328,13 @@ def _check_version(po: dict[str, Any], version: int) -> None:
         raise HTTPException(409, "STALE")
 
 
+def agreed_price(line: dict[str, Any]) -> int | None:
+    """The supplier's confirmed price, else the ordered one: a confirmation without a price
+    (None) keeps the order's (OB-250)."""
+    price = line.get("confirmed_price")
+    return line.get("price") if price is None else price
+
+
 def price_line(line: dict[str, Any], rule: ItemRule | None) -> None:
     line["price"] = tier_price(rule, line["quantity"], line.get("list_price"))
     line["total"] = round(line["price"] * line["quantity"]) if line["price"] is not None else None
@@ -365,12 +376,33 @@ def shop_today(context: dict[str, Any]) -> date:
     return today_for(context["business"]["fields"])
 
 
-def need_from_forecast(
-    product: dict[str, Any] | None, forecast: dict[str, Any], item: str, today: date
-) -> dict[str, Any]:
-    """Stock, run-out day and demand for one item from the forecast rows."""
-    from .sourcing import matches
+def bought(product: dict[str, Any], category: str = "") -> bool:
+    """Stock the shop buys (a raw supply, an ingredient or goods it resells), not something it
+    makes, nor an item it has not said either way (OB-239, product_source.py)."""
+    return source_of(product, category) == "bought"
 
+
+def runs_out(product: dict[str, Any], forecast: dict[str, Any], today: date) -> str:
+    """The day this item runs out, from tomorrow on: the one rule the supply tile, Today and the
+    morning brief share, so one item never shows two days (OB-238)."""
+    rows = [
+        row
+        for row in forecast.get("predictions") or []
+        if isinstance(row, dict) and str(row.get("date") or "") > today.isoformat()
+    ]
+    need = need_from_forecast(product, {**forecast, "predictions": rows}, product["name"], today)
+    return str(need["runs_out"] or "")
+
+
+def need_from_forecast(
+    product: dict[str, Any] | None,
+    forecast: dict[str, Any],
+    item: str,
+    today: date,
+) -> dict[str, Any]:
+    """Stock, run-out day and demand for one item from the forecast rows, in the item's unit.
+    Only the item's own sales rows count: 60 cups of Masala chai, Coconut rice or Rice flour are
+    never kilos of tea dust or rice, whatever their unit or source (OB-242)."""
     rows = [
         row
         for row in forecast.get("predictions") or []
@@ -378,12 +410,8 @@ def need_from_forecast(
         and row.get("item")
         and row.get("date")
         and row.get("quantity") is not None
-        and (matches(row["item"], item) or matches(item, row["item"]))
+        and str(row["item"]).casefold() == item.casefold()
     ]
-    # "Tea dust" also matches the chai brewed from it; its own sales rows, when there are any,
-    # are the demand for the kilos on the shelf, not the cups sold.
-    exact = [row for row in rows if row["item"].casefold() == item.casefold()]
-    rows = exact or rows
     rows.sort(key=lambda row: row["date"])
     stock = (product or {}).get("stock")
     known = stock is not None
@@ -415,11 +443,30 @@ async def draft_reorder(
     generator: Any,
     demo_owner: str,
     supplier_id: str = "",
+    anyway: bool = False,
+    source: str = "",
 ) -> dict[str, Any]:
-    """Draft the purchase order the forecast and rules call for (nothing is sent)."""
+    """Draft the purchase order the forecast and rules call for (nothing is sent). When some is
+    on order in a unit that does not convert, it asks first: `anyway` is the owner's yes.
+    `source` is the owner's answer to "Do you make it or buy it?", saved on the item."""
     import anyio
 
     from . import sourcing
+    from .supply_coming import (
+        cannot_meet,
+        coming_orders,
+        cover,
+        covered,
+        draft_amount,
+        flag_wrong_sizes,
+        on_order,
+        resize,
+        settle_drafts,
+        sized_line,
+        still_wanted,
+        withdraw,
+        wrong_size,
+    )
 
     context = await anyio.to_thread.run_sync(_owned, store, uid, bid)
     fields = context["business"]["fields"]
@@ -430,6 +477,31 @@ async def draft_reorder(
         mode="json"
     )
     inventory = context["inventory"]
+    if source in {"made", "bought"}:
+        # "I make chai": saved only on the one item it is about, never on a loose match (the tea
+        # dust chai is brewed from), and nothing is drafted when no item is meant (OB-239).
+        answered, choices = answered_item(item, inventory, source)
+        if not answered:
+            return {
+                "status": "which_item",
+                "item": item.strip()[:80],
+                "source": source,
+                "choices": choices,
+            }
+        if answered.get("id"):
+            saved = await anyio.to_thread.run_sync(
+                store.set_source, uid, bid, answered["id"], source
+            )
+            inventory = [saved if p is answered else p for p in inventory]
+        item = answered["name"]
+    known = await anyio.to_thread.run_sync(coming_orders, store, uid, bid)
+
+    def is_covered(product: dict[str, Any], need: dict[str, Any]) -> bool:
+        unit = product.get("unit") or "kg"
+        coming = on_order(store, uid, bid, product["name"], unit, known)
+        return cover(need, coming) in {"full", "units"}
+
+    category = str(fields.get("category") or "")
     target = await anyio.to_thread.run_sync(
         lambda: pick_item(
             item,
@@ -437,12 +509,37 @@ async def draft_reorder(
             forecast,
             today,
             lambda name: any(
-                can_supply(store, bid, p, currency) for p in inventory if p["name"] == name
+                can_supply(store, bid, p, currency, category)
+                for p in inventory
+                if p["name"] == name
             ),
+            is_covered,
+            category,
         )
     )
     if not target:
+        await anyio.to_thread.run_sync(
+            settle_drafts, store, uid, bid, inventory, forecast, today, known, ""
+        )
         return {"status": "needs_item"}
+    named = next(
+        (p for p in inventory if p["name"].casefold() == target.casefold()),
+        next((p for p in inventory if sourcing.matches(p["name"], target)), None),
+    )
+    if named:
+        # Only stock the shop buys is ordered. Something it makes is made again, never bought
+        # from a rival; one it has not said either way is asked once (OB-239).
+        made_or_bought = source_of(named, category)
+        if made_or_bought == "made":
+            return {"status": "made", "item": named["name"]}
+        if made_or_bought == "unknown":
+            return {"status": "ask_source", "item": named["name"], "product_id": named.get("id")}
+    if not item.strip():
+        # Items this reorder skipped as covered: their unsent drafts are sized again or withdrawn
+        # too, so none stays approvable at an old size (#603).
+        await anyio.to_thread.run_sync(
+            settle_drafts, store, uid, bid, inventory, forecast, today, known, target
+        )
     product = next(
         (p for p in inventory if p["name"].casefold() == target.casefold()),
         next((p for p in inventory if sourcing.matches(p["name"], target)), None),
@@ -450,14 +547,122 @@ async def draft_reorder(
     unit = (product or {}).get("unit") or "kg"
     need = need_from_forecast(product, forecast, target, today)
     need_by = need["runs_out"] or ""
+    coming = await anyio.to_thread.run_sync(on_order, store, uid, bid, target, unit, known)
     if quantity:
         wanted = float(quantity)
     elif need["daily"]:
-        # Demand until the delivery lands, plus a week of cover, minus what is on the shelf.
-        wanted = max(0.0, need["daily"] * (COVER_DAYS + 2) - need["stock"])
+        wanted = still_wanted(need, coming["quantity"])
     else:
         wanted = 0.0
-    candidates = await anyio.to_thread.run_sync(supplier_candidates, store, bid, target, currency)
+    done = not quantity and covered(need, coming["quantity"])
+    wrong = wrong_size(coming["draft"], inventory, forecast, today) if coming["draft"] else ""
+
+    def held(po: dict[str, Any], why: str) -> dict[str, Any]:
+        # A draft still of a wrong size: nothing is sent, and the owner checks the amount first,
+        # as for a new one (OB-250).
+        line = po["lines"][0]
+        amount = draft_amount(po, target, unit)
+        return {
+            "status": "check",
+            "reason": "no_history" if why == "no_use" or not need["daily"] else "month",
+            "item": target,
+            "unit": unit,
+            "quantity": round(amount, 2),
+            "days": math.floor(amount / need["daily"]) if need["daily"] else None,
+            "supplier": po["supplier"]["name"],
+            "supplier_item": line["item"],
+            "supplier_quantity": line["quantity"],
+            "supplier_unit": line["unit"],
+        }
+
+    async def send_if_right(po: dict[str, Any]) -> dict[str, Any]:
+        # Belt and braces: a draft of a wrong size never goes out by itself, whatever led here.
+        # It stays a draft, shown flagged with Send off (OB-250).
+        if not po.get("auto_send_allowed"):
+            return po
+        if wrong_size(po, inventory, forecast, today):
+            shown = await anyio.to_thread.run_sync(
+                flag_wrong_sizes, store, bid, [po], inventory, forecast, today
+            )
+            return {**shown[0], "auto_send_allowed": False}
+        return await anyio.to_thread.run_sync(_send, store, bid, po, True)
+
+    if wrong and not quantity:
+        # Sized from sales that were never this item's use (540 kg of tea dust from 60 cups of
+        # chai, OB-242): it is withdrawn, never resized or sent, and this reorder goes on as a
+        # new one, to the same checks. If the owner changed it meanwhile, their draft stays the
+        # one open draft for this need, never a second one beside it (OB-250).
+        # Only the owner's own amount makes it right: after any other edit (Pay cash this time,
+        # a note) it is withdrawn again at the new version, and never sent at the wrong size.
+        def still_wrong(po: dict[str, Any]) -> str:
+            return wrong_size(po, inventory, forecast, today)
+
+        gone = await anyio.to_thread.run_sync(
+            withdraw, store, bid, coming["draft"], wrong, still_wrong
+        )
+        if gone or coming["draft"]["status"] != "draft" or coming["draft"].get("sent"):
+            coming = {**coming, "draft": None}
+        elif wrong := still_wrong(coming["draft"]):
+            return held(coming["draft"], wrong)
+    if coming["draft"]:
+        # One draft per need: the open one comes back, sized again for what is now on its way
+        # (or with the owner's quantity, if named).
+        waiting: dict[str, Any] = coming["draft"]
+        sized = sized_line(store, bid, waiting, target, unit, wanted) if quantity else None
+        if quantity and sized:
+            # The same rule as a new draft: the open one keeps its amount, and the owner is told.
+            amount = sourcing.convert(sized[1], sized[0]["unit"], unit) if sized[1] else None
+            if cannot_meet(float(quantity), amount):
+                return {
+                    "status": "check",
+                    "reason": "named",
+                    "asked": float(quantity),
+                    "item": target,
+                    "unit": unit,
+                    "quantity": round(amount, 2) if amount is not None else None,
+                    "days": None,
+                    "supplier": waiting["supplier"]["name"],
+                    "supplier_item": sized[0]["item"],
+                    "supplier_quantity": sized[1] or sized[0]["quantity"],
+                    "supplier_unit": sized[0]["unit"],
+                }
+        reason = waiting.setdefault("reason", {})
+        if done and not reason.get("owner_quantity"):
+            # What was sent since covers it: the draft would only over-order.
+            reason["withdrawn"] = "on_order"
+            waiting["status"] = "cancelled"
+            await anyio.to_thread.run_sync(_save, store, bid, waiting)
+            return {"status": "on_order", "item": target, "unit": unit, **coming, "draft": None}
+        if quantity or (
+            need["daily"]
+            and not reason.get("owner_quantity")
+            and reason.get("on_order") != coming["quantity"]
+        ):
+            resize(store, bid, waiting, target, unit, wanted)
+            reason["wanted"] = round(wanted, 2)
+            reason["on_order"] = coming["quantity"]
+            reason["owner_quantity"] = bool(quantity) or bool(reason.get("owner_quantity"))
+        await anyio.to_thread.run_sync(recheck, store, bid, waiting, today)
+        waiting = await anyio.to_thread.run_sync(_save, store, bid, waiting)
+        return {"status": "drafted", "order": await send_if_right(waiting), "existing": True}
+    if done:
+        return {"status": "on_order", "item": target, "unit": unit, **coming}
+    if not quantity and not anyway and coming["other"]:
+        # 2 pack is on its way and the shop counts litres: the app cannot tell if it is enough,
+        # so the owner says before a second order goes out (#603).
+        return {"status": "on_order_units", "item": target, "unit": unit, **coming}
+
+    def linked() -> list[dict[str, Any]]:
+        # The supplier's Milk is the shop's own Milk, not its Rose milk: Rose milk's sales never
+        # size it (OB-242). Only an amount the owner named can go to such a supplier.
+        shelf = {p["name"].casefold() for p in inventory} - {target.casefold()}
+        return [
+            candidate
+            for candidate in supplier_candidates(store, bid, target, currency, category)
+            if quantity or candidate["product"]["name"].casefold() not in shelf
+        ]
+
+    candidates = await anyio.to_thread.run_sync(linked)
     if not candidates:
         found = await sourcing.find(
             store, uid, bid, target, wanted or None, unit, generator, demo_owner
@@ -468,9 +673,7 @@ async def draft_reorder(
                 await anyio.to_thread.run_sync(
                     ensure_relationship, store, bid, shop, currency, index, business_size(fields)
                 )
-        candidates = await anyio.to_thread.run_sync(
-            supplier_candidates, store, bid, target, currency
-        )
+        candidates = await anyio.to_thread.run_sync(linked)
     if not candidates:
         return {"status": "no_supplier", "item": target}
 
@@ -482,22 +685,18 @@ async def draft_reorder(
         # kg, #264): order the ingredient, sized by the shop's own stock of it when it keeps
         # some, else from the supplier's minimum; the owner reviews the draft either way.
         supplied = candidate["product"]
+        if quantity:
+            # The owner named an amount in a unit this supplier does not sell in: only its
+            # smallest order is quoted, and the check below says so (OB-239).
+            return quote(
+                store, bid, candidate, supplied["name"], supplied["unit"], 0.0, need_by, today
+            )
         stocked = next(
             (p for p in inventory if p["name"].casefold() == supplied["name"].casefold()),
             next((p for p in inventory if sourcing.matches(p["name"], supplied["name"])), None),
         )
         if stocked and stocked.get("unit"):
-            # Only the ingredient's own sales: the drinks' cups must not size an order in kg.
-            exact = {
-                **forecast,
-                "predictions": [
-                    row
-                    for row in forecast.get("predictions") or []
-                    if isinstance(row, dict)
-                    and str(row.get("item", "")).casefold() == stocked["name"].casefold()
-                ],
-            }
-            own = need_from_forecast(stocked, exact, stocked["name"], today)
+            own = need_from_forecast(stocked, forecast, stocked["name"], today)
             own_wanted = (
                 max(0.0, own["daily"] * (COVER_DAYS + 2) - own["stock"]) if own["daily"] else 0.0
             )
@@ -524,6 +723,50 @@ async def draft_reorder(
         else options[0]
     )
     faster = next((o for o in options if o["on_time"] and o is not best), None)
+    line = best["line"]
+    amount = sourcing.convert(line["quantity"], line["unit"], unit)
+    check = {
+        "status": "check",
+        "item": target,
+        "unit": unit,
+        "quantity": None,
+        "days": None,
+        "supplier": best["supplier"]["name"],
+        "supplier_item": line["item"],
+        "supplier_quantity": line["quantity"],
+        "supplier_unit": line["unit"],
+    }
+    if quantity and cannot_meet(float(quantity), amount):
+        # The owner named an amount the supplier cannot sell (its minimum, its packs or a unit
+        # that does not convert): say so, and never draft a different amount (OB-239).
+        return {
+            **check,
+            "reason": "named",
+            "asked": float(quantity),
+            "quantity": round(amount, 2) if amount is not None else None,
+        }
+    if not quantity and amount is None:
+        # The supplier sells it in a unit the shop's count does not convert to (Atta by the
+        # pack with a minimum of 1000, counted here in kg): the app cannot tell how much that
+        # is, so the owner checks it first and nothing is drafted (OB-239).
+        return {**check, "reason": "units"}
+    if not quantity and not need["daily"]:
+        # No use of its own on record (a new shop, milk that is never sold, or tea dust whose
+        # only sales are the chai made from it): nothing says how much it needs, so the
+        # supplier's minimum is never drafted unseen; the owner names the amount (OB-239, OB-242).
+        return {
+            **check,
+            "reason": "no_history",
+            "quantity": round(amount, 2) if amount is not None else None,
+        }
+    if not quantity and amount is not None and amount > need["daily"] * CHECK_DAYS:
+        # More than a month of use: the owner checks the item and its supplier (OB-239).
+        return {
+            **check,
+            "reason": "month",
+            "quantity": round(amount, 2),
+            "days": math.floor(amount / need["daily"]),
+        }
     number = await anyio.to_thread.run_sync(_next_number, store, bid, "po")
     now = time.time()
     po: dict[str, Any] = {
@@ -551,6 +794,7 @@ async def draft_reorder(
             "method": need["method"],
             "wanted": round(wanted, 2),
             "owner_quantity": bool(quantity),
+            "on_order": coming["quantity"],
             "tier_min": best["tier_min"],
             "moq": best["moq"],
             "on_time": best["on_time"],
@@ -582,9 +826,66 @@ async def draft_reorder(
     }
     await anyio.to_thread.run_sync(recheck, store, bid, po, today)
     po = await anyio.to_thread.run_sync(_save, store, bid, po)
-    if po["auto_send_allowed"]:
-        po = await anyio.to_thread.run_sync(_send, store, bid, po, True)
-    return {"status": "drafted", "order": po}
+    return {"status": "drafted", "order": await send_if_right(po)}
+
+
+def order_again(store: MerchantRepository, uid: str, bid: str, po_id: str) -> dict[str, Any]:
+    """ "Order again" on an order that came: the same items and amounts from the same supplier,
+    as a new draft at today's prices. Nothing is sent; the owner reviews it like any draft."""
+    context = _owned(store, uid, bid)
+    old = get_po(store, uid, bid, po_id)
+    if not (old.get("received") or old["status"] == "closed"):
+        raise HTTPException(409, "NOT_RECEIVED")
+    row = relationship(store, bid, old["supplier"]["id"])
+    if not row or not old["lines"]:
+        raise HTTPException(409, "NO_SUPPLIER")
+    lines = [
+        {
+            "line": 10 * (n + 1),
+            **{
+                key: line.get(key)
+                for key in ("item", "buyer_code", "supplier_code", "quantity", "unit", "list_price")
+            },
+        }
+        for n, line in enumerate(old["lines"])
+    ]
+    today = shop_today(context)
+    first = lines[0]
+    po: dict[str, Any] = {
+        "id": uuid4().hex[:16],
+        "number": po_number(_next_number(store, bid, "po")),
+        "status": "draft",
+        "sent": False,
+        "auto_sent": False,
+        "created": time.time(),
+        "currency": old["currency"],
+        "buyer": old["buyer"],
+        "supplier": old["supplier"],
+        "terms_days": rules_of(row).terms_days,
+        "lines": lines,
+        "total": 0,
+        "need_by": "",
+        "delivery": "",
+        "reason": {
+            **(old.get("reason") or {}),
+            "item": first["item"],
+            "unit": first["unit"],
+            "runs_out": "",
+            "wanted": first["quantity"],
+            "owner_quantity": True,
+            "tier_min": 0,
+            "again": old["number"],
+        },
+        "alternatives": [],
+        "faster_supplier": None,
+        "documents": [],
+        "backorders": [],
+        "received": False,
+        "simulated": bool(old.get("simulated")),
+        "version": 0,
+    }
+    recheck(store, bid, po, today)
+    return _save(store, bid, po)
 
 
 def pick_item(
@@ -593,9 +894,14 @@ def pick_item(
     forecast: dict[str, Any],
     today: date,
     supplied: Callable[[str], bool] = lambda _: False,
+    is_covered: Callable[[dict[str, Any], dict[str, Any]], bool] = lambda _p, _n: False,
+    category: str = "",
 ) -> str:
-    """The named item, else the stocked item that runs out first. Items a linked supplier
-    stocks come first: a tea stall reorders tea dust, not the chai it brews from it (#264)."""
+    """The named item, else the stocked item that runs out first. Menu items are never picked:
+    a tea stall reorders tea dust, not the chai it brews from it (#264, OB-239); items a linked
+    supplier stocks come first.
+    Items whose need is already on its way come last: milk on order must not hide the sugar
+    that still runs out (#603)."""
     from .sourcing import matches
 
     if item.strip():
@@ -603,26 +909,34 @@ def pick_item(
             (p["name"] for p in inventory if p["name"].casefold() == item.strip().casefold()),
             None,
         )
-        return named or next(
-            (p["name"] for p in inventory if matches(p["name"], item)), item.strip()[:80]
-        )
-    soonest: tuple[bool, str, str] | None = None
+        loose = [p for p in inventory if matches(p["name"], item)]
+        # "Reorder tea" with tea dust and masala chai means the tea dust it buys (OB-239).
+        loose.sort(key=lambda p: not bought(p, category))
+        return named or (loose[0]["name"] if loose else item.strip()[:80])
+    soonest: tuple[bool, bool, str, str] | None = None
     for product in inventory:
-        if product.get("stock") is None:
+        if product.get("stock") is None or not bought(product, category):
             continue
         need = need_from_forecast(product, forecast, product["name"], today)
         if not need["runs_out"]:
             continue
-        rank = (not supplied(product["name"]), need["runs_out"], product["name"])
-        if soonest is None or rank[:2] < soonest[:2]:
+        rank = (
+            is_covered(product, need),
+            not supplied(product["name"]),
+            need["runs_out"],
+            product["name"],
+        )
+        if soonest is None or rank[:3] < soonest[:3]:
             soonest = rank
-    return soonest[2] if soonest else ""
+    return soonest[3] if soonest else ""
 
 
 def supplier_candidates(
-    store: MerchantRepository, bid: str, item: str, currency: str
+    store: MerchantRepository, bid: str, item: str, currency: str, category: str = ""
 ) -> list[dict[str, Any]]:
-    """Suppliers the shop has a relationship with that stock this item."""
+    """Suppliers the shop has a relationship with that stock this item. A shop of the shop's own
+    kind is never one (a bakery never orders bread from another bakery), nor is something a shop
+    makes itself (a café's cup of chai is its menu), OB-239."""
     from .sourcing import matches
 
     found = []
@@ -630,20 +944,33 @@ def supplier_candidates(
         shop = store.public_shop(row["supplier"]["id"])
         if not shop or (shop.get("currency") or currency) != currency:
             continue
-        products = [p for p in shop.get("products", []) if matches(p["name"], item)]
+        theirs = str(shop.get("category") or "")
+        if same_kind(category, theirs, bool(shop.get("supplier"))):
+            continue
+        products = [
+            p
+            for p in shop.get("products", [])
+            if matches(p["name"], item) and source_of(p, theirs) != "made"
+        ]
         if products:
             found.append({"row": row, "shop": shop, "product": products[0]})
     return found
 
 
-def can_supply(store: MerchantRepository, bid: str, product: dict[str, Any], currency: str) -> bool:
+def can_supply(
+    store: MerchantRepository,
+    bid: str,
+    product: dict[str, Any],
+    currency: str,
+    category: str = "",
+) -> bool:
     """A linked supplier stocks this item in a unit it converts to (cups never become kg)."""
     from .sourcing import convert
 
     unit = product.get("unit") or "kg"
     return any(
         convert(1, unit, c["product"]["unit"]) is not None
-        for c in supplier_candidates(store, bid, product["name"], currency)
+        for c in supplier_candidates(store, bid, product["name"], currency, category)
     )
 
 
@@ -734,6 +1061,8 @@ def apply_fix(
         if line is None or not 0 < value <= 1_000_000:
             raise HTTPException(422, "Pick a line and a quantity above zero.")
         line["quantity"] = round(value, 3)
+        # The owner set this amount, so it stays whatever the forecast says (OB-242).
+        po["reason"] = {**(po.get("reason") or {}), "owner_quantity": True}
     elif kind == "cash":
         po["terms_days"] = 0
         po["cash_this_time"] = True
@@ -758,6 +1087,29 @@ def approve(
     if po.get("blocked"):
         raise HTTPException(409, "RULES_BROKEN")
     return _send(store, bid, po, False)
+
+
+async def approve_checked(
+    store: MerchantRepository, uid: str, bid: str, po_id: str, version: int, forecaster: Any
+) -> dict[str, Any]:
+    """Approve, from the card or the coach, unless the amount is far beyond what the shop uses:
+    an open draft can outlive the reorder that would have withdrawn it (OB-242). It stays a draft,
+    so the owner can set the amount on the card or tell the coach."""
+    import anyio
+
+    from .supply_coming import wrong_size
+
+    context = await anyio.to_thread.run_sync(_owned, store, uid, bid)
+    po = await anyio.to_thread.run_sync(get_po, store, uid, bid, po_id)
+    _check_version(po, version)
+    if po["status"] == "draft" and not (po.get("reason") or {}).get("owner_quantity"):
+        rows = await anyio.to_thread.run_sync(store.sales_history, uid, bid)
+        today = shop_today(context)
+        inventory = context["inventory"]
+        forecast = (await forecaster.forecast(rows, today, inventory)).model_dump(mode="json")
+        if wrong_size(po, inventory, forecast, today):
+            raise HTTPException(409, "TOO_BIG")
+    return await anyio.to_thread.run_sync(approve, store, uid, bid, po_id, version)
 
 
 def _send(store: MerchantRepository, bid: str, po: dict[str, Any], auto: bool) -> dict[str, Any]:
@@ -785,11 +1137,37 @@ def _send(store: MerchantRepository, bid: str, po: dict[str, Any], auto: bool) -
 def cancel(
     store: MerchantRepository, uid: str, bid: str, po_id: str, version: int
 ) -> dict[str, Any]:
-    _owned(store, uid, bid)
+    context = _owned(store, uid, bid)
     po = get_po(store, uid, bid, po_id)
     _check_version(po, version)
     if po["status"] not in {"draft", "sent", "changed"}:
         raise HTTPException(409, "This order can no longer be cancelled here.")
+    if po.get("sent"):
+        # The supplier gets the cancellation in its own format, kept with the order's documents
+        # (an order change with every line deleted), so "the supplier was told" is on record.
+        doc = po_document(po).model_copy(
+            update={
+                "kind": "ORDER_CHANGE",
+                "ref": po["number"],
+                "issued": shop_today(context).isoformat(),
+                "note": "Cancelled by the buyer",
+            }
+        )
+        doc.lines = [line.model_copy(update={"status": "rejected"}) for line in doc.lines]
+        system: Format = po["supplier"]["system"]
+        po["documents"].append(
+            document_entry(
+                doc,
+                sender="buyer",
+                raw=render(doc, "json"),
+                raw_format="json",
+                translated=render(doc, system),
+                translated_format=system,
+                flags=[],
+                reader="template",
+            )
+        )
+        po["cancelled_at"] = time.time()
     po["status"] = "cancelled"
     return _save(store, bid, po)
 
@@ -879,7 +1257,7 @@ def supplier_document(
     for index, line in enumerate(po["lines"]):
         rule = item_rule(rules, line["item"])
         quantity = float(line.get("confirmed", line["quantity"]))
-        price = line.get("confirmed_price", line["price"])
+        price = agreed_price(line)
         doc_line = DocLine(
             line=line["line"],
             item=line.get("substitute") or line["item"],
@@ -911,6 +1289,10 @@ def supplier_document(
             doc_line.substitute_for = line["item"]
             doc_line.item = name[:120]
             doc_line.supplier_code = f"{line.get('supplier_code') or 'MAT'}-S"
+        if kind == "ORDRSP" and index == 0 and variant == "price_change" and price is not None:
+            # Up about 5%, to the nearest whole currency unit, as a wholesaler would quote it.
+            doc_line.price = max(price + 100, round(price * 1.05 / 100) * 100)
+            doc_line.total = round(doc_line.price * quantity)
         if kind == "INVOIC" and index == 0 and variant == "price_mismatch":
             # A classic three-way-match failure: the list price instead of the agreed tier.
             listed = line.get("list_price") or price
@@ -1134,7 +1516,7 @@ def apply_document(
             line = line_for(po, got.line)
             if line is None:
                 continue
-            agreed = line.get("confirmed_price", line["price"])
+            agreed = agreed_price(line)
             delivered = float(line.get("shipped", line.get("confirmed", line["quantity"])))
             line["invoiced_quantity"] = got.quantity
             line["invoiced_price"] = got.price
@@ -1181,7 +1563,8 @@ def apply_document(
 
 
 def settle_confirmation(po: dict[str, Any]) -> None:
-    """Accepted confirmation: quantities, back-orders and substitutes become the order."""
+    """Accepted confirmation: quantities, prices, back-orders and substitutes become the order.
+    `quantity` stays what was asked for; `confirmed` is what is coming."""
     po["backorders"] = [
         {
             "item": line["item"],
@@ -1195,10 +1578,13 @@ def settle_confirmation(po: dict[str, Any]) -> None:
     for line in po["lines"]:
         if line.get("line_status") == "rejected":
             line["confirmed"] = 0
-    po["confirmed_total"] = sum(
-        round((line.get("confirmed_price") or 0) * float(line.get("confirmed", line["quantity"])))
-        for line in po["lines"]
-    )
+        price = agreed_price(line)
+        if price is not None:
+            # The chat still tells what it was: "₹235 a kg now, it was ₹224".
+            line["asked_price"] = line.get("asked_price", line.get("price"))
+            line["price"] = price
+            line["total"] = round(price * float(line.get("confirmed", line["quantity"])))
+    po["total"] = po["confirmed_total"] = sum(line.get("total") or 0 for line in po["lines"])
 
 
 def open_flags(po: dict[str, Any]) -> int:

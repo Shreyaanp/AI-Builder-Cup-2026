@@ -80,17 +80,15 @@ def update_shop_details(
     field: ShopField, value: str = "", weekly_hours: list[DayHours] | None = None
 ) -> dict[str, Any]:
     """Prepare ONE change to the saved shop's details for the owner's review card. Use it for any
-    "change my ..." about the shop itself: field is one of
-    name (1-80 characters), category (what they sell, in their words), description,
-    phone (digits, spaces, +, -), location (the new area or address, e.g. "HITEC City,
-    Hyderabad"; the card then finds the map pin and the owner checks it before saving),
-    hours (free text), weekly_hours (pass the weekly_hours list: day mon..sun, closed, open/close
-    HH:MM), opening_time / closing_time (HH:MM 24h or "9pm"; applied to every open day: "we close
-    at 9 now" → closing_time "21:00"), closed_today ("yes" = closed today, "no" = open again
-    today), closed_days (the days now closed every week, e.g. "sunday" or "mon, tue").
-    value holds the owner's new value, canonical (times HH:MM, days in English). Never guess:
-    if the field or value is unclear (which time, morning or night, which day), ask ONE short
-    question first. Nothing is saved until the owner confirms on screen."""
+    "change my ..." about the shop itself: field is one of name (1-80 characters), category
+    (what they sell, in their words), description, phone (digits, spaces, +, -), location (the
+    new area or address, e.g. "HITEC City, Hyderabad"; the card then finds the map pin and the
+    owner checks it before saving), hours (free text), weekly_hours (pass the weekly_hours
+    list), opening_time / closing_time (HH:MM 24h or "9pm", applied to every open day: "we
+    close at 9 now" → closing_time "21:00"), closed_today ("yes" = closed today, "no" = open
+    again), closed_days (days now closed every week, e.g. "sunday" or "mon, tue"). value is the
+    owner's new value, canonical (times HH:MM, days in English). Never guess: if the field or
+    value is unclear, ask ONE short question first. Nothing is saved until the owner confirms."""
     ctx = current.get()
     if not ctx or not ctx.business_id:
         return {"status": "needs_business"}

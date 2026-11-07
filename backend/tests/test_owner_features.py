@@ -722,8 +722,8 @@ def _runs_out_for_milk(setup, demo):
     context = store.context("owner", bid)
     context["business"]["fields"]["demo"] = demo
     today = brief.local_now(context["business"]["fields"]).date()
-    # Milk has 3 in stock. Today's forecast alone covers it: the real-owner rule counts today
-    # (>=), the demo's shared supply rule starts tomorrow and uses the upper bound.
+    # Milk has 3 in stock. Today's forecast alone would use it up, but the supply rule starts
+    # tomorrow and uses the upper bound: 4 on the day after tomorrow runs it out.
     forecast = Forecast(
         status="ready",
         method="weekday_average",
@@ -738,12 +738,9 @@ def _runs_out_for_milk(setup, demo):
     return today, next(p for p in result.low_stock if p.name == "Milk").runs_out
 
 
-def test_brief_runs_out_rule_unchanged_for_real_owners_pr344(setup):
-    # PR #344 review: the unified rule must not leak into real signed-in shops.
-    today, runs_out = _runs_out_for_milk(setup, demo=False)
-    assert runs_out == today
-
-
-def test_brief_runs_out_uses_supply_rule_for_demo_shops_pr344(setup):
-    today, runs_out = _runs_out_for_milk(setup, demo=True)
+@pytest.mark.parametrize("demo", [False, True])
+def test_ob238_brief_runs_out_is_the_supply_tile_day_for_every_shop(setup, demo):
+    # Issue #620: a real shop's brief said "Runs out 1 Sun" while its supply tile said Mon,
+    # Nov 2. Real and demo shops now both use the supply tile's rule (PR #344 kept them apart).
+    today, runs_out = _runs_out_for_milk(setup, demo=demo)
     assert runs_out == today + timedelta(days=2)
