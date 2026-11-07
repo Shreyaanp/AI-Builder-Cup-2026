@@ -836,8 +836,13 @@ const WEEKDAY = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
 /** Today's weekday in the shop's own time zone, 0 = Monday (the server's usual-sales day). */
 function shopWeekday(timeZone: string): number {
-  const day = new Intl.DateTimeFormat('en-US', { weekday: 'short', timeZone }).format(new Date())
-  return Math.max(0, WEEKDAY.indexOf(day))
+  try {
+    const day = new Intl.DateTimeFormat('en-US', { weekday: 'short', timeZone }).format(new Date())
+    return Math.max(0, WEEKDAY.indexOf(day))
+  } catch {
+    // A saved zone the phone does not know: the phone's own day, never a broken Today.
+    return (new Date().getDay() + 6) % 7
+  }
 }
 
 /** Yesterday (or today so far) and today's forecast; tapping asks the coach for the chart. */

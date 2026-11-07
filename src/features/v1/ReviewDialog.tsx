@@ -268,7 +268,7 @@ export function ReviewDialog({
                         : `${t.stock}: ${product.stock} ${unitLabel(product.unit, shopCopy)}`}
                     </Typography>
                   )}
-                  {product.for_sale !== undefined && (
+                  {typeof product.for_sale === 'boolean' && (
                     <Typography variant="bodySmall" color="text.secondary">
                       {product.for_sale ? stockCopy.forSale : stockCopy.thingsIBuy}
                     </Typography>
