@@ -339,11 +339,11 @@ test('chat and screen both set a promise; doing it marks it done (offline coach)
     item: 'Milk',
   })
 
-  // Next morning: "Order now" asks the coach for the order and marks the promise done. The
-  // chat is still open from last night, so Today is the pill above it, with the same rows.
+  // Next morning: "Order now" asks the coach for the order and marks the promise done. The app
+  // opens on Home with the promise row, not on last night's chat (OB-327).
   await morningOf(page, id, tomorrow)
   await open(page, name)
-  await page.locator('[aria-controls="today-pill-panel"]').click()
+  await expect(page.getByRole('log')).toHaveCount(0)
   const row = page.locator('[data-need="promise"]')
   await expect(row).toContainText('Last night you said: order Milk')
   expect(await fitsWidth(page)).toBe(true)

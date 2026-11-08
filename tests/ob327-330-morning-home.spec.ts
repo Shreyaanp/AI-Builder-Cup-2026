@@ -115,9 +115,7 @@ test('OB-327: a reload lands on Home with today, and the chat is still under the
   await expect(page.getByRole('log')).toContainText('hello from yesterday')
 })
 
-test('OB-327: left open overnight, the new morning shows Home', async ({
-  page,
-}) => {
+test('OB-327: left open overnight, the new morning shows Home', async ({ page }) => {
   await morning(page)
   const id = await shop(page, 'Overnight Bakes', 'Home bakery', BAKERY)
   await close(page, id, 1, PRIYA)
@@ -302,7 +300,7 @@ test('OB-330 hi: the summary is in Hindi with its units', async ({ page }) => {
   await expect(dialog).not.toContainText('14')
 })
 
-test('OB-330: counted items still add up, and one item is still named', async ({ page }) => {
+test('OB-330: counted items still add up', async ({ page }) => {
   await morning(page)
   await shop(page, 'Chai Corner', 'Tea stall', [
     { name: 'Masala chai', price: 2000, unit: 'cup', stock: 200 },

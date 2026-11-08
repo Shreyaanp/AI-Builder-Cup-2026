@@ -125,6 +125,8 @@ def test_ob329_an_old_close_still_reports_but_no_longer_says_repeat_it() -> None
         "कितना बनाना है",
         "आज कितने बनाने हैं",
         "कितनी तैयारी करूँ",
+        "कितनी चाय बनानी है",
+        "कितना बनाऊं",
         "मसाला चाय की मांग का अनुमान लगाएँ",
         "मसाला चाय की माँग का अनुमान लगाएँ",
     ],
@@ -145,6 +147,11 @@ def test_ob328_make_questions_open_the_list(said: str) -> None:
         "how much money did i make",
         "कितना बनाया",
         "कितना बना",
+        # A "don't" asks for nothing.
+        "don't tell me how much to make",
+        "kitna banana hai mat batao",
+        "कितना बनाना है मत बताओ",
+        "कितना बनाना है यह नहीं पूछा",
         # Other jobs.
         "मसाला चाय की कीमत 25 कर दो",
         "how much is masala chai",

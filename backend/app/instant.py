@@ -97,9 +97,11 @@ HOW_TODAY = re.compile(
 )
 # "How much to make?" opens the make list in every script the router knows (OB-328). The owner
 # asks about now: a question naming tomorrow is the coach's, and so is the Make list's own "Ask
-# the coach" sentence. Past tense ("did I make", बनाया) is about what happened, not the list.
+# the coach" sentence. Past tense ("did I make", बनाया) is about what happened, not the list, and
+# a "don't" is never a request to open anything.
 MAKE_LIST = re.compile(
-    r"^(?!.*\b(?:tomorrow|tmrw|kal|did|made)\b)(?!.*(?:^|\s)कल(?:\s|$)).*(?:"
+    r"^(?!.*\b(?:tomorrow|tmrw|kal|did|made|don'?t|dont|mat|nahi|nahin)\b)"
+    r"(?!.*(?:^|\s)(?:कल|मत|नहीं)(?:\s|$)).*(?:"
     r"\bhow\s+(?:much|many)\b.*\b(?:make|prep|prepare|bake|cook)\b"
     r"|\bkit(?:na|ne|ni)\b.*\bbana(?:na|ne|ni|u|un|oon|ye|yen)\b"
     r"|कित(?:ना|ने|नी)\s.*(?:बना(?:ना|ने|नी|ऊँ|ऊं|उँ|उं|एँ|एं|ओ)(?:\s|$)"

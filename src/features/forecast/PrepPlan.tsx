@@ -11,7 +11,8 @@ import { Sheet } from '../v1/Sheet'
 import { PlanTomorrow } from '../planning/PlanTomorrow'
 import { useOrderUnit } from '../supply/supplyData'
 import { useForecast, useRunsOut } from './forecastData'
-import { LastDayPlan, useLastDayWords } from './lastDay'
+import { LastDayPlan } from './LastDayPlan'
+import { useLastDayWords } from './lastDayWords'
 import { useOrderChangeCopy } from '../supply/orderChangeCopy'
 
 /**
