@@ -247,17 +247,25 @@ def test_ob_97_ask_stream_reads_shops_once_and_overlaps_slow_lookups(
 
     monkeypatch.setattr(discover_ask, "query_google_places", slow_places)
 
+    matches: list[float] = []
+    real_match = discover_ask.match_local_shops
+
+    async def timed_match(*args, **kwargs):
+        found = await real_match(*args, **kwargs)
+        matches.append(time.monotonic())
+        return found
+
+    monkeypatch.setattr(discover_ask, "match_local_shops", timed_match)
+
     app = create_app(settings(tmp_path), InMemorySessionService())
     with TestClient(app) as client:
         app.state.merchant = store
         app.state.v1_settings = app.state.v1_settings.model_copy(update={"coach_mode": "gemini"})
-        began = time.monotonic()
         response = client.post(
             "/api/v1/discover/ask",
             json={"q": "kopi", **TIONG_BAHRU},
             headers={"Accept": "text/event-stream"},
         )
-        elapsed = time.monotonic() - began
     assert response.status_code == 200
     text = response.text
     assert "event: instant" in text and "event: delta" in text and "event: complete" in text
@@ -267,8 +275,10 @@ def test_ob_97_ask_stream_reads_shops_once_and_overlaps_slow_lookups(
     # The places lookup runs beside the model call, not after it.
     (m0, m1), (p0, p1) = spans["model"], spans["places"]
     assert p0 < m1 and m0 < p1, "places lookup and model call must overlap"
-    # Serial: 0.3 + 0.6 + 0.75 = 1.65 s of waits. Overlapped: about 1.05 s.
-    assert elapsed < 1.5, elapsed
+    # The model call starts beside the instant local match, not after it. This used to be an
+    # absolute "under 1.5 s" check: 1.49 s locally, 3.4-3.9 s on slower CI runners (4-7 Nov).
+    # Start/end order of the steps proves the overlap without depending on runner speed.
+    assert m0 < matches[0], "the model call must not wait for the instant local match"
 
 
 def test_ob_97_firestore_shared_shops_is_cached_and_refreshes_in_background(monkeypatch) -> None:

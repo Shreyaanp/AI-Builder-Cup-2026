@@ -217,6 +217,7 @@ export async function seedShop(
   withPhotoPin = false,
   name = shopName,
   pin: boolean | { lat: number; lng: number } = true,
+  fields: Record<string, unknown> = {},
 ) {
   let pinned: { id: string; revision: number } | null = null
   if (withPhotoPin) {
@@ -266,6 +267,7 @@ export async function seedShop(
         weekly_hours: [{ day: 'thu', open: '07:00', close: '20:00', closed: false }],
         reward_text: 'Your eighth chai is free',
         stamps_needed: 8,
+        ...fields,
       },
       // OB-168: API setup confirms a pin too; photo setup retains its own GPS evidence.
       ...(pinned || !pin
