@@ -70,6 +70,8 @@ def on_order(
 
     pos, chats = known or coming_orders(store, uid, bid)
     quantity, arrives, draft = 0.0, "", None
+    # Each delivery on its own day, so the run-out day counts it from then on (OB-263).
+    arrivals: list[tuple[str, float]] = []
     # Lines in a unit that does not convert (2 pack against a shop counting litres) are still
     # on their way: they are kept apart, never counted as nothing (#603).
     other: dict[str, dict[str, Any]] = {}
@@ -100,6 +102,7 @@ def on_order(
             elif amount:
                 quantity += amount
                 arrives = earliest(arrives, day)
+                arrivals.append((day, amount))
     for order in chats:
         if order["status"] not in CHAT_ON_ITS_WAY:
             continue
@@ -113,12 +116,32 @@ def on_order(
             elif amount:
                 quantity += amount
                 arrives = earliest(arrives, day)
+                arrivals.append((day, amount))
     return {
         "quantity": round(quantity, 3),
         "arrives": arrives,
         "draft": draft,
         "other": list(other.values()),
+        "arrivals": sorted(arrivals),
     }
+
+
+def arrivals_by_item(
+    store: MerchantRepository, uid: str, bid: str, inventory: list[dict[str, Any]]
+) -> dict[str, list[tuple[str, float]]]:
+    """What is on order for each stocked item, by arrival day: the brief and Today count it in
+    the run-out day the supply tile shows (OB-263). Orders are read once."""
+    known = coming_orders(store, uid, bid)
+    if not known[0] and not known[1]:
+        return {}
+    found = {}
+    for product in inventory:
+        if product.get("stock") is None:
+            continue
+        coming = on_order(store, uid, bid, product["name"], product.get("unit") or "kg", known)
+        if coming["arrivals"]:
+            found[product["name"]] = coming["arrivals"]
+    return found
 
 
 def still_wanted(need: dict[str, Any], coming: float) -> float:

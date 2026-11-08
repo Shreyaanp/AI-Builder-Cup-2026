@@ -29,6 +29,7 @@ from .region import shop_currency, shop_zone
 from .rescue import buffer_for, local_now
 from .shop_time import shop_timezone
 from .supply_chain import runs_out
+from .supply_coming import arrivals_by_item
 
 router = APIRouter(prefix="/api/v1/businesses", tags=["today"])
 log = structlog.get_logger(__name__)
@@ -84,6 +85,17 @@ class LowItem(BaseModel):
     # Bought stock is ordered, made items are made again, unknown ones ask once (OB-239).
     source: Source = "bought"
     product_id: str | None = None
+    # How many usually sell on this weekday, for "Make 20 more now? Usually 26 sell on
+    # Tuesdays." (OB-310); None without four weeks of sales to say it from.
+    usual: int | None = None
+
+
+class UsualSales(BaseModel):
+    """What usually sells on today's weekday, by item name: the menu marks stock below it as
+    low, gently (OB-310). Only items with sales on this weekday in the last four weeks."""
+
+    weekday: int  # 0 = Monday
+    items: dict[str, int]
 
 
 class CoachLine(BaseModel):
@@ -158,19 +170,41 @@ def pulse(
     )
 
 
+def usual_sales(sales: list[dict[str, Any]], today: date) -> dict[str, int]:
+    """The average sold per item on today's weekday over the last four weeks, whole numbers;
+    an item that sold none of those days is left out (OB-310)."""
+    start = (today - timedelta(days=28)).isoformat()
+    days: dict[str, dict[str, float]] = defaultdict(lambda: defaultdict(float))
+    for row in sales:
+        day = date.fromisoformat(row["date"])
+        if start <= row["date"] < today.isoformat() and day.weekday() == today.weekday():
+            days[row["item"]][row["date"]] += float(row["quantity"])
+    return {
+        item: usual
+        for item, sold in days.items()
+        if (usual := math.floor(sum(sold.values()) / len(sold) + 0.5)) > 0
+    }
+
+
 def low_stock(
-    inventory: list[dict[str, Any]], forecast: brief.Forecast, today: date, category: str = ""
+    inventory: list[dict[str, Any]],
+    forecast: brief.Forecast,
+    today: date,
+    category: str = "",
+    arrivals: dict[str, list[tuple[str, float]]] | None = None,
+    usual: dict[str, int] | None = None,
 ) -> list[LowItem]:
     """Stock that runs out by tomorrow, or has 5 or fewer left. The run-out day is the supply
-    tile's (OB-238). Each row says if the shop buys it (an order), makes it (make more) or has
-    not said (one question), so a made item never becomes a supplier order (OB-239)."""
+    tile's (OB-238), counting what is on order from the day it arrives (OB-263). Each row says
+    if the shop buys it (an order), makes it (make more) or has not said (one question), so a
+    made item never becomes a supplier order (OB-239)."""
     predictions = {"predictions": [p.model_dump(mode="json") for p in forecast.predictions]}
     out = []
     for product in inventory:
         stock = product.get("stock")
         if stock is None or product.get("available") is False:
             continue
-        found = runs_out(product, predictions, today)
+        found = runs_out(product, predictions, today, (arrivals or {}).get(product["name"]))
         day = date.fromisoformat(found) if found else None
         if stock <= 5 or (day is not None and day <= today + timedelta(days=1)):
             out.append(
@@ -180,6 +214,7 @@ def low_stock(
                     runs_out=day,
                     source=source_of(product, category),
                     product_id=product.get("id"),
+                    usual=(usual or {}).get(product["name"]),
                 )
             )
     # Made items never push out a supply the shop must order: what it buys or has not said comes
@@ -311,7 +346,14 @@ async def today_page(business_id: str, request: Request) -> Today:
         if top and top.quantity >= 1
         else None,
         low_stock=low_stock(
-            context["inventory"], forecast, today, str(fields.get("category") or "")
+            context["inventory"],
+            forecast,
+            today,
+            str(fields.get("category") or ""),
+            await anyio.to_thread.run_sync(
+                arrivals_by_item, service, uid, business_id, context["inventory"]
+            ),
+            usual=usual_sales(sales, today),
         ),
         line=coach_line(fields, today, sales, weather, hints.line_topics if hints else None),
         demo=bool(fields.get("demo")),
@@ -319,6 +361,18 @@ async def today_page(business_id: str, request: Request) -> Today:
         has_customer_stamp=customer_stamp,
         promise=await anyio.to_thread.run_sync(promise_for, service, business_id, today),
     )
+
+
+@router.get("/{business_id}/usual-sales", response_model=UsualSales)
+async def usual_today(business_id: str, request: Request) -> UsualSales:
+    """The menu's gentle "low" mark: saved sales only, no forecast or model call (OB-310)."""
+    uid = await owner(request)
+    await enforce_limits(request, [("owner:read", uid)])
+    service = store(request)
+    fields = (await anyio.to_thread.run_sync(service.owned_business, uid, business_id))["fields"]
+    today = local_now(fields).date()
+    sales = await anyio.to_thread.run_sync(service.sales_history, uid, business_id)
+    return UsualSales(weekday=today.weekday(), items=usual_sales(sales, today))
 
 
 @router.get("/{business_id}/day/{day}/reward", response_model=CloseReward | None)

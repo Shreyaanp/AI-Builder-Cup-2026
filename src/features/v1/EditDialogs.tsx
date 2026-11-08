@@ -6,9 +6,11 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  FormControlLabel,
   InputAdornment,
   MenuItem,
   Stack,
+  Switch,
   TextField,
   ToggleButton,
   ToggleButtonGroup,
@@ -27,6 +29,10 @@ import { windowClass } from '../../design/theme'
 import { useShopCopy } from '../shop/strings'
 import { AskHint } from './AskHint'
 import { UNITS, unitKey } from '../shop/units'
+import { StockStepper } from '../shop/StockStepper'
+import { useStockCopy } from '../shop/stockCopy'
+import { productName } from '../../i18n/productNames'
+import { useLocale } from '../../state/hooks'
 
 const EMPTY: Business['fields'] = { name: '', category: '', location: '', hours: '', phone: '' }
 
@@ -109,6 +115,8 @@ function ProductForm({ product }: { product: Product | null }) {
   const t = useCopy()
   const shopCopy = useShopCopy()
   const sourceCopy = useSourceCopy()
+  const stockCopy = useStockCopy()
+  const locale = useLocale()
   const roles = useTheme().material
   const { api, active, openEditor, reload, review } = useWorkspace()
   const compact = useCompact()
@@ -125,6 +133,11 @@ function ProductForm({ product }: { product: Product | null }) {
   // A new item asks for its name and price; the rest waits behind "More details".
   const [more, setMore] = useState(Boolean(product))
   const [source, setSource] = useState(product?.source)
+  // "Customers can buy this": off keeps it in Things I buy, off the menu and page (OB-310).
+  const [forSale, setForSale] = useState(product?.for_sale !== false)
+  // The saved switch, refreshed with the answer below, so the dialog never shows a stale "on".
+  const [savedForSale, setSavedForSale] = useState(product?.for_sale !== false)
+  const forSaleTapped = useRef(false)
   const [savingSource, setSavingSource] = useState(false)
   // The tap saves at once, so Cancel does not undo it: the note says so (OB-243).
   const [sourceSaved, setSourceSaved] = useState(false)
@@ -138,7 +151,10 @@ function ProductForm({ product }: { product: Product | null }) {
     void api<Product[]>(`/businesses/${shopId}/inventory`, { signal: abort.signal })
       .then((items) => {
         const saved = items.find((entry) => entry.id === productId)
-        if (saved && !abort.signal.aborted && !sourceTapped.current) setSource(saved.source)
+        if (!saved || abort.signal.aborted) return
+        if (!sourceTapped.current) setSource(saved.source)
+        setSavedForSale(saved.for_sale !== false)
+        if (!forSaleTapped.current) setForSale(saved.for_sale !== false)
       })
       // The menu's copy stays: a tap still saves, and the answer is changed, never cleared.
       .catch(() => undefined)
@@ -147,7 +163,11 @@ function ProductForm({ product }: { product: Product | null }) {
   const close = () => openEditor({ kind: 'none' })
   // A saved item's answer is saved on the tap, so only a new item's can still be lost.
   const unsavedSource = !product?.id && source !== product?.source
-  useBackClose(true, close, JSON.stringify(item) !== JSON.stringify(initial) || unsavedSource)
+  useBackClose(
+    true,
+    close,
+    JSON.stringify(item) !== JSON.stringify(initial) || unsavedSource || forSale !== savedForSale,
+  )
   const [error, setError] = useState('')
   // One request at a time: repeated taps must not create competing proposals.
   const [busy, setBusy] = useState(false)
@@ -180,6 +200,7 @@ function ProductForm({ product }: { product: Product | null }) {
     if (!item.name.trim()) return setError(t.enterName)
     if (!item.price.trim() || !Number.isFinite(price) || price < 0) return setError(t.enterPrice)
     if (!active || busy) return
+    const count = item.stock.trim() ? Number(item.stock) : null
     setBusy(true)
     try {
       const proposal = await api<Proposal>('/proposals', {
@@ -195,10 +216,20 @@ function ProductForm({ product }: { product: Product | null }) {
               unit: item.unit,
               // A new unit for a saved item changes that item instead of adding a copy.
               ...(product && product.unit !== item.unit ? { previous_unit: product.unit } : {}),
-              stock: item.stock.trim() ? Number(item.stock) : null,
+              stock: count,
               category: item.category.trim(),
-              available: product?.available ?? true,
+              // 0 left is sold out; more after 0 is on sale again, as the − / + do (OB-310).
+              available:
+                count === 0
+                  ? false
+                  : product?.stock === 0 && product.available === false && count !== null
+                    ? true
+                    : (product?.available ?? true),
               ...(source ? { source } : {}),
+              // A new item saves the switch as shown, so "Milk" left on "Customers can buy this"
+              // stays on the menu; a saved item sends it only when the owner changed it, so it
+              // keeps the app's own guess.
+              ...(!product || forSale !== savedForSale ? { for_sale: forSale } : {}),
             },
           ],
         }),
@@ -213,7 +244,9 @@ function ProductForm({ product }: { product: Product | null }) {
   }
   return (
     <Dialog open fullScreen={compact} onClose={close} aria-labelledby="product-form-title">
-      <DialogTitle id="product-form-title">{product ? t.editProduct : t.addProduct}</DialogTitle>
+      <DialogTitle id="product-form-title">
+        {product ? stockCopy.editTitle(productName(product.name, locale)) : t.addProduct}
+      </DialogTitle>
       <DialogContent>
         <Stack
           component="form"
@@ -228,7 +261,8 @@ function ProductForm({ product }: { product: Product | null }) {
             label={t.productName}
             value={item.name}
             required
-            autoFocus
+            // A new item starts typing; editing a saved one never opens the keyboard by itself.
+            autoFocus={!product}
             onChange={(event) => setItem({ ...item, name: event.target.value })}
             slotProps={{ htmlInput: { maxLength: 180 } }}
           />
@@ -281,14 +315,32 @@ function ProductForm({ product }: { product: Product | null }) {
                 onChange={(event) => setItem({ ...item, category: event.target.value })}
                 slotProps={{ htmlInput: { maxLength: 80 } }}
               />
-              <TextField
-                label={t.stockOptional}
-                value={item.stock}
-                onChange={(event) =>
-                  setItem({ ...item, stock: event.target.value.replace(/\D/g, '') })
-                }
-                slotProps={{ htmlInput: { inputMode: 'numeric' } }}
-              />
+              <Stack spacing={1}>
+                <Typography id="product-stock-label" variant="bodyMedium" color="text.secondary">
+                  {t.stockOptional}
+                </Typography>
+                <StockStepper
+                  name={item.name.trim() || stockCopy.stock}
+                  value={item.stock.trim() ? Number(item.stock) : null}
+                  onChange={(next) => setItem({ ...item, stock: String(next) })}
+                >
+                  <TextField
+                    value={item.stock}
+                    placeholder={stockCopy.notCounted}
+                    fullWidth
+                    onChange={(event) =>
+                      setItem({ ...item, stock: event.target.value.replace(/\D/g, '') })
+                    }
+                    slotProps={{
+                      htmlInput: {
+                        inputMode: 'numeric',
+                        'aria-labelledby': 'product-stock-label',
+                        style: { textAlign: 'center' },
+                      },
+                    }}
+                  />
+                </StockStepper>
+              </Stack>
               <Stack spacing={1}>
                 <Typography id="product-source-label" variant="bodyMedium" color="text.secondary">
                   {sourceCopy.question}
@@ -324,6 +376,26 @@ function ProductForm({ product }: { product: Product | null }) {
                   color="text.secondary"
                 >
                   {sourceSaved ? sourceCopy.saved : ''}
+                </Typography>
+              </Stack>
+              <Stack spacing={0.5}>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={forSale}
+                      onChange={(_, checked) => {
+                        forSaleTapped.current = true
+                        setForSale(checked)
+                      }}
+                      slotProps={{ input: { 'aria-describedby': 'product-for-sale-hint' } }}
+                    />
+                  }
+                  label={stockCopy.forSale}
+                  sx={{ minHeight: 48, mx: 0, justifyContent: 'space-between' }}
+                  labelPlacement="start"
+                />
+                <Typography id="product-for-sale-hint" variant="bodyMedium" color="text.secondary">
+                  {stockCopy.forSaleHint}
                 </Typography>
               </Stack>
             </>

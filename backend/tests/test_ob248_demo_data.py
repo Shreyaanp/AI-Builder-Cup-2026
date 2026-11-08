@@ -129,9 +129,15 @@ def test_OB_248_run_out_dates_agree_and_follow_the_numbers(demo) -> None:
     need = next(row for row in needs if row["item"] == "Tea dust")
     story = owner(client, session, f"demo/chain/{bid}").json()["today"]
     assert need["runs_out"] == story["runs_out"]
-    days = (date.fromisoformat(need["runs_out"]) - date.today()).days
-    # The stock lasts about stock / daily days; a date far from that is a wrong number on screen.
-    assert abs(days - need["stock"] / need["daily"]) <= 3
+    # The seeded order on its way counts from its arrival day (OB-263): stock and that order
+    # last about (stock + on order) / daily days, past the week when it clears it.
+    lasts = (need["stock"] + need["on_order"]) / need["daily"]
+    if need["runs_out"]:
+        days = (date.fromisoformat(need["runs_out"]) - date.today()).days
+        # A date far from that is a wrong number on screen.
+        assert abs(days - lasts) <= 3
+    else:
+        assert lasts >= need["rows"] - 3
 
 
 def test_OB_248_reorder_on_top_of_the_seed_is_a_real_top_up_not_one_kilo(demo) -> None:

@@ -426,10 +426,11 @@ test('B12: compact categories, uncategorised last and sold-out last', async ({ p
   await page.getByRole('button', { name: 'Shop', exact: true }).click()
   await page.getByRole('button', { name: /^Menu/ }).click()
   const dialog = page.getByRole('dialog', { name: 'Menu' })
-  // B28: each category is a grid of item cards; sold-out items are marked and sort last.
+  // B28: each category is a grid of item cards; sold-out items are marked and sort last. The
+  // mark is the card's stock line, below the name and price (OB-310).
   await expect(
     dialog.getByRole('region', { name: 'Drinks', exact: true }).getByRole('listitem'),
-  ).toHaveText(['KopicupS$1.80', 'TehcupSold outS$1.60'])
+  ).toHaveText(['KopicupS$1.80', 'TehcupS$1.60Sold out'])
   expect(
     await dialog
       .getByRole('region')

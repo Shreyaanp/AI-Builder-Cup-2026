@@ -25,7 +25,7 @@ from .customer import (
 from .limits import client_ip, enforce_limits
 from .merchant import public_projection
 from .merchant_routes import consented_owner, owner, store
-from .product_source import source_of
+from .product_source import for_sale, sold_for, source_of
 from .reply_suggestions import ReplySuggestions, templates
 from .threads import thread_signals, token_hash
 
@@ -207,13 +207,19 @@ async def reply_suggestions(
     humans = [m for m in record.messages if m.kind != "ai"]
     if not humans or humans[-1].author != "customer" or record.done or record.blocked:
         return ReplySuggestions(language="en")
-    context = await anyio.to_thread.run_sync(store(request).context, uid, business_id)
+    service = store(request)
+    context = await anyio.to_thread.run_sync(service.context, uid, business_id)
     fields = context["business"]["fields"]
-    inventory = context["inventory"]
+    category = fields.get("category", "")
+    sold = await anyio.to_thread.run_sync(
+        sold_for, context["inventory"], category, lambda: service.sales_history(uid, business_id)
+    )
+    # Never a thing the shop buys to make others (tea dust) as a stand-in (OB-310).
+    inventory = [item for item in context["inventory"] if for_sale(item, category, sold)]
     # The customer-facing projection only, plus made/bought to pick a sold-out item's stand-in.
-    shop = public_projection(business_id, fields, inventory)
+    shop = public_projection(business_id, fields, inventory, sold)
     for product, item in zip(shop["products"], inventory, strict=True):
-        product["source"] = source_of(item, fields.get("category", ""))
+        product["source"] = source_of(item, category)
     # The fixed templates for every shop: no model text can reach a suggestion (OB-326).
     return templates(shop, humans[-1].text)
 

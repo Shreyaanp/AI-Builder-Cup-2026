@@ -44,6 +44,7 @@ from .merchant import (
     validate_proposal,
 )
 from .playbook import migrate_stored
+from .product_source import needs_sales, sold_names
 from .sales import check_import, prepare_import, sales_days, today_for, validate_capacity
 from .stock_alerts import (
     ALERT_SECONDS,
@@ -225,6 +226,11 @@ class FirestoreMerchantStore:
             return {"id": pid, "digest": digest, "expires": expires, "snapshot": payload}
 
         return run(self.client.transaction())
+
+    def proposal_saved(self, uid: str, pid: str) -> bool:
+        snapshot = self.proposals.document(document_id(pid, "Proposal not found.")).get()
+        proposal = snapshot.to_dict() if snapshot.exists else None
+        return bool(proposal and proposal["uid"] == uid and proposal.get("receipt"))
 
     def commit(self, uid: str, pid: str, digest: str) -> dict[str, Any]:
         proposal_ref = self.proposals.document(document_id(pid, "Proposal not found."))
@@ -506,6 +512,11 @@ class FirestoreMerchantStore:
         return result
 
     def set_source(self, uid: str, bid: str, product_id: str, source: str) -> dict[str, Any]:
+        return self.edit_item(uid, bid, product_id, lambda fields: {**fields, "source": source})
+
+    def edit_item(
+        self, uid: str, bid: str, product_id: str, edit: Callable[[dict[str, Any]], dict[str, Any]]
+    ) -> dict[str, Any]:
         business_ref = self.businesses.document(document_id(bid, "Business not found."))
         if not re.fullmatch(r"[0-9a-f]{64}", product_id):
             raise HTTPException(404, "Product not found.")
@@ -517,7 +528,7 @@ class FirestoreMerchantStore:
             item = item_ref.get(transaction=transaction)
             if not item.exists:
                 raise HTTPException(404, "Product not found.")
-            fields = {**(item.to_dict() or {})["fields"], "source": source}
+            fields = edit((item.to_dict() or {})["fields"])
             transaction.update(item_ref, {"fields": fields, "updated": time.time()})
             # A new revision, like the sold-out switch: the app reloads the item at once.
             transaction.update(business_ref, {"revision": business["revision"] + 1})
@@ -708,8 +719,19 @@ class FirestoreMerchantStore:
             return None
         rows = [s.to_dict() or {} for s in ref.collection("inventory").limit(500).stream()]
         rows.sort(key=lambda row: row.get("created", 0))
+        products = [row["fields"] for row in rows]
+        # Sales are read only when an item's place on the menu depends on them (OB-310).
+        sold = (
+            sold_names(
+                sale
+                for day in ref.collection("sales_days").stream()
+                for sale in (day.to_dict() or {}).get("sales") or []
+            )
+            if needs_sales(products, str(data["fields"].get("category") or ""))
+            else set()
+        )
         return {
-            **public_projection(ref.id, data["fields"], [row["fields"] for row in rows]),
+            **public_projection(ref.id, data["fields"], products, sold),
             "last_confirmed": data.get("last_confirmed"),
             "gallery": data.get("gallery") or [],
             "icon": data.get("icon"),

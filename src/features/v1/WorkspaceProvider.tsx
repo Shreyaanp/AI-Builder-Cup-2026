@@ -5,6 +5,10 @@ import { X } from 'lucide-react'
 import { canOfferInstall, offerInstall, rememberInstallDeclined } from '../../app/pwa'
 import { useCopy } from './strings'
 import { newlySoldOut, useSoldOutUndoCopy } from './soldOutUndo'
+import { useStockCopy } from '../shop/stockCopy'
+import { StockNote } from '../shop/StockNote'
+import { productName } from '../../i18n/productNames'
+import { useLocale } from '../../state/hooks'
 import type { Api, Business, Me, Product, Proposal } from './api'
 import { WorkspaceContext } from './workspaceContext'
 import type { Destination, Editor, NewShopPhase, Workspace } from './workspaceContext'
@@ -29,6 +33,28 @@ function readSpeak() {
   } catch {
     return true
   }
+}
+
+// An open sheet (a phone drawer or a dialog); a closed one is unmounted or hidden.
+const OPEN_SHEET = '.MuiModal-root:not(.MuiModal-hidden) [role="dialog"]'
+
+/** Just under the open sheet's title (its header and back arrow), or null with no sheet. */
+function belowSheetHeader(): number | null {
+  const sheet = document.querySelector(OPEN_SHEET)
+  if (!sheet) return null
+  const label = sheet.getAttribute('aria-labelledby')
+  const title = label ? document.getElementById(label) : null
+  return Math.round((title ?? sheet).getBoundingClientRect()[title ? 'bottom' : 'top']) + 8
+}
+
+/**
+ * A new count and what customers are told with it, as the server saves it (OB-310): 0 left is
+ * sold out; more made after 0 is on sale again.
+ */
+function withStock(product: Product, stock: number | null): Partial<Product> {
+  if (stock === 0) return { stock, available: false }
+  if (product.stock === 0 && product.available === false) return { stock, available: true }
+  return { stock }
 }
 
 export function WorkspaceProvider({
@@ -120,9 +146,25 @@ export function WorkspaceProvider({
     return () => window.removeEventListener('popstate', restore)
   }, [])
   const [toast, setToast] = useState('')
+  // The toast's Undo, when the note offers one ("6 kg Tea dust received… Undo", OB-263).
+  const [toastUndo, setToastUndo] = useState<{ run: () => void } | null>(null)
+  // A sheet is open under the Undo note: the note sits just under its header and back arrow,
+  // which stay tappable, and off the actions at the bottom (OB-263). Null: no sheet.
+  const [sheetHeader, setSheetHeader] = useState<number | null>(null)
   // Items a confirmed change just marked sold out: the saved note offers Undo (OB-261).
   const [undoSoldOut, setUndoSoldOut] = useState<string[]>([])
   const undoCopy = useSoldOutUndoCopy()
+  // The last stock tap, named, with Undo back to the count before this run of taps (OB-310).
+  const [stockUndo, setStockUndo] = useState<{
+    id: string
+    name: string
+    before: number | null
+    after: number | null
+    // The sold-out switch before the run of taps: Undo puts it back with the count.
+    available: boolean
+  } | null>(null)
+  const stockCopy = useStockCopy()
+  const locale = useLocale()
   const [photoPending, setPhotoPending] = useState(false)
   const consumePhotoRequest = useCallback(() => setPhotoPending(false), [])
   // A chat starter from another screen (e.g. My shop's "Customers ask" card).
@@ -139,6 +181,18 @@ export function WorkspaceProvider({
   // The edit dialogs' code is deferred (OB-165): until it lands, a placeholder answers the tap.
   const closeEditor = useCallback(() => setEditor({ kind: 'none' }), [])
   const compact = useMediaQuery(`(max-width:${windowClass.medium - 1}px)`)
+  const undoOnTop = Boolean(toastUndo) && compact
+  useEffect(() => {
+    // Follows the sheet while the note is up: closing it moves the note to the top, where it
+    // stays off the row the owner just acted on.
+    if (!toastUndo || !compact) return
+    const check = () => setSheetHeader(belowSheetHeader())
+    check()
+    const watch = new MutationObserver(check)
+    // Only while the note is up (8 s): a sheet opens or closes as a portal on body, or by class.
+    watch.observe(document.body, { childList: true, subtree: true, attributeFilter: ['class'] })
+    return () => watch.disconnect()
+  }, [toastUndo, compact])
   const [speakReplies, setSpeak] = useState(readSpeak)
   const [customerOrigin, setCustomerOrigin] = useState<string | null>(null)
   useEffect(() => {
@@ -231,6 +285,93 @@ export function WorkspaceProvider({
       }
     },
     [activeId, api, reload, t.actionFailed],
+  )
+  const saveItem = useCallback(
+    async (product: Product, path: string, body: object, change: Partial<Product>) => {
+      if (!activeId || !product.id) return false
+      const id = product.id
+      const patch = (fields: Partial<Product>) =>
+        setInventory((current) => ({
+          ...current,
+          items: current.items.map((item) => (item.id === id ? { ...item, ...fields } : item)),
+        }))
+      // Optimistic, like the sold-out switch: a failure restores what was saved.
+      patch(change)
+      try {
+        await api(`/businesses/${activeId}/inventory/${encodeURIComponent(id)}/${path}`, {
+          method: 'POST',
+          body: JSON.stringify(body),
+        })
+        await reload()
+        return true
+      } catch {
+        patch({
+          stock: product.stock,
+          for_sale: product.for_sale,
+          ask_for_sale: product.ask_for_sale,
+          available: product.available,
+        })
+        setToast(t.actionFailed)
+        return false
+      }
+    },
+    [activeId, api, reload, t.actionFailed],
+  )
+  const setStock = useCallback(
+    async (product: Product, change: { stock: number | null } | { add: number }) => {
+      const before = product.stock ?? null
+      const after =
+        'add' in change ? Math.max(0, (before ?? 0) + change.add) : (change.stock ?? null)
+      const done = await saveItem(product, 'stock', change, withStock(product, after))
+      if (done && product.id) {
+        const id = product.id
+        // A run of taps on one item keeps the first count, so Undo goes back to it.
+        setStockUndo((last) => ({
+          id,
+          name: product.name,
+          before: last?.id === id ? last.before : before,
+          after,
+          available: last?.id === id ? last.available : product.available !== false,
+        }))
+      }
+      return done
+    },
+    [saveItem],
+  )
+  const [noteHosts, setNoteHosts] = useState(0)
+  const hostStockNote = useCallback(() => {
+    setNoteHosts((count) => count + 1)
+    return () => setNoteHosts((count) => count - 1)
+  }, [])
+  const stockNote = useMemo(() => {
+    if (!stockUndo) return null
+    const named = (count: number | null) =>
+      count === null ? t.saved : stockCopy.saved(productName(stockUndo.name, locale), count)
+    return {
+      message: named(stockUndo.after),
+      close: () => setStockUndo(null),
+      undo: () => {
+        setStockUndo(null)
+        const item = inventory.items.find((entry) => entry.id === stockUndo.id)
+        if (!item) return
+        const { before, available } = stockUndo
+        // 0 left is sold out whatever the switch was; any other count gets the saved switch back.
+        const change = before === 0 ? withStock(item, 0) : { stock: before, available }
+        void saveItem(item, 'stock', { stock: before, available }, change).then((done) => {
+          if (done) setToast(named(before))
+        })
+      },
+    }
+  }, [stockUndo, inventory.items, saveItem, stockCopy, locale, t.saved])
+  const setForSale = useCallback(
+    (product: Product, forSale: boolean) =>
+      saveItem(
+        product,
+        'for-sale',
+        { for_sale: forSale },
+        { for_sale: forSale, ask_for_sale: false },
+      ),
+    [saveItem],
   )
   const confirm = useCallback(
     async (proposal: Proposal) => {
@@ -333,7 +474,16 @@ export function WorkspaceProvider({
         setActiveId(id)
       },
       reload,
+      reloadProducts: async () => {
+        await reload()
+        await loadProducts(activeId).catch(() => undefined)
+      },
       setAvailability,
+      setStock,
+      setForSale,
+      stockNote,
+      hostStockNote,
+      stockNoteHosted: noteHosts > 0,
       setShared,
       // A sandbox shop has no public page; its link opens the demo's customer side.
       shareUrl:
@@ -345,7 +495,10 @@ export function WorkspaceProvider({
       review: setProposal,
       savedProposals,
       confirm,
-      notify: setToast,
+      notify: (message: string, undo?: () => void) => {
+        setToastUndo(undo ? { run: undo } : null)
+        setToast(message)
+      },
       requestPhoto: () => {
         setDestination('coach')
         setPhotoPending(true)
@@ -387,6 +540,11 @@ export function WorkspaceProvider({
       speakReplies,
       reload,
       setAvailability,
+      setStock,
+      setForSale,
+      stockNote,
+      hostStockNote,
+      noteHosts,
       setShared,
       savedProposals,
       confirm,
@@ -527,13 +685,46 @@ export function WorkspaceProvider({
           </Button>
         }
       />
+      <StockNote />
       <Snackbar
         open={Boolean(toast)}
         message={toast}
-        autoHideDuration={4000}
-        onClose={() => setToast('')}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-        sx={{ bottom: { xs: 'calc(96px + env(safe-area-inset-bottom))', sm: 24 } }}
+        autoHideDuration={toastUndo ? 8000 : 4000}
+        onClose={(_, reason) => {
+          if (toastUndo && reason === 'clickaway') return
+          setToast('')
+          setToastUndo(null)
+        }}
+        // An Undo note sits under the top bar on a phone: at the bottom it covered the row the
+        // owner just acted on (the "topped up" line after Goods arrived, OB-263). Over an open
+        // sheet it goes just under the sheet's header, so the back arrow stays in view.
+        anchorOrigin={{ vertical: undoOnTop ? 'top' : 'bottom', horizontal: 'center' }}
+        sx={
+          undoOnTop
+            ? {
+                top:
+                  sheetHeader === null
+                    ? 'calc(64px + env(safe-area-inset-top))'
+                    : `${sheetHeader}px`,
+              }
+            : { bottom: { xs: 'calc(96px + env(safe-area-inset-bottom))', sm: 24 } }
+        }
+        action={
+          toastUndo ? (
+            <Button
+              color="inherit"
+              onClick={() => {
+                const undo = toastUndo
+                setToast('')
+                setToastUndo(null)
+                undo.run()
+              }}
+              sx={{ color: theme.material.inversePrimary, minHeight: 48 }}
+            >
+              {undoCopy.undo}
+            </Button>
+          ) : undefined
+        }
       />
     </WorkspaceContext>
   )

@@ -50,8 +50,29 @@ export interface Workspace {
   go: (destination: Destination) => void
   select: (id: string | null) => void
   reload: () => Promise<void>
+  /** The active shop and its items again, after a change made outside a review (OB-263). */
+  reloadProducts: () => Promise<void>
   /** Owner's immediate sold-out switch; false when it did not save (the switch moves back). */
   setAvailability: (product: Product, available: boolean) => Promise<boolean>
+  /**
+   * The menu's − / + and "Made 20" (OB-310): saved at once, then a named note with Undo
+   * ("Bun maska: 5 left · Undo"). `add` counts from the saved stock. False when it did not save.
+   */
+  setStock: (
+    product: Product,
+    change: { stock: number | null } | { add: number },
+  ) => Promise<boolean>
+  /** The last stock tap's named note and its Undo, until it is closed (OB-310). */
+  stockNote: { message: string; undo: () => void; close: () => void } | null
+  /**
+   * An open sheet shows the stock note inside itself, where the screen reader and keyboard can
+   * reach Undo (a modal hides everything outside it). Returns the call that hands it back.
+   */
+  hostStockNote: () => () => void
+  /** True while an open sheet shows the stock note. */
+  stockNoteHosted: boolean
+  /** Moves an item between the customer menu and "Things I buy" (OB-310). */
+  setForSale: (product: Product, forSale: boolean) => Promise<boolean>
   /** Turns the public customer page on or off. */
   setShared: (shared: boolean) => Promise<void>
   shareUrl: string | null
@@ -64,7 +85,8 @@ export interface Workspace {
    * (e.g. one inline price change), then refresh. Same exact-digest approval as the review.
    */
   confirm: (proposal: Proposal) => Promise<void>
-  notify: (message: string) => void
+  /** A short note; with `undo`, it offers Undo until it hides (OB-263). */
+  notify: (message: string, undo?: () => void) => void
   /** Ask the Coach screen to open the photo picker (from empty states and suggestions). */
   requestPhoto: () => void
   photoPending: boolean

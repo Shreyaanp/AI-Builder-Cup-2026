@@ -12,6 +12,7 @@ import { useNewShopCopy } from './newShopCopy'
 import { useWorkspace } from './workspaceContext'
 import { ShopSheets } from './ShopTiles'
 import { MapsHandoff } from './MapsHandoff'
+import { onMenu } from '../shop/stock'
 import { ShopQr } from './ShopQr'
 import { FirstCustomers } from './FirstCustomers'
 import { useGoLiveCopy } from './goLiveCopy'
@@ -220,7 +221,8 @@ export function NewShopReady({ preview = false }: { preview?: boolean }) {
         </Stack>
         {ws.active && (
           <Box sx={{ mt: 3 }}>
-            <MapsHandoff fields={ws.active.fields} products={ws.products} />
+            {/* Only what customers can buy: Google's public form never gets tea dust (OB-310). */}
+            <MapsHandoff fields={ws.active.fields} products={ws.products.filter(onMenu)} />
           </Box>
         )}
       </Box>

@@ -479,6 +479,128 @@
         }
       }
     },
+    "/api/v1/businesses/{business_id}/inventory/{product_id}/stock": {
+      "post": {
+        "summary": "Product Stock",
+        "description": "The menu's − / +, Undo and \"Made 20\": saved at once, like the sold-out switch (OB-310).\nAn amount added counts from the saved stock, so two taps never overwrite each other.",
+        "operationId": "product_stock_api_v1_businesses__business_id__inventory__product_id__stock_post",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          },
+          {
+            "name": "product_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Product Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StockRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Product Stock Api V1 Businesses  Business Id  Inventory  Product Id  Stock Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/businesses/{business_id}/inventory/{product_id}/for-sale": {
+      "post": {
+        "summary": "Product For Sale",
+        "description": "Move an item between the customer menu and \"Things I buy\" (OB-310). No AI involved.",
+        "operationId": "product_for_sale_api_v1_businesses__business_id__inventory__product_id__for_sale_post",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          },
+          {
+            "name": "product_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Product Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ForSaleRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Product For Sale Api V1 Businesses  Business Id  Inventory  Product Id  For Sale Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/businesses/{business_id}/share": {
       "post": {
         "summary": "Share",
@@ -6580,6 +6702,49 @@
         }
       }
     },
+    "/api/v1/businesses/{business_id}/usual-sales": {
+      "get": {
+        "tags": [
+          "today"
+        ],
+        "summary": "Usual Today",
+        "description": "The menu's gentle \"low\" mark: saved sales only, no forecast or model call (OB-310).",
+        "operationId": "usual_today_api_v1_businesses__business_id__usual_sales_get",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UsualSales"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/businesses/{business_id}/day/{day}/reward": {
       "get": {
         "tags": [
@@ -8684,6 +8849,67 @@
                   "type": "object",
                   "additionalProperties": true,
                   "title": "Response Received Api V1 Businesses  Business Id  Supply Orders  Order Id  Received Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/businesses/{business_id}/supply/orders/{order_id}/received/undo": {
+      "post": {
+        "summary": "Undo Received",
+        "description": "Undo \"Goods arrived\": the order is on its way again and the stock is as before.",
+        "operationId": "undo_received_api_v1_businesses__business_id__supply_orders__order_id__received_undo_post",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          },
+          {
+            "name": "order_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Order Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Version"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Undo Received Api V1 Businesses  Business Id  Supply Orders  Order Id  Received Undo Post"
                 }
               }
             }
@@ -13404,6 +13630,21 @@
         "type": "object",
         "title": "FoodAttributes"
       },
+      "ForSaleRequest": {
+        "properties": {
+          "for_sale": {
+            "type": "boolean",
+            "title": "For Sale"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "for_sale"
+        ],
+        "title": "ForSaleRequest",
+        "description": "\"Customers can buy this\", or one of the things the shop buys to make others (OB-310)."
+      },
       "Forecast": {
         "properties": {
           "status": {
@@ -14243,6 +14484,17 @@
               }
             ],
             "title": "Product Id"
+          },
+          "usual": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Usual"
           }
         },
         "type": "object",
@@ -15993,6 +16245,17 @@
               }
             ],
             "title": "Source"
+          },
+          "for_sale": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "For Sale"
           },
           "previous_unit": {
             "anyOf": [
@@ -18776,6 +19039,51 @@
         ],
         "title": "StockLine"
       },
+      "StockRequest": {
+        "properties": {
+          "stock": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 1000000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stock"
+          },
+          "add": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 1000000.0,
+                "minimum": -1000000.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Add"
+          },
+          "available": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Available"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "StockRequest",
+        "description": "The owner's − / + or \"Made 20\": a new count, or an amount added (OB-310). No AI involved.\n`stock: null` is \"not counted\" again: Undo of the first tap on an item nobody counted.\n`available` is Undo's saved sold-out switch, so it never puts back on sale an item the owner\nhad switched off; 0 left is still sold out."
+      },
       "Streak": {
         "properties": {
           "weeks": {
@@ -19685,6 +19993,28 @@
           "created"
         ],
         "title": "Update"
+      },
+      "UsualSales": {
+        "properties": {
+          "weekday": {
+            "type": "integer",
+            "title": "Weekday"
+          },
+          "items": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "weekday",
+          "items"
+        ],
+        "title": "UsualSales",
+        "description": "What usually sells on today's weekday, by item name: the menu marks stock below it as\nlow, gently (OB-310). Only items with sales on this weekday in the last four weeks."
       },
       "ValidationError": {
         "properties": {

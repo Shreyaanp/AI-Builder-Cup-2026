@@ -142,7 +142,7 @@ export function RunsOutCard({ onAct }: { onAct: () => void }) {
   const s = useSourcingCopy()
   const c = useOrderChangeCopy()
   const runsOut = useRunsOut()
-  if (!runsOut) return null
+  if (!runsOut || runsOut.arriving) return null
   const { need, more, onOrder } = runsOut
   return (
     <Tile

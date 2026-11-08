@@ -209,6 +209,47 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/businesses/{business_id}/inventory/{product_id}/stock": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Product Stock
+         * @description The menu's − / +, Undo and "Made 20": saved at once, like the sold-out switch (OB-310).
+         *     An amount added counts from the saved stock, so two taps never overwrite each other.
+         */
+        post: operations["product_stock_api_v1_businesses__business_id__inventory__product_id__stock_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/businesses/{business_id}/inventory/{product_id}/for-sale": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Product For Sale
+         * @description Move an item between the customer menu and "Things I buy" (OB-310). No AI involved.
+         */
+        post: operations["product_for_sale_api_v1_businesses__business_id__inventory__product_id__for_sale_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/businesses/{business_id}/share": {
         parameters: {
             query?: never;
@@ -2214,6 +2255,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/businesses/{business_id}/usual-sales": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Usual Today
+         * @description The menu's gentle "low" mark: saved sales only, no forecast or model call (OB-310).
+         */
+        get: operations["usual_today_api_v1_businesses__business_id__usual_sales_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/businesses/{business_id}/day/{day}/reward": {
         parameters: {
             query?: never;
@@ -2863,6 +2924,26 @@ export interface paths {
          * @description Goods arrived; returns the order and, when menu items match, a stock review.
          */
         post: operations["received_api_v1_businesses__business_id__supply_orders__order_id__received_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/businesses/{business_id}/supply/orders/{order_id}/received/undo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Undo Received
+         * @description Undo "Goods arrived": the order is on its way again and the stock is as before.
+         */
+        post: operations["undo_received_api_v1_businesses__business_id__supply_orders__order_id__received_undo_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4708,6 +4789,14 @@ export interface components {
              */
             segment: "unknown" | "beverage" | "bakery" | "snack" | "restaurant" | "butcher";
         };
+        /**
+         * ForSaleRequest
+         * @description "Customers can buy this", or one of the things the shop buys to make others (OB-310).
+         */
+        ForSaleRequest: {
+            /** For Sale */
+            for_sale: boolean;
+        };
         /** Forecast */
         Forecast: {
             /**
@@ -5068,6 +5157,8 @@ export interface components {
             source: "made" | "bought" | "unknown";
             /** Product Id */
             product_id?: string | null;
+            /** Usual */
+            usual?: number | null;
         };
         /** LowStock */
         LowStock: {
@@ -5750,6 +5841,8 @@ export interface components {
             available: boolean;
             /** Source */
             source?: ("made" | "bought") | null;
+            /** For Sale */
+            for_sale?: boolean | null;
             /** Previous Unit */
             previous_unit?: string | null;
         };
@@ -6941,6 +7034,21 @@ export interface components {
              */
             mode: "count" | "delivery";
         };
+        /**
+         * StockRequest
+         * @description The owner's − / + or "Made 20": a new count, or an amount added (OB-310). No AI involved.
+         *     `stock: null` is "not counted" again: Undo of the first tap on an item nobody counted.
+         *     `available` is Undo's saved sold-out switch, so it never puts back on sale an item the owner
+         *     had switched off; 0 left is still sold out.
+         */
+        StockRequest: {
+            /** Stock */
+            stock?: number | null;
+            /** Add */
+            add?: number | null;
+            /** Available */
+            available?: boolean | null;
+        };
         /** Streak */
         Streak: {
             /** Weeks */
@@ -7265,6 +7373,19 @@ export interface components {
              * @default false
              */
             demo: boolean;
+        };
+        /**
+         * UsualSales
+         * @description What usually sells on today's weekday, by item name: the menu marks stock below it as
+         *     low, gently (OB-310). Only items with sales on this weekday in the last four weeks.
+         */
+        UsualSales: {
+            /** Weekday */
+            weekday: number;
+            /** Items */
+            items: {
+                [key: string]: number;
+            };
         };
         /** ValidationError */
         ValidationError: {
@@ -7866,6 +7987,82 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["SourceRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    product_stock_api_v1_businesses__business_id__inventory__product_id__stock_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+                product_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StockRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    product_for_sale_api_v1_businesses__business_id__inventory__product_id__for_sale_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+                product_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ForSaleRequest"];
             };
         };
         responses: {
@@ -11905,6 +12102,37 @@ export interface operations {
             };
         };
     };
+    usual_today_api_v1_businesses__business_id__usual_sales_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UsualSales"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     day_reward_api_v1_businesses__business_id__day__day__reward_get: {
         parameters: {
             query?: never;
@@ -13239,6 +13467,44 @@ export interface operations {
         };
     };
     received_api_v1_businesses__business_id__supply_orders__order_id__received_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+                order_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Version"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    undo_received_api_v1_businesses__business_id__supply_orders__order_id__received_undo_post: {
         parameters: {
             query?: never;
             header?: never;

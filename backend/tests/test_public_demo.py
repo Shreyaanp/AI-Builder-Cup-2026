@@ -1,6 +1,8 @@
 """Public demos never acquire an owner identity or use the durable merchant repository."""
 
+import datetime as dt
 import json
+import sys
 import time
 from datetime import date, datetime
 from unittest.mock import AsyncMock, Mock
@@ -9,7 +11,7 @@ from zoneinfo import ZoneInfo
 import pytest
 from fastapi.testclient import TestClient
 
-from app import public_demo
+from app import public_demo, supply_rules
 from tests.test_photos import app  # noqa: F401
 
 
@@ -86,8 +88,49 @@ def test_demo_is_the_full_owner_app_on_a_private_sandbox(app, monkeypatch):  # n
         provider.assert_not_called()
 
 
+@pytest.fixture
+def shop_day(request, monkeypatch):
+    """The app's clock on a chosen day, 10:00 India time (None: the real clock). Every app
+    module that reads datetime.now or date.today sees that day; time.time moves with it."""
+    if request.param is None:
+        return
+    zone = ZoneInfo("Asia/Kolkata")
+    frozen = datetime.combine(date.fromisoformat(request.param), dt.time(10), zone)
+    shift = frozen.timestamp() - time.time()
+    real_time = time.time
+
+    class Clock(datetime):
+        @classmethod
+        def now(cls, tz=None):  # type: ignore[override]
+            moment = datetime.fromtimestamp(real_time() + shift, dt.UTC)
+            return moment.astimezone(tz) if tz else moment.astimezone().replace(tzinfo=None)
+
+    class Day(date):
+        @classmethod
+        def today(cls):  # type: ignore[override]
+            return Clock.now().date()
+
+    for name, module in list(sys.modules.items()):
+        if not (name == "app" or name.startswith("app.")) or module is None:
+            continue
+        if getattr(module, "datetime", None) is datetime:
+            monkeypatch.setattr(module, "datetime", Clock)
+        if getattr(module, "date", None) is date:
+            monkeypatch.setattr(module, "date", Day)
+    monkeypatch.setattr(time, "time", lambda: real_time() + shift)
+
+
+@pytest.mark.parametrize(
+    "shop_day",
+    # The real clock, a Saturday (a next-day delivery falls on Sunday and moves to Monday) and
+    # a Wednesday.
+    [None, "2026-11-07", "2026-11-04"],
+    ids=["today", "saturday", "wednesday"],
+    indirect=True,
+)
 def test_OB_62_bengaluru_public_demo_forecast_matches_both_surfaces_across_loads(
     app,  # noqa: F811
+    shop_day,
 ):
     """OB-62: /demo keeps realistic tea-dust numbers across the card, tour and reload."""
     with TestClient(app) as client:
@@ -111,8 +154,13 @@ def test_OB_62_bengaluru_public_demo_forecast_matches_both_surfaces_across_loads
         first_need = next(row for row in before_card["needs"] if row["item"] == "Tea dust")
         step = tour["today"]
         assert need["stock"] >= 3 and need["daily"] >= 1.5
-        today = datetime.now(ZoneInfo("Asia/Kolkata")).date()
-        assert 1 <= (date.fromisoformat(need["runs_out"]) - today).days <= 4
+        today = datetime.fromtimestamp(time.time(), ZoneInfo("Asia/Kolkata")).date()
+        # The shelf alone lasts 1 to 4 days; the seeded order arriving with the next delivery
+        # (tomorrow, or Monday from a Saturday) counts from then on, so Today shows a later day
+        # or none (OB-263).
+        assert 1 <= need["stock"] / need["daily"] <= 4
+        assert need["on_order"] and need["arrives"] <= supply_rules.arrival(today, 1).isoformat()
+        assert not need["runs_out"] or (date.fromisoformat(need["runs_out"]) - today).days > 4
         assert (need["stock"], need["daily"], need["runs_out"]) == (
             step["stock"],
             step["daily"],

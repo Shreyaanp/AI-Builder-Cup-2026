@@ -39,6 +39,8 @@ import { isServiceShop } from '../tabsCopy'
 import { useWorkspace } from '../workspaceContext'
 import { useOnboardingCopy } from '../onboardingCopy'
 import { useSourceCopy } from './sourceCopy'
+import { MakeNow } from './MakeNow'
+import { shopZone } from '../../../region/region'
 import { useTodayCopy, type Festival } from './todayCopy'
 import { promiseCopyFor } from './promiseCopy'
 import type { CoachLine, Need, StepId, TodayPlan } from './todayPlan'
@@ -104,8 +106,8 @@ export function TodayView({
       </Stack>
     )
   }
-  // In the evening the card sits low, in the thumb zone: "Close the day" stays its first row and
-  // its one filled button (SIMPLIFY Batch 5; PHONE-UX rule 1).
+  // The card sits low at every hour, so its one filled button is in the thumb zone (PHONE-UX
+  // rule 1, OB-315); in the evening "Close the day" is its first row (SIMPLIFY Batch 5).
   const evening = plan.needs[0]?.kind === 'closeDay'
   const needs = (
     <NeedsCard
@@ -144,16 +146,15 @@ export function TodayView({
           progress={plan.progress}
         />
       )}
-      {/* One card, one filled button: the first row is the lead action, and stock (the supply
-          row with its run-out day, low items and supply exceptions) lives only here. Setup steps
-          left are rows in it too, so the setup bar is not a third progress element. */}
-      {!evening && needs}
       {firstCustomers && ws.shareUrl && (
         <FirstCustomers url={ws.shareUrl} name={shop.fields.name} />
       )}
       {(plan.pulse || plan.forecast) && <PulseCard plan={plan} actions={actions} />}
       {chips?.(plan.part === 'evening')}
-      {evening && <Box sx={{ mt: 'auto' }}>{needs}</Box>}
+      {/* One card, one filled button: the first row is the lead action, and stock (the supply
+          row with its run-out day, low items and supply exceptions) lives only here. Setup steps
+          left are rows in it too, so the setup bar is not a third progress element. */}
+      <Box sx={{ mt: 'auto' }}>{needs}</Box>
     </Box>
   )
 }
@@ -551,6 +552,7 @@ function NeedRow({
   const ws = useWorkspace()
   const roles = useTheme().material
   const [busy, setBusy] = useState(false)
+  const [making, setMaking] = useState(false)
   const step = useStepAction(need.kind === 'step' ? need.step : 'items')
   const promiseSettle = usePromiseSettle(
     need.kind === 'promise' ? need.promise : null,
@@ -570,6 +572,8 @@ function NeedRow({
   let icon: ReactNode
   let text = ''
   let buttons: ReactNode
+  // Opens under the row, full width ("Make 20 more now?").
+  let panel: ReactNode = null
   if (need.kind === 'promise') {
     // Last night's promise (HABIT change 4): do it, or "Not today" clears it with no comment.
     const { promise } = need
@@ -660,6 +664,11 @@ function NeedRow({
     icon = <PackageMinus size={20} />
     const name = productName(need.item, locale)
     const productId = need.productId
+    // 0 left is sold out, never "only 0 left" with Make more beside it (OB-310).
+    const lowText =
+      need.left === 0
+        ? tt.soldOut(name, productFeminine(need.item, locale))
+        : tt.low(name, need.left)
     if (need.source === 'unknown' && productId) {
       // One question, saved on the item so it is never asked again (OB-239).
       text = sc.ask(name, need.left)
@@ -695,22 +704,29 @@ function NeedRow({
         </>
       )
     } else if (need.source === 'made') {
-      // Made here: the prep plan, never a supplier order (OB-239).
-      text = tt.low(name, need.left)
-      buttons = (
-        <Button
-          variant={primary}
-          sx={{ minHeight: 48 }}
-          onClick={() => actions.ask(sc.makeDraft(need.item))}
-        >
+      // Made here: never a supplier order (OB-239). "Make more" asks about now, with what
+      // usually sells today, and "Made 20" adds to the stock (OB-310).
+      text = lowText
+      buttons = making ? null : (
+        <Button variant={primary} sx={{ minHeight: 48 }} onClick={() => setMaking(true)}>
           {sc.makeMore}
         </Button>
+      )
+      panel = making && (
+        <MakeNow
+          name={name}
+          left={need.left}
+          usual={need.usual}
+          weekday={shopWeekday(shopZone(ws.active?.fields))}
+          productId={need.productId}
+          onDone={() => setMaking(false)}
+        />
       )
     } else if (need.source === 'unknown') {
       // Not said, and no item to save the answer on: never an Order button (OB-243).
       text = sc.askInMenu(name, need.left, isServiceShop(ws.active?.fields.category))
     } else {
-      text = tt.low(name, need.left)
+      text = lowText
       buttons = (
         <Button
           variant={primary}
@@ -810,11 +826,27 @@ function NeedRow({
       >
         {text}
       </Typography>
-      <Stack direction="row" sx={{ gap: 1, flexShrink: 0, ml: 'auto' }}>
-        {buttons}
-      </Stack>
+      {buttons && (
+        <Stack direction="row" sx={{ gap: 1, flexShrink: 0, ml: 'auto' }}>
+          {buttons}
+        </Stack>
+      )}
+      {panel}
     </Box>
   )
+}
+
+const WEEKDAY = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+
+/** Today's weekday in the shop's own time zone, 0 = Monday (the server's usual-sales day). */
+function shopWeekday(timeZone: string): number {
+  try {
+    const day = new Intl.DateTimeFormat('en-US', { weekday: 'short', timeZone }).format(new Date())
+    return Math.max(0, WEEKDAY.indexOf(day))
+  } catch {
+    // A saved zone the phone does not know: the phone's own day, never a broken Today.
+    return (new Date().getDay() + 6) % 7
+  }
 }
 
 /** Yesterday (or today so far) and today's forecast; tapping asks the coach for the chart. */
@@ -833,6 +865,8 @@ function PulseCard({ plan, actions }: { plan: TodayPlan; actions: TodayActions }
   // gives its line back, so Today fits a 360 phone (a festival is news and stays).
   const rainInForecast = plan.forecast && plan.line?.kind === 'rain'
   const coachLine = useLineText(quiet || rainInForecast ? null : plan.line)
+  // …as a compact cue on that row, so a rainy morning still says so within the 360 fit (OB-301).
+  const rain = rainInForecast && !quiet && plan.line?.rain != null ? plan.line.rain : null
   const lines: string[] = []
   if (plan.pulse) {
     // One short row: the two numbers that matter most (the rest are one tap away in the chat).
@@ -859,7 +893,8 @@ function PulseCard({ plan, actions }: { plan: TodayPlan; actions: TodayActions }
     )
     // The busiest hours are the owner's own setting; a coach line (rain, a festival) is news, so
     // it takes that place and the row stays short.
-    if (plan.forecast.busy && !plan.line) {
+    if (rain != null) text += ` · ☔ ${number.format(rain)}%`
+    else if (plan.forecast.busy && !coachLine) {
       const [start, end] = plan.forecast.busy.map(
         (minutes) => new Date(Date.UTC(2026, 0, 1, Math.floor(minutes / 60), minutes % 60)),
       )
@@ -875,7 +910,7 @@ function PulseCard({ plan, actions }: { plan: TodayPlan; actions: TodayActions }
     <ButtonBase
       data-testid="today-pulse"
       data-tour="forecast"
-      aria-label={`${lines.join('. ')}. ${ask}`}
+      aria-label={`${lines.join('. ')}${rain != null ? `. ${tt.rain(rain)}` : ''}. ${ask}`}
       onClick={() => actions.ask(ask)}
       sx={{
         width: '100%',

@@ -3,7 +3,7 @@ import { ApiError, type Api, type Proposal } from '../v1/api'
 import { isServiceShop } from '../v1/tabsCopy'
 import { useWorkspace } from '../v1/workspaceContext'
 import { useLocale } from '../../state/hooks'
-import { productName } from '../../i18n/productNames'
+import { productFeminine, productName } from '../../i18n/productNames'
 import { useShopCopy } from '../shop/strings'
 import { unitLabel } from '../shop/units'
 import { useSupplyCopy } from './copy'
@@ -45,7 +45,8 @@ export function leadNeed(needs: SupplyNeed[] | undefined) {
 
 /**
  * The supply Today shows: the first need not yet covered, the same one the Grow tile shows
- * (#603), else an order that has just arrived. `item` is null when there is nothing to say.
+ * (#603). With nothing left to order, a delivery just received says "Stock topped up" once
+ * (OB-263). `item` is null when there is nothing to say.
  */
 export function useTodaySupplyLead() {
   const { products } = useWorkspace()
@@ -60,7 +61,23 @@ export function useTodaySupplyLead() {
         products.some((p) => p.name === name && p.stock != null && p.stock >= stock),
       ),
   )
-  return { refresh, need, more, received, item: need?.item ?? received?.lines[0]?.item ?? null }
+  // Something to do (order, or order more) comes first; otherwise the news of what came.
+  const todo = Boolean(need && (!onItsWay(need) || stillShort(need)))
+  const topped = toppedOnce(!todo && received ? received.id : null) ? received : undefined
+  const toppedItem = topped ? Object.keys(topped.received_stock ?? {})[0] : undefined
+  return {
+    refresh,
+    need: topped ? undefined : need,
+    more,
+    topped:
+      topped && toppedItem
+        ? { item: toppedItem, stock: topped.received_stock![toppedItem]! }
+        : null,
+    /** Not the lead: something is on its way (at most "Order more"), or the stock just
+     * topped up. The row never takes the card's one filled button. */
+    waiting: Boolean(topped || onItsWay(need)),
+    item: (topped ? toppedItem : need?.item) ?? null,
+  }
 }
 
 // One shop's supply, shared by every view of it (Today, the Grow tile, the Purchase orders
@@ -158,9 +175,11 @@ export type SimVariant = 'full' | 'partial' | 'substitute' | 'match' | 'price_mi
  * visible error); a stale version reloads the latest so the card never shows an old state.
  */
 export function usePoActions(onChange: (order: PurchaseOrder) => void) {
-  const { api, activeId, notify, review } = useWorkspace()
+  const { api, activeId, notify, review, confirm, products, reloadProducts } = useWorkspace()
   const s = useSupplyCopy()
   const change = useOrderChangeCopy()
+  const locale = useLocale()
+  const unit = useOrderUnit()
   const base = `/businesses/${encodeURIComponent(activeId ?? '')}/supply`
   const explain = useCallback(
     (cause: unknown): string => {
@@ -178,7 +197,12 @@ export function usePoActions(onChange: (order: PurchaseOrder) => void) {
     [s, change],
   )
   const run = useCallback(
-    async (order: PurchaseOrder, path: string, body: Record<string, unknown> = {}) => {
+    async (
+      order: PurchaseOrder,
+      path: string,
+      body: Record<string, unknown> = {},
+      saved?: (proposal: Proposal, order: PurchaseOrder) => Promise<void>,
+    ) => {
       try {
         const result = await api<PurchaseOrder | { order: PurchaseOrder; proposal: Proposal }>(
           `${base}/orders/${encodeURIComponent(order.id)}/${path}`,
@@ -186,8 +210,13 @@ export function usePoActions(onChange: (order: PurchaseOrder) => void) {
         )
         const next = 'order' in result ? result.order : result
         onChange(next)
+        if ('proposal' in result && result.proposal) {
+          if (saved) await saved(result.proposal, next)
+          else review(result.proposal)
+        }
+        // After the stock is saved: Today never reads the order received with the stock not yet
+        // in, which would drop its row (and the open sheet) for a moment (OB-263).
         supplyChanged()
-        if ('proposal' in result && result.proposal) review(result.proposal)
         return next
       } catch (cause) {
         notify(explain(cause))
@@ -202,6 +231,67 @@ export function usePoActions(onChange: (order: PurchaseOrder) => void) {
       }
     },
     [api, base, notify, onChange, review, explain],
+  )
+  // Goods arrived is the owner's own say-so: the stock is saved at once and the note says what
+  // came and the stock now, with Undo; no review sheet, no price (OB-263).
+  const receivedSaved = useCallback(
+    async (proposal: Proposal, order: PurchaseOrder) => {
+      try {
+        await confirm(proposal)
+      } catch {
+        review(proposal)
+        return
+      }
+      const number = new Intl.NumberFormat(locale, { maximumFractionDigits: 2 })
+      const rows = proposal.snapshot.products.map((after) => {
+        const was = products.find((p) => p.name === after.name)?.stock ?? 0
+        const each = unit(after.unit)
+        return {
+          amount: `${number.format(Math.max(0, (after.stock ?? 0) - was))} ${each}`,
+          name: productName(after.name, locale),
+          feminine: productFeminine(after.name, locale),
+          stock: `${number.format(after.stock ?? 0)} ${each}`,
+        }
+      })
+      const message =
+        rows.length === 1
+          ? change.receivedOne(rows[0]!.amount, rows[0]!.name, rows[0]!.stock, rows[0]!.feminine)
+          : change.receivedMany(rows.length)
+      const url = `${base}/orders/${encodeURIComponent(order.id)}`
+      notify(message, () => {
+        // The demo supplier may have sent the bill since: undo the latest version.
+        void api<PurchaseOrder>(url)
+          .then((latest) =>
+            api<PurchaseOrder>(`${url}/received/undo`, {
+              method: 'POST',
+              body: JSON.stringify({ version: latest.version }),
+            }),
+          )
+          .then(
+            (back) => {
+              onChange(back)
+              supplyChanged()
+              void reloadProducts()
+              notify(change.receivedUndone)
+            },
+            () => notify(s.failed),
+          )
+      })
+    },
+    [
+      api,
+      base,
+      change,
+      confirm,
+      locale,
+      notify,
+      onChange,
+      products,
+      reloadProducts,
+      review,
+      s,
+      unit,
+    ],
   )
   // The demo supplier's reply arrives with a read; only a real change is passed on.
   const refresh = useCallback(
@@ -227,7 +317,7 @@ export function usePoActions(onChange: (order: PurchaseOrder) => void) {
     resolve: (order: PurchaseOrder, flagId: string, value: string) =>
       run(order, `flags/${encodeURIComponent(flagId)}`, { value }),
     accept: (order: PurchaseOrder) => run(order, 'accept'),
-    received: (order: PurchaseOrder) => run(order, 'received'),
+    received: (order: PurchaseOrder) => run(order, 'received', {}, receivedSaved),
     /** The same items from the same supplier, as a new draft to review (OB-248). */
     again: (order: PurchaseOrder) => run(order, 'again'),
     /** Public demo: a message to the scripted supplier; nothing is sent to anyone. */
@@ -405,9 +495,18 @@ export function dayLabel(iso: string, locale: string): string {
   }).format(day)
 }
 
+/** "Thu": the day alone, for a one-line status; the full date when it is not a date. */
+export function weekdayLabel(iso: string, locale: string): string {
+  const day = new Date(`${(iso ?? '').slice(0, 10)}T12:00:00`)
+  return Number.isNaN(day.getTime())
+    ? dayLabel(iso, locale)
+    : new Intl.DateTimeFormat(locale, { weekday: 'short' }).format(day)
+}
+
 /** What is on its way for a need, each in its own unit: "12 l on order, arriving Sat, Oct 31"
- * or "2 pack on order", joined when both (#603). Empty when nothing is. */
-export function useOnOrderText() {
+ * or "2 pack on order", joined when both (#603). Empty when nothing is. `arriving` says it as
+ * Today's done line, short enough for one row: "19 kg arriving Wed ✓" (OB-263). */
+export function useOnOrderText(arriving = false) {
   const c = useOrderChangeCopy()
   const locale = useLocale()
   const unit = useOrderUnit()
@@ -416,6 +515,7 @@ export function useOnOrderText() {
     (need: SupplyNeed) => {
       const number = new Intl.NumberFormat(locale, { maximumFractionDigits: 2 })
       const saved = products.find((p) => p.name === need.item)?.unit ?? ''
+      const line = arriving ? c.arrivingLine : c.onOrderLine
       return [
         ...(need.on_order
           ? [{ quantity: need.on_order, unit: saved, arrives: need.arrives ?? '' }]
@@ -423,10 +523,48 @@ export function useOnOrderText() {
         ...(need.on_order_other ?? []),
       ]
         .map((row) =>
-          c.onOrderLine(number.format(row.quantity), unit(row.unit), dayLabel(row.arrives, locale)),
+          line(
+            number.format(row.quantity),
+            unit(row.unit),
+            row.arrives ? (arriving ? weekdayLabel : dayLabel)(row.arrives, locale) : '',
+          ),
         )
         .join(' · ')
     },
-    [c, locale, products, unit],
+    [arriving, c, locale, products, unit],
   )
+}
+
+/** Something for this need is on its way already: Today says so instead of a second Reorder. */
+export function onItsWay(need: SupplyNeed | undefined): boolean {
+  return Boolean(need && (need.on_order || need.on_order_other?.length))
+}
+
+/**
+ * Still to order although some is on its way: what is coming does not cover it and it still
+ * runs out (#603). "Less than a week of cover" alone is not a reason to ask for a second order;
+ * ordering stays one tap away in Buy stock (OB-263).
+ */
+export function stillShort(need: SupplyNeed | undefined): boolean {
+  return Boolean(need?.runs_out) && (need?.cover === 'partly' || need?.cover === 'units')
+}
+
+// "Stock topped up" is said once per delivery, then the row moves on (OB-263): shown during
+// this visit, remembered for the next.
+const TOPPED_KEY = 'chalkboard.supply.topped'
+const toppedNow = new Set<string>()
+
+function toppedOnce(id: string | null): boolean {
+  if (!id) return false
+  if (toppedNow.has(id)) return true
+  try {
+    const value = JSON.parse(localStorage.getItem(TOPPED_KEY) ?? '[]') as unknown
+    const seen = Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string') : []
+    if (seen.includes(id)) return false
+    localStorage.setItem(TOPPED_KEY, JSON.stringify([...seen, id].slice(-20)))
+  } catch {
+    // Private mode: it is said again next visit, nothing worse.
+  }
+  toppedNow.add(id)
+  return true
 }
