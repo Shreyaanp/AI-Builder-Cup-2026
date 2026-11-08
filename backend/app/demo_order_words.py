@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from .app_guide import next_line, next_line_hi
+from .app_guide import by_ask, next_line, next_line_hi
 from .contracts import StreamEvent
 from .demo_coach_words import _clause, _offer, _reply, bare, menu_item, speaks_hindi
 from .demo_item_names import HINDI_UNITS, hindi_item
@@ -41,7 +41,7 @@ async def draft_order(
     question: str,
     amount: tuple[float, str] | None = None,
     made: str = "",
-    teach: bool = True,
+    teach: str | None = "suppliers",
     as_last_time: bool = False,
 ) -> list[StreamEvent] | None:
     """The suppliers for one item, then the order card to the nearest: the real coach's
@@ -93,7 +93,7 @@ async def draft_order(
             f"{quantity:g} {HINDI_UNITS.get(unit, unit)} {item_hi} का ऑर्डर नीचे तैयार है। "
             "आपके भेजे बिना कुछ नहीं जाता, और यह सिर्फ़ डेमो है।"
         )
-        text += f" {next_line_hi('suppliers')}" if teach else ""
+        text += f" {next_line_hi(teach)}" if teach else ""
     else:
         names = "; ".join(
             f"{rank}. {row['name']}, {row['distance_km']:g} km, "
@@ -108,7 +108,7 @@ async def draft_order(
             f"{quantity:g} {unit} from {first['name']} below. It goes only when you tap "
             "Send, and only in the demo."
         )
-        text += f" {next_line('suppliers')}" if teach else ""
+        text += f" {next_line(teach)}" if teach else ""
     return [
         StreamEvent(kind="suppliers", data=ctx.cards[found["card_id"]][1]),
         StreamEvent(kind="order", data=ctx.cards[drafted["card_id"]][1]),
@@ -143,6 +143,8 @@ async def reorder(ctx: Any, question: str) -> list[StreamEvent] | None:
     from .coordinator import find_suppliers
 
     hindi = speaks_hindi(question)
+    # A phrase a screen tells the owner to say still names that screen, after the draft.
+    shown = by_ask(question)
     product = _on_menu(ctx, ask.item)
     fields = ctx.store.context(ctx.uid, ctx.business_id)["business"]["fields"]
     category = str(fields.get("category") or "")
@@ -186,7 +188,9 @@ async def reorder(ctx: Any, question: str) -> list[StreamEvent] | None:
         if found.get("status") != "found":
             return None
         return _how_much(name, found["suppliers"][0]["item"]["unit"], hindi)
-    return await draft_order(ctx, name, question, amount, teach=False, as_last_time=as_last_time)
+    return await draft_order(
+        ctx, name, question, amount, teach=shown.id if shown else None, as_last_time=as_last_time
+    )
 
 
 def out_of_supply(ctx: Any, question: str) -> list[StreamEvent] | None:

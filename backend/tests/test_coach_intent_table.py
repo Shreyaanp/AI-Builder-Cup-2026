@@ -81,6 +81,7 @@ TWO_IN_ONE = [
 MILK_ORDERS = [
     ("Reorder milk", "en", 30),
     ("reorder milk please", "en", 30),
+    ("Reorder milk for tomorrow", "en", 30),  # The app guide's own example.
     ("Order milk", "en", 30),
     ("I need more milk", "en", 30),
     ("can you reorder milk?", "en", 30),
@@ -105,6 +106,9 @@ MILK_ORDERS = [
     ("दूध ऑर्डर करो", "hi", 30),
     ("दूध चाहिए", "hi", 30),
     ("20 लीटर दूध मँगाओ", "hi", 20),
+    ("दूध फिर से मँगाओ", "hi", 30),
+    ("doodh phir se mangao", "en", 30),
+    ("doodh dobara mangao", "en", 30),
 ]
 
 DONT_ORDER = [
@@ -271,6 +275,25 @@ def test_OB_261_out_of_a_supply_is_one_question_not_an_order(  # noqa: N802
     events = demo(message, language)
     nothing_prepared(events)
     assert reply_of(events).endswith(question)
+
+
+@pytest.mark.parametrize(
+    ("message", "language", "path"),
+    [
+        ("Reorder tea dust", "en", "Next, open Grow → Buy stock → To do."),
+        ("चायपत्ती फिर से मँगाओ", "hi", "अब बढ़ाएँ →"),
+    ],
+)
+def test_OB_268_a_screens_own_phrase_drafts_and_still_names_the_screen(  # noqa: N802
+    demo,  # noqa: F811
+    message,
+    language,
+    path,
+):
+    """The Grow screen tells owners to say these: the order, then where it lives."""
+    events = demo(message, language)
+    assert order_card(events)["lines"][0]["name"] == "Tea dust"
+    assert path in reply_of(events), events
 
 
 def test_OB_268_a_request_about_suppliers_still_finds_them(demo):  # noqa: N802, F811

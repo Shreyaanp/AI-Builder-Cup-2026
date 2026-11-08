@@ -22,6 +22,7 @@ HINGLISH_SUPPLIES = {
     "chini": "Sugar",
     "chai patti": "Tea dust",
     "chaipatti": "Tea dust",
+    "चायपत्ती": "Tea dust",
     "dahi": "Curd",
     "makhan": "Butter",
     "aloo": "Potatoes",
@@ -45,7 +46,7 @@ AMOUNT = r"(?:(?P<q{n}>\d+(?:\.\d+)?)\s*(?P<u{n}>" + UNIT + r")?\s+)?"
 AFTER_ITEM = r"(?:\s+(?P<q2>\d+(?:\.\d+)?)\s*(?P<u2>" + UNIT + r")?)?"
 LATIN_ITEM = r"(?P<item>[a-z][a-z'-]*(?:\s+[a-z][a-z'-]*){0,2}?)"
 HINDI_ITEM = r"(?P<item>[ऀ-ॿ]+(?:\s+[ऀ-ॿ]+){0,2}?)"
-POLITE = r"(?:\s+(?:please|pls|now|today|tomorrow|again|abhi|aaj|kal|ji|bhai))*"
+POLITE = r"(?:\s+(?:please|pls|now|today|tomorrow|for\s+tomorrow|again|abhi|aaj|kal|ji|bhai))*"
 POLITE_HI = r"(?:\s+(?:अभी|आज|कल|जी|भाई))*"
 # "Reorder milk": the word itself asks for an order, of whatever the owner names.
 REORDER = re.compile(
@@ -79,7 +80,7 @@ HINGLISH = re.compile(
     + r"(?:mera\s+|meri\s+|my\s+|thoda\s+|aur\s+)?"
     + LATIN_ITEM
     + AFTER_ITEM
-    + rf"\s+(?:{HINGLISH_VERB}){POLITE}"
+    + rf"(?:\s+(?:phir\s+se|dobara))?\s+(?:{HINGLISH_VERB}){POLITE}"
 )
 # After bare() and the chandrabindu is read as an anusvara: मँगाना and मंगाना are one word.
 HINDI_VERB = (
@@ -93,7 +94,7 @@ HINDI = re.compile(
     + r"(?:(?:मेरा|मेरी|मुझे|थोड़ा|और)\s+)*"
     + HINDI_ITEM
     + AFTER_ITEM
-    + rf"\s+(?:{HINDI_VERB}){POLITE_HI}"
+    + rf"(?:\s+(?:फिर\s+से|दोबारा))?\s+(?:{HINDI_VERB}){POLITE_HI}"
 )
 # A "don't" about the order. Removed before reading, so "milk order mat karo" reads as an order
 # the owner does not want, not as an order for something called "mat".
