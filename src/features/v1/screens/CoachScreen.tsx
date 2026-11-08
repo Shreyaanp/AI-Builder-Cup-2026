@@ -88,6 +88,7 @@ import { useBackClose } from '../backStack'
 import { useConnectCopy } from '../../connect/strings'
 import { DOCUMENT_ACCEPT, useImport, type SalesImport } from '../useImport'
 import { NeedsPill, TodayView, type TodayActions } from '../today/TodayView'
+import { useLocalDay } from '../today/useLocalDay'
 import type { ShopSheetKind } from '../ShopTiles'
 import { useUnread } from '../useUnread'
 import { useVoice } from '../useVoice'
@@ -263,6 +264,13 @@ function CoachScreen({
   const visible = !ws.creatingShop && !ws.newShopReady
   const [messages, setMessages] = useState<Message[]>([])
   const [showToday, setShowToday] = useState(false)
+  // Left open overnight: the new morning shows Home too; the chat is still there on the next send.
+  const day = useLocalDay()
+  const [seenDay, setSeenDay] = useState(day)
+  if (day !== seenDay) {
+    setSeenDay(day)
+    setShowToday(true)
+  }
   const [reply, setReply] = useState('')
   const [note, setNote] = useState('')
   const [busy, setBusy] = useState<'idle' | 'reply' | 'photo'>('idle')
@@ -565,10 +573,10 @@ function CoachScreen({
       .then(async (items) => {
         if (abort.signal.aborted) return
         setHistory(items)
-        // Coming back (reload, another day) continues this shop's latest conversation instead of
-        // a blank screen. Once per visit: "New chat" still starts fresh.
+        // A shop opens on Home, this morning's list (OB-327); its chats stay under ⋯. With no shop
+        // yet there is no Home, so coming back continues the conversation.
         const latest = items.find((entry) => (entry.business_id ?? null) === activeId)
-        if (latest && !session.current) await restore(latest.session_id)
+        if (!activeId && latest && !session.current) await restore(latest.session_id)
       })
       .catch(() => undefined)
     return () => {
@@ -1366,6 +1374,10 @@ function CoachScreen({
                   evening={evening}
                   disabled={busy !== 'idle' || voice.state !== 'idle'}
                   onSend={(sentence) => void send(sentence)}
+                  onMake={() => {
+                    requestOpen('make')
+                    go('grow')
+                  }}
                 />
               )}
             />

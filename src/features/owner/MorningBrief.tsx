@@ -20,6 +20,7 @@ import { scrollArea, shape } from '../../design/theme'
 import { useLocale } from '../../state/hooks'
 import { productName } from '../../i18n/productNames'
 import { CloseDay } from '../closeday/CloseDay'
+import { LastDayPlan } from '../forecast/lastDay'
 import { closeDayCopy } from '../closeday/strings'
 import { useCopy as usePlanCopy } from '../planning/strings'
 import type { ShopSheetKind } from '../v1/ShopTiles'
@@ -183,6 +184,8 @@ export function MorningBrief({
             </Stack>
           ))}
         </Stack>
+      ) : brief.last_day && Array.isArray(brief.last_day.rows) ? (
+        <LastDayPlan day={brief.last_day} lineClass="brief-line" />
       ) : (
         <Typography className="brief-line" variant="bodyLarge">
           {t.noPrep}

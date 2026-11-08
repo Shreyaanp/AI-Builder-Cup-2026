@@ -12,7 +12,7 @@ import httpx
 from pydantic import BaseModel
 
 from .demand import Radar
-from .forecast import Forecast, ForecastService
+from .forecast import Forecast, ForecastService, LastDay, last_day, last_day_words
 from .gemini_schema import gemini_schema, parse_reply
 from .imports import ColumnMapper
 from .merchant import MerchantRepository
@@ -122,6 +122,8 @@ class Brief(BaseModel):
     mode: Literal["offline", "gemini"] = "offline"
     demo: bool
     unavailable_rules: list[str] = ["group_buy", "price_check"]
+    # No forecast yet: what the latest closed day sold, the plan until there is one (OB-329).
+    last_day: LastDay | None = None
 
 
 async def today_forecast(
@@ -235,6 +237,13 @@ def facts(
                 prepared = row["sold"] + row["waste"]
                 if prepared and row["waste"] / prepared >= 0.2:
                     waste.append((product["name"], row["waste"], row.get("source") == "demo"))
+    closed = (
+        None
+        if prep
+        else last_day(
+            store.sales_history(uid, bid), today, context["inventory"], category, forecast
+        )
+    )
     confirmed = business.get("last_confirmed")
     stale = not confirmed or (today - date.fromisoformat(confirmed[:10])).days >= 7
     if waiting:
@@ -255,7 +264,7 @@ def facts(
         )
     elif stale:
         action = BestAction(kind="confirm_menu", title="Confirm today's menu")
-    elif not prep:
+    elif not prep and not closed:
         action = BestAction(kind="record_sales", title="Close one day to start your plan")
     else:
         action = BestAction(kind="none", title="Your shop is up to date")
@@ -269,6 +278,7 @@ def facts(
         best_action=action,
         summary="",
         demo=bool(business["fields"].get("demo")) or action.demo,
+        last_day=closed,
     )
 
 
@@ -278,6 +288,7 @@ class BriefWriter(ColumnMapper):
     async def write(self, brief: Brief) -> Brief:
         brief.summary = (
             "; ".join(f"Prep {p.quantity} {p.name}" for p in brief.prep_plan)
+            or last_day_words(brief.last_day, brief.date)
             or "Close one day to start your plan. "
             "Four weeks of saved sales are needed for the forecast."
         )
