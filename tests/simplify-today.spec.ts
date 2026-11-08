@@ -170,10 +170,18 @@ test('desktop 1280: Coach Today and the top bar keep their one ⋯ and fit', asy
   await page.screenshot({ path: test.info().outputPath('today-1280.png') })
 })
 
-test('a chip sends its sentence; What can I ask? opens every example', async ({ page }) => {
+test('the make chip opens its list, the menu chip sends its sentence; What can I ask? opens every example', async ({
+  page,
+}) => {
   await openDemo(page, 10)
   await page.getByTestId('today-chips').getByRole('button', { name: 'How much to make?' }).click()
-  await expect(page.getByRole('log')).toContainText(/Forecast demand for/, { timeout: 30_000 })
+  // OB-328: a list the app already has opens; nothing is said for the owner.
+  await expect(page.getByRole('dialog', { name: 'How much to make' })).toBeVisible()
+  await expect(page.getByRole('log')).toHaveCount(0)
+  await page.keyboard.press('Escape')
+  await page.locator('[data-tour="nav-coach"]').click()
+  await page.getByTestId('today-chips').getByRole('button', { name: 'Change my menu' }).click()
+  await expect(page.getByRole('log')).toContainText(/Help me update/, { timeout: 30_000 })
   await page.getByRole('button', { name: 'More options', exact: true }).click()
   const sheet = page.getByRole('dialog', { name: 'Start again' })
   await sheet.getByRole('button', { name: 'New conversation', exact: true }).click()
