@@ -155,18 +155,16 @@ for (const [language, currency, input] of [
     await quantity.fill(input)
     await amount.fill(input)
     await form.locator('button[type=submit]').click()
-    for (const field of [quantity, amount]) {
-      await expect(field).toHaveAttribute('aria-invalid', 'true')
-      const helper = page.locator(`[id="${await field.getAttribute('aria-describedby')}"]`)
-      await expect(helper).toContainText(copy.error)
-      await expect(helper).toHaveAttribute('aria-live', 'polite')
-      await expect(field).toHaveValue(input)
-    }
-    await expect(quantity).toBeFocused()
-    await quantity.fill('1')
-    await form.locator('button[type=submit]').click()
-    await expect(amount).toBeFocused()
+    // OB-281: a quantity takes up to three decimals whatever the currency (1.005 kg is fine);
+    // the amount keeps the currency's own minor digits.
     await expect(quantity).toHaveAttribute('aria-invalid', 'false')
+    await expect(amount).toHaveAttribute('aria-invalid', 'true')
+    const helper = page.locator(`[id="${await amount.getAttribute('aria-describedby')}"]`)
+    await expect(helper).toContainText(copy.error)
+    await expect(helper).toHaveAttribute('aria-live', 'polite')
+    await expect(amount).toHaveValue(input)
+    await expect(amount).toBeFocused()
+    await quantity.fill('1')
     await amount.fill(language === 'en' ? '1.01' : '1000')
     await form.locator('button[type=submit]').click()
     await expect(form.getByRole('listitem')).toHaveCount(1)
@@ -213,6 +211,47 @@ test('OB-279: grouped amounts and quantities keep their value in review and save
   await expect(dialog.getByText('Already closed today: ₹1,000', { exact: true })).toBeVisible()
 })
 
+test('OB-279 OB-281: ₹ 1,00,000 and 0.125 kg show and save exactly as typed', async ({
+  page,
+}, info) => {
+  const dialog = await open(page, 22)
+  await dialog.getByRole('button', { name: 'Type the numbers instead' }).click()
+  await dialog.getByLabel('Item', { exact: true }).fill('Kopi')
+  const quantity = dialog.getByLabel('Quantity sold', { exact: true })
+  const amount = dialog.getByLabel('Total for this item (₹)', { exact: true })
+  await quantity.fill('0.125')
+  await amount.fill('₹ 1,00,000')
+  // The amount as it will be saved, before Add.
+  const helper = page.locator(`[id="${await amount.getAttribute('aria-describedby')}"]`)
+  await expect(helper).toHaveText('= ₹1,00,000')
+  await expect(amount).toHaveAttribute('aria-invalid', 'false')
+  await page.screenshot({ path: info.outputPath('ob279-preview.png'), animations: 'disabled' })
+  await dialog.getByRole('button', { name: 'Add line', exact: true }).click()
+  await expect(dialog.getByText('Kopi · 0.125 · ₹1,00,000', { exact: true })).toBeVisible()
+  // A lone comma is a question; Review waits for the answer instead of dropping the line.
+  await dialog.getByLabel('Item', { exact: true }).fill('Kopi')
+  await quantity.fill('1')
+  await amount.fill('1,5')
+  await dialog.getByRole('button', { name: 'Review (1 line)', exact: true }).click()
+  await expect(amount).toHaveAttribute('aria-invalid', 'true')
+  await expect(page.locator(`[id="${await amount.getAttribute('aria-describedby')}"]`)).toHaveText(
+    'Did you mean ₹1.50 or ₹15? Please type it again.',
+  )
+  await page.screenshot({ path: info.outputPath('ob279-question.png'), animations: 'disabled' })
+  await amount.fill('15')
+  await dialog.getByRole('button', { name: 'Review (2 lines)', exact: true }).click()
+  await expect(dialog.getByText('₹1,00,015', { exact: true })).toBeVisible()
+  await expect(dialog.getByText('0.125 · ₹1,00,000', { exact: true })).toBeVisible()
+  await expect(dialog.getByText('1 · ₹15', { exact: true })).toBeVisible()
+  await dialog.getByRole('button', { name: 'Close the day', exact: true }).click()
+  await expect(dialog.getByText('Day closed: ₹1,00,015', { exact: true })).toBeVisible()
+  const [shop] = await (await page.request.get('/api/v1/businesses')).json()
+  const rows = await (await page.request.get(`/api/v1/businesses/${shop.id}/sales`)).json()
+  expect(rows.filter((row: { date: string }) => row.date === day)).toEqual([
+    { date: day, item: 'Kopi', quantity: 1.125, revenue: 10001500 },
+  ])
+})
+
 test('OB-279: unclear numbers show linked inline errors and preserve the entry', async ({
   page,
 }, info) => {
@@ -224,10 +263,14 @@ test('OB-279: unclear numbers show linked inline errors and preserve the entry',
   await quantity.fill('1,00')
   await amount.fill('1.000,50')
   await dialog.getByRole('button', { name: 'Add line', exact: true }).click()
-  for (const field of [quantity, amount]) {
+  // OB-279: "1,00" could be one or a hundred, so the owner is asked rather than guessed for.
+  for (const [field, text] of [
+    [quantity, 'Did you mean 1 or 100? Please type it again.'],
+    [amount, 'Number not clear. Try 1,000.5.'],
+  ] as const) {
     await expect(field).toHaveAttribute('aria-invalid', 'true')
     const helper = page.locator(`[id="${await field.getAttribute('aria-describedby')}"]`)
-    await expect(helper).toHaveText('Number not clear. Try 1,000.5.')
+    await expect(helper).toHaveText(text)
     await expect(helper).toHaveAttribute('aria-live', 'polite')
   }
   await expect(quantity).toBeFocused()
@@ -284,7 +327,8 @@ test('OB-266 OB-267 OB-275 OB-279 F13: Hindi dismiss, job and line total are cle
   await dialog.locator('input[name=quantity]').fill('10')
   await dialog.locator('input[name=amount]').fill('1,00')
   await dialog.getByRole('button', { name: 'लाइन जोड़ें', exact: true }).click()
-  await expect(dialog.getByText('संख्या साफ़ नहीं है। 1,000.5 की तरह लिखें।')).toBeVisible()
+  // "1,00" is one rupee or a hundred: a plain question in Hindi, not a guess (OB-279).
+  await expect(dialog.getByText('आपका मतलब ₹1 है या ₹100? साफ़ करके फिर से लिखें।')).toBeVisible()
   await page.screenshot({ path: info.outputPath('hindi-item-total.png'), animations: 'disabled' })
   await dialog.locator('input[name=amount]').fill('200')
   await dialog.getByRole('button', { name: 'लाइन जोड़ें', exact: true }).click()
@@ -472,7 +516,8 @@ for (const size of ['phone', 'desktop'] as const) {
       await dialog.locator('input[name=quantity]').fill('10')
       await dialog.locator('input[name=amount]').fill('1,00')
       await dialog.getByRole('button', { name: 'Add line', exact: true }).click()
-      await expect(dialog.getByText('Number not clear. Try 1,000.5.')).toBeVisible()
+      // "1,00" could be one rupee or a hundred: asked, not guessed (OB-279).
+      await expect(dialog.getByText('Did you mean ₹1 or ₹100? Please type it again.')).toBeVisible()
       await page.screenshot({ path: info.outputPath('item-total.png'), animations: 'disabled' })
       expect(
         (
@@ -506,7 +551,7 @@ test('OB-266 OB-267 OB-279: Chinese close-day states remain localized', async ({
   await dialog.locator('input[name=quantity]').fill('10')
   await dialog.locator('input[name=amount]').fill('1,00')
   await dialog.getByRole('button', { name: '添加一行', exact: true }).click()
-  await expect(dialog.getByText('数字不清楚，请按 1,000.5 的格式填写。')).toBeVisible()
+  await expect(dialog.getByText('您是指 ₹1 还是 ₹100？请重新输入。')).toBeVisible()
   await page.screenshot({ path: info.outputPath('chinese.png'), animations: 'disabled' })
 })
 

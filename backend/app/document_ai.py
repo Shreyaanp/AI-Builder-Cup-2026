@@ -22,6 +22,7 @@ import httpx
 import structlog
 from pydantic import BaseModel, Field
 
+from .numbers import Kind, read_number
 from .settings import Settings
 
 log = structlog.get_logger()
@@ -72,8 +73,9 @@ class ParsedDocument(BaseModel):
         )
 
 
-def _number(entity: dict[str, Any]) -> float | None:
-    """Money and quantities: the normalised value when the processor gives one, else the text."""
+def _number(entity: dict[str, Any], kind: Kind = "money") -> float | None:
+    """Money and quantities: the normalised value when the processor gives one, else the text,
+    read by the one shared number reader (a decimal comma is not glued into the digits)."""
     normalized = entity.get("normalizedValue") or {}
     money = normalized.get("moneyValue")
     if money:
@@ -81,12 +83,8 @@ def _number(entity: dict[str, Any]) -> float | None:
     for text in (normalized.get("text"), entity.get("mentionText")):
         if not text:
             continue
-        cleaned = "".join(c for c in str(text) if c.isdigit() or c in ".-")
-        try:
-            value = float(cleaned)
-        except ValueError:
-            continue
-        if value >= 0:
+        value = read_number(str(text), None, kind)
+        if value is not None and value >= 0:
             return value
     return None
 
@@ -117,7 +115,7 @@ def parse_document(document: dict[str, Any], processor: Processor) -> ParsedDocu
             if not description:
                 continue
             parsed.merged_rows = parsed.merged_rows or "\n" in raw
-            quantity = _number(fields["quantity"]) if "quantity" in fields else None
+            quantity = _number(fields["quantity"], "quantity") if "quantity" in fields else None
             counted = COUNTED.match(description)
             if quantity is None and counted:
                 quantity, description = float(counted[1]), counted[2]

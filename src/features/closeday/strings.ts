@@ -92,8 +92,54 @@ const numberErrors: Record<Locale, string> = {
   kn: 'ಸಂಖ್ಯೆ ಸ್ಪಷ್ಟವಾಗಿಲ್ಲ. {example} ಹಾಗೆ ಬರೆಯಿರಿ.',
 }
 
-export function closeDayCopy(locale: Locale): Copy {
-  return { ...en, ...(translations[locale] ?? {}), numberInvalid: numberErrors[locale] }
+/** A lone comma or dot that could go either way: a plain question, never a guess. */
+const numberQuestions: Record<Locale, string> = {
+  en: 'Did you mean {a} or {b}? Please type it again.',
+  'zh-Hans': '您是指 {a} 还是 {b}？请重新输入。',
+  ms: 'Maksud anda {a} atau {b}? Taip semula dengan jelas.',
+  ta: '{a} ஆ அல்லது {b} ஆ? தெளிவாக மீண்டும் எழுதவும்.',
+  ja: '{a} ですか、{b} ですか？もう一度入力してください。',
+  ko: '{a}인가요, {b}인가요? 다시 입력해 주세요.',
+  id: 'Maksudnya {a} atau {b}? Ketik ulang dengan jelas.',
+  th: 'หมายถึง {a} หรือ {b}? กรอกใหม่ให้ชัดเจน',
+  vi: 'Ý bạn là {a} hay {b}? Hãy nhập lại cho rõ.',
+  fil: '{a} ba o {b}? I-type ulit nang malinaw.',
+  hi: 'आपका मतलब {a} है या {b}? साफ़ करके फिर से लिखें।',
+  bn: 'আপনি কি {a} বোঝাচ্ছেন, না {b}? আবার স্পষ্ট করে লিখুন।',
+  te: 'మీ ఉద్దేశం {a} నా లేదా {b} నా? మళ్లీ స్పష్టంగా రాయండి.',
+  mr: 'तुम्हाला {a} म्हणायचे आहे की {b}? पुन्हा स्पष्ट लिहा.',
+  kn: 'ನೀವು {a} ಎಂದೋ {b} ಎಂದೋ? ಮತ್ತೆ ಸ್ಪಷ್ಟವಾಗಿ ಬರೆಯಿರಿ.',
+}
+
+/** Photo lines whose number could not be read are left out; the owner is told, not surprised. */
+const unreadNotes: Record<Locale, string> = {
+  en: 'Photo lines left out because the number wasn’t clear: {n}. Type them if you need them.',
+  'zh-Hans': '照片中有 {n} 行数字不清楚，未计入。如有需要请手动输入。',
+  ms: '{n} baris dari foto tiada nombor yang jelas dan tidak dikira. Taip jika perlu.',
+  ta: 'புகைப்படத்தில் {n} வரியில் எண் தெளிவாக இல்லை, அது சேர்க்கப்படவில்லை. தேவையெனில் தட்டச்சு செய்யவும்.',
+  ja: '写真の {n} 行は数値が読めなかったため含めていません。必要なら入力してください。',
+  ko: '사진의 {n}줄은 숫자가 불분명해 빠졌습니다. 필요하면 직접 입력해 주세요.',
+  id: '{n} baris dari foto angkanya tidak jelas dan tidak dihitung. Ketik jika perlu.',
+  th: 'มี {n} บรรทัดจากรูปที่ตัวเลขไม่ชัดเจนและไม่ได้นับ พิมพ์เองหากต้องการ',
+  vi: '{n} dòng trong ảnh không rõ số nên chưa được tính. Hãy nhập tay nếu cần.',
+  fil: 'May {n} linya sa larawan na hindi malinaw ang numero at hindi isinama. I-type kung kailangan.',
+  hi: 'फ़ोटो की {n} लाइन में संख्या साफ़ नहीं थी, इसलिए वह नहीं जोड़ी गई। ज़रूरत हो तो खुद लिखें।',
+  bn: 'ছবির {n}টি লাইনে সংখ্যা স্পষ্ট ছিল না, তাই বাদ গেছে। দরকার হলে নিজে লিখুন।',
+  te: 'ఫోటోలోని {n} లైన్‌లో సంఖ్య స్పష్టంగా లేదు, అందుకే చేర్చలేదు. అవసరమైతే మీరే రాయండి.',
+  mr: 'फोटोतील {n} ओळीत संख्या स्पष्ट नव्हती, म्हणून ती धरली नाही. गरज असल्यास स्वतः लिहा.',
+  kn: 'ಫೋಟೋದ {n} ಸಾಲಿನಲ್ಲಿ ಸಂಖ್ಯೆ ಸ್ಪಷ್ಟವಾಗಿರಲಿಲ್ಲ, ಹಾಗಾಗಿ ಸೇರಿಸಿಲ್ಲ. ಬೇಕಿದ್ದರೆ ನೀವೇ ಬರೆಯಿರಿ.',
+}
+
+export function closeDayCopy(
+  locale: Locale,
+): Copy & { numberQuestion: string; unreadLines: string } {
+  return {
+    ...en,
+    ...(translations[locale] ?? {}),
+    numberInvalid: numberErrors[locale],
+    numberQuestion: numberQuestions[locale],
+    unreadLines: unreadNotes[locale],
+  }
 }
 
 export function closeDayCount(locale: Locale, key: 'review' | 'lines' | 'soldItems', n: number) {

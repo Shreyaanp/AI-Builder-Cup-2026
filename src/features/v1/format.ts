@@ -159,6 +159,28 @@ export function currencySymbol(currency: string = defaultCurrency(), locale?: st
   return part?.value ?? currency
 }
 
+/** Every mark a shop may write beside an amount ("₹", "Rp", "IDR"): the app’s own mark,
+ * the code, and the locale's symbol and narrow symbol. Typed amounts are read without them. */
+export function currencyMarks(currency: string, locale?: string): string[] {
+  const code = currency.toUpperCase()
+  const marks = new Set([code, currencySymbol(code)])
+  for (const display of ['symbol', 'narrowSymbol'] as const) {
+    try {
+      const mark = new Intl.NumberFormat(locale, {
+        style: 'currency',
+        currency: code,
+        currencyDisplay: display,
+      })
+        .formatToParts(0)
+        .find((part) => part.type === 'currency')?.value
+      if (mark) marks.add(mark)
+    } catch {
+      // An unknown code has no symbol.
+    }
+  }
+  return [...marks]
+}
+
 export function formatDate(seconds: number, locale?: string): string {
   return new Date(seconds * 1000).toLocaleDateString(locale, {
     day: 'numeric',
