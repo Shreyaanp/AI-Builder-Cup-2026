@@ -44,6 +44,7 @@ def _order(po: dict[str, Any]) -> dict[str, Any]:
         "lines": _lines(po),
         "documents": [d["kind"] for d in po["documents"]],
         "received": bool(po.get("received")),
+        "delivery": po.get("delivery") or "",
     }
 
 
@@ -75,7 +76,12 @@ def story(
     item = po["reason"]["item"]
     inventory = context["inventory"]
     product = next(p for p in inventory if p["name"] == item)
-    need = supply.need_from_forecast(product, forecast, item, today)
+    # What is on order counts from its arrival day, as on Today's row: one item, one day
+    # (OB-238, OB-263).
+    from .supply_coming import on_order
+
+    arrivals = on_order(store, uid, bid, item, product.get("unit") or "kg")["arrivals"]
+    need = supply.need_from_forecast(product, forecast, item, today, arrivals)
     message = next((_text(d, "text") for d in po["documents"] if d["kind"] == "ORDERS"), "")
 
     supplier = po["supplier"]

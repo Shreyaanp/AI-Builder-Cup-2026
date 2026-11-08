@@ -76,7 +76,14 @@ def test_supply_routes_complete_lifecycle_and_reject_status_jumps(supply_client)
             response = client.post(f"{url}/{forbidden}", json={"version": po["version"]})
             assert response.status_code == 409, (status, forbidden, response.text)
             assert client.get(url).json() == stored
-    assert [doc["kind"] for doc in po["documents"]] == ["ORDERS", "ORDRSP", "DESADV", "INVOIC"]
+    # "Goods arrived" sends the goods receipt with it (OB-263).
+    assert [doc["kind"] for doc in po["documents"]] == [
+        "ORDERS",
+        "ORDRSP",
+        "DESADV",
+        "INVOIC",
+        "RECEIPT",
+    ]
     assert po["match"] == [] and po["open_flags"] == 0
 
 

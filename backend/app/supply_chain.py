@@ -382,15 +382,23 @@ def bought(product: dict[str, Any], category: str = "") -> bool:
     return source_of(product, category) == "bought"
 
 
-def runs_out(product: dict[str, Any], forecast: dict[str, Any], today: date) -> str:
+def runs_out(
+    product: dict[str, Any],
+    forecast: dict[str, Any],
+    today: date,
+    arrivals: list[tuple[str, float]] | None = None,
+) -> str:
     """The day this item runs out, from tomorrow on: the one rule the supply tile, Today and the
-    morning brief share, so one item never shows two days (OB-238)."""
+    morning brief share, so one item never shows two days (OB-238). Stock on order counts from
+    the day it arrives (OB-263)."""
     rows = [
         row
         for row in forecast.get("predictions") or []
         if isinstance(row, dict) and str(row.get("date") or "") > today.isoformat()
     ]
-    need = need_from_forecast(product, {**forecast, "predictions": rows}, product["name"], today)
+    need = need_from_forecast(
+        product, {**forecast, "predictions": rows}, product["name"], today, arrivals
+    )
     return str(need["runs_out"] or "")
 
 
@@ -399,10 +407,13 @@ def need_from_forecast(
     forecast: dict[str, Any],
     item: str,
     today: date,
+    arrivals: list[tuple[str, float]] | None = None,
 ) -> dict[str, Any]:
     """Stock, run-out day and demand for one item from the forecast rows, in the item's unit.
     Only the item's own sales rows count: 60 cups of Masala chai, Coconut rice or Rice flour are
-    never kilos of tea dust or rice, whatever their unit or source (OB-242)."""
+    never kilos of tea dust or rice, whatever their unit or source (OB-242).
+    arrivals: (ISO day, quantity) on order; each is on the shelf from its day on, so 19 kg
+    arriving Wed moves the run-out day past Wed (OB-263). An undated or late one counts at once."""
     rows = [
         row
         for row in forecast.get("predictions") or []
@@ -417,7 +428,10 @@ def need_from_forecast(
     known = stock is not None
     left = float(stock or 0)
     runs_out = ""
+    coming = sorted(arrivals or [])
     for row in rows:
+        while coming and coming[0][0] <= str(row["date"]):
+            left += float(coming.pop(0)[1])
         left -= float(row["upper"] if row.get("upper") is not None else row["quantity"])
         if left < 0 and not runs_out:
             runs_out = str(row["date"])
@@ -1710,13 +1724,93 @@ def receive(
         for line in po["lines"]
     }
     changed, proposal = restock(store, uid, bid, context, po, amounts)
+    # What Undo puts back: the status and the stock before the goods came (OB-263).
+    po["received_from"] = po["status"]
+    po["received_before"] = {
+        p["name"]: p.get("stock") or 0 for p in context["inventory"] if p["name"] in changed
+    }
     po["received"] = True
     po["received_at"] = time.time()
     po["received_stock"] = {name: product.stock for name, product in changed.items()}
+    # Undo asks the store whether this stock update was saved; the stock value alone cannot
+    # tell "never saved" from "saved, then used back down" (OB-263).
+    po["received_proposal"] = proposal["id"] if proposal else ""
     if po["status"] == "dispatched":
         po["status"] = "received"
+    from .supply_io import direction_of
+    from .supply_outbound import _mark_sent, _receipt_entry
+
+    # Everything came as sent: the goods receipt goes with it, so nothing about this delivery
+    # still waits on the owner (OB-263). A shortage goes through the counted receipt instead.
+    if direction_of(po) == "in" and not any(
+        d["kind"] == "RECEIPT" and d.get("direction") == "out" for d in po["documents"]
+    ):
+        entry = _receipt_entry(store, bid, context, po, amounts)
+        po["documents"].append(entry)
+        po = _mark_sent(po, entry["id"])
+        po["received_receipt"] = entry["id"]
     saved = _save(store, bid, po)
     return {"order": saved, "proposal": proposal}
+
+
+def undo_receive(
+    store: MerchantRepository, uid: str, bid: str, po_id: str, version: int
+) -> dict[str, Any]:
+    """The owner's Undo right after "Goods arrived": the order is on its way again, the receipt
+    that went with it is withdrawn and saved stock goes back to what it was (OB-263)."""
+    from .merchant import ProposalRequest
+
+    context = _owned(store, uid, bid)
+    po = get_po(store, uid, bid, po_id)
+    _check_version(po, version)
+    reopen = po.get("received_from")
+    if not po.get("received") or not reopen:
+        raise HTTPException(409, "Nothing to undo.")
+    if po["status"] == "closed" and po.get("origin") != "partner":
+        raise HTTPException(409, "Nothing to undo.")
+    before = po.get("received_before") or {}
+    after = po.get("received_stock") or {}
+    pid = po.get("received_proposal")
+    # Only stock the owner saved goes back; an unsaved review left it as it was. Some or all of
+    # it used since is fine: what the delivery added comes off whatever is there now, never
+    # below zero. Orders received before the flag existed fall back to the stock value.
+    saved = store.proposal_saved(uid, pid) if pid else None
+    products = []
+    for product in context["inventory"]:
+        name = product["name"]
+        stock = product.get("stock")
+        if name not in after or stock is None or saved is False:
+            continue
+        if saved is None and stock == (before.get(name) or 0):
+            continue
+        fields = {k: v for k, v in product.items() if k in ProductFields.model_fields}
+        added = after[name] - (before.get(name) or 0)
+        products.append(ProductFields.model_validate({**fields, "stock": max(0, stock - added)}))
+    if products:
+        proposal = store.propose(
+            uid,
+            ProposalRequest(
+                kind="inventory",
+                business_id=bid,
+                revision=context["business"]["revision"],
+                products=products,
+            ),
+        )
+        store.commit(uid, proposal["id"], proposal["digest"])
+    receipt = po.pop("received_receipt", None)
+    po["documents"] = [d for d in po["documents"] if d.get("id") != receipt]
+    for key in (
+        "received_at",
+        "received_stock",
+        "received_before",
+        "received_from",
+        "received_proposal",
+        "closed_at",
+    ):
+        po.pop(key, None)
+    po["received"] = False
+    po["status"] = reopen
+    return _save(store, bid, po)
 
 
 def stock_after(

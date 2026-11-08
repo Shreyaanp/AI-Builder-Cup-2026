@@ -1,6 +1,6 @@
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Locator, type Page } from '@playwright/test'
-import { confirm, enter, liveOnly, localOnly } from './support.js'
+import { enter, liveOnly, localOnly } from './support.js'
 import { openBuyStock } from '../support/grow.js'
 
 /**
@@ -170,11 +170,14 @@ test('S11 · forecast → PO → ORDRSP (partial) → ASN → invoice, translate
     await expect(card).toContainText(/Back-order: \d+ kg (?:Wheat flour|Atta)/)
   })
 
-  await test.step('3 · DESADV, then the goods arrive and stock is reviewed', async () => {
+  await test.step('3 · DESADV, then the goods arrive and the stock is saved, with Undo', async () => {
     await card.getByRole('button', { name: 'Send dispatch notice' }).click()
     await status(card, 'On its way')
     await card.getByRole('button', { name: 'Goods arrived' }).click()
-    await confirm(page)
+    // What came and the stock now, one note with Undo; no review sheet (OB-263).
+    await expect(page.locator('.MuiSnackbar-root')).toContainText(
+      /received\. Stock (is now|updated)/,
+    )
     await status(card, 'Arrived')
     await snap(page, '4-arrived', project, card.getByRole('heading', { name: /^On its way/ }))
   })

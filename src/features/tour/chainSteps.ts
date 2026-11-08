@@ -27,7 +27,9 @@ export function chainStep(
   const money = (minor: number) => formatShopPrice(minor, s.currency, locale)
   const steps = [
     {
-      title: c.today.title(productName(s.today.item, locale), dayLabel(s.today.runs_out, locale)),
+      title: s.today.runs_out
+        ? c.today.title(productName(s.today.item, locale), dayLabel(s.today.runs_out, locale))
+        : c.today.covered(productName(s.today.item, locale)),
       body: c.today.body(
         amount(s.today.stock, s.today.unit, locale),
         amount(s.today.daily, s.today.unit, locale),

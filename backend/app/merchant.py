@@ -505,6 +505,8 @@ class MerchantRepository(Protocol):
         self, uid: str, request: ProposalRequest, idempotency_key: str | None = None
     ) -> dict[str, Any]: ...
     def commit(self, uid: str, pid: str, digest: str) -> dict[str, Any]: ...
+    # Whether the owner's proposal was committed (it has a receipt).
+    def proposal_saved(self, uid: str, pid: str) -> bool: ...
     def challenge(
         self, uid: str, bid: str, exclude_prompts: list[str] | None = None
     ) -> dict[str, Any]: ...
@@ -1019,6 +1021,13 @@ class MerchantStore:
             }
             db.execute("UPDATE proposals SET receipt=? WHERE id=?", (json.dumps(receipt), pid))
             return receipt
+
+    def proposal_saved(self, uid: str, pid: str) -> bool:
+        with self.connect() as db:
+            row = db.execute(
+                "SELECT receipt FROM proposals WHERE id=? AND uid=?", (pid, uid)
+            ).fetchone()
+        return bool(row and row["receipt"])
 
     def challenge(
         self, uid: str, bid: str, exclude_prompts: list[str] | None = None
