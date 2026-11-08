@@ -167,7 +167,8 @@ def test_new_shop_photo_has_one_business_proposal_with_priced_products(app) -> N
         assert inventory.status_code == 200
         items = inventory.json()
         assert len(items) == 1
-        assert items[0] == {"id": items[0]["id"], **product}
+        # The owner's list says which items customers can buy (OB-310).
+        assert items[0] == {"id": items[0]["id"], **product, "for_sale": True}
 
 
 def test_business_listing_reports_share_status(app) -> None:

@@ -18,6 +18,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from .community import Update, update_key
 from .forecast import Forecast, Prediction
 from .merchant import MerchantRepository
+from .product_source import for_sale, sold_for, sold_names
 from .region import shop_currency, shop_zone
 from .shop_time import shop_timezone
 
@@ -158,7 +159,11 @@ def suggestions(
         else 0.25
     )
     predictions = {p.item.casefold(): p for p in forecast.predictions if p.date == current.date()}
+    sold_ever = sold_names(sales)
     for item in context["inventory"]:
+        # A deal is for customers: never one of the "Things I buy" (tea dust) (OB-310).
+        if not for_sale(item, fields.get("category", ""), sold_ever):
+            continue
         # Only food categories or an explicit perishable product section qualify.
         perishable = any(
             word in f"{category} {item.get('category', '')}"
@@ -254,12 +259,17 @@ def prepare(
             "Use a future pickup time today, no later than closing. "
             "Save daytime closing hours first.",
         )
+    category = str(fields.get("category") or "")
+    sold = sold_for(context["inventory"], category, lambda: store.sales_history(uid, bid))
     items = []
     for row in body.items:
         products = [p for p in context["inventory"] if p["name"].casefold() == row.name.casefold()]
         if len(products) != 1 or not products[0].get("available", True):
             raise HTTPException(422, "Choose an available saved item with an unambiguous name.")
         product = products[0]
+        # Customers see the deal: one of the "Things I buy" (tea dust) is never on it (OB-310).
+        if not for_sale(product, category, sold):
+            raise HTTPException(422, "Choose an item customers can buy, not one of Things I buy.")
         if product.get("stock") is not None and row.qty > product["stock"]:
             raise HTTPException(422, "Rescue quantity exceeds saved stock.")
         items.append(
@@ -541,7 +551,15 @@ def seed_demo_deals(
         close = closing(context["business"]["fields"], current)
         if close is None or close.timestamp() - now < 120:
             continue
-        item = next((p for p in context["inventory"] if p.get("available", True)), None)
+        item = next(
+            (
+                p
+                for p in context["inventory"]
+                # A demo deal never puts one of the "Things I buy" in front of customers.
+                if p.get("available", True) and for_sale(p, category)
+            ),
+            None,
+        )
         if not item:
             continue
         until = min(close, current + timedelta(minutes=90)).strftime("%H:%M")

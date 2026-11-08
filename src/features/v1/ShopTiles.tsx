@@ -28,6 +28,7 @@ import {
   MessageSquare,
   Pencil,
   Share2,
+  ShoppingBasket,
   Stamp,
   Store,
   Trash2,
@@ -36,6 +37,9 @@ import {
 } from 'lucide-react'
 import { FactList } from './FactList'
 import { MenuSheet } from '../shop/MenuSheet'
+import { ThingsIBuySheet } from '../shop/ThingsIBuySheet'
+import { onMenu } from '../shop/stock'
+import { useStockCopy } from '../shop/stockCopy'
 import { ConnectRow } from '../connect/ConnectTile'
 import { Sheet } from './Sheet'
 import { AskHint } from './AskHint'
@@ -81,6 +85,8 @@ export type ShopSheetKind =
   | 'stamps'
   /** The stamp card with its thank-you perks already open (the coach's "show my perks"). */
   | 'perks'
+  /** Tea dust, milk and the rest the shop buys to make its menu (OB-310). */
+  | 'thingsIBuy'
 
 /** A glanceable tile: icon + label, one big value, a little supporting detail. */
 export function Tile({
@@ -363,6 +369,7 @@ export function ShopTiles({
   const t = useCopy()
   const locale = useLocale()
   const tabs = useTabsCopy()
+  const stock = useStockCopy()
   const ws = useWorkspace()
   const [more, setMore] = useState(false)
   const shop = ws.active
@@ -374,10 +381,13 @@ export function ShopTiles({
     shopZone(shop.fields),
   )
   // In the busy hours the row asks about the top items, one at a time (the old sweep card).
+  // Customers buy from the menu; the things the shop buys have their own row (OB-310).
+  const menu = ws.products.filter(onMenu)
+  const bought = ws.products.length - menu.length
   const sweep = busyWindow(shop.fields.busy_hours)
-    ? ws.products.slice(0, SWEEP_ITEMS).find((product) => product.available !== false)
+    ? menu.slice(0, SWEEP_ITEMS).find((product) => product.available !== false)
     : undefined
-  const soldOutNames = ws.products
+  const soldOutNames = menu
     .filter((product) => product.available === false)
     .map((product) => productName(product.name, locale))
   const hours =
@@ -392,7 +402,7 @@ export function ShopTiles({
           tour="menu"
           icon={<UtensilsCrossed size={20} />}
           label={isServiceShop(shop.fields.category) ? tabs.services : t.menu}
-          value={ws.products.length ? t.itemCount(ws.products.length) : t.noItems}
+          value={menu.length ? t.itemCount(menu.length) : t.noItems}
           onClick={() => onSheet('menu')}
         />
         <ShopRow
@@ -442,6 +452,14 @@ export function ShopTiles({
       {more && (
         <Box id="shop-more">
           <RowGroup>
+            {bought > 0 && (
+              <ShopRow
+                icon={<ShoppingBasket size={20} />}
+                label={stock.thingsIBuy}
+                value={stock.thingsIBuyCount(bought)}
+                onClick={() => onSheet('thingsIBuy')}
+              />
+            )}
             <ShopRow
               icon={<Stamp size={20} />}
               label={tabs.stampCard}
@@ -463,15 +481,38 @@ function ShopPhotos() {
 }
 
 /** Every My shop sheet. Also opened from coach suggestion chips. */
-export function ShopSheets({
-  kind,
-  onClose,
-  menuFocus = null,
-}: {
+export function ShopSheets(props: {
   kind: ShopSheetKind | null
   onClose: () => void
   /** The menu opens at this item (a coach link to a change it just saved). */
   menuFocus?: string | null
+}) {
+  // The Menu's "Things I buy" link: the menu closes first so sheets never stack (OB-310).
+  const [things, setThings] = useState(false)
+  return (
+    <>
+      <OneSheet
+        {...props}
+        onThingsIBuy={() => {
+          props.onClose()
+          setThings(true)
+        }}
+      />
+      <ThingsIBuySheet open={things} onClose={() => setThings(false)} />
+    </>
+  )
+}
+
+function OneSheet({
+  kind,
+  onClose,
+  menuFocus = null,
+  onThingsIBuy,
+}: {
+  kind: ShopSheetKind | null
+  onClose: () => void
+  menuFocus?: string | null
+  onThingsIBuy: () => void
 }) {
   const t = useCopy()
   const locale = useLocale()
@@ -484,6 +525,8 @@ export function ShopSheets({
   if (kind !== null && kind !== last) setLast(kind)
   const shop = ws.active
   if (!shop) return null
+  // Only what customers can buy is ever sold out or listed for them (OB-310).
+  const menu = ws.products.filter(onMenu)
   // Editors are their own dialogs; close the sheet first so modals never stack.
   const then = (run: () => void) => () => {
     onClose()
@@ -532,7 +575,7 @@ export function ShopSheets({
           )}
           {kind === 'details' && (
             <Box sx={{ mb: 4 }}>
-              <MapsHandoff fields={shop.fields} products={ws.products} />
+              <MapsHandoff fields={shop.fields} products={menu} />
             </Box>
           )}
           <Box component="dl" sx={{ m: 0, display: 'grid', gap: 4 }}>
@@ -617,21 +660,23 @@ export function ShopSheets({
         </Sheet>
       )
     case 'menu':
-      return <MenuSheet {...common} focus={menuFocus} />
+      return <MenuSheet {...common} focus={menuFocus} onThingsIBuy={onThingsIBuy} />
+    case 'thingsIBuy':
+      return <ThingsIBuySheet {...common} />
     case 'soldOut':
       return (
         <Sheet {...common} titleId="soldout-sheet-title" ask="sold_out" title={t.soldOut}>
           <Typography variant="bodyMedium" color="text.secondary" sx={{ mb: 4 }}>
-            {ws.products.length ? t.soldOutHint : t.productsEmpty}
+            {menu.length ? t.soldOutHint : t.productsEmpty}
           </Typography>
-          {ws.products.length > 0 && (
+          {menu.length > 0 && (
             <List disablePadding sx={list}>
-              {ws.products.map((product, index) => {
+              {menu.map((product, index) => {
                 const available = product.available !== false
                 return (
                   <ListItem
                     key={product.id ?? product.name}
-                    divider={index < ws.products.length - 1}
+                    divider={index < menu.length - 1}
                     secondaryAction={
                       <Switch
                         edge="end"

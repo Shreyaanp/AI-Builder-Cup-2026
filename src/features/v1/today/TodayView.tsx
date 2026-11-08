@@ -39,6 +39,8 @@ import { isServiceShop } from '../tabsCopy'
 import { useWorkspace } from '../workspaceContext'
 import { useOnboardingCopy } from '../onboardingCopy'
 import { useSourceCopy } from './sourceCopy'
+import { MakeNow } from './MakeNow'
+import { shopZone } from '../../../region/region'
 import { useTodayCopy, type Festival } from './todayCopy'
 import { promiseCopyFor } from './promiseCopy'
 import type { CoachLine, Need, StepId, TodayPlan } from './todayPlan'
@@ -550,6 +552,7 @@ function NeedRow({
   const ws = useWorkspace()
   const roles = useTheme().material
   const [busy, setBusy] = useState(false)
+  const [making, setMaking] = useState(false)
   const step = useStepAction(need.kind === 'step' ? need.step : 'items')
   const promiseSettle = usePromiseSettle(
     need.kind === 'promise' ? need.promise : null,
@@ -569,6 +572,8 @@ function NeedRow({
   let icon: ReactNode
   let text = ''
   let buttons: ReactNode
+  // Opens under the row, full width ("Make 20 more now?").
+  let panel: ReactNode = null
   if (need.kind === 'promise') {
     // Last night's promise (HABIT change 4): do it, or "Not today" clears it with no comment.
     const { promise } = need
@@ -659,6 +664,11 @@ function NeedRow({
     icon = <PackageMinus size={20} />
     const name = productName(need.item, locale)
     const productId = need.productId
+    // 0 left is sold out, never "only 0 left" with Make more beside it (OB-310).
+    const lowText =
+      need.left === 0
+        ? tt.soldOut(name, productFeminine(need.item, locale))
+        : tt.low(name, need.left)
     if (need.source === 'unknown' && productId) {
       // One question, saved on the item so it is never asked again (OB-239).
       text = sc.ask(name, need.left)
@@ -694,22 +704,29 @@ function NeedRow({
         </>
       )
     } else if (need.source === 'made') {
-      // Made here: the prep plan, never a supplier order (OB-239).
-      text = tt.low(name, need.left)
-      buttons = (
-        <Button
-          variant={primary}
-          sx={{ minHeight: 48 }}
-          onClick={() => actions.ask(sc.makeDraft(need.item))}
-        >
+      // Made here: never a supplier order (OB-239). "Make more" asks about now, with what
+      // usually sells today, and "Made 20" adds to the stock (OB-310).
+      text = lowText
+      buttons = making ? null : (
+        <Button variant={primary} sx={{ minHeight: 48 }} onClick={() => setMaking(true)}>
           {sc.makeMore}
         </Button>
+      )
+      panel = making && (
+        <MakeNow
+          name={name}
+          left={need.left}
+          usual={need.usual}
+          weekday={shopWeekday(shopZone(ws.active?.fields))}
+          productId={need.productId}
+          onDone={() => setMaking(false)}
+        />
       )
     } else if (need.source === 'unknown') {
       // Not said, and no item to save the answer on: never an Order button (OB-243).
       text = sc.askInMenu(name, need.left, isServiceShop(ws.active?.fields.category))
     } else {
-      text = tt.low(name, need.left)
+      text = lowText
       buttons = (
         <Button
           variant={primary}
@@ -809,11 +826,27 @@ function NeedRow({
       >
         {text}
       </Typography>
-      <Stack direction="row" sx={{ gap: 1, flexShrink: 0, ml: 'auto' }}>
-        {buttons}
-      </Stack>
+      {buttons && (
+        <Stack direction="row" sx={{ gap: 1, flexShrink: 0, ml: 'auto' }}>
+          {buttons}
+        </Stack>
+      )}
+      {panel}
     </Box>
   )
+}
+
+const WEEKDAY = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+
+/** Today's weekday in the shop's own time zone, 0 = Monday (the server's usual-sales day). */
+function shopWeekday(timeZone: string): number {
+  try {
+    const day = new Intl.DateTimeFormat('en-US', { weekday: 'short', timeZone }).format(new Date())
+    return Math.max(0, WEEKDAY.indexOf(day))
+  } catch {
+    // A saved zone the phone does not know: the phone's own day, never a broken Today.
+    return (new Date().getDay() + 6) % 7
+  }
 }
 
 /** Yesterday (or today so far) and today's forecast; tapping asks the coach for the chart. */

@@ -38,6 +38,8 @@ export type Need =
       /** Bought: Order. Made: Make more. Unknown: "Do you make it or buy it?" (OB-239). */
       source: 'bought' | 'made' | 'unknown'
       productId: string | null
+      /** How many usually sell today, for "Make 20 more now? Usually 26 sell…" (OB-310). */
+      usual: number | null
     }
   | { id: string; kind: 'soldOut'; items: Product[] }
   | { id: string; kind: 'step'; step: StepId }
@@ -273,6 +275,7 @@ export function todayPlan(input: TodayInput): TodayPlan {
       // Not said is never bought: an older answer without it asks, never offers Order (OB-243).
       source: low.source ?? 'unknown',
       productId: low.product_id ?? null,
+      usual: low.usual ?? null,
     })
   if (soldOut.length) all.push({ id: 'sold-out', kind: 'soldOut', items: soldOut })
   // On its way, or just topped up: news first, "Order more" at most. Never the lead.

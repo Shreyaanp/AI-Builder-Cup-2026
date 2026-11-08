@@ -931,6 +931,11 @@ def propose_customer_facts(
     )
 
 
+def stock_said(count: int | None) -> str:
+    """A count as the review card says it: 0 left is "sold out", never "0 left" (OB-310)."""
+    return "not counted" if count is None else "sold out" if count == 0 else f"{count} left"
+
+
 def propose_products(items: list[ProductInput]) -> dict[str, Any]:
     """Prepare additions or corrections to the active shop's products and prices, including
     marking items sold out (available=false), for the owner to review. Use one call for all
@@ -1047,10 +1052,17 @@ def propose_products(items: list[ProductInput]) -> dict[str, Any]:
                     f"{product.name}: price changes from {money(known['price']):g} to "
                     f"{money(product.price):g}. Ask the owner to confirm this is correct."
                 )
-        if known.get("available", True) != product.available:
+        counted = product.stock is not None and known.get("stock") != product.stock
+        if known.get("available", True) != product.available and not (
+            # "4 left → sold out" already says it (OB-310).
+            counted and product.available == (product.stock != 0)
+        ):
             changes.append(
                 f"{product.name}: {'back in stock' if product.available else 'sold out'}"
             )
+        if counted:
+            before, after = stock_said(known.get("stock")), stock_said(product.stock)
+            changes.append(f"{product.name}: {before} → {after}")
     return {
         "status": "needs_review",
         "proposal_id": proposal["id"],

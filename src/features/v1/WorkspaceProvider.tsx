@@ -5,6 +5,10 @@ import { X } from 'lucide-react'
 import { canOfferInstall, offerInstall, rememberInstallDeclined } from '../../app/pwa'
 import { useCopy } from './strings'
 import { newlySoldOut, useSoldOutUndoCopy } from './soldOutUndo'
+import { useStockCopy } from '../shop/stockCopy'
+import { StockNote } from '../shop/StockNote'
+import { productName } from '../../i18n/productNames'
+import { useLocale } from '../../state/hooks'
 import type { Api, Business, Me, Product, Proposal } from './api'
 import { WorkspaceContext } from './workspaceContext'
 import type { Destination, Editor, NewShopPhase, Workspace } from './workspaceContext'
@@ -41,6 +45,16 @@ function belowSheetHeader(): number | null {
   const label = sheet.getAttribute('aria-labelledby')
   const title = label ? document.getElementById(label) : null
   return Math.round((title ?? sheet).getBoundingClientRect()[title ? 'bottom' : 'top']) + 8
+}
+
+/**
+ * A new count and what customers are told with it, as the server saves it (OB-310): 0 left is
+ * sold out; more made after 0 is on sale again.
+ */
+function withStock(product: Product, stock: number | null): Partial<Product> {
+  if (stock === 0) return { stock, available: false }
+  if (product.stock === 0 && product.available === false) return { stock, available: true }
+  return { stock }
 }
 
 export function WorkspaceProvider({
@@ -140,6 +154,17 @@ export function WorkspaceProvider({
   // Items a confirmed change just marked sold out: the saved note offers Undo (OB-261).
   const [undoSoldOut, setUndoSoldOut] = useState<string[]>([])
   const undoCopy = useSoldOutUndoCopy()
+  // The last stock tap, named, with Undo back to the count before this run of taps (OB-310).
+  const [stockUndo, setStockUndo] = useState<{
+    id: string
+    name: string
+    before: number | null
+    after: number | null
+    // The sold-out switch before the run of taps: Undo puts it back with the count.
+    available: boolean
+  } | null>(null)
+  const stockCopy = useStockCopy()
+  const locale = useLocale()
   const [photoPending, setPhotoPending] = useState(false)
   const consumePhotoRequest = useCallback(() => setPhotoPending(false), [])
   // A chat starter from another screen (e.g. My shop's "Customers ask" card).
@@ -261,6 +286,93 @@ export function WorkspaceProvider({
     },
     [activeId, api, reload, t.actionFailed],
   )
+  const saveItem = useCallback(
+    async (product: Product, path: string, body: object, change: Partial<Product>) => {
+      if (!activeId || !product.id) return false
+      const id = product.id
+      const patch = (fields: Partial<Product>) =>
+        setInventory((current) => ({
+          ...current,
+          items: current.items.map((item) => (item.id === id ? { ...item, ...fields } : item)),
+        }))
+      // Optimistic, like the sold-out switch: a failure restores what was saved.
+      patch(change)
+      try {
+        await api(`/businesses/${activeId}/inventory/${encodeURIComponent(id)}/${path}`, {
+          method: 'POST',
+          body: JSON.stringify(body),
+        })
+        await reload()
+        return true
+      } catch {
+        patch({
+          stock: product.stock,
+          for_sale: product.for_sale,
+          ask_for_sale: product.ask_for_sale,
+          available: product.available,
+        })
+        setToast(t.actionFailed)
+        return false
+      }
+    },
+    [activeId, api, reload, t.actionFailed],
+  )
+  const setStock = useCallback(
+    async (product: Product, change: { stock: number | null } | { add: number }) => {
+      const before = product.stock ?? null
+      const after =
+        'add' in change ? Math.max(0, (before ?? 0) + change.add) : (change.stock ?? null)
+      const done = await saveItem(product, 'stock', change, withStock(product, after))
+      if (done && product.id) {
+        const id = product.id
+        // A run of taps on one item keeps the first count, so Undo goes back to it.
+        setStockUndo((last) => ({
+          id,
+          name: product.name,
+          before: last?.id === id ? last.before : before,
+          after,
+          available: last?.id === id ? last.available : product.available !== false,
+        }))
+      }
+      return done
+    },
+    [saveItem],
+  )
+  const [noteHosts, setNoteHosts] = useState(0)
+  const hostStockNote = useCallback(() => {
+    setNoteHosts((count) => count + 1)
+    return () => setNoteHosts((count) => count - 1)
+  }, [])
+  const stockNote = useMemo(() => {
+    if (!stockUndo) return null
+    const named = (count: number | null) =>
+      count === null ? t.saved : stockCopy.saved(productName(stockUndo.name, locale), count)
+    return {
+      message: named(stockUndo.after),
+      close: () => setStockUndo(null),
+      undo: () => {
+        setStockUndo(null)
+        const item = inventory.items.find((entry) => entry.id === stockUndo.id)
+        if (!item) return
+        const { before, available } = stockUndo
+        // 0 left is sold out whatever the switch was; any other count gets the saved switch back.
+        const change = before === 0 ? withStock(item, 0) : { stock: before, available }
+        void saveItem(item, 'stock', { stock: before, available }, change).then((done) => {
+          if (done) setToast(named(before))
+        })
+      },
+    }
+  }, [stockUndo, inventory.items, saveItem, stockCopy, locale, t.saved])
+  const setForSale = useCallback(
+    (product: Product, forSale: boolean) =>
+      saveItem(
+        product,
+        'for-sale',
+        { for_sale: forSale },
+        { for_sale: forSale, ask_for_sale: false },
+      ),
+    [saveItem],
+  )
   const confirm = useCallback(
     async (proposal: Proposal) => {
       const receipt = await api<{ business_id: string }>(`/proposals/${proposal.id}/approve`, {
@@ -367,6 +479,11 @@ export function WorkspaceProvider({
         await loadProducts(activeId).catch(() => undefined)
       },
       setAvailability,
+      setStock,
+      setForSale,
+      stockNote,
+      hostStockNote,
+      stockNoteHosted: noteHosts > 0,
       setShared,
       // A sandbox shop has no public page; its link opens the demo's customer side.
       shareUrl:
@@ -423,6 +540,11 @@ export function WorkspaceProvider({
       speakReplies,
       reload,
       setAvailability,
+      setStock,
+      setForSale,
+      stockNote,
+      hostStockNote,
+      noteHosts,
       setShared,
       savedProposals,
       confirm,
@@ -563,6 +685,7 @@ export function WorkspaceProvider({
           </Button>
         }
       />
+      <StockNote />
       <Snackbar
         open={Boolean(toast)}
         message={toast}
