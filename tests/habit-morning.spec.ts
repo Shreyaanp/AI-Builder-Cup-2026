@@ -350,6 +350,8 @@ test('chat and screen both set a promise; doing it marks it done (offline coach)
   await row.getByRole('button', { name: 'Order now' }).click()
   await expect(page.getByRole('log')).toContainText('Order more Milk', { timeout: 20_000 })
   await expect.poll(() => promiseFor(page, id, tomorrow)).toBeNull()
+  // Today refreshes after the order: the test may end while that request is in its route.
+  await page.unrouteAll({ behavior: 'ignoreErrors' })
 })
 
 test('Hindi: the morning promise row is all Hindi', async ({ page }) => {
