@@ -50,6 +50,8 @@ export interface Workspace {
   go: (destination: Destination) => void
   select: (id: string | null) => void
   reload: () => Promise<void>
+  /** The active shop and its items again, after a change made outside a review (OB-263). */
+  reloadProducts: () => Promise<void>
   /** Owner's immediate sold-out switch; false when it did not save (the switch moves back). */
   setAvailability: (product: Product, available: boolean) => Promise<boolean>
   /**
@@ -83,7 +85,8 @@ export interface Workspace {
    * (e.g. one inline price change), then refresh. Same exact-digest approval as the review.
    */
   confirm: (proposal: Proposal) => Promise<void>
-  notify: (message: string) => void
+  /** A short note; with `undo`, it offers Undo until it hides (OB-263). */
+  notify: (message: string, undo?: () => void) => void
   /** Ask the Coach screen to open the photo picker (from empty states and suggestions). */
   requestPhoto: () => void
   photoPending: boolean

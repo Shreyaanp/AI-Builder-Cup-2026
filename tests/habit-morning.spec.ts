@@ -415,11 +415,25 @@ for (const lang of ['en', 'hi'] as const) {
     const supplyRow = page.locator('[data-need="supply"]')
     await expect(supplyRow).toContainText('Milk runs out')
     const runsOut = ((await supplyRow.innerText()).match(/Milk runs out (.+)/) ?? [])[1]!.trim()
-    // Some Milk is on its way, and the row says so.
+    const day = (
+      (await (await page.request.get(`/api/v1/businesses/${id}/supply`)).json()) as {
+        needs: { item: string; runs_out: string }[]
+      }
+    ).needs.find((need) => need.item === 'Milk')!.runs_out
+    // Some Milk is on its way, but short of the week: it still runs out that day (the shop sells
+    // more than usual), so the row says what is coming and offers Order more (OB-263).
     await milkOnOrder(page, id)
+    await page.route(/\/businesses\/[^/]+\/supply$/, async (route) => {
+      const body = await (await route.fetch()).json()
+      for (const need of body.needs ?? [])
+        if (need.item === 'Milk')
+          Object.assign(need, { cover: 'partly', covered: false, runs_out: day })
+      await route.fulfill({ json: body })
+    })
     await open(page, name)
-    await expect(supplyRow).toContainText(/on order, arriving/)
-    const onOrder = (await supplyRow.innerText()).split('\n').find((l) => /on order/.test(l))!
+    await expect(supplyRow).toContainText(/Milk: 24 pack arriving .+✓/)
+    await expect(supplyRow).toContainText(`Still runs out ${runsOut}`)
+    const onOrder = (await supplyRow.innerText()).split('\n').find((l) => /arriving/.test(l))!
     const made = await page.request.post(`/api/v1/businesses/${id}/promise`, {
       data: { text: 'order milk', kind: 'order', item: 'Milk' },
     })
@@ -429,16 +443,16 @@ for (const lang of ['en', 'hi'] as const) {
     await open(page, name, lang === 'hi' ? 'स्थानीय प्रीव्यू जारी रखें' : undefined)
     const today = page.getByTestId('today')
     const row = today.locator('[data-need="promise"]')
-    const reorder = row.getByRole('button', { name: lang === 'hi' ? /मँगाएँ|ऑर्डर/ : 'Reorder' })
+    const reorder = row.getByRole('button', { name: lang === 'hi' ? /मँगाएँ|ऑर्डर/ : 'Order more' })
     if (lang === 'en') {
       await expect(row).toContainText('Last night you said: order Milk')
       // While the promise is open, Coach still says when Milk runs out and what is coming.
-      await expect(row).toContainText(`Milk runs out ${runsOut}`)
+      await expect(row).toContainText(`Still runs out ${runsOut}`)
       await expect(row).toContainText(onOrder)
     } else {
       await expect(row).toContainText('कल रात आपने कहा था: Milk मँगाना')
       await expect(row).toContainText(/Milk .+ को खत्म हो(गा|गी)/)
-      await expect(row).toContainText(/ऑर्डर/)
+      await expect(row).toContainText(/और मँगाएँ/)
       await expect(row).not.toContainText(/Last night|runs out|on order|Not today/)
     }
     // Said once: the promise is the supply row, with the supply row's own Reorder, filled.
@@ -466,16 +480,16 @@ for (const lang of ['en', 'hi'] as const) {
     )
     await reorder.click()
     await expect(row).toHaveCount(0)
-    if (lang === 'en') await expect(supplyRow).toContainText(`Milk runs out ${runsOut}`)
+    if (lang === 'en') await expect(supplyRow).toContainText(`Still runs out ${runsOut}`)
     await expect(supplyRow.getByRole('status')).toContainText(/Milk/)
     await expect.poll(() => promiseFor(page, id, tomorrow)).toBeNull()
     if (lang === 'hi') {
       await expect(supplyRow.getByRole('group')).toBeVisible()
       return
     }
-    // The question is the supply row's own: "Not now" puts the Reorder button back.
+    // The question is the supply row's own: "Not now" puts the Order more button back.
     await supplyRow.getByRole('button', { name: 'Not now' }).click()
-    await expect(supplyRow.getByRole('button', { name: 'Reorder' })).toBeVisible()
+    await expect(supplyRow.getByRole('button', { name: 'Order more' })).toBeVisible()
     expect(await promiseFor(page, id, tomorrow)).toBeNull()
   })
 }

@@ -93,7 +93,7 @@ for (const [size, viewport] of Object.entries(SIZES)) {
 
       if (index === 1)
         // Real seeded numbers, not example data.
-        await expect(card).toContainText(/runs out .*\n?.*left, about \d/s)
+        await expect(card).toContainText(/(runs out .*|: order on its way)\n?.*left, about \d/s)
       if (index === 2) await expect(card).toContainText(/WhatsApp to .*: \d+ items/)
       if (shots) await page.screenshot({ path: `${shots}/${size}-step${index + 1}.png` })
 

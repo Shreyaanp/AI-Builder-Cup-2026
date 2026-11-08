@@ -106,8 +106,8 @@ export function TodayView({
       </Stack>
     )
   }
-  // In the evening the card sits low, in the thumb zone: "Close the day" stays its first row and
-  // its one filled button (SIMPLIFY Batch 5; PHONE-UX rule 1).
+  // The card sits low at every hour, so its one filled button is in the thumb zone (PHONE-UX
+  // rule 1, OB-315); in the evening "Close the day" is its first row (SIMPLIFY Batch 5).
   const evening = plan.needs[0]?.kind === 'closeDay'
   const needs = (
     <NeedsCard
@@ -146,16 +146,15 @@ export function TodayView({
           progress={plan.progress}
         />
       )}
-      {/* One card, one filled button: the first row is the lead action, and stock (the supply
-          row with its run-out day, low items and supply exceptions) lives only here. Setup steps
-          left are rows in it too, so the setup bar is not a third progress element. */}
-      {!evening && needs}
       {firstCustomers && ws.shareUrl && (
         <FirstCustomers url={ws.shareUrl} name={shop.fields.name} />
       )}
       {(plan.pulse || plan.forecast) && <PulseCard plan={plan} actions={actions} />}
       {chips?.(plan.part === 'evening')}
-      {evening && <Box sx={{ mt: 'auto' }}>{needs}</Box>}
+      {/* One card, one filled button: the first row is the lead action, and stock (the supply
+          row with its run-out day, low items and supply exceptions) lives only here. Setup steps
+          left are rows in it too, so the setup bar is not a third progress element. */}
+      <Box sx={{ mt: 'auto' }}>{needs}</Box>
     </Box>
   )
 }
@@ -866,6 +865,8 @@ function PulseCard({ plan, actions }: { plan: TodayPlan; actions: TodayActions }
   // gives its line back, so Today fits a 360 phone (a festival is news and stays).
   const rainInForecast = plan.forecast && plan.line?.kind === 'rain'
   const coachLine = useLineText(quiet || rainInForecast ? null : plan.line)
+  // …as a compact cue on that row, so a rainy morning still says so within the 360 fit (OB-301).
+  const rain = rainInForecast && !quiet && plan.line?.rain != null ? plan.line.rain : null
   const lines: string[] = []
   if (plan.pulse) {
     // One short row: the two numbers that matter most (the rest are one tap away in the chat).
@@ -892,7 +893,8 @@ function PulseCard({ plan, actions }: { plan: TodayPlan; actions: TodayActions }
     )
     // The busiest hours are the owner's own setting; a coach line (rain, a festival) is news, so
     // it takes that place and the row stays short.
-    if (plan.forecast.busy && !plan.line) {
+    if (rain != null) text += ` · ☔ ${number.format(rain)}%`
+    else if (plan.forecast.busy && !coachLine) {
       const [start, end] = plan.forecast.busy.map(
         (minutes) => new Date(Date.UTC(2026, 0, 1, Math.floor(minutes / 60), minutes % 60)),
       )
@@ -908,7 +910,7 @@ function PulseCard({ plan, actions }: { plan: TodayPlan; actions: TodayActions }
     <ButtonBase
       data-testid="today-pulse"
       data-tour="forecast"
-      aria-label={`${lines.join('. ')}. ${ask}`}
+      aria-label={`${lines.join('. ')}${rain != null ? `. ${tt.rain(rain)}` : ''}. ${ask}`}
       onClick={() => actions.ask(ask)}
       sx={{
         width: '100%',

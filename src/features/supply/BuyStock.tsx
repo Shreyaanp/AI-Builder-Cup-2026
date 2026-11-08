@@ -106,7 +106,7 @@ export function BuyStockRow({
         tab={tab}
         onTab={onTab}
         stock={stock}
-        hasRunsOut={runsOut !== null}
+        hasRunsOut={runsOut !== null && !runsOut.arriving}
         onThingsIBuy={() => {
           onTab(null)
           setThings(true)

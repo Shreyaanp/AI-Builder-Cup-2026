@@ -492,7 +492,10 @@ async def first_jobs(ctx: Any, question: str) -> list[StreamEvent] | None:
             jobs.append(reply_job)
         forecast = await _forecast(ctx, today, inventory)
         category = str(fields.get("category") or "")
-        for low in low_stock(inventory, forecast, today, category):
+        from .supply_coming import arrivals_by_item
+
+        arrivals = arrivals_by_item(ctx.store, ctx.uid, ctx.business_id, inventory)
+        for low in low_stock(inventory, forecast, today, category, arrivals):
             hi, unit = (
                 hindi_item(low.name),
                 next((str(p.get("unit") or "") for p in inventory if p["name"] == low.name), ""),

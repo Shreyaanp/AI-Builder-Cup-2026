@@ -70,7 +70,11 @@ export function useTodayPlan(unread: number | null): {
     now,
     face: trust?.face ?? null,
     supply: supply.item
-      ? { item: supply.item, soon: soon(supply.need?.runs_out, facts?.date) }
+      ? {
+          item: supply.item,
+          soon: soon(supply.need?.runs_out, facts?.date),
+          waiting: supply.waiting,
+        }
       : null,
     promiseAnswered: Boolean(facts?.promise && promiseDay === facts.promise.day),
   })
