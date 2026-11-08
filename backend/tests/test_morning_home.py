@@ -119,7 +119,8 @@ def test_ob329_an_old_close_still_reports_but_no_longer_says_repeat_it() -> None
     [
         "How much to make",
         "how much should i make today",
-        "How many brownies to bake",
+        "how much to bake today",
+        "How much do we prep",
         "kitna banana hai",
         "aaj kitne banane hain",
         "कितना बनाना है",
@@ -142,6 +143,9 @@ def test_ob328_make_questions_open_the_list(said: str) -> None:
         "How much should I prep tomorrow",
         "कल कितनी तैयारी करूँ",
         "kal kitna banana hai",
+        # An item named in English: the coach gives that item's forecast.
+        "How many samosa should I make",
+        "How many brownies to bake",
         # What happened, not what to do.
         "how many did i make",
         "how much money did i make",
