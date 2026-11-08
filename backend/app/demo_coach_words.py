@@ -35,7 +35,10 @@ SOLD = (
     r"(?:sold\s*out|out\s+of\s+stock|finished|over|khatam|khatm|khattam|khalas|khallas"
     r"|nahin?\s+(?:hai|bacha|bache)|bik\s+gay[aie])"
 )
-SOLD_TAIL = r"(?:\s+(?:ho|hai|hain|gaya|gaye|gayi|gai|for\s+today|today|aaj|now|ab|already|ji))*"
+SOLD_TAIL = (
+    r"(?:\s*(?:hogaya|hogya|hogaye|hogye|hogayi|hogyi)"
+    r"|\s+(?:ho|hai|hain|gaya|gya|gaye|gye|gayi|gyi|gai|for\s+today|today|aaj|now|ab|already|ji))*"
+)
 SOLD_OUT = re.compile(
     rf"{LEAD}(?P<name>{NAME})\s+(?:(?:is|are|as|ab|aaj|today|now|all|sab|pura|poora)\s+)*"
     rf"{SOLD}{SOLD_TAIL}",
@@ -65,13 +68,13 @@ PRICE = re.compile(
 # A bare "samosa 20" may be a sales count: a new price needs a price word.
 PRICE_CUE = re.compile(
     r"\b(?:now|ab|price|daam|dam|kimat|keemat|rupees?|rupaye|rupaiye|rupay|rs|inr|to|costs?)\b"
-    r"|₹|/-",
+    r"|\d\s+(?:ka|ki|ke)\b|\b(?:is|are)\s+\d|₹|/-",
     re.I,
 )
 # Hindi, matched without the nukta (ख़त्म and खत्म are one word to the owner).
 HI_NAME = r"[ऀ-ॿ]+(?:\s+[ऀ-ॿ]+){0,3}?"
 HI_LEAD = r"(?:(?:आज|अब|मेरा|मेरी|मेरे)\s+)*"
-HI_SOLD = r"(?:खत्म|खतम|समाप्त|नहीं\s+है|नहीं\s+बचा|नहीं\s+बचे|नहीं\s+बची|बिक\s+ग(?:य[ाेी]|ई|ए))"
+HI_SOLD = r"(?:खत्म|खतम|समाप्त|सोल्ड\s*आउट|नहीं\s+है|नहीं\s+बचा|नहीं\s+बचे|नहीं\s+बची|बिक\s+ग(?:य[ाेी]|ई|ए))"
 HI_SOLD_OUT = re.compile(
     rf"{HI_LEAD}(?P<name>{HI_NAME})\s+(?:(?:आज|अब|सब|पूरा|पूरे)\s+)*{HI_SOLD}"
     r"(?:\s+(?:हो|गया|गए|गये|गयी|गई|है|हैं|चुका|चुके|चुकी|आज|अब))*"
@@ -84,6 +87,8 @@ HI_PRICE = re.compile(
     r"(?:\s+(?:की|का|के|है|हैं|हो|गई|गयी|गया|कर|दो|दें|करो|अब))*"
 )
 HI_PRICE_CUE = re.compile(r"अब|कीमत|दाम|भाव|रेट|रुपय|रुपए|रूपय|रु|₹|/-")
+# "No samosa today" says sold out with a "no" that is not a "don't".
+NO_MORE = re.compile(rf"no(?:\s+more)?\s+(?P<name>{NAME})(?:\s+(?:today|left|aaj))?")
 # A question or a "not" is never a change ("kya samosa khatam hai", "samosa not sold out").
 ASKED = re.compile(
     r"^(?:what|how|why|can|could|should|is|are|do|does|did|will|would|kya|kaise|क्या|कैसे)\b",
@@ -254,10 +259,11 @@ def _hindi_forms(name: str) -> set[str]:
 
 
 def menu_item(
-    said: str, inventory: list[dict[str, Any]], sold: dict[str, float]
+    said: str, inventory: list[dict[str, Any]], sold: dict[str, float], guess: bool = True
 ) -> dict[str, Any] | None:
     """The saved item the owner means: its own name, its Hindi name, or the last word of one
-    ("chai" is the shop's best-selling chai, "Masala chai")."""
+    ("chai" is the shop's best-selling chai, "Masala chai"). Without `guess`, a word two items
+    end in means neither: the live coach asks which one."""
     words = _words(said)
     text = bare(said)
     # Hinglish plurals end in -e ("samose" for "samosa").
@@ -277,11 +283,68 @@ def menu_item(
         if _words(item["name"])[-1] == words[0]
         or any(form.split()[-1] == text for form in _hindi_forms(item["name"]))
     ]
+    if not guess and len(tails) > 1:
+        return None
     return max(tails, key=lambda item: sold.get(item["name"], 0), default=None)
 
 
 def _money(amount: float) -> str:
     return f"₹{amount:g}"
+
+
+Change = tuple[str, dict[str, Any], float | None]
+
+
+def read_changes(
+    question: str, inventory: list[dict[str, Any]], sold: dict[str, float], guess: bool = True
+) -> list[Change] | None:
+    """Every change one message says, as (kind, saved item, new price); None unless all of it
+    is understood, so a change is never half-made."""
+    text = bare(question)
+    if no_more := NO_MORE.fullmatch(text):
+        text = f"{no_more['name']} sold out"
+    if "?" in question or ASKED.match(text) or NEGATION.search(text):
+        return None
+    clauses = [part for part in CLAUSES.split(text) if part]
+    if not clauses or len(clauses) > 4:
+        return None
+    said: list[Change] = []
+    bare_items: list[dict[str, Any]] = []
+    for clause in clauses:
+        found = _clause(clause)
+        item = menu_item(found[1], inventory, sold, guess) if found else None
+        if not found and (just_named := menu_item(clause, inventory, sold, guess)):
+            bare_items.append(just_named)  # "samosa aur bun maska khatam": one verb, two items
+            continue
+        if not found or not item:
+            return None
+        if found[0] != "price":
+            said.extend((found[0], earlier, None) for earlier in bare_items)
+            bare_items = []
+        said.append((found[0], item, found[2]))
+    return None if bare_items else said
+
+
+def live_changes(question: str, ctx: Any) -> list[dict[str, Any]] | None:
+    """The same sentences for the real coach: propose_products items, or None to let the model
+    read it. Never a guess between two chais, and something the shop buys is the model's to ask."""
+    from .product_source import source_of
+
+    context = ctx.store.context(ctx.uid, ctx.business_id)
+    category = str(context["business"]["fields"].get("category") or "")
+    said = read_changes(question, context["inventory"], {}, guess=False)
+    if not said or any(
+        kind == "sold" and source_of(item, category) == "bought" for kind, item, _ in said
+    ):
+        return None
+    items: dict[str, dict[str, object]] = {}
+    for kind, item, price in said:
+        entry = items.setdefault(item["name"], {"name": item["name"]})
+        if kind == "price":
+            entry["price"] = price
+        else:
+            entry["available"] = kind == "back"
+    return list(items.values())
 
 
 def owner_changes(ctx: Any, question: str) -> list[StreamEvent] | None:
@@ -293,33 +356,14 @@ def owner_changes(ctx: Any, question: str) -> list[StreamEvent] | None:
     from .money import to_major
     from .product_source import source_of
 
-    text = bare(question)
-    if "?" in question or ASKED.match(text) or NEGATION.search(text):
-        return None
-    clauses = [part for part in CLAUSES.split(text) if part]
-    if not clauses or len(clauses) > 4:
-        return None
     context = ctx.store.context(ctx.uid, ctx.business_id)
     fields, inventory = context["business"]["fields"], context["inventory"]
     currency = shop_currency(context["business"])
     sold: dict[str, float] = {}
     for row in ctx.store.sales_history(ctx.uid, ctx.business_id):
         sold[row["item"]] = sold.get(row["item"], 0) + float(row["quantity"])
-    said: list[tuple[str, dict[str, Any], float | None]] = []
-    bare_items: list[dict[str, Any]] = []
-    for clause in clauses:
-        found = _clause(clause)
-        item = menu_item(found[1], inventory, sold) if found else None
-        if not found and (just_named := menu_item(clause, inventory, sold)):
-            bare_items.append(just_named)  # "samosa aur bun maska khatam": one verb, two items
-            continue
-        if not found or not item:
-            return None
-        if found[0] != "price":
-            said.extend((found[0], earlier, None) for earlier in bare_items)
-            bare_items = []
-        said.append((found[0], item, found[2]))
-    if bare_items:
+    said = read_changes(question, inventory, sold)
+    if not said:
         return None
     hindi = speaks_hindi(question)
     category = str(fields.get("category") or "")

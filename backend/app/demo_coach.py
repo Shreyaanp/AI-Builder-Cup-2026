@@ -15,13 +15,25 @@ from .demo_coach_words import (
     close_day,
     customer_reply,
     first_jobs,
+    menu_item,
     owner_changes,
     sales_today,
     tomorrow_note,
     unsure,
 )
+from .demo_coach_words import (
+    bare as words_bare,
+)
 from .demo_food_words import FOOD_UNITS, NUMBER_WORDS, is_food, singular
 from .demo_item_names import hindi_item, item_named_in
+from .demo_order_words import (
+    DRAFT_QUANTITY,
+    HINDI_AMOUNT_UNITS,
+    draft_order,
+    low_on_made,
+    out_of_supply,
+    reorder,
+)
 from .demo_stock_words import stock_change
 
 # When unsure: one short question, never a guessed card (S2-9); the examples are chips under it.
@@ -53,14 +65,12 @@ LOW_ON = re.compile(
 )
 # Words that ask for the order but are not the item ("order karo", "order please").
 ORDER_FILLER = re.compile(r"\b(?:karo|kar\s+do|kijiye|karna|please|mangao|manga\s+do)\b")
-DRAFT_QUANTITY = 10
 # An amount the owner said ("I need 20 L milk", Buy stock → Find a supplier): the draft uses it.
 AMOUNT = re.compile(
     r"(\d+(?:\.\d+)?)\s*(kgs?|kilos?|g|gms?|grams?|litres?|liters?|l|ltr|ml|packs?|packets?|"
     r"dozens?|लीटर|किलो|ग्राम)?(?=\s|$)",
     re.I,
 )
-HINDI_AMOUNT_UNITS = {"लीटर": "l", "किलो": "kg", "ग्राम": "g"}
 # The vendor list's Order ("Order from number 2: 20 l milk", sourcing/copy.ts chooseDraft).
 ORDER_FROM = re.compile(r"^\s*order from number (\d+)\s*:\s*(.+?)\s*$", re.I)
 ORDER_FROM_HI = re.compile(r"^\s*नंबर (\d+) से ऑर्डर\s*:\s*(.+?)\s*$")
@@ -475,9 +485,6 @@ async def _find_suppliers(ctx: Any, question: str) -> list[StreamEvent] | None:
     """What the real coach does for "find suppliers": list them, then draft the order card to the
     first one, on the sandbox's demo suppliers. Nothing goes until the visitor sends it."""
     from . import supply_chain
-    from .coordinator import find_suppliers, prepare_order
-    from .money import to_minor
-    from .sourcing import OrderItem, money_text
     from .sourcing_offline import sourcing_call
 
     inventory = ctx.store.inventory(ctx.uid, ctx.business_id)
@@ -500,6 +507,10 @@ async def _find_suppliers(ctx: Any, question: str) -> list[StreamEvent] | None:
         if item["name"].casefold() in words or item["name"] == said
     ]
     product = max(named, key=lambda item: len(item["name"]), default=None)
+    low_words = LOW_ON.search(asked)
+    if not product and low_words:
+        # "समोसे ख़त्म हो रहे हैं", "samose khatam ho rahe hain": the item as it is said.
+        product = menu_item(words_bare(asked[: low_words.start()]), inventory, {})
     if said and not product:
         # A supply this shop has not ordered yet still has its name in the table.
         product = {"name": said, "source": "bought"}
@@ -521,64 +532,13 @@ async def _find_suppliers(ctx: Any, question: str) -> list[StreamEvent] | None:
         if not function or function.name != "find_suppliers":
             return None
         item = str((function.args or {}).get("item") or "")
+    # Being low on something the shop makes is not a purchase, unless it asks for suppliers.
+    if made and not FIND_SUPPLIERS.search(asked):
+        return low_on_made(ctx, question, made)
     # The amount the owner said rides along, so the vendor list prices it and its Order asks
     # for the same amount.
     amount = next(((float(n), u) for n, u in AMOUNT.findall(asked) if u), None)
-    found = await (
-        find_suppliers(item, amount[0], HINDI_AMOUNT_UNITS.get(amount[1], amount[1]))
-        if amount
-        else find_suppliers(item)
-    )
-    if found.get("status") != "found":
-        return None
-    suppliers = found["suppliers"]
-    first = suppliers[0]
-    unit = first["item"]["unit"]
-    quantity = _said_quantity(asked, unit)
-    line = OrderItem(name=first["item"]["name"], quantity=quantity, unit=unit)
-    # A Hindi question gets a card whose supplier answers in Hindi.
-    from .agent import ui_language
-
-    token = ui_language.set("hi" if HINDI.search(question) else ui_language.get())
-    try:
-        drafted = prepare_order(first["id"], [line])
-    finally:
-        ui_language.reset(token)
-    if drafted.get("status") != "needs_owner_tap":
-        return None
-    currency = found["currency"]
-    if HINDI.search(question):
-        names = "; ".join(
-            f"{rank}. {row['name']}, {row['distance_km']:g} किमी, "
-            f"{money_text(to_minor(row['item']['price'], currency), currency)} प्रति "
-            f"{HINDI_UNITS.get(row['item']['unit'], row['item']['unit'])}"
-            for rank, row in enumerate(suppliers[:3], 1)
-        )
-        item_hi = hindi_item(item)
-        lead = f"{hindi_item(made)} आप ख़ुद बनाते हैं, इसलिए ये {item_hi} के लिए हैं। " if made else ""
-        text = (
-            f"{lead}{item_hi} के लिए पास के डेमो सप्लायर: {names}। {first['name']} से "
-            f"{quantity:g} {HINDI_UNITS.get(unit, unit)} {item_hi} का ऑर्डर नीचे तैयार है। "
-            f"आपके भेजे बिना कुछ नहीं जाता, और यह सिर्फ़ डेमो है। {next_line_hi('suppliers')}"
-        )
-    else:
-        names = "; ".join(
-            f"{rank}. {row['name']}, {row['distance_km']:g} km, "
-            f"{money_text(to_minor(row['item']['price'], currency), currency)} "
-            f"a {row['item']['unit']}"
-            for rank, row in enumerate(suppliers[:3], 1)
-        )
-        lead = f"You make {made} yourself, so these are for {item}. " if made else ""
-        text = (
-            f"{lead}Demo suppliers near you for {item}: {names}. I drafted "
-            f"{quantity:g} {unit} from {first['name']} below. It goes only when you tap "
-            f"Send, and only in the demo. {next_line('suppliers')}"
-        )
-    return [
-        StreamEvent(kind="suppliers", data=ctx.cards[found["card_id"]][1]),
-        StreamEvent(kind="order", data=ctx.cards[drafted["card_id"]][1]),
-        StreamEvent(kind="reply", text=text),
-    ]
+    return await draft_order(ctx, item, question, amount, made)
 
 
 def _said_quantity(text: str, unit: str, bare: bool = False) -> float:
@@ -667,6 +627,8 @@ async def public_demo_turn(ctx: Any, question: str) -> list[StreamEvent] | None:
         or close_day(ctx, question)
         or stock_change(ctx, question)
         or owner_changes(ctx, question)
+        or out_of_supply(ctx, question)
+        or await reorder(ctx, question)
     )
     if found:
         return found

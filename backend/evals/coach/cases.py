@@ -431,6 +431,37 @@ CASES: list[Case] = [
             )
         ],
     ),
+    Case(
+        "hindi_two_in_one",
+        "menu",
+        "Owner audit 3 Nov (OB-262): a price and a sold out in one Hindi sentence",
+        "chai_stall",
+        [
+            Turn(
+                "मसाला चाय अब 22 रुपये की है, समोसा खत्म हो गया",
+                calls=[
+                    Call(
+                        "propose_products",
+                        {
+                            "items": [
+                                {"name": "~masala chai", "price": 22},
+                                {"name": "~samosa", "available": False},
+                            ]
+                        },
+                        replay={
+                            "items": [
+                                {"name": "Masala chai", "price": 22},
+                                {"name": "Samosa", "available": False},
+                            ]
+                        },
+                    )
+                ],
+                forbid=("prepare_order", "draft_reorder", "find_suppliers"),
+                card=True,
+                extra="one_products_call",
+            )
+        ],
+    ),
     # --- Insights and forecast ----------------------------------------------------------------
     Case(
         "insights_this_week",
@@ -666,6 +697,52 @@ CASES: list[Case] = [
                 card=True,
                 reply_not=[r"\bhas been sent\b|\bI(?:'ve| have) sent\b"],
                 rubric="One line why (stock, runs out, supplier, price, arrival); tap Approve.",
+            )
+        ],
+    ),
+    Case(
+        "hinglish_reorder_item",
+        "purchase_orders",
+        "Persona study 3 Nov (OB-268): 'milk order karo' got directions to a screen",
+        "kirana",
+        [
+            Turn(
+                "atta order karo",
+                calls=[Call("draft_reorder", {"item": "~atta|flour"}, replay={"item": "atta"})],
+                forbid=("approve_and_send_po",),
+                card=True,
+                reply_not=[r"Grow\s*→|Buy stock\s*→"],
+                rubric="Drafts the order or asks one short question for the amount; no directions.",
+            )
+        ],
+    ),
+    Case(
+        "hindi_reorder_item",
+        "purchase_orders",
+        "Persona study 3 Nov (OB-268): 'दूध मँगाना है' got the generic answer",
+        "kirana",
+        [
+            Turn(
+                "आटा मँगाना है",
+                calls=[Call("draft_reorder", {"item": "~आटा|atta|flour"}, replay={"item": "atta"})],
+                forbid=("approve_and_send_po",),
+                card=True,
+                reply_not=[r"Grow\s*→|Buy stock\s*→"],
+                rubric="Drafts the order, or asks 'कितना आटा चाहिए?'; in Hindi, no directions.",
+            )
+        ],
+    ),
+    Case(
+        "dont_reorder_calls_nothing",
+        "purchase_orders",
+        "Self-review (OB-268): 'atta order mat karo' must not draft an order",
+        "kirana",
+        [
+            Turn(
+                "atta order mat karo",
+                forbid=("draft_reorder", "prepare_order", "find_suppliers"),
+                card=False,
+                rubric="Acknowledges in one short line; nothing is drafted.",
             )
         ],
     ),
