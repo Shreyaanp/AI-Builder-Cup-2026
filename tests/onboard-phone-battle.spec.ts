@@ -196,10 +196,7 @@ for (const { viewport, language, appearance, persona } of journeys)
         .getByTestId('map-card')
         .getByRole('button', { name: guided.confirmPin, exact: true })
         .click()
-    // Going live is the address turn plus (ta) the pin confirm and the save, each round trip at
-    // 400 ms latency under 4x CPU: the 5 s default expect timed out on CI runners (5 branches, 2-8
-    // Nov, mostly 412 ta). Same budget as the reload wait above.
-    await expect(page.getByTestId('shop-live')).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByTestId('shop-live')).toBeVisible()
     await reload()
     await expect(page.getByTestId('shop-so-far')).toContainText(name!)
     await expect(page.locator('[data-testid="map-card"][data-state="open"]')).toHaveCount(0)
