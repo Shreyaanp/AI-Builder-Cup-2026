@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { spawn, type ChildProcess } from 'node:child_process'
+import { spawn, spawnSync, type ChildProcess } from 'node:child_process'
 import { mkdtempSync, writeFileSync } from 'node:fs'
 import { createServer } from 'node:net'
 import { tmpdir } from 'node:os'
@@ -11,6 +11,7 @@ const WHATSAPP = { 'User-Agent': 'WhatsApp/2' }
 const FACEBOOK = { 'User-Agent': 'facebookexternalhit/1.1' }
 let server: ChildProcess
 let base = ''
+let shopId = ''
 
 function freePort(): Promise<number> {
   return new Promise((resolve, reject) => {
@@ -32,6 +33,15 @@ test.beforeAll(async () => {
     join(dist, 'index.html'),
     '<!doctype html><html><head><title>Old</title><meta name="description" content="old" /></head><body><div id="root"></div></body></html>',
   )
+  // One real shared shop whose location is a full home address, in a fresh local file.
+  const database = join(dist, 'merchant.sqlite3')
+  const seed = spawnSync('uv', ['run', 'python', '-m', 'tests.seo_seed', database], {
+    cwd: 'backend',
+    encoding: 'utf-8',
+    shell: process.platform === 'win32',
+  })
+  shopId = seed.stdout.trim().split(/\s+/).pop() ?? ''
+  if (!/^[\w-]+$/.test(shopId)) throw new Error(`seed failed: ${seed.stderr}`)
   const port = await freePort()
   base = `http://127.0.0.1:${port}`
   server = spawn(
@@ -39,7 +49,16 @@ test.beforeAll(async () => {
     ['run', 'uvicorn', 'app.main:app', '--host', '127.0.0.1', '--port', String(port)],
     {
       cwd: 'backend',
-      env: { ...process.env, APP_ENV: 'test', FRONTEND_DIST: dist },
+      env: {
+        ...process.env,
+        APP_ENV: 'test',
+        FRONTEND_DIST: dist,
+        V1_ENABLED: 'true',
+        COACH_MODE: 'offline',
+        MERCHANT_BACKEND: 'sqlite',
+        MERCHANT_DATABASE: database,
+        RECALL_PATH: join(dist, 'recall'),
+      },
       stdio: 'ignore',
       shell: process.platform === 'win32',
     },
@@ -99,4 +118,37 @@ test('OB-273: /demo is noindex and business host is closed to crawlers', async (
     headers: { Host: 'business.chalkboard.shreyaan.work' },
   })
   expect(await robots.text()).toContain('Disallow: /\n')
+})
+
+test('OB-273: a shared shop preview shows its name and area, never the street address', async ({
+  request,
+}) => {
+  for (const headers of [WHATSAPP, FACEBOOK]) {
+    const page = await request.get(`${base}/explore/s/${shopId}`, { headers })
+    const html = await page.text()
+    expect(html).toContain('<title>Meena Home Bakes — Singapore</title>')
+    expect(html).toContain('property="og:title" content="Meena Home Bakes — Singapore"')
+    expect(html).toContain(`property="og:url" content="${base}/explore/s/${shopId}"`)
+    for (const secret of ['412', 'Bedok', '#05', '460412', 'Block', '8123'])
+      expect(html).not.toContain(secret)
+  }
+})
+
+test('OB-273: business pages and the demo are noindex on every host', async ({ request }) => {
+  const business = { Host: 'business.chalkboard.shreyaan.work' }
+  for (const path of ['/coach', '/new-shop', '/settings', `/explore/s/${shopId}`]) {
+    const page = await request.get(base + path, { headers: business })
+    expect(page.headers()['x-robots-tag'], path).toContain('noindex')
+    expect(await page.text(), path).toContain('name="robots" content="noindex')
+  }
+  for (const headers of [{}, business]) {
+    for (const path of ['/explore/demo', '/explore/demo/browse']) {
+      const page = await request.get(base + path, { headers })
+      expect(page.headers()['x-robots-tag'], path).toContain('noindex')
+      expect(await page.text(), path).toContain('name="robots" content="noindex')
+    }
+  }
+  expect(await (await request.get(`${base}/robots.txt`)).text()).toContain(
+    'Disallow: /explore/demo\n',
+  )
 })

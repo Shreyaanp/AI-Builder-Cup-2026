@@ -601,6 +601,11 @@ class MerchantRepository(Protocol):
         """Customer-facing projection of a shared shop, or None when not shared."""
         ...
 
+    def share_card(self, bid: str) -> dict[str, Any] | None:
+        """OB-273: what a link preview needs (id, name, location, gallery, demo) for a shop
+        public_shop would show, from the shop record alone (no menu or sales reads)."""
+        ...
+
     def shared_shops(self) -> list[dict[str, Any]]: ...
     def owners(self, bid: str) -> list[str]:
         """UIDs that own this shop (trust checks only; never shown to customers)."""
@@ -719,6 +724,17 @@ class ConsentRequest(BaseModel):
 
 NAME_REQUIRED = "Add your shop's name before opening it."
 PIN_REQUIRED = "Add your location so customers can find you."
+
+
+def card_projection(bid: str, fields: dict[str, Any], gallery: list[str]) -> dict[str, Any]:
+    """OB-273: the few shared-shop fields a link preview reads."""
+    return {
+        "id": bid,
+        "name": fields["name"],
+        "location": fields.get("location", ""),
+        "gallery": gallery,
+        **({"demo": True} if fields.get("demo") else {}),
+    }
 
 
 def has_pin(fields: dict[str, Any]) -> bool:
@@ -1383,6 +1399,17 @@ class MerchantStore:
                 ).rowcount
                 changed = bool(inserted) or changed
             return changed
+
+    def share_card(self, bid: str) -> dict[str, Any] | None:
+        with self.connect() as db:
+            row = db.execute(
+                "SELECT b.fields,b.gallery FROM businesses b "
+                "JOIN shares s ON s.business_id=b.id WHERE b.id=?",
+                (bid,),
+            ).fetchone()
+        if not row or not has_pin(fields := json.loads(row[0])):
+            return None
+        return card_projection(bid, fields, json.loads(row[1] or "[]"))
 
     def public_shop(self, bid: str) -> dict[str, Any] | None:
         with self.connect() as db:

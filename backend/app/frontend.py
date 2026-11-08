@@ -2,9 +2,13 @@ import mimetypes
 import re
 from html import escape
 from pathlib import Path
+from typing import Any
 
+import anyio
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse, Response
+
+from .robots import NOINDEX, is_business_hostname, is_demo_path
 
 # The public landing to show at "/": the frozen classic page, or the new one (LANDING_VARIANT).
 LANDING_META = '<meta name="chalkboard-landing" content="new" />'
@@ -55,12 +59,62 @@ HOW_DESCRIPTION = (
 )
 SHOP_PATH = re.compile(r"^/(?:explore/)?s/([^/]+)$")
 PUBLIC_SITEMAP_PATHS = ("/", "/how-it-works")
-NOINDEX = "noindex, nofollow"
+ROBOTS_META = f'<meta name="robots" content="{NOINDEX}" />'
+# A shop page is served without shop tags when the lookup takes longer than this.
+LOOKUP_SECONDS = 0.3
+
+# Previews and search titles name the area only (locality, city at most), never a street,
+# block, unit, house number or postal code: `location` is often a full address (a confirmed
+# pin saves Google's formatted_address), and a home business's address must not reach
+# WhatsApp cards or search results.
+FICTIONAL = re.compile(r"\s*\(fictional address\)\s*$", re.I)
+POSTCODE = re.compile(r"\b\d{4,6}\b")
+STREET_WORDS = re.compile(
+    r"\b(?:block|blk|unit|flat|floor|fl|apt|apartment|house|plot|door|no|road|rd|street|st|"
+    r"avenue|ave|lane|ln|drive|dr|crescent|cres|close|way|boulevard|blvd|marg|cross|main|"
+    r"highway|hwy|tower|building|bldg|level|lorong|jalan|jln)\b",
+    re.I,
+)
+COUNTRIES = {
+    "india", "malaysia", "indonesia", "thailand", "philippines", "vietnam", "sri lanka",
+    "bangladesh", "nepal", "pakistan", "united states", "usa", "us", "united kingdom", "uk",
+    "australia", "canada", "uae", "united arab emirates",
+}  # fmt: skip
+CITY_STATES = {"singapore", "hong kong", "macau", "monaco"}
+REGIONS = {
+    "andhra pradesh", "arunachal pradesh", "assam", "bihar", "chhattisgarh", "goa", "gujarat",
+    "haryana", "himachal pradesh", "jharkhand", "karnataka", "kerala", "madhya pradesh",
+    "maharashtra", "manipur", "meghalaya", "mizoram", "nagaland", "odisha", "punjab",
+    "rajasthan", "sikkim", "tamil nadu", "telangana", "tripura", "uttar pradesh",
+    "uttarakhand", "west bengal", "nct of delhi", "selangor", "johor", "penang",
+}  # fmt: skip
 
 
-def is_business_host(request: Request) -> bool:
-    host = (request.url.hostname or "").lower()
-    return host.startswith("business.") or host.endswith(".run.app")
+def area_of(location: str) -> str:
+    """Locality and city at most, from a free-text location; '' when no part is safely an area.
+
+    A part is dropped when it has a digit, '#', or a street or unit word; countries and states
+    are dropped too. A part that carried the postal code is the state, except in a city-state.
+    """
+    kept: list[str] = []
+    for raw in FICTIONAL.sub("", location).split(","):
+        part = " ".join(raw.split())
+        had_postcode = bool(POSTCODE.search(part))
+        part = " ".join(POSTCODE.sub(" ", part).split())
+        lower = part.lower()
+        if (
+            not part
+            or any(ch.isdigit() for ch in part)
+            or "#" in part
+            or STREET_WORDS.search(part)
+            or lower in COUNTRIES
+            or lower in REGIONS
+            or (had_postcode and lower not in CITY_STATES)
+        ):
+            continue
+        if not kept or kept[-1].lower() != lower:
+            kept.append(part)
+    return ", ".join(kept[-2:])
 
 
 def origin_of(request: Request) -> str:
@@ -84,9 +138,7 @@ def head_tags(*, title: str, description: str, url: str, image: str, noindex: bo
         meta("name", "twitter:title", title),
         meta("name", "twitter:description", description),
         meta("name", "twitter:image", image),
-        meta("name", "robots", NOINDEX)
-        if noindex
-        else f'<link rel="canonical" href="{escape(url, quote=True)}" />',
+        ROBOTS_META if noindex else f'<link rel="canonical" href="{escape(url, quote=True)}" />',
     ]
     return "\n    ".join(tags)
 
@@ -97,19 +149,25 @@ def with_head(html: str, tags: str) -> str:
     return html.replace("</head>", f"    {tags}\n  </head>", 1)
 
 
-def shop_tags(request: Request, shop_id: str, noindex: bool) -> str | None:
+async def find_shop(request: Request, shop_id: str) -> dict[str, Any] | None:
+    """The shared shop for a preview, read off the event loop; None if missing, broken or slow."""
     merchant = getattr(request.app.state, "merchant", None)
     if merchant is None:
         return None
+    # One shop record is enough for a preview; the page's own API call reads the menu.
+    lookup = getattr(merchant, "share_card", None) or merchant.public_shop
     try:
-        shop = merchant.public_shop(shop_id)
-    except Exception:  # a broken lookup must never break the page itself
+        with anyio.fail_after(LOOKUP_SECONDS):
+            shop = await anyio.to_thread.run_sync(lookup, shop_id, abandon_on_cancel=True)
+    except Exception:  # a slow or broken lookup must never hold up or break the page itself
         return None
-    if shop is None:
-        return None
+    return shop if isinstance(shop, dict) else None
+
+
+def shop_tags(request: Request, shop: dict[str, Any], shop_id: str, noindex: bool) -> str:
     origin = origin_of(request)
     name = str(shop["name"])
-    area = str(shop.get("location") or "").strip()
+    area = area_of(str(shop.get("location") or ""))
     gallery = shop.get("gallery") or []
     image = (
         f"{origin}/api/v1/public/shops/{shop['id']}/photos/{gallery[0]}.jpg"
@@ -122,44 +180,29 @@ def shop_tags(request: Request, shop_id: str, noindex: bool) -> str | None:
         description=f"See what {name} has today{where}, live on Chalkboard.",
         url=f"{origin}/explore/s/{shop_id}",
         image=image,
-        noindex=noindex,
+        # Sample shops are never in search results.
+        noindex=noindex or bool(shop.get("demo")),
     )
 
 
-def page_tags(request: Request, path: str) -> str | None:
-    """Head tags for a public page, or None for any other page (served unchanged)."""
+async def page_tags(request: Request, route: str, noindex: bool) -> str | None:
+    """Head tags for a public page, or None for any other page."""
     origin = origin_of(request)
-    route = "/" + path.strip("/")
-    business = is_business_host(request)
     icon = f"{origin}/icons/customer-512.png"
-    if route == "/demo":
-        return head_tags(
-            title=HOME_TITLE,
-            description=HOME_DESCRIPTION,
-            url=f"{origin}/demo",
-            image=icon,
-            noindex=True,
-        )
     match = SHOP_PATH.match(route)
     if match:
-        return shop_tags(request, match.group(1), business)
-    if route == "/how-it-works":
-        return head_tags(
-            title=HOW_TITLE,
-            description=HOW_DESCRIPTION,
-            url=f"{origin}{route}",
-            image=icon,
-            noindex=business,
-        )
-    if route == "/":
-        return head_tags(
-            title=HOME_TITLE,
-            description=HOME_DESCRIPTION,
-            url=f"{origin}/",
-            image=icon,
-            noindex=business,
-        )
-    return None
+        shop = await find_shop(request, match.group(1))
+        return shop_tags(request, shop, match.group(1), noindex) if shop else None
+    pages = {
+        "/": (HOME_TITLE, HOME_DESCRIPTION),
+        "/demo": (HOME_TITLE, HOME_DESCRIPTION),
+        "/how-it-works": (HOW_TITLE, HOW_DESCRIPTION),
+    }
+    if route not in pages:
+        return None
+    title, description = pages[route]
+    url = f"{origin}{route}" if route != "/" else f"{origin}/"
+    return head_tags(title=title, description=description, url=url, image=icon, noindex=noindex)
 
 
 def serve_frontend(app: FastAPI, directory: str, landing_variant: str = "classic") -> None:
@@ -167,17 +210,21 @@ def serve_frontend(app: FastAPI, directory: str, landing_variant: str = "classic
     if not (root / "index.html").is_file():
         raise RuntimeError("The compiled frontend is missing.")
 
-    def index(request: Request, path: str = "") -> Response:
-        tags = page_tags(request, path)
-        if tags is None and landing_variant != "new":
+    async def index(request: Request, path: str = "") -> Response:
+        route = "/" + path.strip("/")
+        noindex = is_business_host(request) or is_demo_path(route)
+        tags = await page_tags(request, route, noindex)
+        if tags is None and not noindex and landing_variant != "new":
             return FileResponse(root / "index.html")
         html = (root / "index.html").read_text(encoding="utf-8")
         if landing_variant == "new":
             html = html.replace("<head>", f"<head>\n    {LANDING_META}", 1)
-        if tags is None:
-            return HTMLResponse(html)
-        headers = {"X-Robots-Tag": NOINDEX} if NOINDEX in tags else None
-        return HTMLResponse(with_head(html, tags), headers=headers)
+        if tags is not None:
+            html = with_head(html, tags)
+        elif noindex:
+            html = html.replace("</head>", f"    {ROBOTS_META}\n  </head>", 1)
+        noindex = noindex or (tags is not None and ROBOTS_META in tags)
+        return HTMLResponse(html, headers={"X-Robots-Tag": NOINDEX} if noindex else None)
 
     @app.get("/robots.txt", include_in_schema=False)
     async def robots(request: Request) -> Response:
@@ -185,7 +232,7 @@ def serve_frontend(app: FastAPI, directory: str, landing_variant: str = "classic
             body = "User-agent: *\nDisallow: /\n"
         else:
             body = (
-                "User-agent: *\nDisallow: /demo\nDisallow: /api/\n\n"
+                "User-agent: *\nDisallow: /demo\nDisallow: /explore/demo\nDisallow: /api/\n\n"
                 f"Sitemap: {origin_of(request)}/sitemap.xml\n"
             )
         return Response(body, media_type="text/plain; charset=utf-8")
@@ -212,11 +259,15 @@ def serve_frontend(app: FastAPI, directory: str, landing_variant: str = "classic
         ):
             raise HTTPException(404, "File not found.")
         if candidate == root / "index.html":
-            return index(request)
+            return await index(request)
         if candidate.is_file():
             if path.startswith("assets/"):
                 return asset_response(request, candidate)
             return FileResponse(candidate)
         if Path(path).suffix or path.startswith("assets/"):
             raise HTTPException(404, "File not found.")
-        return index(request, path)
+        return await index(request, path)
+
+
+def is_business_host(request: Request) -> bool:
+    return is_business_hostname(request.url.hostname or "")
