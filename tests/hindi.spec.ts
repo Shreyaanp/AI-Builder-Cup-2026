@@ -189,9 +189,13 @@ test('the owner app reads in Hindi: Today, coach, Shop, Grow tools, You, privacy
     await readsInHindi(page, '05-grow')
     // The week's summary sits in मेरी बिक्री under its name and dates (batch 4b).
     await growCard(page, /^मेरी बिक्री/)
+    // Any Hindi month name: the week shown follows today's date.
+    const months = Array.from({ length: 12 }, (_, month) =>
+      new Date(2026, month, 15).toLocaleDateString('hi-IN', { month: 'short' }),
+    )
     await expect(
       page.getByRole('dialog').getByRole('button', { name: /^हफ़्ते का सार/ }),
-    ).toContainText('अक्टू')
+    ).toContainText(new RegExp(months.join('|')))
     await closeSheet(page)
   })
 
