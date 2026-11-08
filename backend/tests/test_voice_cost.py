@@ -28,11 +28,11 @@ from app.settings import Settings
 from app.voice import (
     CONTEXT_TRIGGER_TOKENS,
     NEW_SHOP_SESSION_CAP_SECONDS,
-    LiveHandles,
     VoiceStats,
     live_run_config,
     serve_voice,
 )
+from app.voice_resume import LiveHandles
 from tests.test_voice_reliability import (
     FakeLive,
     FakeRuntime,

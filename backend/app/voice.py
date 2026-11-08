@@ -25,6 +25,7 @@ from .new_shop_tools import end_conversation, go_live
 from .reply_language import ReplyLanguage, reply_language
 from .settings import Settings
 from .streaming import CoachRuntime, public_events
+from .voice_resume import LiveHandles
 
 log = structlog.get_logger()
 
@@ -47,10 +48,6 @@ IDLE_CHECK_SECONDS = 1.0
 # never grows the per-turn bill without limit.
 CONTEXT_TRIGGER_TOKENS = 32_000
 CONTEXT_TARGET_TOKENS = 20_000
-# A conversation's provider-side session is resumed (no instruction or history sent again) while
-# its resumption handle is this fresh: the next mic press, a rotation, "talk again" after a pause.
-RESUME_HANDLE_SECONDS = 600
-RESUME_HANDLES_KEPT = 2_000
 # 16 kHz PCM16 in, 24 kHz PCM16 out.
 AUDIO_IN_BYTES_PER_SECOND = 32_000
 AUDIO_OUT_BYTES_PER_SECOND = 48_000
@@ -99,43 +96,6 @@ class VoiceIdle(TimeoutError):
 
 class ConversationPaused(Exception):
     """The open conversation heard nothing from the owner for CONVERSATION_IDLE_SECONDS."""
-
-
-@dataclass
-class ResumeHandle:
-    handle: str
-    language: str
-    expires: float
-
-
-class LiveHandles:
-    """The provider's latest session-resumption handle per conversation (this instance only; a
-    miss just starts a fresh session). Resuming sends neither the coach instruction nor the
-    conversation history again: the provider still holds them."""
-
-    def __init__(
-        self, seconds: float = RESUME_HANDLE_SECONDS, kept: int = RESUME_HANDLES_KEPT
-    ) -> None:
-        self.seconds = seconds
-        self.kept = kept
-        self.items: dict[tuple[str, str], ResumeHandle] = {}
-
-    def get(self, uid: str, sid: str, language: str) -> str | None:
-        item = self.items.get((uid, sid))
-        if not item or item.expires < time.monotonic() or item.language != language:
-            # A changed app language needs a fresh session (the language is pinned at setup).
-            self.items.pop((uid, sid), None)
-            return None
-        return item.handle
-
-    def put(self, uid: str, sid: str, language: str, handle: str) -> None:
-        self.items.pop((uid, sid), None)
-        self.items[(uid, sid)] = ResumeHandle(handle, language, time.monotonic() + self.seconds)
-        while len(self.items) > self.kept:
-            self.items.pop(next(iter(self.items)))
-
-    def drop(self, uid: str, sid: str) -> None:
-        self.items.pop((uid, sid), None)
 
 
 live_handles = LiveHandles()
