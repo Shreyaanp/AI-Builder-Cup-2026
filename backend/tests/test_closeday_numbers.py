@@ -97,3 +97,80 @@ def test_document_ai_text_does_not_glue_a_decimal_comma_into_the_digits() -> Non
     }
     parsed = parse_document(document, "receipt")
     assert [(line.quantity, line.amount) for line in parsed.lines] == [(2.5, 1000)]
+
+
+# PR #701 review: the billing/POS import and the Document AI text fallback read numbers with
+# the same reader, in the shop's currency.
+
+
+@pytest.mark.parametrize(
+    ("text", "currency", "expected"),
+    [
+        ("170/-", "INR", 170),
+        ("₹170/-", "INR", 170),
+        ("1,000", "INR", 1000),
+        ("1,00,000.50", "INR", 100000.5),
+        ("Rp 15.000", "IDR", 15000),
+        ("15.000", "IDR", 15000),
+        ("1 234,50", "EUR", 1234.5),
+        ("33.330000001", "INR", 33.330000001),  # export float noise is not refused
+    ],
+)
+def test_import_cells_are_read_in_the_shop_currency(
+    text: str, currency: str, expected: float
+) -> None:
+    from app.imports import number
+
+    assert number(text, currency) == expected
+
+
+def test_import_does_not_guess_a_lone_comma_in_a_rupee_shop() -> None:
+    from app.imports import number
+
+    assert number("1,5", "INR") is None
+    assert number("2,50") == 2.5  # no shop currency yet: the old reading
+
+
+def test_menu_import_keeps_rupee_and_rupiah_prices() -> None:
+    from app.imports import ColumnMap, menu_items
+
+    mapping = ColumnMap(kind="menu", name=0, price=1)
+    rupees, _ = menu_items([["Chai", "170/-"], ["Thali", "1,000"]], mapping, "INR")
+    assert [item["price"] for item in rupees] == [170, 1000]
+    rupiah, _ = menu_items([["Kopi", "15.000"]], mapping, "IDR")
+    assert [item["price"] for item in rupiah] == [15000]
+
+
+def test_sales_import_reads_rupiah_totals_in_full() -> None:
+    from app.imports import ColumnMap
+    from app.sales import daily_sales
+
+    mapping = ColumnMap(kind="sales", name=1, quantity=2, total=3, date=0)
+    rows = daily_sales([["2026-11-01", "Kopi", "2", "Rp 30.000"]], mapping, "IDR")
+    assert rows[0]["revenue"] == 30000
+    assert rows[0]["quantity"] == 2
+
+
+def test_document_ai_text_is_read_in_the_shop_currency() -> None:
+    def prop(kind: str, text: str) -> dict[str, object]:
+        return {"type": f"line_item/{kind}", "mentionText": text}
+
+    def document(quantity: str, amount: str) -> dict[str, object]:
+        return {
+            "entities": [
+                {
+                    "type": "line_item",
+                    "properties": [
+                        prop("description", "Kopi"),
+                        prop("quantity", quantity),
+                        prop("amount", amount),
+                    ],
+                }
+            ]
+        }
+
+    rupiah = parse_document(document("2", "15.000"), "receipt", "IDR")
+    assert [(line.quantity, line.amount) for line in rupiah.lines] == [(2, 15000)]
+    rupee = parse_document(document("2", "1,5"), "receipt", "INR")
+    assert [line.amount for line in rupee.lines] == [None]
+    assert not rupee.complete()  # so Gemini reads it instead of a guessed ₹1.50

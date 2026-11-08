@@ -73,7 +73,9 @@ class ParsedDocument(BaseModel):
         )
 
 
-def _number(entity: dict[str, Any], kind: Kind = "money") -> float | None:
+def _number(
+    entity: dict[str, Any], kind: Kind = "money", currency: str | None = None
+) -> float | None:
     """Money and quantities: the normalised value when the processor gives one, else the text,
     read by the one shared number reader (a decimal comma is not glued into the digits)."""
     normalized = entity.get("normalizedValue") or {}
@@ -83,7 +85,7 @@ def _number(entity: dict[str, Any], kind: Kind = "money") -> float | None:
     for text in (normalized.get("text"), entity.get("mentionText")):
         if not text:
             continue
-        value = read_number(str(text), None, kind)
+        value = read_number(str(text), currency, kind)
         if value is not None and value >= 0:
             return value
     return None
@@ -100,7 +102,9 @@ def _text(entity: dict[str, Any]) -> str:
     return " ".join(str(entity.get("mentionText") or "").split())
 
 
-def parse_document(document: dict[str, Any], processor: Processor) -> ParsedDocument:
+def parse_document(
+    document: dict[str, Any], processor: Processor, currency: str | None = None
+) -> ParsedDocument:
     """Map a Document AI ``Document`` (REST JSON) to plain lines. Totals/tax rows never become
     lines: the parsers put them in their own entities."""
     parsed = ParsedDocument(processor=processor)
@@ -115,12 +119,16 @@ def parse_document(document: dict[str, Any], processor: Processor) -> ParsedDocu
             if not description:
                 continue
             parsed.merged_rows = parsed.merged_rows or "\n" in raw
-            quantity = _number(fields["quantity"], "quantity") if "quantity" in fields else None
+            quantity = (
+                _number(fields["quantity"], "quantity", currency) if "quantity" in fields else None
+            )
             counted = COUNTED.match(description)
             if quantity is None and counted:
                 quantity, description = float(counted[1]), counted[2]
-            amount = _number(fields["amount"]) if "amount" in fields else None
-            unit_price = _number(fields["unit_price"]) if "unit_price" in fields else None
+            amount = _number(fields["amount"], "money", currency) if "amount" in fields else None
+            unit_price = (
+                _number(fields["unit_price"], "money", currency) if "unit_price" in fields else None
+            )
             if amount is None and unit_price is not None and quantity is not None:
                 amount = round(unit_price * quantity, 2)
             try:
@@ -152,7 +160,7 @@ def parse_document(document: dict[str, Any], processor: Processor) -> ParsedDocu
         elif kind == "purchase_order":
             parsed.ref = _text(entity)[:40]
         elif kind == "total_amount":
-            parsed.total = _number(entity)
+            parsed.total = _number(entity, "money", currency)
             money = ((entity.get("normalizedValue") or {}).get("moneyValue")) or {}
             if not parsed.currency and money.get("currencyCode"):
                 parsed.currency = str(money["currencyCode"])[:3]
@@ -257,13 +265,18 @@ class DocumentAIReader:
         return await anyio.to_thread.run_sync(refresh)
 
     async def read(
-        self, data: bytes, processor: Processor, mime_type: str = "image/jpeg"
+        self,
+        data: bytes,
+        processor: Processor,
+        mime_type: str = "image/jpeg",
+        currency: str | None = None,
     ) -> ParsedDocument | None:
         """The parsed document, or ``None`` when Document AI is off or failed. The caller uses
         it only when ``complete()``; otherwise Gemini reads the photo."""
         if not self.enabled:
             return None
-        key = f"{processor}:{hashlib.sha256(data).hexdigest()}"
+        # Text numbers are read in the shop's currency ("1,5" is not guessed in a rupee shop).
+        key = f"{processor}:{currency or ''}:{hashlib.sha256(data).hexdigest()}"
         if key in self._cache:
             self._cache.move_to_end(key)
             return self._cache[key]
@@ -298,7 +311,7 @@ class DocumentAIReader:
             # Provider text never reaches the owner; Gemini reads the photo instead.
             log.warning("document_ai_failed", processor=processor, error=type(error).__name__)
             return None
-        parsed = parse_document(document, processor)
+        parsed = parse_document(document, processor, currency)
         log.info(
             "document_ai_read",
             processor=processor,

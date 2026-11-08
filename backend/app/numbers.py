@@ -23,16 +23,23 @@ DECIMAL_COMMA = {
     *("DKK", "NOK", "SEK", "ISK", "PLN", "CZK", "HUF", "RON", "BGN", "RSD", "BAM", "MKD"),
 }
 
-NUMBER = re.compile(r"-?\d+(?:[.,]\d+)*")
+# Digits with "." / "," marks, or a space-like thousands mark before three digits (1 234,50).
+SPACE_MARKS = "[ \u00a0\u202f'\u2019]"
+NUMBER = re.compile(r"-?\d+(?:[.,]\d+|" + SPACE_MARKS + r"\d{3}(?!\d))*")
+SPACE_GROUP = re.compile(SPACE_MARKS)
 
 
-def read_number(value: object, currency: str | None = None, kind: Kind = "money") -> float | None:
+def read_number(
+    value: object, currency: str | None = None, kind: Kind = "money", *, exact: bool = True
+) -> float | None:
     """A number from a reading, or ``None`` when it is missing or could be read two ways.
 
     ``currency`` names the shop's convention. Without it (a menu photo with no shop yet) a
     lone comma before three digits is a thousands mark and before other digits a decimal.
     Money keeps the currency's minor digits (extra zeros are fine: "840.00"); quantities up
-    to three decimals (0.125 kg).
+    to three decimals (0.125 kg). ``exact=False`` (POS exports, whose computed columns carry
+    float noise such as 33.330000001) skips only that decimals check; separators are read the
+    same way everywhere.
     """
     if isinstance(value, bool):
         return None
@@ -42,7 +49,7 @@ def read_number(value: object, currency: str | None = None, kind: Kind = "money"
     match = NUMBER.search(str(value or ""))
     if not match:
         return None
-    text = match.group(0)
+    text = SPACE_GROUP.sub("", match.group(0))
     sign, text = ("-", text[1:]) if text.startswith("-") else ("", text)
     comma, dot = "," in text, "." in text
     if comma and dot:
@@ -75,7 +82,7 @@ def read_number(value: object, currency: str | None = None, kind: Kind = "money"
         return None
     places = QUANTITY_DECIMALS if kind == "quantity" else exponent(currency) if currency else None
     try:
-        if places is not None and number != number.quantize(Decimal(1).scaleb(-places)):
+        if exact and places is not None and number != number.quantize(Decimal(1).scaleb(-places)):
             return None  # more decimals than a price or a count can carry: not guessed
     except InvalidOperation:
         return None

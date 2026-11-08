@@ -252,6 +252,27 @@ test('OB-279 OB-281: ₹ 1,00,000 and 0.125 kg show and save exactly as typed', 
   ])
 })
 
+test('PR 701: a typed line with no quantity holds Review instead of being dropped', async ({
+  page,
+}) => {
+  const dialog = await open(page, 22)
+  await addLine(page, '200', '10')
+  await dialog.getByRole('button', { name: 'Add more', exact: true }).click()
+  const form = dialog.getByTestId('close-day-typed')
+  await form.locator('input[name=item]').fill('Kopi')
+  await form.locator('input[name=amount]').fill('₹170/-')
+  await expect(form.locator('input[name=amount]')).toHaveAttribute('aria-invalid', 'false')
+  await dialog.getByRole('button', { name: 'Review (1 line)', exact: true }).click()
+  // Still on the form, with the empty quantity marked: the half-filled line is not lost.
+  const quantity = form.locator('input[name=quantity]')
+  await expect(quantity).toHaveAttribute('aria-invalid', 'true')
+  await expect(dialog.getByText('Today’s sales', { exact: true })).toHaveCount(0)
+  await quantity.fill('2')
+  await dialog.getByRole('button', { name: 'Review (2 lines)', exact: true }).click()
+  await expect(dialog.getByText('2 · ₹170', { exact: true })).toBeVisible()
+  await expect(dialog.getByText('₹370', { exact: true })).toBeVisible()
+})
+
 test('OB-279: unclear numbers show linked inline errors and preserve the entry', async ({
   page,
 }, info) => {

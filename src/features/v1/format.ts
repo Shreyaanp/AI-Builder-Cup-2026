@@ -181,6 +181,21 @@ export function currencyMarks(currency: string, locale?: string): string[] {
   return [...marks]
 }
 
+/** An amount or quantity written back into a text field so the app's number reader
+ * (readNumber.ts) reads it the same: no grouping, the locale's own decimal mark (2,5 in
+ * Indonesian, 2.5 in English), money to the currency's minor digits, quantities to three. */
+export function numberForEditing(
+  value: number,
+  locale: string,
+  kind: 'money' | 'quantity',
+  currency: string,
+): string {
+  return new Intl.NumberFormat(locale, {
+    useGrouping: false,
+    maximumFractionDigits: kind === 'money' ? exponent(currency) : 3,
+  }).format(value)
+}
+
 export function formatDate(seconds: number, locale?: string): string {
   return new Date(seconds * 1000).toLocaleDateString(locale, {
     day: 'numeric',

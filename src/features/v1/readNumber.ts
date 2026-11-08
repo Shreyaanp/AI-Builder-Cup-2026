@@ -1,4 +1,4 @@
-import { currencyMarks, exponent } from '../v1/format.js'
+import { currencyMarks, exponent } from './format.js'
 
 /** Money keeps the currency's minor digits; quantities allow grams and half-kilos (0.125 kg). */
 export type NumberKind = 'money' | 'quantity'
@@ -12,8 +12,23 @@ export type NumberReading =
 
 const INDIAN_LANGUAGE = /^(en|hi|bn|ta|te|mr|kn)(-|$)/i
 const INDIAN_REGION = /-IN(?:-|$)/i
-// Ways people write rupees before or after a number: ₹ 1,000 · Rs. 1,000 · 1,000 रु
-const RUPEE_MARKS = ['₹', 'Rs.', 'Rs', 'INR', 'रु.', 'रु', 'रुपये']
+// Ways people write rupees before or after a number: ₹ 1,000 · Rs. 1,000 · 1,000 रु · 170/-
+const RUPEE_MARKS = ['₹', 'Rs.', 'Rs', 'INR', 'रु.', 'रु', 'रुपये', '/-']
+// The zero of each script's digits owners type: Arabic-Indic, Devanagari, Bengali, Gurmukhi,
+// Gujarati, Odia, Tamil, Telugu, Kannada, Malayalam, Thai, Lao, Myanmar and full-width.
+const DIGIT_ZEROS = [
+  0x0660, 0x06f0, 0x0966, 0x09e6, 0x0a66, 0x0ae6, 0x0b66, 0x0be6, 0x0c66, 0x0ce6, 0x0d66, 0x0e50,
+  0x0ed0, 0x1040, 0xff10,
+]
+
+/** १,००० → 1,000: any script's digits, whatever the number locale writes. */
+function latinDigits(input: string): string {
+  return input.replace(/\p{Nd}/gu, (digit) => {
+    const code = digit.codePointAt(0)!
+    const zero = DIGIT_ZEROS.find((start) => code >= start && code <= start + 9)
+    return zero === undefined ? digit : String(code - zero)
+  })
+}
 
 function separators(locale: string) {
   const parts = new Intl.NumberFormat(locale).formatToParts(1234567.89)
@@ -23,26 +38,41 @@ function separators(locale: string) {
   }
 }
 
-/** The currency mark typed before or after the number ("₹ 1,000", "1.000 Rp"), removed once. */
+/** The currency marks typed before and after the number ("₹ 1,000", "₹170/-", "1.000 Rp"). */
 function withoutCurrency(input: string, locale: string, currency: string): string {
   const code = currency.toUpperCase()
-  const marks = new Set([...currencyMarks(code, locale), ...(code === 'INR' ? RUPEE_MARKS : [])])
   // Longest first, so "Rs." goes before "Rs".
-  for (const mark of [...marks].sort((a, b) => b.length - a.length)) {
-    const lower = input.toLowerCase()
-    if (lower.startsWith(mark.toLowerCase())) return input.slice(mark.length).trim()
-    if (lower.endsWith(mark.toLowerCase())) return input.slice(0, -mark.length).trim()
+  const marks = [
+    ...new Set([...currencyMarks(code, locale), ...(code === 'INR' ? RUPEE_MARKS : [])]),
+  ].sort((a, b) => b.length - a.length)
+  let stripped = false
+  for (const end of ['start', 'end'] as const) {
+    for (const mark of marks) {
+      const lower = input.toLowerCase()
+      const at = mark.toLowerCase()
+      if (end === 'start' && lower.startsWith(at)) {
+        input = input.slice(mark.length).trim()
+        stripped = true
+        break
+      }
+      if (end === 'end' && lower.endsWith(at)) {
+        input = input.slice(0, -mark.length).trim()
+        stripped = true
+        break
+      }
+    }
   }
-  return input
+  return stripped ? input : input.trim()
 }
 
 /**
- * The one close-day number reader for every typed amount and quantity. `locale` is the number
- * locale (the shop currency's, via moneyLocale): its group and decimal marks decide "1,000"
- * (a thousand in an Indian shop) and "2,5" (two and a half where the comma is the decimal).
- * A lone group mark before one or two digits is a question for the owner, never a guess.
+ * The app's one reader for every typed amount and quantity: close the day, a product's price.
+ * `locale` is the number locale (the shop currency's, via moneyLocale): its group and decimal
+ * marks decide "1,000" (a thousand in an Indian shop) and "2,5" (two and a half where the comma
+ * is the decimal). A lone group mark before one or two digits is a question for the owner,
+ * never a guess. The backend reads photos and imports the same way (backend/app/numbers.py).
  */
-export function readCloseDayNumber(
+export function readNumber(
   text: string,
   locale: string,
   currency = 'INR',
@@ -54,7 +84,7 @@ export function readCloseDayNumber(
     for (let digit = 0; digit <= 9; digit++) {
       input = input.replaceAll(digits.format(digit), String(digit))
     }
-    return input
+    return latinDigits(input)
   }
   let input = normalize(text.trim())
   if (!input) return { ok: false, reason: 'empty' }
@@ -100,13 +130,13 @@ export function readCloseDayNumber(
     : { ok: false, reason: 'invalid' }
 }
 
-/** A non-negative close-day quantity or amount; null means the entry needs correction. */
-export function parseCloseDayNumber(
+/** A non-negative amount or quantity; null means the entry needs correction. */
+export function parseNumber(
   text: string,
   locale: string,
   currency = 'INR',
   kind: NumberKind = 'money',
 ): number | null {
-  const reading = readCloseDayNumber(text, locale, currency, kind)
+  const reading = readNumber(text, locale, currency, kind)
   return reading.ok ? reading.value : null
 }

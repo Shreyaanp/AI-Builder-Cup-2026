@@ -97,7 +97,7 @@ async def read_photo(
     settings = request.app.state.v1_settings
     document_ai: DocumentAIReader | None = getattr(request.app.state, "document_ai", None)
     if document_ai is not None and hint in DOCUMENT_AI:
-        parsed = await document_ai.read(data, DOCUMENT_AI[hint])
+        parsed = await document_ai.read(data, DOCUMENT_AI[hint], currency=currency)
         if parsed is not None and parsed.complete():
             return (
                 DayRead(

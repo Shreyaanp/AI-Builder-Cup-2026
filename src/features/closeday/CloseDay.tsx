@@ -46,8 +46,8 @@ import { comparisonKind } from './compare'
 import { AskHint } from '../v1/AskHint'
 import { TomorrowPromise } from './TomorrowPromise'
 import { countClosed } from '../v1/today/habitCount'
-import { readCloseDayNumber } from './parseNumber'
-import type { NumberKind, NumberReading } from './parseNumber'
+import { readNumber } from '../v1/readNumber'
+import type { NumberKind, NumberReading } from '../v1/readNumber'
 import type { components } from '../../api/generated'
 
 type CloseReward = components['schemas']['CloseReward']
@@ -1071,8 +1071,8 @@ function TypedSales({
   const [amount, setAmount] = useState('')
   const [invalid, setInvalid] = useState(false)
   const [left, setLeft] = useState({ quantity: false, amount: false })
-  const qtyReading = readCloseDayNumber(qty, numberLocale, currency, 'quantity')
-  const amountReading = readCloseDayNumber(amount, numberLocale, currency, 'money')
+  const qtyReading = readNumber(qty, numberLocale, currency, 'quantity')
+  const amountReading = readNumber(amount, numberLocale, currency, 'money')
   const quantity = qtyReading.ok ? qtyReading.value : null
   const total = amountReading.ok ? amountReading.value : null
   const plain = new Intl.NumberFormat(numberLocale, { maximumFractionDigits: 3 })
@@ -1093,7 +1093,11 @@ function TypedSales({
   }
   const qtyProblem = problem(qtyReading, 'quantity')
   const amountProblem = problem(amountReading, 'money')
-  const blocked = Boolean(qtyProblem || amountProblem)
+  // A line started but not finished (an item and an amount, no quantity) also holds Review:
+  // a line the owner filled in is never thrown away without a word.
+  const started = Boolean(item.trim() || qty.trim() || amount.trim())
+  const complete = Boolean(item.trim()) && qtyReading.ok && amountReading.ok
+  const blocked = Boolean(qtyProblem || amountProblem || (started && !complete))
   useEffect(() => {
     onBlocked(blocked)
     return () => onBlocked(false)
@@ -1161,8 +1165,8 @@ function TypedSales({
           name="item"
           label={next.manualItem}
           value={item}
-          error={invalid && !item.trim()}
-          helperText={invalid && !item.trim() ? next.manualInvalid : undefined}
+          error={tried && !item.trim()}
+          helperText={tried && !item.trim() ? next.manualInvalid : undefined}
           onChange={(event) => setItem(event.target.value.slice(0, 180))}
           slotProps={{ htmlInput: { list: 'close-day-items', autoComplete: 'off' } }}
         />
