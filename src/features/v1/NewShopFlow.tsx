@@ -337,6 +337,12 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
   const lastTurn = useRef<string | null>(null)
   // A restored conversation already holds its summary card; never add a second one.
   const summaryShown = useRef(Boolean(recovery?.lines?.some((line) => line.role === 'summary')))
+  // The closing turn: from the summary until the owner's next step, the summary stays the last
+  // item, so the coach's closing words land above it and "Go to my shop" does not move under the
+  // owner's finger. The owner's next step (a word, a tap on Shop photo or My location) ends it:
+  // the summary keeps its place and what comes next lands below it, in view.
+  const [summaryLast, setSummaryLastState] = useState(false)
+  const summaryLastRef = useRef(false)
   // The current turn resumes a conversation already under way: its answer stays silent.
   const quiet = useRef(false)
   const [finishing, setFinishing] = useState(false)
@@ -431,8 +437,20 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
     noteRef.current = next
     setNoteState(next)
   }
-  const add = (line: NewLine) =>
+  const add = (line: NewLine) => {
+    if (line.role === 'owner') releaseSummary()
     setLines((items) => [...items, { ...line, id: crypto.randomUUID() } as Line].slice(-80))
+  }
+  /** The closing turn is over: the summary moves to the end of the list where it already shows. */
+  function releaseSummary() {
+    if (!summaryLastRef.current) return
+    summaryLastRef.current = false
+    setSummaryLastState(false)
+    setLines((items) => [
+      ...items.filter((line) => line.role !== 'summary'),
+      ...items.filter((line) => line.role === 'summary'),
+    ])
+  }
 
   function armTurn() {
     window.clearTimeout(turnTimer.current)
@@ -630,6 +648,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
     }
   }
   function openCamera(hold = true) {
+    releaseSummary()
     const id = crypto.randomUUID()
     // One camera at a time: an older open one closes.
     if (hold) openCards.current = new Set([id])
@@ -663,6 +682,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
     if (!(quiet && skipping)) armSilence()
   }
   function openMap(locate: boolean, hold = true) {
+    releaseSummary()
     const id = crypto.randomUUID()
     if (hold) openCards.current = new Set([id])
     clearSilence()
@@ -675,6 +695,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
     )
   }
   function hearOwner(text: string) {
+    releaseSummary()
     clearSilence()
     nudges.current = 0
     const open = ownerTurnOpen.current
@@ -719,6 +740,8 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
     setLines((items) =>
       items.map((line) => (line.role === 'camera' ? { ...line, closed: true } : line)),
     )
+    summaryLastRef.current = true
+    setSummaryLastState(true)
     add({ role: 'summary' })
   }
   /** Review my shop (big button): an already live shop goes straight to the congratulations. */
@@ -897,6 +920,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
     if (/^(stop|that's enough|that is enough|we're done|we are done)$/i.test(message.trim()))
       track('stop_said')
     clearSilence()
+    releaseSummary()
     // Typing always works: a word after the end simply carries the conversation on.
     if (endedRef.current) {
       endAsked.current = false
@@ -1047,8 +1071,14 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
     [],
   )
   useEffect(() => {
+    if (summaryLast) return
     end.current?.scrollIntoView({ block: 'end', behavior: reducedMotion ? 'instant' : 'smooth' })
-  }, [lines, live, reducedMotion])
+  }, [lines, live, reducedMotion, summaryLast])
+  // The closing turn: a line that lands above the summary is scrolled for before it is painted, so
+  // "Go to my shop" never jumps down and back (a smooth scroll left it lower for ~100 ms).
+  useLayoutEffect(() => {
+    if (summaryLast) end.current?.scrollIntoView({ block: 'end', behavior: 'instant' })
+  }, [lines, live, busy, summaryLast])
   // OB-152: the upload card, photo and keyboard can resize the chat after a reply lands.
   useEffect(() => {
     const scroller = end.current?.parentElement
@@ -1642,7 +1672,17 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
           <Box role="log" aria-live="polite" aria-label={t.navCoach}>
             <Stack component="ol" spacing={3} sx={{ listStyle: 'none', m: 0, p: 0 }}>
               {lines.map((line) =>
-                line.role === 'camera' ? (
+                line.role === 'summary' ? (
+                  !summaryLast && (
+                    <Box component="li" key={line.id} sx={{ ml: { xs: 0, sm: 6 } }}>
+                      <SummaryCard
+                        draft={draft}
+                        busy={finishing}
+                        onContinue={() => void finish()}
+                      />
+                    </Box>
+                  )
+                ) : line.role === 'camera' ? (
                   !line.closed && (
                     <Box component="li" key={line.id} sx={{ ml: { xs: 0, sm: 6 } }}>
                       <CameraCard
@@ -1669,13 +1709,22 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
                       onActive={() => openCards.current.add(line.id)}
                     />
                   </Box>
-                ) : line.role === 'summary' ? (
-                  <Box component="li" key={line.id} sx={{ ml: { xs: 0, sm: 6 } }}>
-                    <SummaryCard draft={draft} busy={finishing} onContinue={() => void finish()} />
-                  </Box>
                 ) : (
                   <ChatLine key={line.id} line={line} />
                 ),
+              )}
+              {busy === 'reply' && !live && !voiceOn && (
+                <Box component="li" sx={{ pl: 6 }}>
+                  <CircularProgress size={20} aria-label={t.speaking} />
+                </Box>
+              )}
+              {/* The closing turn: the summary stays the last line, the coach's closing words and
+                  the typing dots land above it, so "Go to my shop" never moves under the owner's
+                  finger as the reply arrives. After it, the summary keeps its place in the list. */}
+              {summaryLast && (
+                <Box component="li" sx={{ ml: { xs: 0, sm: 6 } }}>
+                  <SummaryCard draft={draft} busy={finishing} onContinue={() => void finish()} />
+                </Box>
               )}
               {misses >= 2 && !ended && busy === 'idle' && (
                 <Box component="li" sx={{ ml: { xs: 0, sm: 6 } }}>
@@ -1737,11 +1786,6 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
                       </Button>
                     </Stack>
                   </Paper>
-                </Box>
-              )}
-              {busy === 'reply' && !live && !voiceOn && (
-                <Box component="li" sx={{ pl: 6 }}>
-                  <CircularProgress size={20} aria-label={t.speaking} />
                 </Box>
               )}
             </Stack>
