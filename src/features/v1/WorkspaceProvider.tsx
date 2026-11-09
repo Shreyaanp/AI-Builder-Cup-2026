@@ -39,7 +39,7 @@ function readSpeak() {
 /** Anything over the page: a sheet, dialog, menu or the tour. A kept-mounted closed one is not. */
 function pageIsCovered(): boolean {
   if (document.querySelector('.MuiModal-root:not(.MuiModal-hidden)')) return true
-  return [...document.querySelectorAll('[role="dialog"]')].some(
+  return Array.from(document.querySelectorAll('[role="dialog"]')).some(
     (dialog) => !dialog.closest('.MuiModal-hidden'),
   )
 }
