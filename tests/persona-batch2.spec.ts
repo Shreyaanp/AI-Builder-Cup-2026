@@ -311,7 +311,6 @@ test('OB-348: no Demo label on a real shop, on chat or the morning brief', async
   await realShop(page)
   const box = page.getByRole('textbox', { name: /Ask|Message/ }).first()
   await box.fill('hello')
-  await box.press('Control+Enter').catch(() => undefined)
   await page.getByRole('button', { name: /^Send/ }).click()
   await expect(page.getByTestId('back-to-today')).toBeVisible()
   await expect(page.getByText('Demo', { exact: true })).toHaveCount(0)
