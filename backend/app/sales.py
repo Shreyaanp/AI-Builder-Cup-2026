@@ -2,10 +2,11 @@
 
 import hashlib
 import json
+import re
 import secrets
 import time
 from collections import defaultdict
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
 from uuid import uuid4
@@ -36,7 +37,24 @@ def today_for(fields: dict[str, Any]) -> date:
 
 # Dates as billing apps export them: ISO first, then the day-first forms Indian apps use
 # (07/11/2026 is 7 November; Ahmed, 8 Nov), each optionally followed by a time.
-DATE_FORMATS = ("%d/%m/%Y", "%d-%m-%Y", "%d.%m.%Y", "%Y/%m/%d", "%d %b %Y", "%d %B %Y", "%d/%m/%y")
+DATE_FORMATS = (
+    "%d/%m/%Y",
+    "%d-%m-%Y",
+    "%d.%m.%Y",
+    "%Y/%m/%d",
+    "%d %b %Y",
+    "%d %B %Y",
+    "%d-%b-%Y",
+    "%d-%B-%Y",
+    "%d/%b/%Y",
+    "%d %b %y",
+    "%d-%b-%y",
+    "%d/%m/%y",
+    "%d-%m-%y",
+    "%d.%m.%y",
+)
+# A date cell Excel kept as its day number: 46000 is 9 December 2025.
+EXCEL_DAY_ZERO = date(1899, 12, 30)
 MAX_PROBLEMS = 3
 
 
@@ -47,7 +65,11 @@ def sale_date(value: str) -> date:
         return date.fromisoformat(raw[:10])
     except ValueError:
         pass
-    for text in dict.fromkeys((raw, raw.split(" ")[0], raw.split("T")[0])):
+    if re.fullmatch(r"[3-7]\d{4}(\.\d+)?", raw):
+        return EXCEL_DAY_ZERO + timedelta(days=int(float(raw)))
+    # "7 Nov 2026 10:30 AM": the day is what comes before the time.
+    without_time = re.sub(r"[ T]+\d{1,2}[:.]\d{2}.*$", "", raw)
+    for text in dict.fromkeys((raw, without_time, raw.split(" ")[0], raw.split("T")[0])):
         for fmt in DATE_FORMATS:
             try:
                 return datetime.strptime(text, fmt).date()

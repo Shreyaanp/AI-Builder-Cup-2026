@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import type { Auth } from 'firebase/auth'
 import { upgradeGoogle } from '../../auth/upgradeGoogle'
 import { firebaseAppName } from '../../auth/appSide'
+import { restoreLegacyGuest } from '../../auth/legacyGuest'
 import { clearSession, frontDoor } from '../../auth/clearSession'
 import type { FarewellReason } from '../../auth/farewellNote'
 import { loadBootstrap } from '../../api/appConfig'
@@ -164,6 +165,23 @@ export function CustomerAccountProvider({ children }: { children: ReactNode }) {
             await upgradeGoogle(auth)
           },
           signOut: () => authSdk.signOut(auth),
+        }
+        // Before the listener below can make a new guest (OB-56).
+        if (value.features?.guest_customer) {
+          await restoreLegacyGuest({
+            appSdk,
+            authSdk,
+            auth,
+            config,
+            merge: value.features.guest_merge
+              ? (token) =>
+                  api('/api/v1/customer/guest/merge', {
+                    method: 'POST',
+                    body: JSON.stringify({ token }),
+                  })
+              : undefined,
+          })
+          if (abort.signal.aborted) return
         }
         unsubscribe = authSdk.onIdTokenChanged(auth, (user) => {
           if (abort.signal.aborted || ending.current) return

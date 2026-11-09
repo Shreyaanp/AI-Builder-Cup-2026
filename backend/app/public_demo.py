@@ -101,7 +101,7 @@ ALLOWED: tuple[tuple[str, re.Pattern[str]], ...] = tuple(
         # Tomorrow's promise: kept in the visitor's sandbox, never counted (a demo shop).
         ("POST", rf"{_BIZ}/promise(?:/{_ID}/(?:done|skipped))?"),
         ("POST", rf"{_BIZ}/import/{_ID}/approve"),
-        ("POST", rf"{_BIZ}/day/(?:read|prepare)"),
+        ("POST", rf"{_BIZ}/day/(?:read|prepare|total)"),
         ("POST", rf"{_BIZ}/supply/reorder"),
         ("POST", rf"{_BIZ}/supply/demo/next"),
         ("POST", rf"{_BIZ}/supply/(?:inbound|send-all)"),
@@ -227,6 +227,14 @@ def sandbox(zone: str) -> tuple[DemoSession, date]:
             store.seed_demo_shop(CHAIN_OWNER, chain.id, chain.fields, chain.products)
             store.attach_demo_owner(CHAIN_OWNER, chain.id, uid)
             seed_chain_supply(store, CHAIN_OWNER, chain.id)
+        # A bakery to switch to, so a baker sees their own kind of shop (OB-271).
+        bakery = next(
+            shop
+            for shop in TOUR_SHOPS
+            if shop.city == "bengaluru" and shop.fields.category == "Bakery"
+        )
+        store.seed_demo_shop(CHAIN_OWNER, bakery.id, bakery.fields, bakery.products)
+        store.attach_demo_owner(CHAIN_OWNER, bakery.id, uid)
         store.record_consent(uid, LEGAL_VERSION)
         business = store.context(uid, bid)["business"]
         # One "(Demo)" label, never "(Demo) (Demo)" or "(Demo) (Tour)".

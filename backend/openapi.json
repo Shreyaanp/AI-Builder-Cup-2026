@@ -5693,6 +5693,45 @@
         }
       }
     },
+    "/api/v1/customer/guest/merge": {
+      "post": {
+        "summary": "Guest Merge",
+        "description": "OB-56: join this phone's guest account from before #335 into this one. Off by default.",
+        "operationId": "guest_merge_api_v1_customer_guest_merge_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GuestMergeInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GuestMergeResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/customer/passport/merge": {
       "post": {
         "summary": "Merge",
@@ -7064,6 +7103,56 @@
         "responses": {
           "204": {
             "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/businesses/{business_id}/day/total": {
+      "post": {
+        "summary": "Save Day Total",
+        "description": "The owner read the total back on Check and tapped Save; closing again replaces it.",
+        "operationId": "save_day_total_api_v1_businesses__business_id__day_total_post",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewDayTotal"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DayTotal"
+                }
+              }
+            }
           },
           "422": {
             "description": "Validation Error",
@@ -12829,6 +12918,51 @@
         ],
         "title": "DayHours"
       },
+      "DayTotal": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "title": "Date"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "cash": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cash"
+          },
+          "upi": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Upi"
+          }
+        },
+        "type": "object",
+        "required": [
+          "date",
+          "currency",
+          "total"
+        ],
+        "title": "DayTotal"
+      },
       "Deal": {
         "properties": {
           "id": {
@@ -13957,6 +14091,44 @@
         ],
         "title": "Group"
       },
+      "GuestMergeInput": {
+        "properties": {
+          "token": {
+            "type": "string",
+            "maxLength": 8192,
+            "minLength": 1,
+            "title": "Token"
+          }
+        },
+        "type": "object",
+        "required": [
+          "token"
+        ],
+        "title": "GuestMergeInput"
+      },
+      "GuestMergeResult": {
+        "properties": {
+          "merged": {
+            "type": "boolean",
+            "title": "Merged"
+          },
+          "follows": {
+            "type": "integer",
+            "title": "Follows"
+          },
+          "stamps": {
+            "type": "integer",
+            "title": "Stamps"
+          }
+        },
+        "type": "object",
+        "required": [
+          "merged",
+          "follows",
+          "stamps"
+        ],
+        "title": "GuestMergeResult"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -14849,6 +15021,52 @@
           "metric"
         ],
         "title": "Metric"
+      },
+      "NewDayTotal": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "title": "Date",
+            "default": ""
+          },
+          "total": {
+            "type": "number",
+            "maximum": 1000000000.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Total"
+          },
+          "cash": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1000000000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cash"
+          },
+          "upi": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1000000000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Upi"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total"
+        ],
+        "title": "NewDayTotal"
       },
       "NewPromise": {
         "properties": {
@@ -20772,6 +20990,16 @@
           "guest_customer": {
             "default": false,
             "title": "Guest Customer",
+            "type": "boolean"
+          },
+          "face_check": {
+            "default": false,
+            "title": "Face Check",
+            "type": "boolean"
+          },
+          "guest_merge": {
+            "default": false,
+            "title": "Guest Merge",
             "type": "boolean"
           }
         },

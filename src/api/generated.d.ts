@@ -1982,6 +1982,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/customer/guest/merge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Guest Merge
+         * @description OB-56: join this phone's guest account from before #335 into this one. Off by default.
+         */
+        post: operations["guest_merge_api_v1_customer_guest_merge_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/customer/passport/merge": {
         parameters: {
             query?: never;
@@ -2363,6 +2383,26 @@ export interface paths {
         put?: never;
         /** Answer Promise */
         post: operations["answer_promise_api_v1_businesses__business_id__promise__day___state__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/businesses/{business_id}/day/total": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Save Day Total
+         * @description The owner read the total back on Check and tapped Save; closing again replaces it.
+         */
+        post: operations["save_day_total_api_v1_businesses__business_id__day_total_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4484,6 +4524,19 @@ export interface components {
             /** Close */
             close?: string | null;
         };
+        /** DayTotal */
+        DayTotal: {
+            /** Date */
+            date: string;
+            /** Currency */
+            currency: string;
+            /** Total */
+            total: number;
+            /** Cash */
+            cash?: number | null;
+            /** Upi */
+            upi?: number | null;
+        };
         /** Deal */
         Deal: {
             /** Id */
@@ -4913,6 +4966,20 @@ export interface components {
             /** Places */
             places: components["schemas"]["Pick"][];
         };
+        /** GuestMergeInput */
+        GuestMergeInput: {
+            /** Token */
+            token: string;
+        };
+        /** GuestMergeResult */
+        GuestMergeResult: {
+            /** Merged */
+            merged: boolean;
+            /** Follows */
+            follows: number;
+            /** Stamps */
+            stamps: number;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -5303,6 +5370,20 @@ export interface components {
              * @enum {string}
              */
             metric: "items_sold" | "sales" | "busy_hours" | "orders_due" | "fittings" | "bookings" | "questions" | "views" | "stamps" | "returning" | "low_stock" | "leftovers";
+        };
+        /** NewDayTotal */
+        NewDayTotal: {
+            /**
+             * Date
+             * @default
+             */
+            date: string;
+            /** Total */
+            total: number;
+            /** Cash */
+            cash?: number | null;
+            /** Upi */
+            upi?: number | null;
         };
         /** NewPromise */
         NewPromise: {
@@ -7712,6 +7793,16 @@ export interface components {
              * @default false
              */
             guest_customer: boolean;
+            /**
+             * Face Check
+             * @default false
+             */
+            face_check: boolean;
+            /**
+             * Guest Merge
+             * @default false
+             */
+            guest_merge: boolean;
         };
     };
     responses: never;
@@ -11608,6 +11699,39 @@ export interface operations {
             };
         };
     };
+    guest_merge_api_v1_customer_guest_merge_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GuestMergeInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GuestMergeResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     merge_api_v1_customer_passport_merge_post: {
         parameters: {
             query?: {
@@ -12387,6 +12511,41 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    save_day_total_api_v1_businesses__business_id__day_total_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NewDayTotal"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DayTotal"];
+                };
             };
             /** @description Validation Error */
             422: {

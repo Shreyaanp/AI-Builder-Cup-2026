@@ -41,6 +41,7 @@ import { FactYesNo } from './FactYesNo'
 import { isYesNoFact } from './factAnswers'
 import { MenuSheet } from '../shop/MenuSheet'
 import { ThingsIBuySheet } from '../shop/ThingsIBuySheet'
+import { PriceSheet } from '../shop/PriceSheet'
 import { onMenu } from '../shop/stock'
 import { useStockCopy } from '../shop/stockCopy'
 import { ConnectRow } from '../connect/ConnectTile'
@@ -52,7 +53,7 @@ import { OwnerPerks } from '../passport/games/OwnerPerks'
 import { useUnread } from './useUnread'
 import { busyWindow, missingFacts, openNow, readiness } from './shopProgress'
 import { useCopy } from './strings'
-import { isServiceShop, useTabsCopy } from './tabsCopy'
+import { listWord, useTabsCopy } from './tabsCopy'
 import { RowGroup, ShopRow } from './ShopRow'
 import { ShopLocation } from './CurrentLocation'
 import { useWorkspace } from './workspaceContext'
@@ -81,6 +82,7 @@ export type ShopSheetKind =
   | 'details'
   | 'menu'
   | 'soldOut'
+  | 'prices'
   | 'customer'
   | 'messages'
   | 'readiness'
@@ -404,7 +406,7 @@ export function ShopTiles({
         <ShopRow
           tour="menu"
           icon={<UtensilsCrossed size={20} />}
-          label={isServiceShop(shop.fields.category) ? tabs.services : t.menu}
+          label={listWord(shop.fields.category, t.menu, tabs)}
           value={menu.length ? t.itemCount(menu.length) : t.noItems}
           onClick={() => onSheet('menu')}
         />
@@ -643,6 +645,8 @@ function OneSheet({
       return <MenuSheet {...common} focus={menuFocus} onThingsIBuy={onThingsIBuy} />
     case 'thingsIBuy':
       return <ThingsIBuySheet {...common} />
+    case 'prices':
+      return <PriceSheet {...common} />
     case 'soldOut':
       return (
         <Sheet {...common} titleId="soldout-sheet-title" ask="sold_out" title={t.soldOut}>

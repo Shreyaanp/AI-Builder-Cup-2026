@@ -25,16 +25,40 @@ from .tour_media import photo_id
 
 PHOTO_TYPES = {"image/jpeg", "image/png", "image/webp"}
 SAMPLE_NOTE = (
-    "Sample read: the demo never reads your file. In your own shop, Chalkboard reads your real "
-    "menu and you check it the same way."
+    "This is a sample: the demo does not read your photo or file. In your own shop, Chalkboard "
+    "reads your real menu and you check it the same way."
 )
-# (name, price in rupees, unit, menu section): a short South Indian breakfast board.
+# (name, price in rupees, unit, menu section). Each is a board that shop could really have, with
+# items it does not already sell, so the sample always has something new to review (OB-271).
 SAMPLE_ITEMS = (
     ("Masala dosa", 60, "plate", "Breakfast"),
     ("Idli (2 pieces)", 40, "plate", "Breakfast"),
     ("Medu vada", 30, "plate", "Snacks"),
     ("Filter coffee", 25, "cup", "Drinks"),
 )
+BAKERY_ITEMS = (
+    ("Chocolate cake", 450, "item", "Cakes"),
+    ("Banana bread", 120, "item", "Breads"),
+    ("Bun maska", 45, "piece", "Bakes"),
+)
+RETAIL_ITEMS = (
+    ("Salt", 28, "pack", "Staples"),
+    ("Onions", 40, "kg", "Fresh"),
+    ("Potatoes", 35, "kg", "Fresh"),
+    ("Eggs", 84, "pack", "Fresh"),
+)
+
+
+def sample_items(category: str) -> tuple[tuple[str, int, str, str], ...]:
+    """The sample that fits the shop: nobody's bakery gets a dosa board."""
+    kind = category.lower()
+    if "bakery" in kind:
+        return BAKERY_ITEMS
+    if any(word in kind for word in ("mart", "market", "grocer", "kirana", "distribut")):
+        return RETAIL_ITEMS
+    return SAMPLE_ITEMS
+
+
 _BIZ = r"^businesses/(?P<bid>[A-Za-z0-9_.-]{1,120})"
 IMPORT_PATH = re.compile(rf"{_BIZ}/import$")
 GALLERY_PATH = re.compile(rf"{_BIZ}/gallery$")
@@ -87,6 +111,12 @@ def add_sample_photo(entry: Any, bid: str, kind: str) -> dict[str, Any]:
     return {"gallery": saved, "photo_id": chosen["id"], "kind": kind, "sample": True}
 
 
+def shop_sample(entry: Any, bid: str) -> tuple[tuple[str, int, str, str], ...]:
+    return sample_items(
+        entry.store.context(entry.uid, bid)["business"]["fields"].get("category", "")
+    )
+
+
 def sample_proposal(entry: Any, bid: str) -> dict[str, Any]:
     ctx = MerchantContext(entry.store, entry.uid, bid, [])
     token = current.set(ctx)
@@ -94,7 +124,7 @@ def sample_proposal(entry: Any, bid: str) -> dict[str, Any]:
         result = propose_products(
             [
                 ProductInput(name=name, price=price, unit=unit, category=category)
-                for name, price, unit, category in SAMPLE_ITEMS
+                for name, price, unit, category in shop_sample(entry, bid)
             ]
         )
     finally:
@@ -141,6 +171,7 @@ async def demo_upload(request: Request, entry: Any, path: str) -> dict[str, Any]
             raise HTTPException(415, "Send a JPEG, PNG or WebP photo.")
         await drain(request, request.app.state.v1_settings.max_photo_bytes, "Photo is too large.")
         proposal = await anyio.to_thread.run_sync(sample_proposal, entry, bid)
+        items = await anyio.to_thread.run_sync(shop_sample, entry, bid)
         return {
             "status": "needs_review",
             "photo_id": "demo-sample",
@@ -149,7 +180,7 @@ async def demo_upload(request: Request, entry: Any, path: str) -> dict[str, Any]
                 "photo_kind": "menu",
                 "products": [
                     {"name": name, "price": price, "unit": unit, "category": category}
-                    for name, price, unit, category in SAMPLE_ITEMS
+                    for name, price, unit, category in items
                 ],
                 "uncertain": [SAMPLE_NOTE],
             },
@@ -168,7 +199,7 @@ async def demo_upload(request: Request, entry: Any, path: str) -> dict[str, Any]
     return {
         "kind": "menu",
         "proposal": proposal,
-        "items": len(SAMPLE_ITEMS),
+        "items": len(await anyio.to_thread.run_sync(shop_sample, entry, bid)),
         "skipped": 0,
         "flags": [],
         "sample": True,

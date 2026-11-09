@@ -29,7 +29,7 @@ test('running low → demo suppliers → one-tap order → supplier reply → Or
   const cards = carousel.getByRole('listitem')
   expect(await cards.count()).toBeGreaterThanOrEqual(3)
   // Simulated suppliers are always labelled.
-  await expect(cards.first().getByText('Demo', { exact: true })).toBeVisible()
+  await expect(cards.first().getByText('Sample', { exact: true })).toBeVisible()
   await expect(page.getByText(/not real businesses/).first()).toBeVisible()
 
   await say(page, 'The second one looks good, order 20 kg flour and 5 kg sugar from them')

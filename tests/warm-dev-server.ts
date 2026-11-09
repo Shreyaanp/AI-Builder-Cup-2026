@@ -9,8 +9,22 @@ export default async function warmDevServer(config: FullConfig) {
   const browser = await chromium.launch(launchOptions)
   try {
     const page = await browser.newPage({ baseURL, storageState })
-    await page.goto('/', { waitUntil: 'domcontentloaded', timeout: 180_000 })
-    await page.getByRole('button', { name: 'Continue local preview' }).waitFor({ timeout: 180_000 })
+    const problems: string[] = []
+    page.on('pageerror', (error) => problems.push(error.message))
+    page.on('console', (line) => {
+      if (line.type() === 'error') problems.push(line.text())
+    })
+    try {
+      await page.goto('/', { waitUntil: 'domcontentloaded', timeout: 180_000 })
+      const ready = page.getByRole('button', { name: 'Continue local preview' })
+      // Vite's overlay means the build is broken: say so now, not after three minutes (OB-259).
+      await ready.or(page.locator('vite-error-overlay')).first().waitFor({ timeout: 180_000 })
+      if (!(await ready.isVisible())) throw new Error('The dev server shows a build error.')
+    } catch (error) {
+      await page.screenshot({ path: 'test-results/warm-dev-server.png' }).catch(() => undefined)
+      console.error('Dev server warm-up failed. See test-results/warm-dev-server.png', problems)
+      throw error
+    }
   } finally {
     await browser.close()
   }
