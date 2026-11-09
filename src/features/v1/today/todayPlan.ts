@@ -64,6 +64,8 @@ export interface TodayPlan {
   line: CoachLine | null
   pulse: PulseLine | null
   forecast: { quantity: number; item: string; busy: [number, number] | null } | null
+  /** No forecast yet, but a closed day before today says what to make (OB-329). */
+  lastDay: components['schemas']['LastDay'] | null
   /** A brand-new shop with no data yet: the next setup step instead of the pulse. */
   dayOne: { step: StepId } | null
 }
@@ -223,8 +225,11 @@ export function todayPlan(input: TodayInput): TodayPlan {
   const forecast = facts?.forecast
     ? { quantity: facts.forecast.quantity, item: facts.forecast.item, busy }
     : null
+  const closedDay = facts?.last_day
+  const lastDay =
+    !forecast && closedDay?.make_same && closedDay.date < (facts?.date ?? '') ? closedDay : null
   // Without facts yet (loading or unavailable), a shop with no menu is still clearly day one.
-  const fresh = facts ? !pulse && !forecast : products.length === 0
+  const fresh = facts ? !pulse && !forecast && !lastDay : products.length === 0
   // Reminders (photo, face check) never make a set-up shop look like day one again.
   const setup = steps.filter((step) => !REMINDERS.includes(step))
   const dayOne = fresh && setup.length ? { step: setup[0]! } : null
@@ -295,6 +300,7 @@ export function todayPlan(input: TodayInput): TodayPlan {
     line: facts?.line ?? null,
     pulse,
     forecast,
+    lastDay,
     dayOne,
   }
 }

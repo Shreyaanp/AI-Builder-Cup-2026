@@ -5,6 +5,7 @@ import re
 from collections.abc import AsyncGenerator, AsyncIterator, Callable
 from contextvars import ContextVar
 from dataclasses import dataclass
+from datetime import date
 from typing import Any
 
 from google.adk.agents import LlmAgent
@@ -39,6 +40,7 @@ from .coordinator import (
     shop_currency,
     ui_currency,
 )
+from .forecast import LastDay, last_day_words
 from .new_shop_resume import (
     done_steps,
     follow_up_plan,
@@ -174,8 +176,9 @@ Memory and insights
   figures). If there is no sales data, suggest importing a billing app or Excel sales file.
 - For preparation or demand questions ("how much kopi should I prep tomorrow?"), call
   get_forecast. Give the matching item's quantity and date, say whether it is a forecast or a
-  weekday average, and mention prediction intervals when provided. If insufficient, ask for four
-  weeks of sales via Excel, photo, PDF or pasted notes. Never invent a forecast or save a
+  weekday average, and mention prediction intervals when provided. If it has last_day, say what
+  that day sold and, if make_same, to make about the same; never ask for more weeks of sales.
+  With no last_day, ask the owner to close one day. Never invent a forecast or save a
   preparation plan.
 - The app shows get_forecast and get_insights results as a chart card right above your reply.
   Point to what matters on it ("Chai carries the week, Saturday is your peak") and give the
@@ -1142,12 +1145,18 @@ class OfflineCoachModel(BaseLlm):
                         )
                         for r in (named or matching)[:3]
                     )
+                    closed = prediction.get("last_day")
                     reply = (
                         f"Offline coach: {tomorrow} demand estimate — {estimates}. "
                         f"Method: {method}."
                         if estimates
-                        else "Offline coach: import and save at least four weeks of sales per item "
-                        "to prepare a forecast."
+                        else "Offline coach: "
+                        + last_day_words(
+                            LastDay.model_validate(closed),
+                            date.fromisoformat(prediction["training_cutoff"]),
+                        )
+                        if closed
+                        else "Offline coach: close one day and I can start your prep plan."
                     )
                 else:
                     reply = (

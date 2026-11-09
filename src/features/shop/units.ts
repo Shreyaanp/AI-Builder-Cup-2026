@@ -97,6 +97,12 @@ export function unitKey(raw: string): Unit | null {
   return Object.hasOwn(SYNONYMS, key) ? (SYNONYMS[key] ?? null) : null
 }
 
+/** Weighed or poured: these never add up with pieces, cups or each other (OB-330). */
+export function isMeasure(raw: string): boolean {
+  const unit = unitKey(raw)
+  return unit === 'kg' || unit === 'g' || unit === 'litre' || unit === 'ml'
+}
+
 /** A saved unit in the owner's language; unknown legacy text shows exactly as saved. */
 export function unitLabel(raw: string, copy: ReturnType<typeof useShopCopy>): string {
   const key = unitKey(raw)

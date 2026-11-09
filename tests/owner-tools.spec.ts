@@ -113,6 +113,10 @@ for (const appearance of ['light', 'dark']) {
     ).toHaveAttribute('href', /am=240.00/)
     await page.reload()
     await page.getByRole('button', { name: 'Continue local preview' }).click()
+    // The app reopens on Home (OB-327); the chat and its payment card are one tap away in ⋯.
+    await expect(page.getByTestId('today')).toBeVisible()
+    await page.getByRole('button', { name: 'More options' }).click()
+    await page.locator('[role="dialog"] .MuiListItemButton-root').first().click()
     await expect(
       page.getByRole('log').getByRole('link', { name: 'Open UPI', exact: true }),
     ).toHaveAttribute('href', /am=240.00/)
