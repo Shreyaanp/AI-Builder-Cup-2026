@@ -107,7 +107,10 @@ export function BuyStockRow({
     buyStockBus.addEventListener('open', open)
     return () => buyStockBus.removeEventListener('open', open)
   }, [onTab])
-  const line = [runsOut?.short, stock.toDo ? grow.toDo(stock.toDo) : ''].filter(Boolean).join(' · ')
+  // Short on Shop's list: what is merely arriving is Home's news, here it is "1 on the way".
+  const line = [runsOut?.arriving ? '' : runsOut?.short, stock.toDo ? grow.toDo(stock.toDo) : '']
+    .filter(Boolean)
+    .join(' · ')
   return (
     <>
       <Tile

@@ -196,11 +196,9 @@ Sourcing supplies (find suppliers, order, talk to them)
   last order's supplier_id and lines.
 - prepare_order only prepares. Say you've prepared the request (supplier, items, estimated
   total, delivery) and that they tap Send to confirm. Never say it was sent or ordered.
-- "Change the quantity to 15" or "no, only 5 litres": if the order is still a draft, call
-  prepare_order again with replaces_order_id, or draft_reorder for a purchase order; the old
-  draft is replaced, so there is only ever one to send. If it was already sent, use
-  message_supplier ("Please make the flour 15 kg"). "Cancel that order": cancel_order. "Ask them
-  if they deliver on Sunday" or "can you
+- "Change the quantity to 15": if the order is still a draft, call prepare_order again with
+  replaces_order_id; if it was already sent, use message_supplier ("Please make the flour
+  15 kg"). "Cancel that order": cancel_order. "Ask them if they deliver on Sunday" or "can you
   deliver by 8?": message_supplier on the latest sent order (get_orders gives its id).
 - If the item is unclear ("I need stuff"), ask once, briefly, which item. If a supplier lacks an
   item (not_stocked), say so and offer another supplier.
@@ -210,9 +208,8 @@ Sourcing supplies (find suppliers, order, talk to them)
 - When the owner asks whether a supplier replied, call get_orders and read the last message.
 
 Supply chain (purchase orders, supplier rules, documents)
-- "Butter 2 kg", "2 किलो मक्खन चाहिए", "makhan 2 kilo mangao": the owner is ordering stock. Call
-  draft_reorder with item, quantity and unit in that turn, in any language, even if nothing
-  looks low; never say there is nothing to reorder. "Don't order" or "mat mangao" orders nothing.
+- "Butter 2 kg" in any language, even if nothing looks low: draft_reorder with item, quantity
+  and unit.
 - "Reorder flour", "what should I order?", "plan my purchase order", or a forecast showing an
   item running out: call draft_reorder (item only if named). It drafts a purchase order (PO)
   from the forecast, stock and the supplier rules. In one line say why: what is left, when it
@@ -1190,10 +1187,6 @@ class OfflineCoachModel(BaseLlm):
                 if sourcing is not None:
                     yield LlmResponse(content=types.Content(role="model", parts=[sourcing]))
                     return
-                ordered = order_call(question, ctx) if ctx and ctx.business_id else None
-                if ordered:
-                    yield LlmResponse(content=types.Content(role="model", parts=ordered))
-                    return
                 renamed = rename_call(question, ctx)
                 if renamed is not None:
                     yield LlmResponse(content=types.Content(role="model", parts=[renamed]))
@@ -1201,6 +1194,10 @@ class OfflineCoachModel(BaseLlm):
                 upkeep = upkeep_call(question, ctx) if ctx and ctx.business_id else None
                 if upkeep is not None:
                     yield LlmResponse(content=types.Content(role="model", parts=[upkeep]))
+                    return
+                ordered = order_call(question, ctx) if ctx and ctx.business_id else None
+                if ordered:
+                    yield LlmResponse(content=types.Content(role="model", parts=ordered))
                     return
                 if ctx and ctx.business_id and re.search(r"\b(?:prep|forecast)\b", question, re.I):
                     yield LlmResponse(

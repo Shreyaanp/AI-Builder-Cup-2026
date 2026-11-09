@@ -280,6 +280,8 @@ def order_call(question: str, ctx: Any) -> list[types.Part] | None:
     ]
     calls = []
     for line in said.lines[:5]:
+        if line.quantity and not line.unit:
+            continue  # "Order for 20": 20 of what is not said, so nothing is drafted.
         item = resolve_item(line.item, inventory)
         waiting = next(
             (o for o in drafts if any(sourcing.matches(x["name"], item) for x in o["lines"])), None
@@ -302,7 +304,7 @@ def order_call(question: str, ctx: Any) -> list[types.Part] | None:
         if line.quantity:
             args.update(quantity=line.quantity, unit=line.unit)
         calls.append(call("draft_reorder", args))
-    return calls
+    return calls or None
 
 
 def supplier_named(text: str, ctx: Any) -> str:

@@ -660,7 +660,7 @@ async def _order_said(ctx: Any, question: str) -> list[StreamEvent] | None:
     from .sourcing import OrderItem
 
     said = read_order(question)
-    wanted = [line for line in said.lines if line.quantity]
+    wanted = [line for line in said.lines if line.quantity and line.unit]
     if said.refused or not said.asked or not wanted or FIND_SUPPLIERS.search(question):
         return None
     inventory = ctx.store.inventory(ctx.uid, ctx.business_id)

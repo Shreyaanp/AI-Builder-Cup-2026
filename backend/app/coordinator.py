@@ -1211,8 +1211,7 @@ def prepare_order(
     get_orders ("the same as last time"). items: every item the owner named, each with quantity
     and unit exactly as said (20 kg flour, 500 g yeast, 2 litre oil). note: anything to tell the
     supplier. delivery: only if the owner asked for a time. To change a draft that is not sent
-    yet (e.g. "change the quantity to 15"), call again with replaces_order_id. A new draft for
-    the same item always replaces the old one, so there is only ever one to send."""
+    yet (e.g. "change the quantity to 15"), call again with replaces_order_id."""
     import time as clock
 
     from . import sourcing

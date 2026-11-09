@@ -151,16 +151,18 @@ REFUSED = re.compile(
 )
 # Says the owner wants it. Whole words only; the name is what is left without them.
 CUE_WORDS = (
-    r"re-?order|order|buy|need|needs|want|get|send|restock|chahiye|chaiye|mangao|manga|mangwa|"
-    r"mangwana|mangana|lao|la|karo|kar|do|dena|kijiye"
+    r"re-?order|order|buy|need|needs|want|restock|chahiye|chaiye|mangao|manga|mangwa|"
+    r"mangwana|mangana"
 )
+# Filler that also goes with other requests ("dukaan ka naam ... karo"): never a cue by itself.
+SOFT_WORDS = r"get|send|lao|la|karo|kar|do|dena|kijiye"
 CUES = re.compile(
     rf"\b(?:{CUE_WORDS})\b|(?:चाहिए|मँगा\S*|मंगा\S*|मँगवा\S*|मंगवा\S*|लाओ|लाना|ऑर्डर)", re.I
 )
 FILLER = re.compile(
     r"\b(?:i|we|me|my|our|please|pls|some|more|only|just|of|the|a|an|mujhe|humein|hume|sirf|bas|"
     r"kewal|aur|thoda|ka|ki|ke|for|to|now|today|tomorrow|aaj|kal|also|bhi|"
-    rf"{CUE_WORDS})\b"
+    rf"{CUE_WORDS}|{SOFT_WORDS})\b"
     r"|"
     + _hindi(
         r"मुझे|हमें|मेरे|लिए|सिर्फ़|सिर्फ|केवल|बस|थोड़ा|और|का|की|के|भी|आज|कल|चाहिए|कर|करो|दो|दीजिए|"
@@ -171,6 +173,7 @@ FILLER = re.compile(
 # Statements and questions that name an amount but are not asking for stock.
 NOT_AN_ORDER = re.compile(
     r"\?|\b(?:sold|selling|left|remaining|received|came|arrived|price|costs?|rupees?|rs|inr|"
+    r"naam|name|dukaan|shop|menu|timing|hours|"
     r"remind|note|number|how much|how many|supplier|suppliers|find|biki|bika|bike|becha|bacha|"
     r"bache|"
     r"kitna|kitne|yaad|mila|aaya|daam|rate)\b|₹"

@@ -75,7 +75,8 @@ test('Shop: one page card and short rows, calm at 390 and one screenful at 360',
   await tab(page, 'shop')
   const view = await firstView(page, 'Shop')
   expect(view.tappable, 'tappable in the first view').toBeLessThanOrEqual(12)
-  expect(view.words, 'words in the first view').toBeLessThanOrEqual(50)
+  // 50, plus the Buy stock row (its name and short status) that moved here from Grow (OB-339).
+  expect(view.words, 'words in the first view').toBeLessThanOrEqual(55)
   expect(view.filled, 'filled buttons').toBe(1)
   // The one primary action sits in the thumb zone, below the rows (PHONE-UX-RULES rule 1).
   const primary = await page.getByRole('button', { name: 'Show to customers' }).boundingBox()

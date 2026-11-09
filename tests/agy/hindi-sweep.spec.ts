@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { enter, localOnly, seedShop } from '../stories/support.js'
-import { openGrowTool } from '../support/grow.js'
+import { stockTile } from '../support/grow.js'
 
 test.use({
   viewport: { width: 390, height: 844 },
@@ -101,7 +101,7 @@ test('Hindi phone sweep: supply, reminders, onboarding, tour and demo', async ({
 
   await tab(page, 'बढ़ाएँ').click()
   // Purchase orders and Supply chain are the माल मँगाएँ sheet's tabs (batch 4b).
-  await openGrowTool(page, /^माल मँगाएँ/)
+  await (await stockTile(page)).click()
   const stock = page.getByRole('dialog', { name: /^माल मँगाएँ/ })
   await hindiOnly(page, 'खरीद और उधार शर्तें')
   await stock.getByRole('button', { name: /^मेरे सप्लायर/ }).click()
@@ -109,7 +109,7 @@ test('Hindi phone sweep: supply, reminders, onboarding, tour and demo', async ({
   await stock.getByRole('button', { name: /^करना है/ }).click()
   await page.getByRole('button', { name: 'सामान मँगाने का डेमो देखें', exact: true }).click()
   await tab(page, 'बढ़ाएँ').click()
-  await openGrowTool(page, /^माल मँगाएँ/)
+  await (await stockTile(page)).click()
   await stock.getByRole('button', { name: /^रास्ते में/ }).click()
   await hindiOnly(page, 'माल की रवानगी, रसीद और ASN क्रम')
   await page.keyboard.press('Escape')
