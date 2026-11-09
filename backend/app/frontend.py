@@ -1,3 +1,4 @@
+import logging
 import mimetypes
 import re
 from html import escape
@@ -9,6 +10,8 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse, Response
 
 from .robots import NOINDEX, is_business_hostname, is_demo_path
+
+logger = logging.getLogger(__name__)
 
 # The public landing to show at "/": the frozen classic page, or the new one (LANDING_VARIANT).
 LANDING_META = '<meta name="chalkboard-landing" content="new" />'
@@ -62,6 +65,8 @@ PUBLIC_SITEMAP_PATHS = ("/", "/how-it-works")
 ROBOTS_META = f'<meta name="robots" content="{NOINDEX}" />'
 # A shop page is served without shop tags when the lookup takes longer than this.
 LOOKUP_SECONDS = 0.3
+# The one thing under /api/ a crawler may fetch: the photo that og:image and twitter:image name.
+PREVIEW_PHOTOS = "/api/v1/public/shops/*/photos/*.jpg$"
 
 # Previews and search titles name the area only (locality, city at most), never a street,
 # block, unit, house number or postal code: `location` is often a full address (a confirmed
@@ -159,6 +164,9 @@ async def find_shop(request: Request, shop_id: str) -> dict[str, Any] | None:
     try:
         with anyio.fail_after(LOOKUP_SECONDS):
             shop = await anyio.to_thread.run_sync(lookup, shop_id, abandon_on_cancel=True)
+    except TimeoutError:  # a preview service may cache this generic card, so make it countable
+        logger.warning("Link preview lookup for shop %s took over %ss", shop_id, LOOKUP_SECONDS)
+        return None
     except Exception:  # a slow or broken lookup must never hold up or break the page itself
         return None
     return shop if isinstance(shop, dict) else None
@@ -232,7 +240,8 @@ def serve_frontend(app: FastAPI, directory: str, landing_variant: str = "classic
             body = "User-agent: *\nDisallow: /\n"
         else:
             body = (
-                "User-agent: *\nDisallow: /demo\nDisallow: /explore/demo\nDisallow: /api/\n\n"
+                "User-agent: *\nDisallow: /demo\nDisallow: /explore/demo\nDisallow: /api/\n"
+                f"Allow: {PREVIEW_PHOTOS}\n\n"
                 f"Sitemap: {origin_of(request)}/sitemap.xml\n"
             )
         return Response(body, media_type="text/plain; charset=utf-8")

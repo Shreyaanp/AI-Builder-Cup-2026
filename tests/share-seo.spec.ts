@@ -103,7 +103,11 @@ test('OB-273: robots.txt and sitemap.xml are real text and xml, not 404 json', a
   const robots = await request.get(`${base}/robots.txt`)
   expect(robots.status()).toBe(200)
   expect(robots.headers()['content-type']).toContain('text/plain')
-  expect(await robots.text()).toContain(`Sitemap: ${base}/sitemap.xml`)
+  const rules = await robots.text()
+  expect(rules).toContain(`Sitemap: ${base}/sitemap.xml`)
+  // Previews need the shop photo; the rest of the API stays closed to crawlers.
+  expect(rules).toContain('Disallow: /api/\n')
+  expect(rules).toContain('Allow: /api/v1/public/shops/*/photos/*.jpg$\n')
   const sitemap = await request.get(`${base}/sitemap.xml`)
   expect(sitemap.status()).toBe(200)
   expect(sitemap.headers()['content-type']).toContain('xml')

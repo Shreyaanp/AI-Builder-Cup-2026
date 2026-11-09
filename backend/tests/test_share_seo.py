@@ -1,9 +1,12 @@
 """OB-273: link previews and search engines read the head and robots files the server writes."""
 
+import logging
+import re
 import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 import pytest
 from fastapi.testclient import TestClient
@@ -186,6 +189,61 @@ def test_ob_273_robots_and_sitemap_are_real_files_on_the_customer_host(client: T
     assert "<loc>http://testserver/how-it-works</loc>" in sitemap.text
 
 
+def robots_allows(robots_txt: str, path: str) -> bool:
+    """RFC 9309, which urllib.robotparser does not follow: `*` and a final `$` are wildcards,
+    the longest matching rule wins, and Allow wins a tie."""
+    best = (-1, True)
+    for line in robots_txt.splitlines():
+        field, _, value = line.partition(":")
+        kind, pattern = field.strip().lower(), value.strip()
+        if kind not in ("allow", "disallow") or not pattern:
+            continue
+        regex = re.escape(pattern).replace(r"\*", ".*")
+        regex = regex[:-2] + "$" if regex.endswith(r"\$") else regex
+        if re.match(regex, path):
+            best = max(best, (len(pattern), kind == "allow"))
+    return best[1]
+
+
+def test_ob_273_robots_lets_crawlers_fetch_the_preview_photo_and_nothing_else_in_the_api(
+    client: TestClient,
+) -> None:
+    page = client.get("/explore/s/bakery", headers=WHATSAPP).text
+    images = re.findall(r'(?:property="og:image"|name="twitter:image") content="([^"]+)"', page)
+    assert len(images) == 2
+    paths = {urlsplit(image).path for image in images}
+    assert paths == {"/api/v1/public/shops/bakery/photos/abc123.jpg"}
+
+    robots = client.get("/robots.txt").text
+    for path in (*paths, "/explore/s/bakery", "/s/bakery", "/how-it-works", "/"):
+        assert robots_allows(robots, path), path
+    shop = "/api/v1/public/shops/bakery"
+    for path in (
+        "/api/v1/health",
+        "/api/v1/public/shops",
+        shop,
+        f"{shop}/tips",
+        f"{shop}/ask",
+        f"{shop}/inquiries",
+        f"{shop}/inquiries/i1",
+        f"{shop}/stock-alerts",
+        f"{shop}/games",
+        f"{shop}/perks",
+        f"{shop}/demo-qr",
+        f"{shop}/icon/abc123.jpg",
+        f"{shop}/photos",
+        f"{shop}/photos/",
+        f"{shop}/photos/abc123.png",
+        f"{shop}/photos/abc123.jpg/more",
+        "/demo",
+        "/explore/demo",
+    ):
+        assert not robots_allows(robots, path), path
+
+    closed = client.get("/robots.txt", headers=BUSINESS).text
+    assert not robots_allows(closed, next(iter(paths)))
+
+
 def test_ob_273_business_host_and_demo_are_noindex(client: TestClient) -> None:
     host = BUSINESS
     assert "Disallow: /\n" in client.get("/robots.txt", headers=host).text
@@ -261,6 +319,18 @@ def test_ob_273_a_slow_shop_lookup_holds_up_neither_health_nor_the_page(
     for page in results:
         assert page.status_code == 200
         assert page.text == INDEX  # served without shop tags rather than waiting
+
+
+def test_ob_273_a_lookup_that_times_out_is_logged_and_a_missing_shop_is_not(
+    client: TestClient, caplog: pytest.LogCaptureFixture
+) -> None:
+    shops = client.app.state.merchant.shops  # type: ignore[attr-defined]
+    with caplog.at_level(logging.WARNING, logger="app.frontend"):
+        assert client.get("/explore/s/nobody", headers=WHATSAPP).text == INDEX
+        assert "lookup" not in caplog.text
+        client.app.state.merchant = SlowShops(shops)  # type: ignore[attr-defined]
+        assert client.get("/explore/s/bakery", headers=WHATSAPP).text == INDEX
+    assert "Link preview lookup for shop bakery" in caplog.text
 
 
 def test_ob_273_share_card_shows_exactly_the_shops_public_shop_shows(
