@@ -8,10 +8,11 @@ validate the reply with the full Pydantic model, so the limits still apply on ou
 
 from __future__ import annotations
 
-import re
 from typing import Any
 
 from pydantic import BaseModel, ValidationError
+
+from .numbers import Kind, read_number
 
 UNSUPPORTED = {"minItems", "maxItems", "exclusiveMinimum", "exclusiveMaximum"}
 
@@ -40,23 +41,6 @@ def parse_reply[Model: BaseModel](model: type[Model], response: Any) -> Model | 
         return None
 
 
-NUMBER = re.compile(r"-?\d+(?:[.,]\d+)*")
-
-
-def to_number(value: object) -> float | None:
-    if isinstance(value, bool):
-        return None
-    if isinstance(value, int | float):
-        return float(value)
-    match = NUMBER.search(str(value or ""))
-    if not match:
-        return None
-    digits = match.group(0)
-    # "1,200" is a thousands separator; "12,50" is a decimal comma.
-    if "," in digits and "." not in digits:
-        head, _, tail = digits.rpartition(",")
-        digits = f"{head.replace(',', '')}.{tail}" if len(tail) != 3 else digits.replace(",", "")
-    try:
-        return float(digits.replace(",", ""))
-    except ValueError:
-        return None
+def to_number(value: object, currency: str | None = None, kind: Kind = "money") -> float | None:
+    """A number the model wrote as text; the one shared reader (`numbers.read_number`)."""
+    return read_number(value, currency, kind)
