@@ -109,6 +109,11 @@ test('OB-271 FreshMart sells products, not a menu with samosas', async ({ page }
   await row.click()
   await expect(page.getByRole('dialog').last()).not.toContainText('Samosa')
   await snap(page, 'freshmart-products', 'en')
+  await page.keyboard.press('Escape')
+  await page.getByRole('button', { name: /^Sold out/ }).click()
+  const hint = page.getByTestId('ask-hint').first()
+  await expect(hint).toBeVisible()
+  await expect(hint).not.toContainText('Samosa')
 })
 
 test('OB-271 a bakery demo shop reads bakery samples', async ({ page }) => {
