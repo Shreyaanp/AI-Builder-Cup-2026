@@ -31,6 +31,7 @@ import { formatShopPrice } from '../v1/format'
 import { productName } from '../../i18n/productNames'
 import { Sheet } from '../v1/Sheet'
 import { useWorkspace } from '../v1/workspaceContext'
+import { sampleSupplierNote, sampleWord } from '../sourcing/sampleWord'
 import { SupplierTalk } from './SupplierTalk'
 import { LineAction } from '../v1/CollapsibleCard'
 import { Code } from './Code'
@@ -174,6 +175,7 @@ export function PurchaseOrderCard({
     }
   }
   const { demo } = useWorkspace()
+  const locale = useLocale()
   const spinner = (key: string, icon: ReactNode) =>
     busy === key ? <CircularProgress size={16} color="inherit" /> : icon
   if (preview === 'timeline')
@@ -217,7 +219,7 @@ export function PurchaseOrderCard({
             component="span"
             size="small"
             icon={<FlaskConical size={14} />}
-            label={s.simulation}
+            label={demo ? s.simulation : sampleWord[locale]}
             sx={{
               height: 24,
               bgcolor: roles.tertiaryContainer,
@@ -282,7 +284,11 @@ export function PurchaseOrderCard({
         )}
         {order.simulated && (
           <Typography variant="bodyMedium" color="text.secondary" sx={{ mt: 1 }}>
-            {order.supplier.system === 'idoc' ? showcase.simulated : s.simulationNote}
+            {order.supplier.system === 'idoc'
+              ? showcase.simulated
+              : demo
+                ? s.simulationNote
+                : sampleSupplierNote[locale]}
           </Typography>
         )}
       </Box>
