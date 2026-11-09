@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from 'react'
+import { Suspense, lazy, useEffect, useId, useState } from 'react'
 import type { ReactNode } from 'react'
 import {
   Box,
@@ -51,9 +51,13 @@ import { countAction, countShown } from './habitCount'
 import { useLocalDay } from './useLocalDay'
 import { FirstCustomers } from '../FirstCustomers'
 import { TodaySupplyNeeds } from '../../supply/SupplyEntry'
-import { OrderMoreSheet } from '../../supply/OrderMore'
 import { useOrderChangeCopy } from '../../supply/orderChangeCopy'
 import { useSupply, type OrderAsk } from '../../supply/supplyData'
+
+// Loaded on the first "Order more": the first screen stays inside its budget.
+const OrderMoreSheet = lazy(() =>
+  import('../../supply/OrderMore').then((m) => ({ default: m.OrderMoreSheet })),
+)
 
 /** What the Coach screen lets Today do: talk to the coach, open sheets, start the mic. */
 export interface TodayActions {
@@ -557,6 +561,8 @@ function NeedRow({
   const [busy, setBusy] = useState(false)
   const [making, setMaking] = useState(false)
   const [asking, setAsking] = useState<OrderAsk | null>(null)
+  const [askedOnce, setAskedOnce] = useState(false)
+  if (asking && !askedOnce) setAskedOnce(true)
   const order = useOrderChangeCopy()
   const toOrder = useSupply(need.kind === 'low').data?.to_order ?? []
   const step = useStepAction(need.kind === 'step' ? need.step : 'items')
@@ -862,7 +868,11 @@ function NeedRow({
         </Stack>
       )}
       {panel}
-      <OrderMoreSheet ask={asking} onClose={() => setAsking(null)} />
+      {askedOnce && (
+        <Suspense fallback={null}>
+          <OrderMoreSheet ask={asking} onClose={() => setAsking(null)} />
+        </Suspense>
+      )}
     </Box>
   )
 }
