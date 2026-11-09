@@ -50,6 +50,7 @@ from .new_shop_resume import (
     progress_note,
 )
 from .new_shop_tools import attach_ready_profile, end_conversation, show_step, update_shop
+from .numbers import read_number
 from .payments import prepare_payment_link
 from .playbook import coach_summary, migrate_stored
 from .region import region_rule, shop_region
@@ -341,6 +342,7 @@ NAHI_AFTER_NAME = r"^\s*(?:ab\s+|aaj\s+|abhi\s+)?nahin?\s+(?:hai|bacha)\b"
 CHANGE_NEGATED = r"\b(?:mat|na|nahi\s+hu[aei]|don'?t|do\s+not|never)\b"
 
 BACK = r"back(?:\s+in\s+stock)?|available again|in stock"
+COUNT_LEFT = r"\b(?:left|remaining)\b"
 # Spoken currency names and the shop currencies they can mean; a price in another currency is
 # never converted or guessed.
 CURRENCY_WORDS = {
@@ -425,6 +427,11 @@ def said_time(said: str, *, night: bool) -> str | None:
         return clock(said)
     hour, _, minute = said.strip().partition(":")
     return clock(f"{int(hour) + (12 if night and int(hour) < 12 else 0)}:{minute or '00'}")
+
+
+# Offline fixture for "remember that the supplier comes on Tuesdays" (remember_note).
+REMEMBER = re.compile(r"^(?:please\s+)?remember(?:\s+that|\s*:)\s+(.{3,200}?)[.!]?$", re.I)
+REMEMBERED = "I'll remember that. You can see or delete it in My shop, under Shop details."
 
 
 def details_call(question: str, ctx: Any) -> types.Part | None:
@@ -544,6 +551,14 @@ def _upkeep_by_saved_name(question: str, ctx: Any) -> types.Part | None:
             continue
         if not rest.strip():
             bare_names.append(name)  # "samosa aur bun maska khatam": the verb covers both
+            continue
+        # "Kopi is 5 left" is a count, never a price; 0 left is sold out, as on the menu.
+        if re.search(COUNT_LEFT, rest):
+            count = re.search(rf"(\d[\d,]*)\s+(?:{COUNT_LEFT})", rest)
+            stock = read_number(count.group(1), currency, "quantity") if count else None
+            if stock is None:
+                return None  # "two left", "a few left": the coach model reads it
+            items.setdefault(name, {"name": name})["stock"] = int(stock)
             continue
         named = [
             codes
@@ -1123,7 +1138,9 @@ class OfflineCoachModel(BaseLlm):
                     ),
                     None,
                 )
-                if payment_response is not None:
+                if any(r.name == "remember_note" for r in responses):
+                    reply = REMEMBERED
+                elif payment_response is not None:
                     status = str(payment_response.get("status", "invalid"))
                     reply = {
                         "prepared": "Check the payee and amount, then share your link. "
@@ -1257,6 +1274,13 @@ class OfflineCoachModel(BaseLlm):
                     clarify = CLARIFY_TIME if re.search(r"timing", question, re.I) else CLARIFY
                     yield LlmResponse(
                         content=types.Content(role="model", parts=[types.Part(text=clarify)])
+                    )
+                    return
+                remembered = REMEMBER.match(question.strip())
+                if ctx and ctx.business_id and remembered:
+                    note = types.FunctionCall(name="remember_note", args={"note": remembered[1]})
+                    yield LlmResponse(
+                        content=types.Content(role="model", parts=[types.Part(function_call=note)])
                     )
                     return
                 detail_call = details_call(question, ctx)
@@ -1412,6 +1436,8 @@ def shop_snapshot() -> str:
     items = "; ".join(
         f"{p['name']} {p['price']:g}/{p['unit']}"
         + ("" if p.get("available", True) else " (sold out)")
+        # The menu's − / + count, so a count the owner just tapped is what the coach knows.
+        + (f" ({p['stock']} left)" if p.get("stock") and p.get("available", True) else "")
         for p in products
     )
     try:

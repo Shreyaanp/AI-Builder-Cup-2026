@@ -10,11 +10,12 @@ navigation intents, never to a write. Anything unsure returns None and the coach
 import math
 import re
 from collections import OrderedDict
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Literal
 
 import anyio
+from google.adk.events import Event
 
 from .app_guide import guide_reply, where_line
 from .close_reward import close_reward, reward_text
@@ -25,6 +26,7 @@ from .demo_coach_words import HI_PRICE_CUE, HINDI, bare, speaks_hindi
 from .demo_coach_words import PRICE_CUE as OWNER_PRICE_CUE
 from .demo_item_names import hindi_item
 from .discover import open_now
+from .instant_supply import order_from_list, supplier_search
 from .money import to_minor
 from .owner_order_words import order_asked
 from .region import shop_currency, shop_zone
@@ -119,7 +121,9 @@ MAKE_LIST = re.compile(
     r")",
     re.I,
 )
-SOLD_OUT_LIST = re.compile(r"^what(?:'s|\s+is)\s+sold\s+out\b", re.I)
+SOLD_OUT_LIST = re.compile(
+    r"^(?:what(?:'s|\s+is)|which\s+(?:items?|things)\s+(?:are|is))\s+sold\s+out\b", re.I
+)
 # Tomorrow's promise by chat (HABIT change 4): "remind me to order milk tomorrow (morning)",
 # "tomorrow remind me to call Ganesh", "kal subah doodh yaad dilana". Only with "tomorrow" or
 # "kal": "remind me every morning" stays the Remind me screen.
@@ -177,10 +181,20 @@ PRICE_CUE = re.compile(
 
 
 @dataclass
+class SavedTool:
+    """A tool the instant path ran, kept in the conversation like one the model called."""
+
+    name: str
+    args: dict[str, Any]
+    response: dict[str, Any]
+
+
+@dataclass
 class InstantResult:
     intent: str
     reply: str
     events: list[StreamEvent] = field(default_factory=list)
+    tool: SavedTool | None = None
 
 
 def _cosine(a: list[float], b: list[float]) -> float:
@@ -481,7 +495,10 @@ def _hours_reply(fields: dict[str, Any]) -> str | None:
 
 
 async def route(
-    text: str, ctx: MerchantContext | None, index: IntentIndex | None = None
+    text: str,
+    ctx: MerchantContext | None,
+    index: IntentIndex | None = None,
+    history: Sequence[Event] = (),
 ) -> InstantResult | None:
     """The instant answer for this owner message, or None to use the coach model."""
     message = " ".join(text.split())
@@ -492,6 +509,9 @@ async def route(
     promised = promise_words(message.rstrip(" .!।"))
     if promised:
         return _promise(ctx, promised, hindi=not LATIN.match(message))
+    supplied = await supplier_search(ctx, message) or order_from_list(ctx, message, history)
+    if supplied:
+        return supplied
     made = make_list(ctx, message)
     if made:
         return made

@@ -985,6 +985,58 @@
         }
       }
     },
+    "/api/v1/businesses/{business_id}/notes": {
+      "post": {
+        "summary": "Create Note",
+        "description": "Owner types something for the coach to remember (no AI involved): the same rule as\n\"remember this\" said in chat, so both lists are one.",
+        "operationId": "create_note_api_v1_businesses__business_id__notes_post",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NoteRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Create Note Api V1 Businesses  Business Id  Notes Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/businesses/{business_id}/notes/{note_id}": {
       "delete": {
         "summary": "Delete Note",
@@ -15192,6 +15244,22 @@
         ],
         "title": "NextReward",
         "description": "The single next named reward (\"2 more stamps → free bun maska\")."
+      },
+      "NoteRequest": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Text"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "NoteRequest"
       },
       "Observation": {
         "properties": {
