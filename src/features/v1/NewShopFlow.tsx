@@ -77,7 +77,7 @@ import { useGoLiveCopy } from './goLiveCopy'
 import { dietaryMissing, factEntries } from './shopProgress'
 import { useNextStepsCopy } from './nextStepsCopy'
 import { useCopy } from './strings'
-import { useVoice } from './useVoice'
+import { useVoice, voiceSupported } from './useVoice'
 import { useSpokenReveal } from './useSpokenReveal'
 import { cardWords, mergeTranscript } from './speechReveal'
 import type { VoiceProblem } from './useVoice'
@@ -86,7 +86,7 @@ import type { OrbPhase } from './VoiceStage'
 import { useVoiceModeCopy } from './voiceModeCopy'
 import { useWorkspace } from './workspaceContext'
 import type { GalleryPhoto } from './screens/CoachScreen'
-import { utter } from './phoneVoice'
+import { canSpeak, speak as speakOnPhone, stopSpeech, utter } from './phoneVoice'
 import { useLanguageSwitch } from './languageSwitch'
 import {
   loadOnboardingPhoto,
@@ -468,7 +468,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
   function silenceAudio() {
     speaking.current?.pause()
     speaking.current = null
-    if ('speechSynthesis' in window) speechSynthesis.cancel()
+    stopSpeech()
   }
   function stopSpeaking() {
     silenceAudio()
@@ -512,7 +512,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
     } catch {
       // Fall through to on-device speech.
     }
-    if (!('speechSynthesis' in window) || mutedRef.current) {
+    if (!canSpeak() || mutedRef.current) {
       setTtsText('')
       return
     }
@@ -525,7 +525,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
         captionReveal.push(text)
         captionReveal.finish()
       }
-      speechSynthesis.speak(utterance)
+      speakOnPhone(utterance)
       // Some devices never report the end of speech.
       window.setTimeout(finish, 1500 + cleanText.length * 70)
     })
@@ -940,11 +940,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
     }
   }
 
-  const canVoice =
-    typeof window !== 'undefined' &&
-    Boolean(navigator.mediaDevices) &&
-    typeof AudioContext !== 'undefined' &&
-    typeof AudioWorkletNode !== 'undefined'
+  const canVoice = voiceSupported()
   async function begin() {
     started.current = true
     ws.setNewShopPhase('chat')
@@ -1017,7 +1013,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
       window.clearTimeout(silence.current)
       controller.current?.abort()
       speaking.current?.pause()
-      if ('speechSynthesis' in window) speechSynthesis.cancel()
+      stopSpeech()
     },
     [],
   )
