@@ -559,7 +559,12 @@ def test_a_price_in_rupees_in_a_singapore_shop_is_asked_about(sgd_shop, message)
 
 
 def test_a_hindi_owner_is_asked_in_hindi_in_the_shops_currency(sgd_shop):
-    result = run("समोसा अब 20 रुपये का है", sgd_shop)
+    # A Hindi owner: the app is in Hindi (the reply follows the app, not the script).
+    token = ui_language.set("hi")
+    try:
+        result = run("समोसा अब 20 रुपये का है", sgd_shop)
+    finally:
+        ui_language.reset(token)
     assert result and not result.events
     assert result.reply == "आपकी दुकान के दाम S$ में हैं। नया दाम S$ में कितना रखूँ?"
 
