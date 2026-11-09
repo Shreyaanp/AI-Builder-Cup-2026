@@ -27,6 +27,7 @@ from .customer import Inquiry, InquiryInput, InquiryReceipt
 from .merchant import (
     CHALLENGE_SECONDS,
     DEMO_ID,
+    MONEY_KINDS,
     PIN_REQUIRED,
     PROPOSAL_SECONDS,
     SUPPLY_KINDS,
@@ -433,6 +434,7 @@ class FirestoreMerchantStore:
                 "owner_habit",
                 "owner_promise",
                 *SUPPLY_KINDS,
+                *MONEY_KINDS,
             ):
                 self.feature_docs.delete_scope(kind, snapshot.id)
             owned.append(snapshot.id)

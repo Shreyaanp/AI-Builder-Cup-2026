@@ -4,6 +4,7 @@ import { BarChart3, ChevronDown, ChevronRight } from 'lucide-react'
 import { shape } from '../../design/theme'
 import { useLocale } from '../../state/hooks'
 import { WeekPulse } from '../analytics/WeekPulse'
+import { WeekMoney } from '../expenses/WeekMoney'
 import { hasWeek, useAnalytics, useWeekLine } from '../analytics/weekData'
 import { useGrowCopy } from '../v1/growCopy'
 import { Sheet } from '../v1/Sheet'
@@ -44,6 +45,7 @@ export function MySalesRow({ open, onOpen }: { open: boolean; onOpen: (open: boo
         {open && (
           <Stack spacing={4}>
             {days && <WeekPulse data={days} />}
+            <WeekMoney />
             {week && <Summary week={week} startOpen={!days} />}
           </Stack>
         )}

@@ -38,6 +38,7 @@ import { ConfirmUndo } from './ConfirmUndo'
 import { useOrderChangeCopy } from './orderChangeCopy'
 import { useShowcaseCopy } from './showcaseCopy'
 import { agreedQuantity, orderLabel, orderTotal } from './orderFormat'
+import { LogOrderExpense } from '../expenses/LogOrderExpense'
 import { useSupplyCopy, type SupplyCopy } from './copy'
 import { dayLabel, useOrderUnit, usePoActions, type SimVariant } from './supplyData'
 import type { DocFlag, DocKind, PurchaseOrder, RuleCheck, SupplyDocument } from './types'
@@ -893,6 +894,14 @@ function NextStep({
           <Check size={18} aria-hidden="true" color={roles.primary} />
           {s.closed}
         </Typography>
+      )}
+      {order.received && (
+        <LogOrderExpense
+          orderId={order.id}
+          supplier={order.supplier.name}
+          total={order.invoice_total ?? orderTotal(order)}
+          currency={order.currency}
+        />
       )}
       {order.received && (order.status === 'closed' || order.status === 'invoiced') && (
         <Button

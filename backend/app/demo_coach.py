@@ -649,6 +649,16 @@ async def _order_from(ctx: Any, question: str) -> list[StreamEvent] | None:
     ]
 
 
+def expense_said(ctx: Any, question: str) -> list[StreamEvent] | None:
+    """ "doodh 300 ka kharcha": noted the way the real coach notes it (instant.save_expense)."""
+    from .expenses import expense_words
+    from .instant import save_expense
+
+    words = expense_words(" ".join(question.split()))
+    result = save_expense(ctx, words) if words else None
+    return [*result.events, StreamEvent(kind="reply", text=result.reply)] if result else None
+
+
 async def public_demo_turn(ctx: Any, question: str) -> list[StreamEvent] | None:
     """A whole offline demo turn: the proposal and chart cards the real coach would show, then
     the reply. Deterministic and model-free, so the public demo never calls a paid model."""
@@ -667,6 +677,7 @@ async def public_demo_turn(ctx: Any, question: str) -> list[StreamEvent] | None:
         app_language(question)
         or customer_reply(ctx, question)
         or tomorrow_note(ctx, question)
+        or expense_said(ctx, question)
         or await first_jobs(ctx, question)
         or sales_today(ctx, question)
         or close_day(ctx, question)
