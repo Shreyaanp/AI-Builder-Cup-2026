@@ -207,6 +207,8 @@ export const fil: Copy = {
   soldOutToday: 'Ubos ngayon',
   soldOutCount: (count: number) => (count ? `${count} ubos` : 'Lahat ay available'),
   soldOutHint: 'I-off ang anumang naubos na. Makikita agad ng mga customer.',
+  soldOutHintHidden:
+    'Patayin ang anumang naubos na. Makikita ito ng mga customer kapag nakikita na nila ang tindahan mo.',
   shared: 'Nakabahagi',
   notShared: 'Hindi nakabahagi',
   messages: 'Mga mensahe',
@@ -347,6 +349,9 @@ export const fil: Copy = {
   customerPageOff: 'I-on para makakuha ng link ng menu, presyo at oras para sa mga suki.',
   customerPageOn: 'Makikita ng may link ang tindahan at kasalukuyang presyo.',
   pageSwitch: 'I-share ang pahina',
+  liveSwitch: 'Nakikita ng mga customer ang tindahan ko',
+  liveNeedsPlace:
+    'Sabihin muna kung saan ka mahahanap ng mga customer. Makikita ang tindahan mo pagka-kumpirma mo.',
   share: 'Ibahagi',
   copyLink: 'Kopyahin ang link',
   openPage: 'Buksan ang pahina',

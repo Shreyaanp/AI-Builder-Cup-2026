@@ -31,7 +31,11 @@ import { MapCard, type PinChoice } from './MapCard'
 import { useWorkspace } from './workspaceContext'
 import { useNewShopCopy } from './newShopCopy'
 import { useCopy } from './strings'
-import { shopRegion } from '../../region/region'
+import { moneyLocale, shopRegion } from '../../region/region'
+import { formatShopPrice } from './format'
+import { readNumber } from './readNumber'
+import { numberForEditing } from './format'
+import { numberQuestion } from './numberCopy'
 import { useKeyboardViewport } from '../../hooks/useKeyboardViewport'
 import { useIdentity } from '../../auth/useIdentity'
 import { useLocale } from '../../state/hooks'
@@ -124,6 +128,7 @@ export function GuidedDetails({
   const step = steps[index]!
   const [fields, setFields] = useState(recovery?.fields ?? initial)
   const currency = fields.currency || shopRegion(fields).currency
+  const numberLocale = moneyLocale(currency, locale) ?? locale
   const [rows, setRows] = useState<Row[]>(
     () =>
       recovery?.rows ??
@@ -131,7 +136,12 @@ export function GuidedDetails({
         ? initialProducts.map((p) => ({
             key: crypto.randomUUID(),
             name: p.name,
-            price: String(toMajor(p.price, currency)),
+            price: numberForEditing(
+              toMajor(p.price, currency),
+              moneyLocale(currency, locale) ?? locale,
+              'money',
+              currency,
+            ),
             unit: p.unit,
           }))
         : [newRow()]),
@@ -142,6 +152,18 @@ export function GuidedDetails({
     if (mode === 'new') saveOnboardingDraft(scope, 'manual', { index, fields, rows, stamps, pin })
   }, [mode, scope, index, fields, rows, stamps, pin])
   const [problem, setProblem] = useState('')
+  // Prices are read like every typed amount ("1,000" is a thousand; "1,5" is asked about).
+  const [checkPrices, setCheckPrices] = useState(false)
+  const priceReading = (row: Row) => readNumber(row.price, numberLocale, currency, 'money')
+  const priceProblem = (row: Row) => {
+    const reading = priceReading(row)
+    if (reading.ok || reading.reason === 'empty') return ''
+    if (reading.reason !== 'ambiguous') return t.enterPrice
+    const money = (value: number) => formatShopPrice(toMinor(value, currency), currency, locale)
+    return numberQuestion(locale)
+      .replace('{a}', money(reading.options[0]))
+      .replace('{b}', money(reading.options[1]))
+  }
   const heading = useRef<HTMLHeadingElement>(null)
   const page = useRef<HTMLDivElement>(null)
   // Where the focus goes after a move: the new question, or the answer that needs fixing.
@@ -199,11 +221,20 @@ export function GuidedDetails({
     if (invalidPayments) return fail(t.factInputHelp, 'payment')
     if (invalidDelivery) return fail(t.deliveryInputHelp, 'delivery')
     if (mode === 'edit' && invalidStamps) return fail(rewards.neededHelp, 'reward')
+    // A typed price that can't be read stops here with its reason: never dropped or guessed.
+    const unclear = rows.find((row) => row.name.trim() && priceProblem(row))
+    if (unclear && steps.includes('products')) {
+      setCheckPrices(true)
+      return fail(priceProblem(unclear), 'products')
+    }
     const products: Product[] = rows
-      .filter((row) => row.name.trim() && Number.isFinite(Number(row.price)) && row.price.trim())
-      .map((row) => ({
+      .flatMap((row) => {
+        const reading = priceReading(row)
+        return row.name.trim() && reading.ok ? [{ row, value: reading.value }] : []
+      })
+      .map(({ row, value }) => ({
         name: row.name.trim(),
-        price: toMinor(Number(row.price), currency),
+        price: toMinor(value, currency),
         unit: row.unit,
         stock: null,
         available: true,
@@ -317,11 +348,11 @@ export function GuidedDetails({
                 label={t.price}
                 value={row.price}
                 autoComplete="off"
+                error={checkPrices && Boolean(row.name.trim() && priceProblem(row))}
+                helperText={(checkPrices && row.name.trim() && priceProblem(row)) || undefined}
                 onChange={(event) =>
                   setRows(
-                    rows.map((r) =>
-                      r.key === row.key ? { ...r, price: event.target.value.replace(',', '.') } : r,
-                    ),
+                    rows.map((r) => (r.key === row.key ? { ...r, price: event.target.value } : r)),
                   )
                 }
                 slotProps={{
@@ -409,6 +440,8 @@ export function GuidedDetails({
               fields.lat != null && fields.lng != null ? { lat: fields.lat, lng: fields.lng } : null
             }
             done={null}
+            // The address field above already takes a typed area.
+            areaSearch={false}
             onConfirm={async (choice, address) => {
               const label = address && !address.startsWith('Near ') ? address : ''
               setPin({ choice, label: address ?? '' })

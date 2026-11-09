@@ -563,3 +563,165 @@ async def test_offline_new_shop_tool_result_gets_the_next_question_in_hindi(tmp_
     text = replies[0].content.parts[0].text
     assert "Offline demo" not in text and "review the proposed" not in text
     assert "?" in text
+
+
+def _setup_turns(client: TestClient, language: str):
+    """One new-shop conversation (a fresh session) with the offline coach in one language:
+    send(message) -> (reply, topic asked, events); state holds the draft."""
+    from app.agent import OFFLINE_HI
+
+    state: dict = {"sid": None, "draft": {"business": None, "products": []}}
+
+    def topic(reply: str) -> str | None:
+        if language == "hi":
+            for key, question, _ in NEW_SHOP_TOPICS:
+                if OFFLINE_HI.get(question, question) in reply:
+                    return key
+            return "open" if OFFLINE_HI[OPEN_QUESTION] in reply else None
+        return asked_topic(reply)
+
+    def send(message: str) -> tuple[str, str | None, list]:
+        response = client.post(
+            "/api/v1/coach/stream",
+            json={
+                "message": message,
+                "language": language,
+                "new_shop": True,
+                "session_id": state["sid"],
+                "new_shop_draft": state["draft"],
+            },
+        )
+        events = [
+            json.loads(line[6:]) for line in response.text.splitlines() if line.startswith("data: ")
+        ]
+        state["sid"] = state["sid"] or events[0]["session_id"]
+        for event in events:
+            if event["kind"] == "proposal":
+                state["draft"] = {"business": event["data"]["snapshot"]["business"], "products": []}
+        reply = next(event["text"] for event in reversed(events) if event["kind"] == "reply")
+        return reply, topic(reply), events
+
+    return send, state
+
+
+@pytest.mark.parametrize(
+    ("language", "start", "unclear", "suggested", "skip_note"),
+    [
+        (
+            "hi",
+            "नमस्ते! मैं एक नई दुकान खोलना चाहता हूँ।",
+            "मेरा नाम रमेश है, पुणे में ठेला है, सुबह से चलता है, सब कुछ अच्छा है, आप बताइए क्या करें?",
+            "मैं चाय और नाश्ता बेचता हूँ",
+            "यह सवाल छोड़ दीजिए। अगला सवाल पूछिए।",
+        ),
+        (
+            "en",
+            "Hello! I want to open a new shop.",
+            "Hmm, what do you mean by that?",
+            "I sell tea and snacks",
+            "Skip this question. Ask me the next one.",
+        ),
+    ],
+)
+def test_setup_never_loops_on_what_you_sell(
+    tmp_path: Path, language: str, start: str, unclear: str, suggested: str, skip_note: str
+):
+    """Ramesh, 8 Nov: the setup chat repeated "आप क्या बेचते हैं?" forever, even after its own
+    example sentence and after "छोड़ें". Its own example is an answer; Skip moves on at once; a
+    second unclear answer moves on too."""
+
+    def until_sell(send) -> str:
+        reply, asked, _ = send(start)
+        reply, asked, _ = send(unclear)  # the open question: nothing usable
+        for _ in range(4):
+            if asked == "sell":
+                return reply
+            reply, asked, _ = send(skip_note)
+        raise AssertionError(f"never asked what they sell: {reply}")
+
+    with TestClient(create_app(settings(tmp_path), InMemorySessionService())) as client:
+        join(client)
+        # 1. The coach's own example sentence is recorded as what they sell.
+        send, state = _setup_turns(client, language)
+        until_sell(send)
+        reply, asked, events = send(unclear)
+        assert asked == "sell"  # the example, once
+        reply, asked, events = send(suggested)
+        assert state["draft"]["business"]["category"] in {"चाय और नाश्ता", "tea and snacks"}
+        assert asked != "sell", reply
+
+        # 2. Skip moves on at once, and the question never comes back (a new owner).
+        client.cookies.clear()
+        join(client)
+        send, state = _setup_turns(client, language)
+        until_sell(send)
+        reply, asked, _ = send(skip_note)
+        assert asked != "sell", reply
+        seen = [asked]
+        for _ in range(4):
+            reply, asked, _ = send(skip_note)
+            seen.append(asked)
+        assert "sell" not in seen, seen
+
+        # 3. Two unclear answers: the example once, then the next question (a new owner).
+        client.cookies.clear()
+        join(client)
+        send, state = _setup_turns(client, language)
+        until_sell(send)
+        _, first, _ = send(unclear)
+        _, second, _ = send(unclear)
+        assert first == "sell" and second != "sell"
+
+
+@pytest.mark.parametrize(
+    ("language", "name", "place"),
+    [("hi", "रमेश टी स्टॉल", "कोरमंगला, बेंगलुरु"), ("en", "Ramesh Tea Stall", "Koramangala, Bengaluru")],
+)
+def test_setup_takes_a_plain_answer_to_the_question_asked(
+    tmp_path: Path, language: str, name: str, place: str
+):
+    """A short answer to "What is your business called?" or "where?" is that answer."""
+    with TestClient(create_app(settings(tmp_path), InMemorySessionService())) as client:
+        join(client)
+        send, state = _setup_turns(client, language)
+        send("Hello! I want to open a new shop.")
+        _, asked, _ = send("Hmm, let me think.")
+        answers = {"name": name, "location": place, "sell": "चाय" if language == "hi" else "tea"}
+        for _ in range(5):
+            if asked not in answers:
+                break
+            _, asked, _ = send(answers.pop(asked))
+        business = state["draft"]["business"]
+        assert business["name"] == name
+        assert business["category"]
+        assert business["location"]
+
+
+async def test_area_only_pin_keeps_the_neighbourhood_not_the_door(tmp_path: Path):
+    """Priya, 8 Nov: a home baker goes live with her area only. The point is kept to about a
+    kilometre and labelled by the neighbourhood; no accuracy, no street address."""
+    store = MerchantStore(str(tmp_path / "shops.sqlite"))
+    body = ProposalRequest(
+        kind="business",
+        business=BusinessFields(name="Priya's Bakes", location="Koramangala"),
+        owner_location=OwnerLocation(lat=12.9352871, lng=77.6245432, accuracy_m=0, source="area"),
+    )
+    maps = MapsService(settings(tmp_path))
+    try:
+        await prepare_pin(body, store, "alice", maps)
+    finally:
+        await maps.close()
+    business = body.business
+    assert business and business.pin_source == "area"
+    assert (business.lat, business.lng) == (12.94, 77.62)
+    assert business.pin_accuracy_m is None and business.place_id is None
+    assert business.pin_label == business.location == "Koramangala"
+
+
+def test_typed_area_in_india_is_found_and_never_singapore(tmp_path: Path):
+    """Ahmed, 8 Nov: "Tolichowki, Hyderabad" typed in the map card finds Hyderabad."""
+    app = create_app(settings(tmp_path), InMemorySessionService())
+    with TestClient(app) as client:
+        join(client)
+        found = client.get("/api/v1/places/pin", params={"q": "Tolichowki, Hyderabad"}).json()
+        assert 17 < found["lat"] < 18 and 78 < found["lng"] < 79

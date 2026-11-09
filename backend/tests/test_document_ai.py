@@ -147,7 +147,7 @@ class FakeReader:
         self.parsed = parse_document(document, processor)
         self.calls: list[str] = []
 
-    async def read(self, data: bytes, processor: Any) -> ParsedDocument:
+    async def read(self, data: bytes, processor: Any, **_: Any) -> ParsedDocument:
         self.calls.append(processor)
         return self.parsed
 
