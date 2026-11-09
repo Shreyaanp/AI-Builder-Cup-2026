@@ -3,6 +3,7 @@ import {
   Suspense,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -54,7 +55,13 @@ const demoMe = { legal_version: '', consent: null, consent_current: true }
 export default function DemoApp() {
   const t = useDemoCopy()
   // The owner's chosen language rides on every owner call, as in the real app (reply drafts).
+  // Read from a ref: a language change must not rebuild the api (that resets the conversation).
   const locale = useLocale()
+  const localeRef = useRef(locale)
+  // A layout effect runs before every screen's own effects, so a refetch reads the new language.
+  useLayoutEffect(() => {
+    localeRef.current = locale
+  }, [locale])
   const bannerRef = useRef<HTMLElement>(null)
   useEffect(() => {
     const banner = bannerRef.current
@@ -167,7 +174,7 @@ export default function DemoApp() {
           signal: init.signal ?? AbortSignal.timeout(25_000),
           headers: {
             ...(typeof init.body === 'string' ? { 'Content-Type': 'application/json' } : {}),
-            'X-App-Language': locale,
+            'X-App-Language': localeRef.current,
             ...init.headers,
           },
         })
@@ -191,7 +198,7 @@ export default function DemoApp() {
         if (raw) return response as T
         return (await response.json()) as T
       },
-    [session, t.expired, t.readOnly, locale],
+    [session, t.expired, t.readOnly],
   )
   useEffect(() => {
     if (!session || customer) return

@@ -48,17 +48,33 @@ async function openDemo(page: Page, language: Lang, appearance: 'light' | 'dark'
   await expect(page.getByTestId('today')).toBeVisible({ timeout: 20_000 })
 }
 
-/** Sends one coach message and returns the log's new text once the reply has arrived. */
+/** Sends one coach message; returns the log's text after it once the reply has settled (the
+ * phone coach keeps only the latest reply on screen). */
 async function say(page: Page, language: Lang, text: string) {
   const log = page.getByRole('log')
-  const before = (await log.innerText().catch(() => '')).length
+  const read = async () => ((await log.count()) ? await log.innerText() : '')
+  const before = await read()
   await page.getByRole('textbox', { name: WORDS[language].box, exact: true }).fill(text)
   await page.getByRole('button', { name: WORDS[language].send, exact: true }).click()
+  const after = async () => {
+    const all = await read()
+    const at = all.lastIndexOf(text)
+    return all !== before && at >= 0 ? all.slice(at + text.length).trim() : ''
+  }
+  await expect.poll(async () => (await after()).length, { timeout: 30_000 }).toBeGreaterThan(20)
+  let last = ''
   await expect
-    .poll(async () => (await log.innerText()).length, { timeout: 30_000 })
-    .toBeGreaterThan(before + text.length + 20)
-  await page.waitForTimeout(400)
-  return (await log.innerText()).slice(before)
+    .poll(
+      async () => {
+        const now = await after()
+        const settled = now === last
+        last = now
+        return settled
+      },
+      { intervals: [500], timeout: 15_000 },
+    )
+    .toBe(true)
+  return last
 }
 
 async function openPriya(page: Page, language: Lang) {
@@ -88,10 +104,13 @@ test('an English shop that writes Hindi is answered in English and stays English
     expect(reply, message).toContain('I reply in English, the language you chose')
   }
   // What it understood in Hindi is still done, in English.
-  const sold = (await say(page, 'en', 'समोसा ख़त्म हो गया')).replace('समोसा ख़त्म हो गया', '')
-  await expect(page.getByRole('dialog', { name: 'Check before saving' })).toBeVisible()
-  expect(sold).not.toMatch(DEVANAGARI)
-  await page.keyboard.press('Escape')
+  await page.getByRole('textbox', { name: 'Message', exact: true }).fill('समोसा ख़त्म हो गया')
+  await page.getByRole('button', { name: 'Send', exact: true }).click()
+  const review = page.getByRole('dialog', { name: 'Check before saving' })
+  await expect(review).toContainText('Sold out', { timeout: 30_000 })
+  await expect(review).not.toContainText(DEVANAGARI)
+  await review.getByRole('button', { name: 'Cancel', exact: true }).click()
+  await expect(page.getByRole('log')).toContainText('Samosa: sold out')
   // The app itself never switched.
   await expect(page.locator('[data-tour="nav-shop"]')).toContainText('Shop')
   // Customer reply drafts are English too.
@@ -137,7 +156,10 @@ async function languageStep(browser: Browser, locale: string, timezoneId: string
   })
   await localOnly(page)
   await page.goto('/')
-  await page.getByRole('button', { name: 'Continue local preview' }).click()
+  // The sign-in page already follows the phone (a Hindi phone reads it in Hindi).
+  await page
+    .getByRole('button', { name: /^(?:Continue local preview|स्थानीय प्रीव्यू जारी रखें)$/ })
+    .click({ timeout: 30_000 })
   return { context, page }
 }
 
@@ -165,12 +187,12 @@ test.describe('the first language step', () => {
 // the other one, so the shot shows which language the reply came back in.
 for (const language of ['en', 'hi'] as const)
   for (const appearance of ['light', 'dark'] as const)
-    test(`shots ${language} ${appearance}`, async ({ page, browser }) => {
-      mkdirSync(SHOTS, { recursive: true })
-      for (const [width, height] of [
-        [360, 800],
-        [390, 844],
-      ] as const) {
+    for (const [width, height] of [
+      [360, 800],
+      [390, 844],
+    ] as const)
+      test(`shots ${width} ${language} ${appearance}`, async ({ page, browser }) => {
+        mkdirSync(SHOTS, { recursive: true })
         await page.setViewportSize({ width, height })
         await openDemo(page, language, appearance)
         const crossed = language === 'en' ? 'आज कितनी बिक्री हुई?' : 'what sold today?'
@@ -179,13 +201,11 @@ for (const language of ['en', 'hi'] as const)
         await page.screenshot({ path: `${SHOTS}/1-coach-other-script-${tag}.png` })
         await openPriya(page, language)
         await page.screenshot({ path: `${SHOTS}/2-reply-drafts-${tag}.png` })
-        await page.keyboard.press('Escape')
-      }
-      if (appearance === 'light') {
-        const phone = language === 'en' ? 'fr-FR' : 'hi-IN'
-        const { context, page: step } = await languageStep(browser, phone, 'Asia/Kolkata')
-        await expect(step.getByRole('radiogroup')).toBeVisible({ timeout: 30_000 })
-        await step.screenshot({ path: `${SHOTS}/3-language-step-${phone}-390-light.png` })
-        await context.close()
-      }
-    })
+        if (width === 390 && appearance === 'light') {
+          const phone = language === 'en' ? 'fr-FR' : 'hi-IN'
+          const { context, page: step } = await languageStep(browser, phone, 'Asia/Kolkata')
+          await expect(step.getByRole('radiogroup')).toBeVisible({ timeout: 30_000 })
+          await step.screenshot({ path: `${SHOTS}/3-language-step-${phone}-390-light.png` })
+          await context.close()
+        }
+      })
