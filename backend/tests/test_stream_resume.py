@@ -79,8 +79,17 @@ async def test_disconnect_resumes_owned_turn_without_second_model_call(monkeypat
         # The start has a hang guard only; the limit is on what this test is about: once the
         # phone drops, the response ends at once while the turn keeps running.
         request = asyncio.ensure_future(app(scope, incoming.get, send))
-        await asyncio.wait_for(gone.wait(), timeout=60)
-        await asyncio.wait_for(request, timeout=5)
+        dropped = asyncio.ensure_future(gone.wait())
+        await asyncio.wait({request, dropped}, timeout=60, return_when=asyncio.FIRST_COMPLETED)
+        if not gone.is_set():
+            dropped.cancel()
+            # The app failed (or ended) before its first words: its own error, not a timeout.
+            if request.done():
+                request.result()
+                raise AssertionError("the response ended before the coach's first words")
+            request.cancel()
+            raise AssertionError("no words from the coach within 60 s")
+        await asyncio.wait_for(request, timeout=3)
         assert cursor
         assert services.registry.active  # Producer is owned by the turn, not its subscriber.
         async with httpx.AsyncClient(
