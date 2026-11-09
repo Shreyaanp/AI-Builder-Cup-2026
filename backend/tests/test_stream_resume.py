@@ -43,6 +43,7 @@ async def test_disconnect_resumes_owned_turn_without_second_model_call(monkeypat
         )
         cursor = ""
         received = []
+        gone = asyncio.Event()
 
         async def send(message):
             nonlocal cursor
@@ -51,6 +52,7 @@ async def test_disconnect_resumes_owned_turn_without_second_model_call(monkeypat
             if '"kind": "delta"' in chunk and not cursor:
                 cursor = next(line[4:] for line in chunk.splitlines() if line.startswith("id: "))
                 incoming.put_nowait({"type": "http.disconnect"})
+                gone.set()
 
         scope = {
             "type": "http",
@@ -70,9 +72,15 @@ async def test_disconnect_resumes_owned_turn_without_second_model_call(monkeypat
             "client": ("127.0.0.1", 12345),
         }
         # Earlier tests' apps are garbage by now: collect them here, so a full collection never
-        # lands inside the 3 s window below on a slow runner.
+        # lands inside the window below on a slow runner.
         gc.collect()
-        await asyncio.wait_for(app(scope, incoming.get, send), timeout=3)
+        # Like OB-241 (test_resilience): one 3 s limit used to cover the turn's cold start too
+        # (session, recall, first model words) and timed out on slow CI runners (9 Nov, twice).
+        # The start has a hang guard only; the limit is on what this test is about: once the
+        # phone drops, the response ends at once while the turn keeps running.
+        request = asyncio.ensure_future(app(scope, incoming.get, send))
+        await asyncio.wait_for(gone.wait(), timeout=60)
+        await asyncio.wait_for(request, timeout=5)
         assert cursor
         assert services.registry.active  # Producer is owned by the turn, not its subscriber.
         async with httpx.AsyncClient(

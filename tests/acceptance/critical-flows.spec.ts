@@ -254,6 +254,14 @@ for (const language of LANGUAGES) {
       await expect(summary.getByRole('button', { name: copy.faceStart!, exact: true })).toHaveCount(
         0,
       )
+      // The coach's closing words land above the summary, never below it: a line added under the
+      // card scrolled "Go to my shop" up under the owner's finger and the tap missed (main CI,
+      // 9 Nov). The summary stays the last item of the conversation.
+      const turns = page.getByRole('log').locator('ol').first().locator(':scope > li')
+      await expect(
+        turns.filter({ hasText: /Your shop is set up|आपकी दुकान तैयार है।/ }),
+      ).toHaveCount(1)
+      await expect(turns.last().getByTestId('shop-summary')).toBeVisible()
       await summary.getByRole('button', { name: copy.done!, exact: true }).click()
       await expect(page.getByRole('heading', { level: 1 })).toContainText('Clean Helmet Point')
       await page.getByRole('button', { name: copy.newShopContinue! }).click()

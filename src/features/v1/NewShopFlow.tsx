@@ -1060,6 +1060,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
     return () => observer.disconnect()
   }, [phase])
   const missing = missingForListing(draft)
+  const hasSummary = lines.some((line) => line.role === 'summary')
   const unconfirmedPlace = !hasPlace(draft) ? (draft.business?.location ?? '') : ''
   const showPlaceConfirmation = useEffectEvent(() => openMap(false))
   useEffect(() => {
@@ -1641,7 +1642,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
           <Box role="log" aria-live="polite" aria-label={t.navCoach}>
             <Stack component="ol" spacing={3} sx={{ listStyle: 'none', m: 0, p: 0 }}>
               {lines.map((line) =>
-                line.role === 'camera' ? (
+                line.role === 'summary' ? null : line.role === 'camera' ? (
                   !line.closed && (
                     <Box component="li" key={line.id} sx={{ ml: { xs: 0, sm: 6 } }}>
                       <CameraCard
@@ -1668,13 +1669,22 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
                       onActive={() => openCards.current.add(line.id)}
                     />
                   </Box>
-                ) : line.role === 'summary' ? (
-                  <Box component="li" key={line.id} sx={{ ml: { xs: 0, sm: 6 } }}>
-                    <SummaryCard draft={draft} busy={finishing} onContinue={() => void finish()} />
-                  </Box>
                 ) : (
                   <ChatLine key={line.id} line={line} />
                 ),
+              )}
+              {busy === 'reply' && !live && !voiceOn && (
+                <Box component="li" sx={{ pl: 6 }}>
+                  <CircularProgress size={20} aria-label={t.speaking} />
+                </Box>
+              )}
+              {/* The summary stays the last line: the coach's closing words and the typing dots
+                  land above it, so "Go to my shop" never moves under the owner's finger as the
+                  reply arrives (the tap used to miss when the line landed below the card). */}
+              {hasSummary && (
+                <Box component="li" sx={{ ml: { xs: 0, sm: 6 } }}>
+                  <SummaryCard draft={draft} busy={finishing} onContinue={() => void finish()} />
+                </Box>
               )}
               {misses >= 2 && !ended && busy === 'idle' && (
                 <Box component="li" sx={{ ml: { xs: 0, sm: 6 } }}>
@@ -1736,11 +1746,6 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
                       </Button>
                     </Stack>
                   </Paper>
-                </Box>
-              )}
-              {busy === 'reply' && !live && !voiceOn && (
-                <Box component="li" sx={{ pl: 6 }}>
-                  <CircularProgress size={20} aria-label={t.speaking} />
                 </Box>
               )}
             </Stack>
