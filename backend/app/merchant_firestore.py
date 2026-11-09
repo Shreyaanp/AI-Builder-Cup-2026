@@ -34,6 +34,7 @@ from .merchant import (
     ProductFields,
     ProposalRequest,
     back_on_sale,
+    card_projection,
     challenge_prompts,
     check_demo_seed,
     has_pin,
@@ -721,6 +722,17 @@ class FirestoreMerchantStore:
             return None
         snapshot = ref.get()
         return self.shop_view(ref, snapshot.to_dict() if snapshot.exists else None)
+
+    def share_card(self, bid: str) -> dict[str, Any] | None:
+        try:
+            ref = self.businesses.document(document_id(bid, "Not found."))
+        except HTTPException:
+            return None
+        snapshot = ref.get()
+        data = snapshot.to_dict() if snapshot.exists else None
+        if not data or not data.get("public") or not has_pin(data["fields"]):
+            return None
+        return card_projection(ref.id, data["fields"], data.get("gallery") or [])
 
     def shop_view(self, ref: Any, data: dict[str, Any] | None) -> dict[str, Any] | None:
         if not data or not data.get("public") or not has_pin(data["fields"]):

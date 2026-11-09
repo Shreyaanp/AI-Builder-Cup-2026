@@ -8,6 +8,7 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from .limits import JSON_BODY_BYTES
 from .region import client_country, client_language_country
+from .robots import NOINDEX, closed_to_search
 from .shop_time import client_timezone, valid_timezone
 
 # Browsers ignore HSTS over plain http, so local dev is unaffected. The popup sign-in needs
@@ -54,6 +55,9 @@ class RequestBoundary:
                 headers["X-Content-Type-Options"] = "nosniff"
                 headers["Referrer-Policy"] = "same-origin"
                 headers.update(SECURITY_HEADERS)
+                # OB-273: the business host, *.run.app and the demo stay out of search.
+                if closed_to_search(Headers(scope=scope).get("host", ""), scope["path"]):
+                    headers["X-Robots-Tag"] = NOINDEX
             await send(message)
 
         async def reject(code: str, status: int) -> None:
