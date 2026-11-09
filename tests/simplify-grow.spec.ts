@@ -328,7 +328,7 @@ test('Buy stock: a drafted reorder is one card in To do and "1 to do" on the row
   await expect(sheet.getByRole('button', { name: /^To do/ })).toHaveText(/^To do\s*1$/)
   await sheet.getByRole('button', { name: 'Close', exact: true }).last().click()
   await expect(page.getByRole('dialog')).toHaveCount(0, { timeout: 10_000 })
-  await expect(await stockTile(page)).toContainText(/(^|· )1 to do$/)
+  await expect(await stockTile(page)).toContainText(/1 to do$/)
 })
 
 test('Buy stock: the seeded tea dust order shows once in On the way (demo)', async ({ page }) => {

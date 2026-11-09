@@ -42,7 +42,6 @@ import { onMenu } from '../shop/stock'
 import { useStockCopy } from '../shop/stockCopy'
 import { ConnectRow } from '../connect/ConnectTile'
 import { Sheet } from './Sheet'
-import { AskHint } from './AskHint'
 import { ClosedTodaySwitch } from './TwoPaths'
 import { ShopQr } from './ShopQr'
 import { OwnerPerks } from '../passport/games/OwnerPerks'
@@ -213,7 +212,7 @@ export function Supporting({ children }: { children: ReactNode }) {
  * beside the coach. What needs the owner (waiting customers, the daily menu question) lives on
  * Coach Today, not here.
  */
-export function ShopOverview({ narrow = false }: { narrow?: boolean }) {
+export function ShopOverview() {
   const [sheet, setSheet] = useState<ShopSheetKind | null>(null)
   const { unread, refresh } = useUnread()
   return (
@@ -221,7 +220,6 @@ export function ShopOverview({ narrow = false }: { narrow?: boolean }) {
       <YourPage onSheet={setSheet} />
       <ShopTiles unread={unread} onSheet={setSheet} />
       <PageAction onSheet={setSheet} />
-      {!narrow && <AskHint id="sold_out" />}
       <ShopSheets
         kind={sheet}
         onClose={() => {

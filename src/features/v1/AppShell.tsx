@@ -249,7 +249,7 @@ export function AppShell() {
                 }}
               >
                 <Suspense fallback={null}>
-                  <ShopOverview key={ws.active.id} narrow />
+                  <ShopOverview key={ws.active.id} />
                 </Suspense>
               </Box>
             )}
