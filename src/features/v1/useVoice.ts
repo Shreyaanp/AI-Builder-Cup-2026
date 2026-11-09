@@ -606,8 +606,10 @@ export function useVoice(
           )
           return
         }
-        if (lastCode === 'SESSION_CAP' || event.reason === 'SESSION_CAP') {
-          // The 15-minute cap: a calm pause, never a dead end (typing works; tap to talk again).
+        const paused = ['SESSION_CAP', 'VOICE_PAUSED']
+        if (paused.includes(lastCode) || paused.includes(event.reason)) {
+          // The 5-minute cap, or 45 s without the owner (live voice is billed while it is open):
+          // a calm pause, never a dead end (typing works; tap to talk again).
           fail({ kind: 'session-cap' })
           stop()
           return

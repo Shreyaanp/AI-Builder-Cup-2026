@@ -1580,9 +1580,10 @@ def coach_region() -> str:
     return " " + region_rule(shop_region(fields), shop_currency_of(fields))
 
 
-def turn_instruction(_: ReadonlyContext | None = None) -> str:
-    """The per-turn part of the instruction: the pinned reply language, a short snapshot of the
-    saved shop and, for a new shop, its guided mode and draft."""
+def turn_facts() -> str:
+    """The per-turn instruction without the new-shop progress note: the pinned reply language,
+    the region, a short snapshot of the saved shop and, for a new shop, its guided mode and
+    draft. A resumed Live session is only used while these are unchanged (voice_resume)."""
     ctx = current.get()
     guided = ""
     if ctx and ctx.new_shop:
@@ -1591,10 +1592,21 @@ def turn_instruction(_: ReadonlyContext | None = None) -> str:
             NEW_SHOP_INSTRUCTION
             + "\nUnverified new shop draft: "
             + json.dumps(draft, ensure_ascii=False)
-            + progress_note(ctx.new_shop_draft, ctx.last_question, ctx.resumed)
         )
     rule = language_rule(reply_language(ui_language.get()))
     return f"{rule}{coach_region()}{shop_snapshot()}{guided}"
+
+
+def turn_instruction(_: ReadonlyContext | None = None) -> str:
+    """The per-turn part of the instruction: the facts above and, for a new shop, where the
+    conversation stood."""
+    ctx = current.get()
+    note = (
+        progress_note(ctx.new_shop_draft, ctx.last_question, ctx.resumed)
+        if ctx and ctx.new_shop
+        else ""
+    )
+    return turn_facts() + note
 
 
 def instruction(context: ReadonlyContext) -> str:
