@@ -46,7 +46,8 @@ import { comparisonKind } from './compare'
 import { AskHint } from '../v1/AskHint'
 import { TomorrowPromise } from './TomorrowPromise'
 import { countClosed } from '../v1/today/habitCount'
-import { parseCloseDayNumber } from './parseNumber'
+import { readNumber } from '../v1/readNumber'
+import type { NumberKind, NumberReading } from '../v1/readNumber'
 import type { components } from '../../api/generated'
 
 type CloseReward = components['schemas']['CloseReward']
@@ -182,6 +183,9 @@ export function CloseDay({
   const [typing, setTyping] = useState(false)
   // A typed line that is filled in but not added yet still counts, and is added on Review.
   const [draft, setDraft] = useState<Line | null>(null)
+  // A typed number that needs an answer ("1,5": 1.5 or 15?) holds Review until it is fixed.
+  const [typedBlocked, setTypedBlocked] = useState(false)
+  const [checkTyped, setCheckTyped] = useState(0)
   const next = useNextStepsCopy()
   const online = useOnline()
   const started = useRef(false)
@@ -248,7 +252,18 @@ export function CloseDay({
       })),
     )
     .filter(({ line, key: k }) => !dropped.has(k) && line.quantity !== null)
-  const revenue = sales.reduce((sum, { line }) => sum + (line.amount ?? 0), 0)
+  // Summed in minor units, line by line, the way the server rounds and saves them.
+  const revenueMinor = sales.reduce((sum, { line }) => sum + toMinor(line.amount ?? 0, currency), 0)
+  const revenue = toMajor(revenueMinor, currency)
+  // Photo lines left out for want of a readable number; the owner is told how many.
+  const unread = done
+    .flatMap((s) =>
+      s.lines.map((line, i) => ({
+        key: key(s, i),
+        unclear: line.quantity === null || (s.kind === 'sales' && line.amount === null),
+      })),
+    )
+    .filter(({ key: k, unclear }) => unclear && !dropped.has(k)).length
   const fixture = done.some((s) => s.fixture)
   const day = done.find((s) => s.date)?.date ?? ''
   const minutes = shopNow(timezone).minutes
@@ -602,8 +617,10 @@ export function CloseDay({
                 // A name can repeat across units (Special Chai per cup and per pot).
                 products={[...new Set(ws.products.map((p) => p.name))]}
                 currency={currency}
+                check={checkTyped}
                 onAdd={(line) => setTyped((all) => [...all, line])}
                 onDraft={setDraft}
+                onBlocked={setTypedBlocked}
               />
             )}
             <AskHint id="close_day" />
@@ -635,6 +652,11 @@ export function CloseDay({
                 {failed}
               </Alert>
             )}
+            {unread > 0 && (
+              <Alert severity="warning" sx={{ mb: 3 }} data-testid="close-day-unread">
+                {t.unreadLines.replace('{n}', new Intl.NumberFormat(locale).format(unread))}
+              </Alert>
+            )}
             {sales.length === 0 && stock.length === 0 && (
               <Alert severity="warning" sx={{ mb: 3 }}>
                 {t.reviewEmpty}
@@ -646,7 +668,7 @@ export function CloseDay({
                   {t.salesTitle}
                 </Typography>
                 <Typography variant="displaySmall" sx={{ fontVariantNumeric: 'tabular-nums' }}>
-                  {formatShopPrice(toMinor(revenue, currency), currency)}
+                  {formatShopPrice(revenueMinor, currency, locale)}
                 </Typography>
                 <ReviewList
                   rows={sales.map(({ line, key: k }) => ({
@@ -808,6 +830,10 @@ export function CloseDay({
             size="large"
             disabled={lineCount === 0 || shots.some((s) => s.state === 'reading')}
             onClick={() => {
+              if (typing && typedBlocked) {
+                setCheckTyped((n) => n + 1)
+                return
+              }
               if (draft) {
                 setTyped((all) => [...all, draft])
                 setDraft(null)
@@ -1022,28 +1048,69 @@ function TypedSales({
   lines,
   products,
   currency,
+  check,
   onAdd,
   onDraft,
+  onBlocked,
 }: {
   lines: Line[]
   products: string[]
   currency: string
+  /** Bumped when Review is tapped while a typed number needs an answer: show it. */
+  check: number
   onAdd: (line: Line) => void
   onDraft: (line: Line | null) => void
+  onBlocked: (blocked: boolean) => void
 }) {
   const next = useNextStepsCopy()
   const locale = useLocale()
+  const copy = closeDayCopy(locale)
   const numberLocale = moneyLocale(currency, locale) ?? locale
   const [item, setItem] = useState('')
   const [qty, setQty] = useState('')
   const [amount, setAmount] = useState('')
   const [invalid, setInvalid] = useState(false)
-  const quantity = parseCloseDayNumber(qty, numberLocale, currency)
-  const total = parseCloseDayNumber(amount, numberLocale, currency)
-  const numberError = closeDayCopy(locale).numberInvalid.replace(
-    '{example}',
-    new Intl.NumberFormat(numberLocale).format(exponent(currency) === 0 ? 1000 : 1000.5),
-  )
+  const [left, setLeft] = useState({ quantity: false, amount: false })
+  const qtyReading = readNumber(qty, numberLocale, currency, 'quantity')
+  const amountReading = readNumber(amount, numberLocale, currency, 'money')
+  const quantity = qtyReading.ok ? qtyReading.value : null
+  const total = amountReading.ok ? amountReading.value : null
+  const plain = new Intl.NumberFormat(numberLocale, { maximumFractionDigits: 3 })
+  const money = (value: number) => formatShopPrice(toMinor(value, currency), currency, locale)
+  const example = (kind: NumberKind) =>
+    copy.numberInvalid.replace(
+      '{example}',
+      plain.format(kind === 'quantity' ? 2.5 : exponent(currency) === 0 ? 1000 : 1000.5),
+    )
+  // What is wrong with a field, in words; '' when it reads fine or is still empty.
+  const problem = (reading: NumberReading, kind: NumberKind) => {
+    if (reading.ok || reading.reason === 'empty') return ''
+    if (reading.reason !== 'ambiguous') return example(kind)
+    const show = kind === 'money' ? money : (value: number) => plain.format(value)
+    return copy.numberQuestion
+      .replace('{a}', show(reading.options[0]))
+      .replace('{b}', show(reading.options[1]))
+  }
+  const qtyProblem = problem(qtyReading, 'quantity')
+  const amountProblem = problem(amountReading, 'money')
+  // A line started but not finished (an item and an amount, no quantity) also holds Review:
+  // a line the owner filled in is never thrown away without a word.
+  const started = Boolean(item.trim() || qty.trim() || amount.trim())
+  const complete = Boolean(item.trim()) && qtyReading.ok && amountReading.ok
+  const blocked = Boolean(qtyProblem || amountProblem || (started && !complete))
+  useEffect(() => {
+    onBlocked(blocked)
+    return () => onBlocked(false)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [blocked])
+  // Review tapped while a number needs an answer counts as an attempt, until the next Add.
+  const [seenCheck, setSeenCheck] = useState(check)
+  const tried = invalid || check > seenCheck
+  // A field's message once the owner leaves it or taps Add: the question or the error.
+  const message = (text: string, issue: string, kind: NumberKind, leftField: boolean) =>
+    tried || leftField ? issue || (tried && !text.trim() ? example(kind) : '') : ''
+  const qtyMessage = message(qty, qtyProblem, 'quantity', left.quantity)
+  const amountMessage = message(amount, amountProblem, 'money', left.amount)
   const known = products.find((name) => name.toLowerCase() === item.trim().toLowerCase())
   const filled: Line | null =
     item.trim() && quantity !== null && total !== null
@@ -1074,6 +1141,8 @@ function TypedSales({
     setQty('')
     setAmount('')
     setInvalid(false)
+    setSeenCheck(check)
+    setLeft({ quantity: false, amount: false })
   }
   return (
     <Box
@@ -1096,8 +1165,8 @@ function TypedSales({
           name="item"
           label={next.manualItem}
           value={item}
-          error={invalid && !item.trim()}
-          helperText={invalid && !item.trim() ? next.manualInvalid : undefined}
+          error={tried && !item.trim()}
+          helperText={tried && !item.trim() ? next.manualInvalid : undefined}
           onChange={(event) => setItem(event.target.value.slice(0, 180))}
           slotProps={{ htmlInput: { list: 'close-day-items', autoComplete: 'off' } }}
         />
@@ -1111,9 +1180,10 @@ function TypedSales({
             name="quantity"
             label={next.manualQty}
             value={qty}
-            error={invalid && quantity === null}
-            helperText={invalid && quantity === null ? numberError : undefined}
+            error={Boolean(qtyMessage)}
+            helperText={qtyMessage || undefined}
             onChange={(event) => setQty(event.target.value)}
+            onBlur={() => setLeft((all) => ({ ...all, quantity: true }))}
             slotProps={{
               htmlInput: { inputMode: 'decimal', autoComplete: 'off' },
               formHelperText: { 'aria-live': 'polite' },
@@ -1124,9 +1194,11 @@ function TypedSales({
             name="amount"
             label={`${next.manualAmount} (${currencySymbol(currency)})`}
             value={amount}
-            error={invalid && total === null}
-            helperText={invalid && total === null ? numberError : undefined}
+            error={Boolean(amountMessage)}
+            // The amount exactly as it will be saved (₹1,00,000), so a slip shows before Add.
+            helperText={amountMessage || (total !== null ? `= ${money(total)}` : undefined)}
             onChange={(event) => setAmount(event.target.value)}
+            onBlur={() => setLeft((all) => ({ ...all, amount: true }))}
             slotProps={{
               htmlInput: { inputMode: 'decimal', autoComplete: 'off' },
               formHelperText: { 'aria-live': 'polite' },
@@ -1151,8 +1223,7 @@ function TypedSales({
                 variant="bodyMedium"
                 sx={{ overflowWrap: 'anywhere', fontVariantNumeric: 'tabular-nums' }}
               >
-                {line.item} · {line.quantity} ·{' '}
-                {formatShopPrice(toMinor(line.amount ?? 0, currency), currency)}
+                {line.item} · {plain.format(line.quantity ?? 0)} · {money(line.amount ?? 0)}
               </Typography>
             ))}
           </Box>

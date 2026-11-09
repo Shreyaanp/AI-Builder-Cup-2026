@@ -87,13 +87,17 @@ Reader = Literal["fixture", "document_ai", "gemini"]
 
 
 async def read_photo(
-    request: Request, data: bytes, hint: Kind, inventory: list[dict[str, Any]]
+    request: Request,
+    data: bytes,
+    hint: Kind,
+    inventory: list[dict[str, Any]],
+    currency: str | None = None,
 ) -> tuple[DayRead, Reader]:
     """Returns the reading and what read it: Document AI, Gemini vision or the offline fixture."""
     settings = request.app.state.v1_settings
     document_ai: DocumentAIReader | None = getattr(request.app.state, "document_ai", None)
     if document_ai is not None and hint in DOCUMENT_AI:
-        parsed = await document_ai.read(data, DOCUMENT_AI[hint])
+        parsed = await document_ai.read(data, DOCUMENT_AI[hint], currency=currency)
         if parsed is not None and parsed.complete():
             return (
                 DayRead(
@@ -164,16 +168,18 @@ async def read_photo(
         # A model/API error is a clean "couldn't read", never a bare 500.
         log.warning("day_read_failed", error=str(error)[:300])
         raise HTTPException(503, "READ_UNAVAILABLE") from None
-    read = lenient_read(response.text or "", hint)
+    read = lenient_read(response.text or "", hint, currency)
     if read is None or not read.lines:
         log.warning("day_read_unusable", kind=hint, reply=(response.text or "")[:400])
         raise HTTPException(422, "UNREADABLE_PHOTO")
     return read, "gemini"
 
 
-def lenient_read(text: str, hint: Kind) -> DayRead | None:
+def lenient_read(text: str, hint: Kind, currency: str | None = None) -> DayRead | None:
     """Keep every readable line when one odd line (a TOTAL row, a refund, an unknown kind)
-    would otherwise throw away the whole photo. The owner reviews every line anyway."""
+    would otherwise throw away the whole photo. The owner reviews every line anyway.
+    Numbers are read the shop's way (``currency``): "1,000" in a rupee shop is a thousand;
+    a number that could be read two ways is left empty, and the app says the line is out."""
     try:
         data = json.loads(text)
     except ValueError:
@@ -188,8 +194,8 @@ def lenient_read(text: str, hint: Kind) -> DayRead | None:
             lines.append(
                 DayLine(
                     item=str(raw.get("item") or "").strip()[:180],
-                    quantity=to_number(raw.get("quantity")),
-                    amount=to_number(raw.get("amount")),
+                    quantity=to_number(raw.get("quantity"), currency, "quantity"),
+                    amount=to_number(raw.get("amount"), currency, "money"),
                 )
             )
         except ValueError:
@@ -231,11 +237,11 @@ async def read_day_photo(
         {**p, "currency": context["business"]["fields"].get("currency")}
         for p in context["inventory"]
     ]
-    reading, reader = await read_photo(request, image, kind, inventory)
+    currency = shop_currency(context["business"]["fields"])
+    reading, reader = await read_photo(request, image, kind, inventory, currency)
     names = [p["name"] for p in context["inventory"]]
     lines = []
     prices = {p["name"]: p for p in context["inventory"]}
-    currency = shop_currency(context["business"]["fields"])
     for line in reading.lines:
         name, fuzzy = alias(line.item, names) if names else (line.item, False)
         # A till slip with counts but no money column: price it from the saved menu, so the

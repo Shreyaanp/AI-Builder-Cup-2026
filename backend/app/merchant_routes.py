@@ -582,7 +582,7 @@ async def import_table(business_id: str, request: Request) -> dict[str, Any]:
             "kind": "sales",
             "headers": headers,
             "mapping": mapping.model_dump(),
-            "summary": sales_summary(rows, mapping),
+            "summary": sales_summary(rows, mapping, currency),
             "saved": False,
             "import_id": proposal["id"],
             "digest": proposal["digest"],
@@ -592,10 +592,10 @@ async def import_table(business_id: str, request: Request) -> dict[str, Any]:
             "flags": flags,
             "dropped": dropped,
         }
-    items, skipped = menu_items(rows, mapping)
+    currency = shop_currency(business["fields"])
+    items, skipped = menu_items(rows, mapping, currency)
     if not items:
         raise HTTPException(422, "NO_PRICED_ITEMS")
-    currency = shop_currency(business["fields"])
     saved = {(p["name"].casefold(), p["unit"].casefold()): p for p in context["inventory"]}
     by_name: dict[str, list[dict[str, Any]]] = {}
     for saved_item in context["inventory"]:
