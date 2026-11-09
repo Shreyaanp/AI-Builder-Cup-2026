@@ -14,6 +14,7 @@ from google.adk.runners import Runner
 from google.adk.sessions import BaseSessionService
 from google.genai import types
 
+from . import voice_resume
 from .agent import make_agent, ui_language
 from .auth import Principal
 from .charts import CHART_TOOLS, chart_card
@@ -342,6 +343,9 @@ class CoachRuntime:
         if merchant:
             # Socket text controls exercise the same offline tools as HTTP turns.
             merchant.message = text
+        # A typed turn the Live provider never sees: the next voice connection starts fresh
+        # with the history instead of resuming a session that misses it (OB-181).
+        voice_resume.live_handles.changed(principal.uid, session_id)
         ui_language.set(language)
         timer = FirstOutput("text_agent")
         if merchant and merchant.uid.startswith("public-demo-"):

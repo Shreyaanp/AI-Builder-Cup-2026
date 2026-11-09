@@ -1,5 +1,5 @@
 import type { Api } from '../v1/api'
-import { utter } from '../v1/phoneVoice'
+import { canSpeak, speak, stopSpeech, utter } from '../v1/phoneVoice'
 import { demoAudioUrl } from './demoLines'
 import type { NarrationVoice } from './narrationQueue'
 
@@ -47,14 +47,14 @@ export function narrationVoice(api: Api, demo = false): NarrationVoice {
       return { play: () => audio.play(), stop }
     },
     fallback(text, language) {
-      if (!('speechSynthesis' in window)) return null
+      if (!canSpeak()) return null
       const utterance = utter(text, language)
       return {
         async play() {
-          speechSynthesis.cancel()
-          speechSynthesis.speak(utterance)
+          stopSpeech()
+          speak(utterance)
         },
-        stop: () => speechSynthesis.cancel(),
+        stop: stopSpeech,
       }
     },
   }

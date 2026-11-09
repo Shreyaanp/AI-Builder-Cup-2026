@@ -283,7 +283,8 @@ def test_instant_guide_and_fallbacks(shop, ctx):
     guide = run("How do I set up a stamp card?", shop)
     assert guide and guide.intent in {"app_guide", "screen:stamps"}
     # Other languages, long messages, open questions and new shops go to the model.
-    assert run("समोसा खत्म हो गया", shop) is None
+    # (Hindi sold outs and prices take the instant path: test_coach_intent_table.py, OB-261.)
+    assert run("சமோசா தீர்ந்துவிட்டது", shop) is None
     assert run("Tell me a story about my shop and how it could grow next year", shop) is None
     shop.new_shop = True
     assert run("Samosa is sold out", shop) is None

@@ -76,6 +76,7 @@ export const id: Copy = {
   connectionReconnecting: 'Menghubungkan kembali…',
   voiceFailed: 'Koneksi suara berakhir. Coba lagi atau gunakan teks.',
   voiceOffline: 'Suara butuh koneksi. Ketik pesan Anda saja.',
+  voiceUnsupported: 'Browser ini tidak mendukung suara. Ketik pesan Anda saja.',
   voiceRestarted: 'Suara terhubung kembali. Silakan ucapkan lagi.',
   voiceMicDenied:
     'Akses mikrofon diblokir. Izinkan mikrofon di pengaturan browser dan coba lagi, atau gunakan teks.',

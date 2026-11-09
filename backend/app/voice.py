@@ -13,6 +13,7 @@ from google.adk.live.live_request_queue import LiveRequestQueue
 from google.genai import types
 from pydantic import ValidationError
 
+from . import voice_resume
 from .agent import LiveClose, asks_to_end, background_tools, live_close, ui_language
 from .auth import Principal
 from .contracts import NewShopVoiceContext, StreamEvent, VoiceControl
@@ -25,6 +26,7 @@ from .new_shop_tools import end_conversation, go_live
 from .reply_language import ReplyLanguage, reply_language
 from .settings import Settings
 from .streaming import CoachRuntime, public_events
+from .voice_usage import add_usage
 
 log = structlog.get_logger()
 
@@ -32,10 +34,28 @@ VOICE_PING_SECONDS = 20
 VOICE_IDLE_SECONDS = 45
 # Press-to-talk: leave time for teardown before a 180-second request cap.
 VOICE_SESSION_CAP_SECONDS = 150
-# The new-shop conversation is one open socket for the whole onboarding (about a minute; the
-# service's request timeout is 3600 s, see deploy.yml). After 15 minutes it ends politely: the
-# app offers "let's continue by typing" and a tap to talk again (owner decision, 17 Oct).
-NEW_SHOP_SESSION_CAP_SECONDS = 900
+# The new-shop conversation is one open socket for the whole onboarding (about a minute). Live
+# voice is billed for every second a session is open and for its whole context on every turn
+# (OB-181: about INR 1,010 in 8.5 days), so it ends politely after 5 minutes: the app offers
+# "let's continue by typing" and a tap to talk again (it was 15 minutes, owner decision 17 Oct).
+NEW_SHOP_SESSION_CAP_SECONDS = 300
+# The open conversation streams the microphone all the time, so "no frames" never happens. When
+# the owner has not spoken, typed or sent a photo/pin for this long, and the coach is not talking,
+# the conversation pauses (same calm "tap to talk again" as the time cap; nothing is lost).
+CONVERSATION_IDLE_SECONDS = 45
+IDLE_CHECK_SECONDS = 1.0
+# At the 5-minute cap the conversation waits (up to this long) for the owner or the coach to
+# finish the sentence, so the pause never cuts anyone off mid-word.
+CAP_GRACE_SECONDS = 20
+CAP_QUIET_SECONDS = 2.0
+# Live re-reads the whole session context on every turn. Past this many tokens the provider
+# drops the oldest turns (the instruction and tools always stay), so a long or resumed session
+# never grows the per-turn bill without limit.
+CONTEXT_TRIGGER_TOKENS = 32_000
+CONTEXT_TARGET_TOKENS = 20_000
+# 16 kHz PCM16 in, 24 kHz PCM16 out.
+AUDIO_IN_BYTES_PER_SECOND = 32_000
+AUDIO_OUT_BYTES_PER_SECOND = 48_000
 # No model-call cap for the Live conversation: ADK's Live flow never counts calls against
 # RunConfig.max_llm_calls (only its request/response flow does), so the old 40-call cap never
 # ended a session; the provider's own close did (no session resumption). Press-to-talk keeps a
@@ -79,6 +99,10 @@ class VoiceIdle(TimeoutError):
     pass
 
 
+class ConversationPaused(Exception):
+    """The open conversation heard nothing from the owner for CONVERSATION_IDLE_SECONDS."""
+
+
 class TakenOver(Exception):
     """A newer socket for the same conversation took it over (a reconnect)."""
 
@@ -96,9 +120,32 @@ class VoiceStats:
     last_question: str = ""
     # How the last Live connection closed (the provider's code and reason).
     provider: LiveClose = field(default_factory=LiveClose)
+    # Cost (OB-181): what the session streamed and what the provider reported it billed.
+    audio_in_bytes: int = 0
+    audio_out_bytes: int = 0
+    connections: int = 0
+    resumed_connections: int = 0
+    tokens: dict[str, int] = field(default_factory=dict)
+    # Last time the owner spoke, typed or sent something, or the coach spoke (monotonic).
+    active: float = field(default_factory=time.monotonic)
 
     def end(self, reason: str) -> None:
         self.reason = self.reason or reason
+
+    def touch(self) -> None:
+        self.active = max(self.active, time.monotonic())
+
+    def spoke(self, audio: bytes) -> None:
+        """The coach's audio arrives faster than the phone plays it: the owner's silence starts
+        when it has finished playing."""
+        self.audio_out_bytes += len(audio)
+        self.active = max(self.active, time.monotonic()) + len(audio) / AUDIO_OUT_BYTES_PER_SECOND
+
+    def silent_for(self) -> float:
+        return time.monotonic() - self.active
+
+    def usage(self, usage: types.GenerateContentResponseUsageMetadata) -> None:
+        add_usage(self.tokens, usage)
 
     def fields(self) -> dict[str, Any]:
         return {
@@ -107,6 +154,11 @@ class VoiceStats:
             "turns": self.turns,
             "tool_calls": self.tool_calls,
             "rotations": self.rotations,
+            "audio_in_seconds": round(self.audio_in_bytes / AUDIO_IN_BYTES_PER_SECOND, 1),
+            "audio_out_seconds": round(self.audio_out_bytes / AUDIO_OUT_BYTES_PER_SECOND, 1),
+            "connections": self.connections,
+            "resumed_connections": self.resumed_connections,
+            "tokens": dict(sorted(self.tokens.items())),
             **self.provider_fields(),
         }
 
@@ -153,7 +205,11 @@ END_OF_TURN_SILENCE_MS = 1200
 
 
 def live_run_config(
-    settings: Settings, language: ReplyLanguage, new_shop: bool, extras: bool = True
+    settings: Settings,
+    language: ReplyLanguage,
+    new_shop: bool,
+    extras: bool = True,
+    handle: str | None = None,
 ) -> RunConfig:
     """The Live session's setup. The owner's chosen language is pinned here (speech and
     transcription) and in the instruction (agent.turn_instruction): left to detect it from the
@@ -166,7 +222,11 @@ def live_run_config(
     ADK itself: it reconnects with the latest resumption handle (transparent on Vertex AI).
 
     `extras`: voice activity detection tuned for owners who pause, barge-in, affective dialog and
-    proactive audio. A model that rejects one of them gets a session without them (logged)."""
+    proactive audio. A model that rejects one of them gets a session without them (logged).
+
+    Cost (OB-181): every session asks for resumption handles, and `handle` resumes the provider's
+    session (the instruction and history are not sent again). A bounded sliding window keeps the
+    context re-read on every turn under CONTEXT_TRIGGER_TOKENS."""
     code = language.code if language.live else None
     tuned: dict[str, Any] = (
         {
@@ -199,12 +259,11 @@ def live_run_config(
                 prebuilt_voice_config=types.PrebuiltVoiceConfig(voice_name=settings.voice_name)
             ),
         ),
-        session_resumption=types.SessionResumptionConfig() if new_shop else None,
+        session_resumption=types.SessionResumptionConfig(handle=handle or None),
         context_window_compression=types.ContextWindowCompressionConfig(
-            sliding_window=types.SlidingWindow()
-        )
-        if new_shop
-        else None,
+            trigger_tokens=CONTEXT_TRIGGER_TOKENS,
+            sliding_window=types.SlidingWindow(target_tokens=CONTEXT_TARGET_TOKENS),
+        ),
         save_live_blob=False,
         **tuned,
     )
@@ -257,11 +316,13 @@ async def offline_voice(
         audio = frame.get("bytes")
         if audio is not None:
             budget.take(audio)
+            stats.audio_in_bytes += len(audio)
             continue
         text = frame.get("text", "")
         if len(text) > 5000:
             raise ValueError("Frame too large")
         if refresh_new_shop_draft(text):
+            stats.touch()
             await publish_if_ready(websocket)
             continue
         command = VoiceControl.model_validate_json(text)
@@ -283,6 +344,7 @@ async def offline_voice(
             text_turns += 1
             if text_turns > max_text_turns or not command.text.strip():
                 raise ValueError("Text turn limit exceeded")
+            stats.touch()
             said = ""
             async for event in runtime.text_events(principal, sid, command.text, language.locale):
                 if event.kind == "reply":
@@ -361,6 +423,17 @@ async def gemini_voice(
     unanswered: list[str] = []
     # The owner typed "bas" / "ho gaya": the conversation ends after the coach's goodbye.
     stop_asked = False
+    # The provider's session to resume (OB-181): the last mic press, or this socket's last
+    # connection, while nothing moved outside Live since (voice_resume). None: a fresh session
+    # that gets the instruction and recent history.
+    uid = principal.uid
+    handles = voice_resume.live_handles
+    carried = handles.take(uid, sid)
+    if carried:
+        # The owner's words the last socket closed on (the cap or a pause): this one answers them.
+        unanswered[:] = [carried]
+        link.queue.send_content(types.Content(role="user", parts=[types.Part(text=carried)]))
+        log.info("voice_spoken_turn_carried_over", length=len(carried))
 
     async def upstream() -> None:
         nonlocal text_turns, stop_asked
@@ -372,12 +445,18 @@ async def gemini_voice(
             audio = frame.get("bytes")
             if audio is not None:
                 budget.take(audio)
+                stats.audio_in_bytes += len(audio)
                 link.queue.send_realtime(types.Blob(data=audio, mime_type="audio/pcm;rate=16000"))
                 continue
             raw = frame.get("text", "")
             if len(raw) > 5000:
                 raise ValueError("Frame too large")
+            before = merchant.new_shop_draft if merchant else None
             if refresh_new_shop_draft(raw):
+                stats.touch()
+                if merchant and merchant.new_shop_draft != before:
+                    # A photo or pin the provider never saw: no resuming past it.
+                    handles.changed(uid, sid)
                 await publish_if_ready(websocket)
                 continue
             command = VoiceControl.model_validate_json(raw)
@@ -395,6 +474,7 @@ async def gemini_voice(
                 if text_turns > max_text_turns or not command.text.strip():
                     raise ValueError("Text turn limit exceeded")
                 unanswered[:] = [command.text]
+                stats.touch()
                 if new_shop and asks_to_end(command.text):
                     stop_asked = True
                 link.queue.send_content(
@@ -408,11 +488,17 @@ async def gemini_voice(
         nonlocal extras
         # A model that refused the tuned setup gets plain blocking tools too.
         background_tools.set(extras)
+        since = handles.version(uid, sid)
+        handle = handles.get(uid, sid, language.locale, await voice_resume.known_facts())
+        latest: str | None = None
+        resuming = bool(handle)
+        stats.connections += 1
+        stats.resumed_connections += resuming
         events = runtime.live_runner.run_live(
             user_id=principal.uid,
             session_id=sid,
             live_request_queue=link.queue,
-            run_config=live_run_config(runtime.settings, language, new_shop, extras),
+            run_config=live_run_config(runtime.settings, language, new_shop, extras, handle),
         )
         # Time from the owner's last transcribed words to the first audio of the reply.
         heard = FirstOutput("voice_first_audio")
@@ -428,9 +514,15 @@ async def gemini_voice(
         spoke = tools_ran = False
         try:
             async for event in events:
-                received = True
+                first, received = not received, True
+                update = event.live_session_resumption_update
+                if update and update.new_handle:
+                    latest = update.new_handle
+                if event.usage_metadata:
+                    stats.usage(event.usage_metadata)
                 if event.input_transcription and event.input_transcription.text:
                     heard.restart()
+                    stats.touch()
                     owner_said += event.input_transcription.text
                 if event.error_code:
                     log.warning(
@@ -438,12 +530,16 @@ async def gemini_voice(
                         code=str(event.error_code),
                         message=(event.error_message or "")[:300],
                     )
+                    if resuming and first:
+                        # The provider no longer has the session (an old handle): start fresh.
+                        return "resume_rejected"
                     if new_shop:
                         # The conversation continues on a fresh connection, not an error screen.
                         return "provider_error"
                 if event.output_transcription and event.output_transcription.text:
                     said += event.output_transcription.text
                     spoke = True
+                    stats.touch()
                 calls = event.get_function_calls()
                 stats.tool_calls += len(calls)
                 for call in calls:
@@ -464,6 +560,7 @@ async def gemini_voice(
                         if blob and blob.data and (blob.mime_type or "").startswith("audio/pcm"):
                             heard.mark()
                             spoke = True
+                            stats.spoke(blob.data)
                             await websocket.send_json(
                                 StreamEvent(
                                     kind="audio_format",
@@ -486,6 +583,9 @@ async def gemini_voice(
                         return "owner_ended"
             return "provider_closed"
         except Exception as failure:
+            if resuming and not received:
+                log.warning("voice_resume_failed", reason=str(failure)[:300])
+                return "resume_rejected"
             if extras and not received:
                 # The model refused the session setup (an option it does not accept): carry on
                 # without the tuned options instead of failing the conversation.
@@ -501,6 +601,12 @@ async def gemini_voice(
                 unanswered[:] = [owner_said.strip()[:2000]]
                 log.info("voice_spoken_turn_carried", length=len(unanswered[0]))
             await events.aclose()
+            if latest:
+                # Saved with the facts as they are now (the coach's own saves included); a typed
+                # turn or app draft since this connection began keeps it from being saved.
+                with anyio.CancelScope(shield=True):
+                    facts = await voice_resume.known_facts()
+                handles.put(uid, sid, language.locale, latest, facts, since)
 
     async def downstream() -> None:
         while True:
@@ -512,6 +618,13 @@ async def gemini_voice(
             if ended == "options_rejected":
                 # The same conversation, at once, on a plain connection (nothing was said yet).
                 fresh(resumed=False)
+                continue
+            if ended == "resume_rejected":
+                # The provider no longer holds the session: the same conversation, at once, on a
+                # fresh session with the instruction and recent history (never twice: no handle).
+                handles.drop(uid, sid)
+                log.info("voice_resume_rejected", turns=stats.turns)
+                fresh(resumed=bool(stats.turns))
                 continue
             if not new_shop or stats.rotations >= MAX_ROTATIONS:
                 stats.end(ended)
@@ -556,6 +669,9 @@ async def gemini_voice(
         with anyio.CancelScope(shield=True):
             async with asyncio.timeout(5):
                 await asyncio.gather(*tasks, return_exceptions=True)
+        if unanswered and stats.reason in ("time_cap", "owner_silent"):
+            # "Talk again" hears what the owner said (or typed) just before the pause.
+            handles.carry(uid, sid, unanswered[0])
 
 
 async def serve_voice(
@@ -588,6 +704,37 @@ async def serve_voice(
                 raise TakenOver
             await websocket.send_json(StreamEvent(kind="ping").payload())
 
+    async def watch_idle() -> None:
+        """The open conversation pauses after CONVERSATION_IDLE_SECONDS without the owner (or
+        the coach) saying anything: an always-on microphone is billed while nobody talks."""
+        if not is_new_shop():
+            await asyncio.Event().wait()
+            return
+        stats.touch()
+        while True:
+            await asyncio.sleep(IDLE_CHECK_SECONDS)
+            if stats.silent_for() > CONVERSATION_IDLE_SECONDS:
+                raise ConversationPaused
+
+    # The new-shop conversation keeps one socket for the whole onboarding.
+    seconds = (
+        NEW_SHOP_SESSION_CAP_SECONDS
+        if is_new_shop()
+        else min(runtime.settings.max_voice_seconds, VOICE_SESSION_CAP_SECONDS)
+    )
+
+    async def watch_cap() -> None:
+        """The time cap. The open conversation lets a sentence in progress finish first (the
+        owner's or the coach's, up to CAP_GRACE_SECONDS). Press-to-talk keeps a hard cap."""
+        await asyncio.sleep(seconds)
+        if is_new_shop():
+            grace = time.monotonic() + CAP_GRACE_SECONDS
+            while time.monotonic() < grace:
+                if stats.silent_for() >= CAP_QUIET_SECONDS:
+                    break
+                await asyncio.sleep(0.25)
+        raise TimeoutError
+
     async def watch_takeover() -> None:
         if lost is None:
             await asyncio.Event().wait()
@@ -598,6 +745,8 @@ async def serve_voice(
     tasks = [
         asyncio.create_task(heartbeat(), name=f"voice-ping:{sid}"),
         asyncio.create_task(watch_takeover(), name=f"voice-takeover:{sid}"),
+        asyncio.create_task(watch_idle(), name=f"voice-idle:{sid}"),
+        asyncio.create_task(watch_cap(), name=f"voice-cap:{sid}"),
         asyncio.create_task(
             offline_voice(websocket, runtime, principal, sid, language, stats)
             if runtime.settings.coach_mode == "offline"
@@ -606,23 +755,20 @@ async def serve_voice(
         ),
     ]
     code, reason = 1000, "Voice session ended"
-    # The new-shop conversation keeps one socket for the whole onboarding.
-    seconds = (
-        NEW_SHOP_SESSION_CAP_SECONDS
-        if is_new_shop()
-        else min(runtime.settings.max_voice_seconds, VOICE_SESSION_CAP_SECONDS)
-    )
     error: str | None = None
     try:
-        async with asyncio.timeout(seconds):
-            done, _ = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
-            for task in done:
-                task.result()
+        done, _ = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
+        for task in done:
+            task.result()
     except WebSocketDisconnect:
         stats.end("client_gone")
     except VoiceIdle:
         stats.end("idle")
         code, reason = 1001, "VOICE_IDLE"
+    except ConversationPaused:
+        # Like the time cap: a calm pause; "tap to talk again" resumes the same conversation.
+        stats.end("owner_silent")
+        code, reason, error = 1000, "VOICE_PAUSED", "VOICE_PAUSED"
     except TakenOver:
         stats.end("taken_over")
         code, reason, error = 1000, "TAKEN_OVER", "TAKEN_OVER"

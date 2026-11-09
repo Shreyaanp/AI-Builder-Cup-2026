@@ -139,7 +139,7 @@ function ProductForm({ product }: { product: Product | null }) {
   const stockCopy = useStockCopy()
   const locale = useLocale()
   const roles = useTheme().material
-  const { api, active, openEditor, reload, review } = useWorkspace()
+  const { api, active, openEditor, reload, review, setAvailability } = useWorkspace()
   const compact = useCompact()
   const currency = shopCurrency(active)
   const numberLocale = moneyLocale(currency, locale) ?? locale
@@ -162,11 +162,17 @@ function ProductForm({ product }: { product: Product | null }) {
   // A new item asks for its name and price; the rest waits behind "More details".
   const [more, setMore] = useState(Boolean(product))
   const [source, setSource] = useState(product?.source)
-  // "Customers can buy this": off keeps it in Things I buy, off the menu and page (OB-310).
+  // "Hide from menu": on keeps it in Things I buy, off the menu and page (OB-310).
   const [forSale, setForSale] = useState(product?.for_sale !== false)
   // The saved switch, refreshed with the answer below, so the dialog never shows a stale "on".
   const [savedForSale, setSavedForSale] = useState(product?.for_sale !== false)
   const forSaleTapped = useRef(false)
+  // Sold out as saved: "Sold out today" saves on the tap, so Save below must not undo it.
+  const [sold, setSold] = useState({
+    available: product?.available !== false,
+    day: product?.sold_out_day,
+  })
+  const [savingSold, setSavingSold] = useState(false)
   const [savingSource, setSavingSource] = useState(false)
   // The tap saves at once, so Cancel does not undo it: the note says so (OB-243).
   const [sourceSaved, setSourceSaved] = useState(false)
@@ -182,6 +188,7 @@ function ProductForm({ product }: { product: Product | null }) {
         const saved = items.find((entry) => entry.id === productId)
         if (!saved || abort.signal.aborted) return
         if (!sourceTapped.current) setSource(saved.source)
+        setSold({ available: saved.available !== false, day: saved.sold_out_day })
         setSavedForSale(saved.for_sale !== false)
         if (!forSaleTapped.current) setForSale(saved.for_sale !== false)
       })
@@ -230,6 +237,15 @@ function ProductForm({ product }: { product: Product | null }) {
       setSavingSource(false)
     }
   }
+  /** The owner's own answer, saved at once like the Sold out sheet's switch: no AI, no review. */
+  async function markSold(available: boolean) {
+    if (!product || savingSold) return
+    setSavingSold(true)
+    setError('')
+    if (await setAvailability(product, available, !available))
+      setSold({ available, day: available ? undefined : 'today' })
+    setSavingSold(false)
+  }
   /** The form as one item for the proposal; on a problem it says so and returns null. */
   function typedProduct(): NewProduct | null {
     setError('')
@@ -261,11 +277,14 @@ function ProductForm({ product }: { product: Product | null }) {
       available:
         count === 0
           ? false
-          : product?.stock === 0 && product.available === false && count !== null
+          : !sold.available &&
+              count !== null &&
+              // After 0, or more of an item sold out for today: on sale again.
+              (product?.stock === 0 || (sold.day && count > (product?.stock ?? 0)))
             ? true
-            : (product?.available ?? true),
+            : sold.available,
       ...(source ? { source } : {}),
-      // A new item saves the switch as shown, so "Milk" left on "Customers can buy this"
+      // A new item saves the switch as shown, so "Milk" with "Hide from menu" left off
       // stays on the menu; a saved item sends it only when the owner changed it, so it
       // keeps the app's own guess.
       ...(!product || forSale !== savedForSale ? { for_sale: forSale } : {}),
@@ -326,6 +345,55 @@ function ProductForm({ product }: { product: Product | null }) {
             void submit()
           }}
         >
+          {/* The everyday answer comes first; "Hide from menu" stays further down, and only an
+              item on the menu can sell out. */}
+          {product?.id && forSale && (
+            <Stack spacing={1} data-testid="product-sold-out">
+              {sold.available && product.stock !== 0 ? (
+                <Button
+                  variant="contained"
+                  disableElevation
+                  disabled={savingSold}
+                  onClick={() => void markSold(false)}
+                  aria-describedby="product-sold-out-note"
+                  sx={{
+                    minHeight: 48,
+                    bgcolor: roles.secondaryContainer,
+                    color: roles.onSecondaryContainer,
+                    '&:hover': { bgcolor: roles.secondaryContainer },
+                  }}
+                >
+                  {stockCopy.soldOutToday}
+                </Button>
+              ) : (
+                product.stock !== 0 && (
+                  <Button
+                    variant="outlined"
+                    disabled={savingSold}
+                    onClick={() => void markSold(true)}
+                    aria-describedby="product-sold-out-note"
+                    sx={{ minHeight: 48 }}
+                  >
+                    {stockCopy.backOnSale}
+                  </Button>
+                )
+              )}
+              <Typography
+                id="product-sold-out-note"
+                role="status"
+                variant="bodyMedium"
+                color="text.secondary"
+              >
+                {product.stock === 0
+                  ? stockCopy.soldOutNoStock
+                  : sold.available
+                    ? stockCopy.soldOutTodayHint
+                    : sold.day
+                      ? stockCopy.soldOutTodayDone
+                      : stockCopy.soldOutUntilChanged}
+              </Typography>
+            </Stack>
+          )}
           <TextField
             label={t.productName}
             value={item.name}
@@ -452,20 +520,20 @@ function ProductForm({ product }: { product: Product | null }) {
                 <FormControlLabel
                   control={
                     <Switch
-                      checked={forSale}
+                      checked={!forSale}
                       onChange={(_, checked) => {
                         forSaleTapped.current = true
-                        setForSale(checked)
+                        setForSale(!checked)
                       }}
                       slotProps={{ input: { 'aria-describedby': 'product-for-sale-hint' } }}
                     />
                   }
-                  label={stockCopy.forSale}
+                  label={stockCopy.hideFromMenu}
                   sx={{ minHeight: 48, mx: 0, justifyContent: 'space-between' }}
                   labelPlacement="start"
                 />
                 <Typography id="product-for-sale-hint" variant="bodyMedium" color="text.secondary">
-                  {stockCopy.forSaleHint}
+                  {stockCopy.hideFromMenuHint}
                 </Typography>
               </Stack>
             </>

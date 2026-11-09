@@ -4,6 +4,7 @@ import { Button, IconButton, Snackbar, useMediaQuery, useTheme } from '@mui/mate
 import { X } from 'lucide-react'
 import { canOfferInstall, offerInstall, rememberInstallDeclined } from '../../app/pwa'
 import { useCopy } from './strings'
+import { stopSpeech } from './phoneVoice'
 import { newlySoldOut, useSoldOutUndoCopy } from './soldOutUndo'
 import { useStockCopy } from '../shop/stockCopy'
 import { StockNote } from '../shop/StockNote'
@@ -35,6 +36,13 @@ function readSpeak() {
   }
 }
 
+/** Anything over the page: a sheet, dialog, menu or the tour. A kept-mounted closed one is not. */
+function pageIsCovered(): boolean {
+  if (document.querySelector('.MuiModal-root:not(.MuiModal-hidden)')) return true
+  return Array.from(document.querySelectorAll('[role="dialog"]')).some(
+    (dialog) => !dialog.closest('.MuiModal-hidden'),
+  )
+}
 // An open sheet (a phone drawer or a dialog); a closed one is unmounted or hidden.
 const OPEN_SHEET = '.MuiModal-root:not(.MuiModal-hidden) [role="dialog"]'
 
@@ -54,6 +62,9 @@ function belowSheetHeader(): number | null {
 function withStock(product: Product, stock: number | null): Partial<Product> {
   if (stock === 0) return { stock, available: false }
   if (product.stock === 0 && product.available === false) return { stock, available: true }
+  // "Sold out today", then more arrived: on sale again.
+  if (product.sold_out_day && product.available === false && (stock ?? 0) > (product.stock ?? 0))
+    return { stock, available: true }
   return { stock }
 }
 
@@ -193,6 +204,18 @@ export function WorkspaceProvider({
     watch.observe(document.body, { childList: true, subtree: true, attributeFilter: ['class'] })
     return () => watch.disconnect()
   }, [toastUndo, compact])
+  // The install offer is optional, so it never sits on a sheet: it hid the list of changes on
+  // "Check before saving" and the actions of other sheets. It waits until they close.
+  const [pageCovered, setPageCovered] = useState(false)
+  useLayoutEffect(() => {
+    if (!installOffer) return
+    const check = () => setPageCovered(pageIsCovered())
+    check()
+    const watch = new MutationObserver(check)
+    // Only while an offer is waiting: a sheet opens or closes as a portal on body, or by class.
+    watch.observe(document.body, { childList: true, subtree: true, attributeFilter: ['class'] })
+    return () => watch.disconnect()
+  }, [installOffer])
   const [speakReplies, setSpeak] = useState(readSpeak)
   const [customerOrigin, setCustomerOrigin] = useState<string | null>(null)
   useEffect(() => {
@@ -257,7 +280,7 @@ export function WorkspaceProvider({
   }, [activeId, api])
 
   const setAvailability = useCallback(
-    async (product: Product, available: boolean): Promise<boolean> => {
+    async (product: Product, available: boolean, todayOnly = false): Promise<boolean> => {
       if (!activeId || !product.id) return false
       // Optimistic: the switch moves at once; a failure restores the saved state.
       setInventory((current) => ({
@@ -269,7 +292,7 @@ export function WorkspaceProvider({
       try {
         await api(`/businesses/${activeId}/inventory/${product.id}/availability`, {
           method: 'POST',
-          body: JSON.stringify({ available }),
+          body: JSON.stringify(todayOnly ? { available, today_only: true } : { available }),
         })
         await reload()
         return true
@@ -457,7 +480,7 @@ export function WorkspaceProvider({
       speakReplies,
       setSpeakReplies: (next) => {
         setSpeak(next)
-        if (!next) speechSynthesis.cancel()
+        if (!next) stopSpeech()
         try {
           localStorage.setItem('ogoogle.speakReplies', next ? '1' : '0')
         } catch {
@@ -587,7 +610,7 @@ export function WorkspaceProvider({
         />
       </OnceOpened>
       <Snackbar
-        open={installOffer}
+        open={installOffer && !pageCovered}
         message={t.install}
         onClose={(_, reason) => {
           if (reason === 'clickaway') return
