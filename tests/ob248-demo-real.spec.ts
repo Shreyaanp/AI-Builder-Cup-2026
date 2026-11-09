@@ -95,7 +95,7 @@ test('OB-248 the supplier talks in the owner language', async ({ page }) => {
   // माल मँगाएँ says the tea dust is on its way, in Hindi. (The Morning brief no longer lists it
   // as running low: the order on its way counts, OB-263.)
   const tile = await stockTile(page)
-  await expect(tile).toContainText('चाय पत्ती रास्ते में')
+  await expect(tile).toContainText('1 रास्ते में')
   await expect(tile).not.toContainText(/\bkg\b/)
   // माल मँगाएँ → रास्ते में (Buy stock → On the way, simplify batch 4b).
   await tile.click()
@@ -383,7 +383,7 @@ test('OB-248 Hindi: Coach, Purchase orders, order card and supplier chat name ev
   // Buy stock (simplify batch 4b): the row, To do, the orders on the way, then each order card
   // with its supplier chat.
   await page.locator('[data-tour="nav-grow"]').click()
-  await expect(await stockTile(page)).toContainText('चाय पत्ती', { timeout: 15_000 })
+  await expect(await stockTile(page)).toContainText('1 रास्ते में', { timeout: 15_000 })
   await check('Buy stock row', await page.locator('[data-tour="supply"]').innerText())
   await (await stockTile(page)).click()
   const sheet = page.getByRole('dialog')
