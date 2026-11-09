@@ -11381,7 +11381,8 @@
                 "type": "string",
                 "enum": [
                   "device",
-                  "pin"
+                  "pin",
+                  "area"
                 ]
               },
               {
@@ -15211,7 +15212,8 @@
             "type": "string",
             "enum": [
               "device",
-              "pin"
+              "pin",
+              "area"
             ],
             "title": "Source",
             "default": "device"

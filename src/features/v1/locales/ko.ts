@@ -197,6 +197,8 @@ export const ko: Copy = {
   soldOutToday: '오늘 품절',
   soldOutCount: (count: number) => (count ? `${count}개 품절` : '모두 판매 중'),
   soldOutHint: '다 떨어진 상품은 꺼 주세요. 손님에게 바로 보여요.',
+  soldOutHintHidden:
+    '다 팔린 상품은 꺼 두세요. 가게가 손님에게 보이기 시작하면 손님도 보게 됩니다.',
   shared: '공유 중',
   notShared: '공유 안 함',
   messages: '메시지',
@@ -333,6 +335,8 @@ export const ko: Copy = {
   customerPageOff: '켜면 손님이 메뉴, 가격, 영업시간을 볼 수 있는 링크가 생겨요.',
   customerPageOn: '링크를 가진 손님이 가게와 최신 가격을 볼 수 있어요.',
   pageSwitch: '고객 페이지 공유',
+  liveSwitch: '손님이 내 가게를 볼 수 있음',
+  liveNeedsPlace: '먼저 손님이 어디서 찾을 수 있는지 알려 주세요. 확인하는 즉시 가게가 보입니다.',
   share: '공유',
   copyLink: '링크 복사',
   openPage: '페이지 열기',

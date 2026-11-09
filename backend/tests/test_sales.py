@@ -324,3 +324,36 @@ async def test_gemini_summary_uses_substituted_client_only():
     assert "untrusted data" in generate.call_args.kwargs["config"].system_instruction
     generate.side_effect = RuntimeError("fixture failure")
     assert await writer.write(facts, "en") == (offline_summary(facts, "en"), "offline")
+
+
+def test_daily_sales_reads_indian_dates_and_names_the_bad_rows():
+    """Ahmed, 8 Nov: a billing app's report with 07/11/2026 failed as "Could not complete sync"."""
+    mapping = heuristic_map(["Date", "Item", "Qty", "Revenue"])
+    rows = [
+        ["07/11/2026", "Toor Dal 1kg", "9", "1,350"],
+        ["08-11-2026 10:32", "Toor Dal 1kg", "2", "300"],
+        ["2026-11-08", "Sona Masoori Rice 25kg", "1", "1,250.50"],
+    ]
+    assert [(r["date"], r["item"], r["quantity"]) for r in daily_sales(rows, mapping, "INR")] == [
+        ("2026-11-07", "Toor Dal 1kg", 9),
+        ("2026-11-08", "Sona Masoori Rice 25kg", 1),
+        ("2026-11-08", "Toor Dal 1kg", 2),
+    ]
+    bad = [
+        ["31/02/2026", "Toor Dal 1kg", "1", "150"],
+        ["07/11/2026", "Sugar", "two", "45"],
+        ["07/11/2026", "Salt", "1", ""],
+        ["07/11/2026", "Atta", "1", "x"],
+        *rows,
+    ]
+    with pytest.raises(HTTPException) as rejected:
+        daily_sales(bad, mapping, "INR")
+    code, count, shown = str(rejected.value.detail).split(":", 2)
+    assert code == "INVALID_SALES_ROWS" and count == "4"
+    import json
+
+    assert json.loads(shown) == [
+        {"field": "date", "item": "Toor Dal 1kg", "value": "31/02/2026"},
+        {"field": "quantity", "item": "Sugar", "value": "two"},
+        {"field": "total", "item": "Salt", "value": ""},
+    ]
