@@ -4,7 +4,8 @@ import { enter, localOnly } from './stories/support.js'
 // OB-194 (owner P0, 23 Oct): menu uploading was still broken after #520. Reading a real menu photo
 // or PDF takes 25-40 s in production, but the menu sheet's import gave up after the app's default
 // 25 s wait, so the owner always saw "could not import" while the server was still reading.
-// OB-195 (owner P0, 23 Oct): a first visit is light everywhere, even on a phone set to dark.
+// OB-195 (owner P0, 23 Oct): a first visit to the landing and the customer side is light, even on
+// a phone set to dark. The owner app's first run follows the phone (Priya, 8 Nov).
 
 test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true })
 
@@ -160,17 +161,21 @@ test.describe('OB-195: first visit on a dark phone', () => {
     })
   }
 
-  test('the owner app starts light, before and after sign-in', async ({ page }) => {
+  // Priya, 8 Nov: the owner app's first run follows the phone (System), so a dark phone opens
+  // it dark; the landing and the customer side above still start light.
+  test('the owner app follows a dark phone on first run, before and after sign-in', async ({
+    page,
+  }) => {
     await localOnly(page)
     await page.goto('/')
     await expect(page.getByRole('button', { name: 'Continue local preview' })).toBeVisible()
-    await expectLight(page)
+    await expect.poll(() => bodyLuminance(page)).toBeLessThan(0.3)
     await enter(page)
-    await expectLight(page)
+    await expect.poll(() => bodyLuminance(page)).toBeLessThan(0.3)
     await page.getByRole('button', { name: 'You', exact: true }).click()
     await page.getByRole('button', { name: /^Look/ }).click()
     const look = page.getByRole('group', { name: 'Look', exact: true })
-    await expect(look.getByRole('button', { name: 'Light', exact: true })).toHaveAttribute(
+    await expect(look.getByRole('button', { name: 'System', exact: true })).toHaveAttribute(
       'aria-pressed',
       'true',
     )

@@ -32,7 +32,9 @@ export function ConnectRow() {
       <ShopRow
         icon={<Layers size={20} />}
         label={t.connectTitle}
-        value={savedMappings[0]?.source_label}
+        // Linked only once a sync went through: a saved column match alone is not a link
+        // (Ahmed, 8 Nov: a failed sync showed "Other billing …" as if linked).
+        value={savedMappings.find((mapping) => mapping.last_synced)?.source_label}
         onClick={() => setOpen(true)}
       />
       <ConnectSheet open={open} onClose={() => setOpen(false)} />

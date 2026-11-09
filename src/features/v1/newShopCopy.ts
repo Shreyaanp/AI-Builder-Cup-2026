@@ -41,6 +41,10 @@ type FlowCopy = {
    */
   start: string
   silence: string
+  /** The Skip chip: the question moves on (never sent as "not sure"). */
+  skipNote: string
+  /** Two turns in a row the coach understood nothing: finish with taps. */
+  stuck: string
   photoNote: (summary: string) => string
   locationNote: (place: string) => string
 }
@@ -79,6 +83,8 @@ const copy: Record<Locale, FlowCopy> = {
     createShop: 'Create your shop',
     start: 'Hello! I want to open a new shop.',
     silence: 'I’m not sure. Suggest something or skip it, and ask me the next question.',
+    skipNote: 'Skip this question. Ask me the next one.',
+    stuck: 'Let’s not get stuck. Fill in the rest yourself, one step at a time.',
     photoNote: (summary) => `I added a photo. You read: ${summary}. Ask me the next question.`,
     locationNote: (place) => `I shared my location: ${place}. Ask me the next question.`,
   },
@@ -115,6 +121,8 @@ const copy: Record<Locale, FlowCopy> = {
     createShop: 'अपनी दुकान बनाएँ',
     start: 'नमस्ते! मैं एक नई दुकान खोलना चाहता हूँ।',
     silence: 'मुझे पक्का नहीं पता। कुछ सुझाइए या इसे छोड़ दीजिए, और अगला सवाल पूछिए।',
+    skipNote: 'यह सवाल छोड़ दीजिए। अगला सवाल पूछिए।',
+    stuck: 'अटकिए मत। बाकी ख़ुद भरें, एक-एक करके।',
     photoNote: (summary) => `मैंने एक फ़ोटो जोड़ी। आपने पढ़ा: ${summary}। अगला सवाल पूछिए।`,
     locationNote: (place) => `मैंने अपनी जगह साझा की: ${place}। अगला सवाल पूछिए।`,
   },
@@ -151,6 +159,8 @@ const copy: Record<Locale, FlowCopy> = {
     createShop: 'আপনার দোকান তৈরি করুন',
     start: 'হ্যালো! আমি একটি নতুন দোকান খুলতে চাই।',
     silence: 'আমি নিশ্চিত নই। কিছু প্রস্তাব দিন বা এটা বাদ দিন, আর পরের প্রশ্ন করুন।',
+    skipNote: 'এই প্রশ্নটা বাদ দিন। পরের প্রশ্ন করুন।',
+    stuck: 'আটকে থাকবেন না। বাকিটা নিজে পূরণ করুন, এক এক করে।',
     photoNote: (summary) => `আমি একটি ছবি যোগ করেছি। আপনি পড়েছেন: ${summary}। পরের প্রশ্ন করুন।`,
     locationNote: (place) => `আমি আমার অবস্থান শেয়ার করেছি: ${place}। পরের প্রশ্ন করুন।`,
   },
@@ -187,6 +197,8 @@ const copy: Record<Locale, FlowCopy> = {
     createShop: 'మీ దుకాణాన్ని సృష్టించండి',
     start: 'నమస్తే! నేను కొత్త దుకాణం తెరవాలనుకుంటున్నాను.',
     silence: 'నాకు ఖచ్చితంగా తెలియదు. ఏదైనా సూచించండి లేదా దాటవేయండి, తర్వాతి ప్రశ్న అడగండి.',
+    skipNote: 'ఈ ప్రశ్నను దాటవేయండి. తర్వాతి ప్రశ్న అడగండి.',
+    stuck: 'ఆగిపోకండి. మిగతాది మీరే నింపండి, ఒక్కొక్కటిగా.',
     photoNote: (summary) =>
       `నేను ఒక ఫోటో జోడించాను. మీరు చదివింది: ${summary}. తర్వాతి ప్రశ్న అడగండి.`,
     locationNote: (place) => `నా స్థానాన్ని పంచుకున్నాను: ${place}. తర్వాతి ప్రశ్న అడగండి.`,
@@ -224,6 +236,8 @@ const copy: Record<Locale, FlowCopy> = {
     createShop: 'तुमचे दुकान तयार करा',
     start: 'नमस्कार! मला नवीन दुकान उघडायचे आहे.',
     silence: 'मला खात्री नाही. काहीतरी सुचवा किंवा हे वगळा, आणि पुढचा प्रश्न विचारा.',
+    skipNote: 'हा प्रश्न वगळा. पुढचा प्रश्न विचारा.',
+    stuck: 'अडकू नका. उरलेले स्वतः भरा, एकेक करून.',
     photoNote: (summary) => `मी एक फोटो जोडला. तुम्ही वाचले: ${summary}. पुढचा प्रश्न विचारा.`,
     locationNote: (place) => `मी माझे स्थान शेअर केले: ${place}. पुढचा प्रश्न विचारा.`,
   },
@@ -260,6 +274,8 @@ const copy: Record<Locale, FlowCopy> = {
     createShop: 'ನಿಮ್ಮ ಅಂಗಡಿ ರಚಿಸಿ',
     start: 'ನಮಸ್ಕಾರ! ನಾನು ಹೊಸ ಅಂಗಡಿ ತೆರೆಯಲು ಬಯಸುತ್ತೇನೆ.',
     silence: 'ನನಗೆ ಖಚಿತವಿಲ್ಲ. ಏನಾದರೂ ಸೂಚಿಸಿ ಅಥವಾ ಬಿಟ್ಟುಬಿಡಿ, ಮುಂದಿನ ಪ್ರಶ್ನೆ ಕೇಳಿ.',
+    skipNote: 'ಈ ಪ್ರಶ್ನೆಯನ್ನು ಬಿಟ್ಟುಬಿಡಿ. ಮುಂದಿನ ಪ್ರಶ್ನೆ ಕೇಳಿ.',
+    stuck: 'ಸಿಕ್ಕಿಹಾಕಿಕೊಳ್ಳಬೇಡಿ. ಉಳಿದದ್ದನ್ನು ನೀವೇ ಒಂದೊಂದಾಗಿ ತುಂಬಿ.',
     photoNote: (summary) =>
       `ನಾನು ಫೋಟೋ ಸೇರಿಸಿದ್ದೇನೆ. ನೀವು ಓದಿದ್ದು: ${summary}. ಮುಂದಿನ ಪ್ರಶ್ನೆ ಕೇಳಿ.`,
     locationNote: (place) => `ನನ್ನ ಸ್ಥಳ ಹಂಚಿಕೊಂಡಿದ್ದೇನೆ: ${place}. ಮುಂದಿನ ಪ್ರಶ್ನೆ ಕೇಳಿ.`,
@@ -296,6 +312,8 @@ const copy: Record<Locale, FlowCopy> = {
     createShop: '创建你的店铺',
     start: '你好！我想开一家新店。',
     silence: '我不太确定。请给个建议或先跳过，然后问下一个问题。',
+    skipNote: '跳过这个问题，问我下一个。',
+    stuck: '别卡在这里。剩下的自己一步步填写。',
     photoNote: (summary) => `我添加了一张照片。你读到了：${summary}。请问下一个问题。`,
     locationNote: (place) => `我分享了我的位置：${place}。请问下一个问题。`,
   },
@@ -332,6 +350,8 @@ const copy: Record<Locale, FlowCopy> = {
     createShop: 'Cipta kedai anda',
     start: 'Helo! Saya mahu buka kedai baharu.',
     silence: 'Saya tidak pasti. Cadangkan sesuatu atau langkau, dan tanya soalan seterusnya.',
+    skipNote: 'Langkau soalan ini. Tanya soalan seterusnya.',
+    stuck: 'Jangan tersekat. Isi selebihnya sendiri, satu demi satu.',
     photoNote: (summary) => `Saya tambah gambar. Anda baca: ${summary}. Tanya soalan seterusnya.`,
     locationNote: (place) => `Saya kongsi lokasi saya: ${place}. Tanya soalan seterusnya.`,
   },
@@ -369,6 +389,8 @@ const copy: Record<Locale, FlowCopy> = {
     start: 'வணக்கம்! நான் புதிய கடை திறக்க விரும்புகிறேன்.',
     silence:
       'எனக்கு உறுதியாகத் தெரியவில்லை. ஏதாவது பரிந்துரையுங்கள் அல்லது தவிருங்கள், அடுத்த கேள்வியைக் கேளுங்கள்.',
+    skipNote: 'இந்தக் கேள்வியைத் தவிர்க்கவும். அடுத்த கேள்வியைக் கேளுங்கள்.',
+    stuck: 'இங்கே நிற்க வேண்டாம். மீதியை நீங்களே ஒவ்வொன்றாக நிரப்புங்கள்.',
     photoNote: (summary) =>
       `நான் ஒரு படம் சேர்த்தேன். நீங்கள் படித்தது: ${summary}. அடுத்த கேள்வியைக் கேளுங்கள்.`,
     locationNote: (place) =>
@@ -407,6 +429,8 @@ const copy: Record<Locale, FlowCopy> = {
     createShop: 'お店を作成',
     start: 'こんにちは！新しいお店を開きたいです。',
     silence: 'よくわかりません。何か提案するか、飛ばして次の質問をしてください。',
+    skipNote: 'この質問は飛ばして、次の質問をしてください。',
+    stuck: 'ここで止まらずに、残りは一つずつ自分で入力しましょう。',
     photoNote: (summary) =>
       `写真を追加しました。読み取った内容：${summary}。次の質問をしてください。`,
     locationNote: (place) => `現在地を共有しました：${place}。次の質問をしてください。`,
@@ -444,6 +468,8 @@ const copy: Record<Locale, FlowCopy> = {
     createShop: '가게 만들기',
     start: '안녕하세요! 새 가게를 열고 싶어요.',
     silence: '잘 모르겠어요. 제안해 주시거나 건너뛰고 다음 질문을 해 주세요.',
+    skipNote: '이 질문은 건너뛰고 다음 질문을 해 주세요.',
+    stuck: '막히지 마세요. 나머지는 하나씩 직접 입력하세요.',
     photoNote: (summary) => `사진을 추가했어요. 읽은 내용: ${summary}. 다음 질문을 해 주세요.`,
     locationNote: (place) => `제 위치를 공유했어요: ${place}. 다음 질문을 해 주세요.`,
   },
@@ -480,6 +506,8 @@ const copy: Record<Locale, FlowCopy> = {
     createShop: 'Buat toko Anda',
     start: 'Halo! Saya ingin membuka toko baru.',
     silence: 'Saya tidak yakin. Sarankan sesuatu atau lewati, lalu ajukan pertanyaan berikutnya.',
+    skipNote: 'Lewati pertanyaan ini. Ajukan pertanyaan berikutnya.',
+    stuck: 'Jangan sampai macet. Isi sisanya sendiri, satu per satu.',
     photoNote: (summary) =>
       `Saya menambahkan foto. Yang Anda baca: ${summary}. Ajukan pertanyaan berikutnya.`,
     locationNote: (place) => `Saya membagikan lokasi saya: ${place}. Ajukan pertanyaan berikutnya.`,
@@ -517,6 +545,8 @@ const copy: Record<Locale, FlowCopy> = {
     createShop: 'สร้างร้านของคุณ',
     start: 'สวัสดี! ฉันอยากเปิดร้านใหม่',
     silence: 'ฉันไม่แน่ใจ ช่วยแนะนำหรือข้ามไปก่อน แล้วถามคำถามถัดไป',
+    skipNote: 'ข้ามคำถามนี้ แล้วถามคำถามถัดไป',
+    stuck: 'ไม่ต้องติดอยู่ตรงนี้ กรอกที่เหลือเองทีละขั้น',
     photoNote: (summary) => `ฉันเพิ่มรูปแล้ว สิ่งที่คุณอ่านได้: ${summary} ถามคำถามถัดไปได้เลย`,
     locationNote: (place) => `ฉันแชร์ตำแหน่งแล้ว: ${place} ถามคำถามถัดไปได้เลย`,
   },
@@ -553,6 +583,8 @@ const copy: Record<Locale, FlowCopy> = {
     createShop: 'Tạo cửa hàng của bạn',
     start: 'Xin chào! Tôi muốn mở một cửa hàng mới.',
     silence: 'Tôi không chắc. Hãy gợi ý hoặc bỏ qua, rồi hỏi câu tiếp theo.',
+    skipNote: 'Bỏ qua câu này. Hỏi tôi câu tiếp theo.',
+    stuck: 'Đừng để bị kẹt. Tự điền phần còn lại, từng bước một.',
     photoNote: (summary) => `Tôi đã thêm một ảnh. Bạn đọc được: ${summary}. Hãy hỏi câu tiếp theo.`,
     locationNote: (place) => `Tôi đã chia sẻ vị trí: ${place}. Hãy hỏi câu tiếp theo.`,
   },
@@ -589,6 +621,8 @@ const copy: Record<Locale, FlowCopy> = {
     createShop: 'Gawin ang tindahan mo',
     start: 'Kumusta! Gusto kong magbukas ng bagong tindahan.',
     silence: 'Hindi ako sigurado. Magmungkahi ka o laktawan ito, at itanong ang susunod.',
+    skipNote: 'Laktawan ang tanong na ito. Itanong ang susunod.',
+    stuck: 'Huwag nang maipit. Ikaw na ang magpuno ng natitira, isa-isa.',
     photoNote: (summary) => `Nagdagdag ako ng larawan. Nabasa mo: ${summary}. Itanong ang susunod.`,
     locationNote: (place) => `Ibinahagi ko ang lokasyon ko: ${place}. Itanong ang susunod.`,
   },

@@ -46,7 +46,10 @@ import { comparisonKind } from './compare'
 import { AskHint } from '../v1/AskHint'
 import { TomorrowPromise } from './TomorrowPromise'
 import { countClosed } from '../v1/today/habitCount'
-import { parseCloseDayNumber } from './parseNumber'
+import { bestByMoney, soldParts } from './summary'
+import { useOrderUnit } from '../supply/supplyData'
+import { readNumber } from '../v1/readNumber'
+import type { NumberKind, NumberReading } from '../v1/readNumber'
 import type { components } from '../../api/generated'
 
 type CloseReward = components['schemas']['CloseReward']
@@ -148,6 +151,7 @@ export function CloseDay({
   const ws = useWorkspace()
   const { scope } = useIdentity()
   const roles = useTheme().material
+  const orderUnit = useOrderUnit()
   const phone = useMediaQuery('(max-width:599px)')
   const shop = ws.active
   const currency = shopCurrency(shop)
@@ -182,6 +186,9 @@ export function CloseDay({
   const [typing, setTyping] = useState(false)
   // A typed line that is filled in but not added yet still counts, and is added on Review.
   const [draft, setDraft] = useState<Line | null>(null)
+  // A typed number that needs an answer ("1,5": 1.5 or 15?) holds Review until it is fixed.
+  const [typedBlocked, setTypedBlocked] = useState(false)
+  const [checkTyped, setCheckTyped] = useState(0)
   const next = useNextStepsCopy()
   const online = useOnline()
   const started = useRef(false)
@@ -248,7 +255,18 @@ export function CloseDay({
       })),
     )
     .filter(({ line, key: k }) => !dropped.has(k) && line.quantity !== null)
-  const revenue = sales.reduce((sum, { line }) => sum + (line.amount ?? 0), 0)
+  // Summed in minor units, line by line, the way the server rounds and saves them.
+  const revenueMinor = sales.reduce((sum, { line }) => sum + toMinor(line.amount ?? 0, currency), 0)
+  const revenue = toMajor(revenueMinor, currency)
+  // Photo lines left out for want of a readable number; the owner is told how many.
+  const unread = done
+    .flatMap((s) =>
+      s.lines.map((line, i) => ({
+        key: key(s, i),
+        unclear: line.quantity === null || (s.kind === 'sales' && line.amount === null),
+      })),
+    )
+    .filter(({ key: k, unclear }) => unclear && !dropped.has(k)).length
   const fixture = done.some((s) => s.fixture)
   const day = done.find((s) => s.date)?.date ?? ''
   const minutes = shopNow(timezone).minutes
@@ -367,22 +385,36 @@ export function CloseDay({
 
   // What went well leads: the units sold, named when it was one item, and the best seller.
   const soldCount = reward?.items ?? saved.items
-  const byItem = new Map<string, number>()
-  for (const { line } of sales)
-    byItem.set(line.item, (byItem.get(line.item) ?? 0) + (line.quantity ?? 0))
-  const ranked = [...byItem].sort((x, y) => y[1] - x[1])
-  const number = new Intl.NumberFormat(locale)
-  const soldLine =
-    ranked.length === 1 && t.soldOf
+  const soldLines = sales.map(({ line }) => ({
+    item: line.item,
+    quantity: line.quantity ?? 0,
+    amount: line.amount ?? 0,
+  }))
+  const names = new Set(soldLines.map((line) => line.item))
+  const number = new Intl.NumberFormat(locale, { maximumFractionDigits: 2 })
+  // Kilos and pieces never add up: "3.5 kg cake + 12 brownies", not "15.5 items" (OB-330).
+  const parts = soldParts(soldLines, {
+    locale,
+    unitOf: (item) =>
+      ws.products.find((product) => product.name.toLowerCase() === item.toLowerCase())?.unit ?? '',
+    unitLabel: orderUnit,
+    name: (item) => productName(item, locale),
+    number: (n) => number.format(n),
+    items: (n) => closeDayCount(locale, 'countItems', n),
+  })
+  const soldLine = parts
+    ? t.soldWhat.replace('{what}', parts.join(' + '))
+    : names.size === 1 && t.soldOf
       ? t.soldOf
           .replace('{n}', number.format(soldCount))
-          .replace('{item}', productName(ranked[0]![0], locale))
+          .replace('{item}', productName([...names][0]!, locale))
       : closeDayCount(locale, 'soldItems', soldCount)
+  const best = names.size > 1 ? bestByMoney(soldLines) : null
   const bestLine =
-    ranked.length > 1 && t.bestSeller
+    best && t.bestSeller
       ? t.bestSeller
-          .replace('{item}', productName(ranked[0]![0], locale))
-          .replace('{n}', number.format(ranked[0]![1]))
+          .replace('{item}', productName(best.item, locale))
+          .replace('{n}', formatShopPrice(toMinor(best.amount, currency), currency, locale))
       : ''
 
   const kinds: { kind: Kind; icon: ReactNode; title: string; hint: string }[] = [
@@ -602,8 +634,10 @@ export function CloseDay({
                 // A name can repeat across units (Special Chai per cup and per pot).
                 products={[...new Set(ws.products.map((p) => p.name))]}
                 currency={currency}
+                check={checkTyped}
                 onAdd={(line) => setTyped((all) => [...all, line])}
                 onDraft={setDraft}
+                onBlocked={setTypedBlocked}
               />
             )}
             <AskHint id="close_day" />
@@ -635,6 +669,11 @@ export function CloseDay({
                 {failed}
               </Alert>
             )}
+            {unread > 0 && (
+              <Alert severity="warning" sx={{ mb: 3 }} data-testid="close-day-unread">
+                {t.unreadLines.replace('{n}', new Intl.NumberFormat(locale).format(unread))}
+              </Alert>
+            )}
             {sales.length === 0 && stock.length === 0 && (
               <Alert severity="warning" sx={{ mb: 3 }}>
                 {t.reviewEmpty}
@@ -646,7 +685,7 @@ export function CloseDay({
                   {t.salesTitle}
                 </Typography>
                 <Typography variant="displaySmall" sx={{ fontVariantNumeric: 'tabular-nums' }}>
-                  {formatShopPrice(toMinor(revenue, currency), currency)}
+                  {formatShopPrice(revenueMinor, currency, locale)}
                 </Typography>
                 <ReviewList
                   rows={sales.map(({ line, key: k }) => ({
@@ -808,6 +847,10 @@ export function CloseDay({
             size="large"
             disabled={lineCount === 0 || shots.some((s) => s.state === 'reading')}
             onClick={() => {
+              if (typing && typedBlocked) {
+                setCheckTyped((n) => n + 1)
+                return
+              }
               if (draft) {
                 setTyped((all) => [...all, draft])
                 setDraft(null)
@@ -1022,28 +1065,69 @@ function TypedSales({
   lines,
   products,
   currency,
+  check,
   onAdd,
   onDraft,
+  onBlocked,
 }: {
   lines: Line[]
   products: string[]
   currency: string
+  /** Bumped when Review is tapped while a typed number needs an answer: show it. */
+  check: number
   onAdd: (line: Line) => void
   onDraft: (line: Line | null) => void
+  onBlocked: (blocked: boolean) => void
 }) {
   const next = useNextStepsCopy()
   const locale = useLocale()
+  const copy = closeDayCopy(locale)
   const numberLocale = moneyLocale(currency, locale) ?? locale
   const [item, setItem] = useState('')
   const [qty, setQty] = useState('')
   const [amount, setAmount] = useState('')
   const [invalid, setInvalid] = useState(false)
-  const quantity = parseCloseDayNumber(qty, numberLocale, currency)
-  const total = parseCloseDayNumber(amount, numberLocale, currency)
-  const numberError = closeDayCopy(locale).numberInvalid.replace(
-    '{example}',
-    new Intl.NumberFormat(numberLocale).format(exponent(currency) === 0 ? 1000 : 1000.5),
-  )
+  const [left, setLeft] = useState({ quantity: false, amount: false })
+  const qtyReading = readNumber(qty, numberLocale, currency, 'quantity')
+  const amountReading = readNumber(amount, numberLocale, currency, 'money')
+  const quantity = qtyReading.ok ? qtyReading.value : null
+  const total = amountReading.ok ? amountReading.value : null
+  const plain = new Intl.NumberFormat(numberLocale, { maximumFractionDigits: 3 })
+  const money = (value: number) => formatShopPrice(toMinor(value, currency), currency, locale)
+  const example = (kind: NumberKind) =>
+    copy.numberInvalid.replace(
+      '{example}',
+      plain.format(kind === 'quantity' ? 2.5 : exponent(currency) === 0 ? 1000 : 1000.5),
+    )
+  // What is wrong with a field, in words; '' when it reads fine or is still empty.
+  const problem = (reading: NumberReading, kind: NumberKind) => {
+    if (reading.ok || reading.reason === 'empty') return ''
+    if (reading.reason !== 'ambiguous') return example(kind)
+    const show = kind === 'money' ? money : (value: number) => plain.format(value)
+    return copy.numberQuestion
+      .replace('{a}', show(reading.options[0]))
+      .replace('{b}', show(reading.options[1]))
+  }
+  const qtyProblem = problem(qtyReading, 'quantity')
+  const amountProblem = problem(amountReading, 'money')
+  // A line started but not finished (an item and an amount, no quantity) also holds Review:
+  // a line the owner filled in is never thrown away without a word.
+  const started = Boolean(item.trim() || qty.trim() || amount.trim())
+  const complete = Boolean(item.trim()) && qtyReading.ok && amountReading.ok
+  const blocked = Boolean(qtyProblem || amountProblem || (started && !complete))
+  useEffect(() => {
+    onBlocked(blocked)
+    return () => onBlocked(false)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [blocked])
+  // Review tapped while a number needs an answer counts as an attempt, until the next Add.
+  const [seenCheck, setSeenCheck] = useState(check)
+  const tried = invalid || check > seenCheck
+  // A field's message once the owner leaves it or taps Add: the question or the error.
+  const message = (text: string, issue: string, kind: NumberKind, leftField: boolean) =>
+    tried || leftField ? issue || (tried && !text.trim() ? example(kind) : '') : ''
+  const qtyMessage = message(qty, qtyProblem, 'quantity', left.quantity)
+  const amountMessage = message(amount, amountProblem, 'money', left.amount)
   const known = products.find((name) => name.toLowerCase() === item.trim().toLowerCase())
   const filled: Line | null =
     item.trim() && quantity !== null && total !== null
@@ -1074,6 +1158,8 @@ function TypedSales({
     setQty('')
     setAmount('')
     setInvalid(false)
+    setSeenCheck(check)
+    setLeft({ quantity: false, amount: false })
   }
   return (
     <Box
@@ -1096,8 +1182,8 @@ function TypedSales({
           name="item"
           label={next.manualItem}
           value={item}
-          error={invalid && !item.trim()}
-          helperText={invalid && !item.trim() ? next.manualInvalid : undefined}
+          error={tried && !item.trim()}
+          helperText={tried && !item.trim() ? next.manualInvalid : undefined}
           onChange={(event) => setItem(event.target.value.slice(0, 180))}
           slotProps={{ htmlInput: { list: 'close-day-items', autoComplete: 'off' } }}
         />
@@ -1111,9 +1197,10 @@ function TypedSales({
             name="quantity"
             label={next.manualQty}
             value={qty}
-            error={invalid && quantity === null}
-            helperText={invalid && quantity === null ? numberError : undefined}
+            error={Boolean(qtyMessage)}
+            helperText={qtyMessage || undefined}
             onChange={(event) => setQty(event.target.value)}
+            onBlur={() => setLeft((all) => ({ ...all, quantity: true }))}
             slotProps={{
               htmlInput: { inputMode: 'decimal', autoComplete: 'off' },
               formHelperText: { 'aria-live': 'polite' },
@@ -1124,9 +1211,11 @@ function TypedSales({
             name="amount"
             label={`${next.manualAmount} (${currencySymbol(currency)})`}
             value={amount}
-            error={invalid && total === null}
-            helperText={invalid && total === null ? numberError : undefined}
+            error={Boolean(amountMessage)}
+            // The amount exactly as it will be saved (₹1,00,000), so a slip shows before Add.
+            helperText={amountMessage || (total !== null ? `= ${money(total)}` : undefined)}
             onChange={(event) => setAmount(event.target.value)}
+            onBlur={() => setLeft((all) => ({ ...all, amount: true }))}
             slotProps={{
               htmlInput: { inputMode: 'decimal', autoComplete: 'off' },
               formHelperText: { 'aria-live': 'polite' },
@@ -1151,8 +1240,7 @@ function TypedSales({
                 variant="bodyMedium"
                 sx={{ overflowWrap: 'anywhere', fontVariantNumeric: 'tabular-nums' }}
               >
-                {line.item} · {line.quantity} ·{' '}
-                {formatShopPrice(toMinor(line.amount ?? 0, currency), currency)}
+                {line.item} · {plain.format(line.quantity ?? 0)} · {money(line.amount ?? 0)}
               </Typography>
             ))}
           </Box>

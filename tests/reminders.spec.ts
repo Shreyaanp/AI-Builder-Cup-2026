@@ -87,7 +87,15 @@ async function setup(page: Page, permission: 'granted' | 'denied' = 'granted') {
   await page.getByRole('button', { name: copy.continuePreview, exact: true }).click()
   await page.getByLabel('I agree to the Terms').check()
   await page.getByLabel('I have read the Privacy Notice').check()
-  await page.getByRole('button', { name: 'Agree and continue' }).click()
+  // The API calls below need the saved consent: a click alone can return before POST /consent
+  // lands, and then /proposals answers 428 CONSENT_REQUIRED (8 Nov CI, 1.5s failures).
+  await Promise.all([
+    page.waitForResponse(
+      (response) =>
+        response.url().endsWith('/api/v1/consent') && response.request().method() === 'POST',
+    ),
+    page.getByRole('button', { name: 'Agree and continue' }).click(),
+  ])
   const businesses = (await (await page.request.get('/api/v1/businesses')).json()) as unknown[]
   if (businesses.length === 0) {
     const proposalResponse = await page.request.post('/api/v1/proposals', {

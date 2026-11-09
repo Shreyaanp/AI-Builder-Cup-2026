@@ -33,7 +33,8 @@ test('A9 · daily check survives conversation and dismisses per shop and day', a
   await expect(title).toHaveCount(0)
   await page.reload()
   await page.getByRole('button', { name: 'Continue local preview' }).click()
-  await expect(page.getByRole('log')).toContainText('This is a scripted reply')
+  // The app reopens on Home, not the chat (OB-327); the answered question stays answered.
+  await expect(page.getByTestId('today')).toBeVisible()
   await expect(title).toHaveCount(0)
   const original = (await (await page.request.get('/api/v1/businesses')).json())[0]
   const next = await (
@@ -65,8 +66,7 @@ test('A9 · daily check survives conversation and dismisses per shop and day', a
   today = '2026-10-16'
   await page.reload()
   await page.getByRole('button', { name: 'Continue local preview' }).click()
-  await expect(page.getByRole('log')).toContainText('This is a scripted reply')
-  await pill.click()
+  await expect(page.getByTestId('today')).toBeVisible()
   await expect(title).toBeVisible()
   await shot(page, 2, 'A9-next-day')
 })

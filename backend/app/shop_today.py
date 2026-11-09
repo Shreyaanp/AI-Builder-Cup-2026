@@ -123,6 +123,8 @@ class Today(BaseModel):
     has_customer_stamp: bool | None = None
     # What the owner wrote down last night for this morning, while still open (HABIT change 4).
     promise: Promise | None = None
+    # No forecast yet: what the latest closed day sold, so Home says what to make (OB-329).
+    last_day: brief.LastDay | None = None
 
 
 def _day(fields: dict[str, Any], at: float | None = None) -> str:
@@ -360,6 +362,9 @@ async def today_page(business_id: str, request: Request) -> Today:
         hints=hints,
         has_customer_stamp=customer_stamp,
         promise=await anyio.to_thread.run_sync(promise_for, service, business_id, today),
+        last_day=brief.last_day(
+            sales, today, context["inventory"], str(fields.get("category") or ""), forecast
+        ),
     )
 
 

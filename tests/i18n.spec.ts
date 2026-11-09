@@ -99,7 +99,7 @@ test('the customer page follows the customer’s phone language', async ({ page,
   await page.getByRole('button', { name: 'Shop', exact: true }).click()
   await page.getByRole('button', { name: /^Your shop page/ }).click()
   // Onboarding put the shop live by itself: the page is already shared.
-  await expect(page.getByRole('switch', { name: 'Share customer page' })).toBeChecked()
+  await expect(page.getByRole('switch', { name: 'Customers can see my shop' })).toBeChecked()
   const url = await page.getByRole('link', { name: 'Open page' }).getAttribute('href')
 
   const customer = await browser.newContext({ locale: 'ja-JP' })

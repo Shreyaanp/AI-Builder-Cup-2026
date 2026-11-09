@@ -217,6 +217,7 @@ export async function seedShop(
   withPhotoPin = false,
   name = shopName,
   pin: boolean | { lat: number; lng: number } = true,
+  fields: Record<string, unknown> = {},
 ) {
   let pinned: { id: string; revision: number } | null = null
   if (withPhotoPin) {
@@ -266,6 +267,7 @@ export async function seedShop(
         weekly_hours: [{ day: 'thu', open: '07:00', close: '20:00', closed: false }],
         reward_text: 'Your eighth chai is free',
         stamps_needed: 8,
+        ...fields,
       },
       // OB-168: API setup confirms a pin too; photo setup retains its own GPS evidence.
       ...(pinned || !pin
@@ -312,7 +314,7 @@ export async function seedShop(
 export async function share(page: Page) {
   await page.getByRole('button', { name: 'Shop', exact: true }).click()
   await page.getByRole('button', { name: /^Your shop page/ }).click()
-  const sharing = page.getByRole('switch', { name: 'Share customer page' })
+  const sharing = page.getByRole('switch', { name: 'Customers can see my shop' })
   if (!(await sharing.isChecked())) await sharing.click()
   await expect(sharing).toBeChecked()
   const href = await page.getByRole('link', { name: 'Open page' }).getAttribute('href')

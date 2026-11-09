@@ -14,6 +14,7 @@ import anyio
 import httpx
 from pydantic import BaseModel, Field
 
+from .product_source import source_of
 from .settings import Settings
 
 PROJECT = "ichiropractic"
@@ -42,6 +43,24 @@ class Prediction(BaseModel):
     unit: str = "item"
 
 
+class LastDayRow(BaseModel):
+    item: str
+    quantity: float
+    unit: str
+    revenue: int  # minor units
+    # False for stock the shop buys: it sold, but it is never something to make.
+    made: bool
+
+
+class LastDay(BaseModel):
+    """The latest saved day, for a shop without four weeks of sales yet (OB-329)."""
+
+    date: date
+    rows: list[LastDayRow]  # most money first
+    # "Make about the same": something here is made, and the day is recent enough to repeat.
+    make_same: bool
+
+
 class Forecast(BaseModel):
     status: Literal["ready", "insufficient"]
     method: Literal["timesfm", "weekday_average"]
@@ -51,6 +70,7 @@ class Forecast(BaseModel):
     insufficient_items: list[str] = Field(default_factory=list)
     fallback_reason: Literal["provider_unavailable"] | None = None
     confidence_level: float | None = None
+    last_day: LastDay | None = None
 
 
 def training(rows: list[dict[str, Any]], today: date) -> tuple[list[dict[str, Any]], list[str]]:
@@ -148,6 +168,68 @@ class BigQueryClient:
             dict(zip(fields, [cell["v"] for cell in row["f"]], strict=True))
             for row in result.get("rows", [])
         ]
+
+
+# A saved day older than this still says what sold, but no longer says to repeat it.
+MAKE_SAME_DAYS = 7
+# Sold by the hour or the job: done for the customer, never made ahead.
+NOT_PREPARED = {"hour", "service"}
+
+
+def last_day(
+    sales: list[dict[str, Any]],
+    today: date,
+    inventory: list[dict[str, Any]],
+    category: str = "",
+    forecast: Forecast | None = None,
+) -> LastDay | None:
+    """What the latest closed day sold: one closed day is already a plan (OB-329). None when the
+    forecast has an answer, or nothing was ever saved. Facts only, so "never after a close" holds
+    however old the day is; only `make_same` depends on its age."""
+    if forecast is not None and forecast.predictions:
+        return None
+    days = [r["date"] for r in sales if r["date"] <= today.isoformat()]
+    if not days:
+        return None
+    day = max(days)
+    products = {str(p.get("name", "")).casefold(): p for p in inventory}
+    totals: dict[str, list[float]] = {}
+    for row in sales:
+        if row["date"] == day:
+            total = totals.setdefault(row["item"], [0.0, 0.0])
+            total[0] += float(row["quantity"])
+            total[1] += float(row.get("revenue") or 0)
+    rows = []
+    for item, (quantity, revenue) in totals.items():
+        product = products.get(item.casefold())
+        unit = str((product or {}).get("unit") or "item")
+        source = source_of(product, category) if product else "unknown"
+        rows.append(
+            LastDayRow(
+                item=item,
+                quantity=round(quantity, 2),
+                unit=unit,
+                revenue=round(revenue),
+                made=source != "bought" and unit not in NOT_PREPARED,
+            )
+        )
+    rows.sort(key=lambda r: (-r.revenue, -r.quantity, r.item))
+    found = date.fromisoformat(day)
+    return LastDay(
+        date=found,
+        rows=rows,
+        make_same=any(r.made for r in rows) and (today - found).days <= MAKE_SAME_DAYS,
+    )
+
+
+def last_day_words(closed: LastDay | None, today: date) -> str:
+    """The latest closed day in one plain English answer; empty without one."""
+    if closed is None:
+        return ""
+    gap = (today - closed.date).days
+    when = "Today" if gap == 0 else "Yesterday" if gap == 1 else f"On {closed.date:%a %d %b}"
+    sold = ", ".join(f"{r.quantity:g} {r.unit} {r.item}" for r in closed.rows[:3])
+    return f"{when} you sold {sold}." + (" Make about the same." if closed.make_same else "")
 
 
 CACHE_SECONDS = 1800

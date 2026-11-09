@@ -51,12 +51,16 @@ for (const appearance of ['light', 'dark']) {
       await expect(page.getByTestId('sample-shop-chip')).toHaveText('Sample shop')
       await expect(page.getByText('Verified owner')).toHaveCount(0)
       await expect(page.locator('img').first()).toBeVisible()
-      expect(
-        await page
-          .locator('img')
-          .first()
-          .evaluate((el) => (el as HTMLImageElement).naturalWidth),
-      ).toBeGreaterThan(0)
+      // Visible is not loaded: the box shows before the bytes arrive, so a single read of
+      // naturalWidth saw 0 on slower CI runners. A broken image still stays at 0 and fails.
+      await expect
+        .poll(() =>
+          page
+            .locator('img')
+            .first()
+            .evaluate((el) => (el as HTMLImageElement).naturalWidth),
+        )
+        .toBeGreaterThan(0)
       await page.screenshot({
         path: `output/playwright/tour-story/${info.project.name}-${world.city}-${appearance}.png`,
         fullPage: true,
