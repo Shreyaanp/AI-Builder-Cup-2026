@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Box, Button, ButtonBase, Snackbar, Stack, Typography, useTheme } from '@mui/material'
-import { Plus } from 'lucide-react'
+import { Receipt } from 'lucide-react'
 import { shape } from '../../design/theme'
 import { useLocale } from '../../state/hooks'
 import { formatShopPrice } from '../v1/format'
@@ -118,7 +118,7 @@ export function MoneyToday({ day, currency }: { day: string; currency: string })
       )}
       <Button
         variant="outlined"
-        startIcon={<Plus size={18} />}
+        startIcon={<Receipt size={18} />}
         onClick={() => setSheet('new')}
         disabled={!data}
         sx={{ mt: 2, minHeight: 48 }}
