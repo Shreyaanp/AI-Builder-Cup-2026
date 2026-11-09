@@ -105,8 +105,12 @@ async def draft_order(
         lead += "The same amount as your last order. " if as_last_time else ""
         text = (
             f"{lead}Demo suppliers near you for {item}: {names}. I drafted "
-            f"{quantity:g} {unit} from {first['name']} below. It goes only when you tap "
-            "Send, and only in the demo."
+            f"{quantity:g} {unit} from {first['name']} below. "
+            + (
+                "It goes only when you tap Send, and only in the demo."
+                if teach
+                else "Next, check it and tap Send. It goes only then, and only in the demo."
+            )
         )
         text += f" {next_line(teach)}" if teach else ""
     return [

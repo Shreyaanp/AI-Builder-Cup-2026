@@ -260,7 +260,13 @@ def supply_call(
         if not (asked.needs_known_supply and _sells(ctx, asked.item)):
             return call(
                 "draft_reorder",
-                {"item": asked.item, **({"quantity": asked.quantity} if asked.quantity else {})},
+                # The owner's own word when it is English; "doodh" reads as Milk.
+                {
+                    "item": asked.item.casefold()
+                    if asked.item.casefold() in text.casefold()
+                    else asked.item,
+                    **({"quantity": asked.quantity} if asked.quantity else {}),
+                },
             )
     if REORDER.search(text) and not re.search(r"\b(?:don'?t|do not|never|mat)\b", text, re.I):
         args = {}
