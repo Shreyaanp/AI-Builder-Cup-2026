@@ -102,7 +102,7 @@ test('Shop: "Show to customers" opens the page switch', async ({ page }) => {
   await page.getByRole('button', { name: 'Show to customers', exact: true }).click()
   const sheet = page.getByRole('dialog', { name: 'Your shop page' })
   await expect(sheet).toBeVisible()
-  await expect(sheet.getByRole('switch', { name: 'Share customer page' })).toBeVisible()
+  await expect(sheet.getByRole('switch', { name: 'Customers can see my shop' })).toBeVisible()
   // The quieter thank-you perks moved to the stamp card.
   await expect(sheet.getByRole('textbox')).toHaveCount(0)
 })

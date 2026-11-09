@@ -230,6 +230,7 @@ export function MapCard({
       pin={pin}
       address={address}
       accuracy={!moved && fix ? fix.m : null}
+      areaOnly={areaOnly}
       busy={location.busy || finding || searching}
       saving={saving}
       error={error}
@@ -351,6 +352,7 @@ function PinDetails({
   pin,
   address,
   accuracy,
+  areaOnly = false,
   busy,
   saving,
   error,
@@ -360,6 +362,8 @@ function PinDetails({
   pin: Point | null
   address: string | null
   accuracy: number | null
+  /** Only the area is shown: no "put the pin on your door" hint. */
+  areaOnly?: boolean
   busy: boolean
   saving: boolean
   error: string
@@ -388,13 +392,15 @@ function PinDetails({
             {readable}
           </Typography>
           <Typography variant="bodySmall" color="text.secondary">
-            {accuracy !== null
-              ? t.locationAccuracy(
-                  new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(
-                    Math.ceil(accuracy),
-                  ),
-                )
-              : c.mapHint}
+            {areaOnly
+              ? null
+              : accuracy !== null
+                ? t.locationAccuracy(
+                    new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(
+                      Math.ceil(accuracy),
+                    ),
+                  )
+                : c.mapHint}
           </Typography>
         </Box>
       )}

@@ -82,7 +82,7 @@ test('demo: photo, price correction, customer page and availability', async ({
   await review.getByRole('button', { name: 'Confirm and save' }).click()
   await expect(review).not.toBeVisible()
   await page.getByRole('button', { name: /^Your shop page/ }).click()
-  const sharing = page.getByRole('switch', { name: 'Share customer page' })
+  const sharing = page.getByRole('switch', { name: 'Customers can see my shop' })
   await sharing.click()
   await expect(sharing).toBeChecked()
   const section = sheet('Your shop page')

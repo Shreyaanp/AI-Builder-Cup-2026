@@ -312,7 +312,7 @@ export async function seedShop(
 export async function share(page: Page) {
   await page.getByRole('button', { name: 'Shop', exact: true }).click()
   await page.getByRole('button', { name: /^Your shop page/ }).click()
-  const sharing = page.getByRole('switch', { name: 'Share customer page' })
+  const sharing = page.getByRole('switch', { name: 'Customers can see my shop' })
   if (!(await sharing.isChecked())) await sharing.click()
   await expect(sharing).toBeChecked()
   const href = await page.getByRole('link', { name: 'Open page' }).getAttribute('href')
