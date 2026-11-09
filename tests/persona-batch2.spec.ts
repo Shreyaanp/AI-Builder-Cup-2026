@@ -211,6 +211,34 @@ test('OB-346: a closed total reopens to edit, and items can replace it', async (
   expect(rows.map((row) => [row.item, row.revenue])).toEqual([['Sugar', 18_000]])
 })
 
+test('OB-346: the public demo can close with one total too, in its own sandbox', async ({
+  page,
+}) => {
+  test.setTimeout(90_000)
+  const paid: string[] = []
+  page.on('request', (request) => {
+    if (/generativelanguage|aiplatform/.test(request.url())) paid.push(request.url())
+  })
+  await localOnly(page)
+  await page.goto('/demo')
+  await expect(page.getByText('Demo shop · sample data', { exact: true })).toBeVisible({
+    timeout: 30_000,
+  })
+  await page.getByRole('dialog').getByRole('button', { name: 'Skip', exact: true }).click()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  const close = await openCloseDay(page)
+  const edit = close.getByRole('button', { name: 'Edit' })
+  await expect(close.getByRole('button', { name: 'Just enter the total' }).or(edit)).toBeVisible()
+  // The sample shop may have closed today with item lines; those keep the item form.
+  test.skip(await edit.isVisible(), 'The demo day is already closed with items')
+  await close.getByRole('button', { name: 'Just enter the total' }).click()
+  await close.getByRole('textbox', { name: 'Total sales' }).fill('500')
+  await close.getByRole('button', { name: /^Review/ }).click()
+  await saveDay(page, close)
+  await expect(close.getByText(/Day closed/)).toBeVisible()
+  expect(paid).toEqual([])
+})
+
 test('OB-347: several products in one go, the form stays open', async ({ page }) => {
   test.setTimeout(90_000)
   await realShop(page)

@@ -71,8 +71,13 @@ async function assertPhoneLayout(page: Page, screen: string) {
             b.top <= a.top + 1 &&
             b.right >= a.right - 1 &&
             b.bottom >= a.bottom - 1)
+        // A text field's floating label sits on its own box by design; only that pair is let off.
+        const ownLabel =
+          (candidates[i] as HTMLLabelElement).htmlFor === candidates[j].id ||
+          (candidates[j] as HTMLLabelElement).htmlFor === candidates[i].id
         if (
           !contained &&
+          !ownLabel &&
           a.left < b.right - 1 &&
           a.right > b.left + 1 &&
           a.top < b.bottom - 1 &&
