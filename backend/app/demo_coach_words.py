@@ -305,6 +305,20 @@ def _money(amount: float) -> str:
 
 
 Change = tuple[str, dict[str, Any], float | None]
+# Rupees in the words the coach's own table (agent.CURRENCY_WORDS) does not list.
+RUPEE_WORDS = r"rupaye|rupaiye|rupay|रुपये|रुपए|रुपया|रूपये|रु"
+RUPEE_SHOPS = {"INR", "LKR", "NPR", "PKR"}
+
+
+def _another_currency(text: str, currency: str | None) -> bool:
+    """ "Kopi is 20 rupees now" in a Singapore shop: never converted or guessed."""
+    from .agent import CURRENCY_WORDS
+
+    table = {**CURRENCY_WORDS, RUPEE_WORDS: RUPEE_SHOPS}
+    return bool(currency) and any(
+        currency not in codes and re.search(rf"(?<!\w)(?:{words})(?!\w)", text, re.I)
+        for words, codes in table.items()
+    )
 
 
 def read_changes(
@@ -320,6 +334,8 @@ def read_changes(
     if no_more := NO_MORE.fullmatch(text):
         text = f"{no_more['name']} sold out"
     if "?" in question or ASKED.match(text) or NEGATION.search(text):
+        return None
+    if _another_currency(text, currency):
         return None
     clauses = [part for part in CLAUSES.split(text) if part]
     if not clauses or len(clauses) > 4:

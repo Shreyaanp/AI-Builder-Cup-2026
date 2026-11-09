@@ -14,7 +14,7 @@ import pytest
 
 from app.agent import ui_language, upkeep_call
 from app.demo_coach import FALLBACK
-from app.demo_coach_words import FALLBACK_HI
+from app.demo_coach_words import FALLBACK_HI, read_changes
 from app.instant import route
 from app.owner_order_words import known_supply, order_asked
 from app.supply_offline import supply_call
@@ -480,3 +480,21 @@ def test_a_live_two_in_one_price_is_the_amount_said(shop, message, minor):  # no
             {"name": "Samosa", "available": False},
         ]
     }
+
+
+@pytest.mark.parametrize(
+    ("message", "currency", "understood"),
+    [
+        ("Samosa is 20 rupees now", "SGD", False),
+        ("samosa 20 rupaye kar do", "SGD", False),
+        ("समोसा अब 20 रुपये का है", "SGD", False),
+        ("Samosa is 2 dollars now, samosa sold out", "INR", False),
+        ("Samosa is 20 rupees now", "INR", True),
+        ("समोसा अब 20 रुपये का है", "INR", True),
+        ("Samosa is 2 now", "SGD", True),
+    ],
+)
+def test_a_price_in_another_currency_is_never_read(message, currency, understood):
+    """Never converted or guessed, on the demo or the live coach, in any language."""
+    items = [{"name": "Samosa", "price": 2000, "unit": "piece"}]
+    assert bool(read_changes(message, items, {}, currency)) is understood
