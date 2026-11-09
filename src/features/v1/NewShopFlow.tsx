@@ -1674,7 +1674,11 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
                 line.role === 'summary' ? (
                   !summaryLast && (
                     <Box component="li" key={line.id} sx={{ ml: { xs: 0, sm: 6 } }}>
-                      <SummaryCard draft={draft} busy={finishing} onContinue={() => void finish()} />
+                      <SummaryCard
+                        draft={draft}
+                        busy={finishing}
+                        onContinue={() => void finish()}
+                      />
                     </Box>
                   )
                 ) : line.role === 'camera' ? (

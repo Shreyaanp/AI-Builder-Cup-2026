@@ -4,6 +4,7 @@ import {
   test,
   type Browser,
   type BrowserContext,
+  type Locator,
   type Page,
   type WebSocketRoute,
 } from '@playwright/test'
@@ -153,6 +154,8 @@ async function copyFor(page: Page, code: string): Promise<Copy> {
       ready: flow.newShopCopyFor(language).ready,
       ...onboarding.onboardingCopyFor(language),
       confirmPin: inChat.inChatCopyFor(language).confirmPin!,
+      openCamera: inChat.inChatCopyFor(language).openCamera!,
+      uploadInstead: inChat.inChatCopyFor(language).uploadInstead!,
       // First run: the start card's typed way in (simplify batch 5: no top-bar "+").
       typeName: simple.firstRunCopyFor(language).typeName!,
     } as Record<string, string>
@@ -186,6 +189,24 @@ async function openFlow(page: Page, language: Language) {
   await page.getByRole('button', { name: copy.begin! }).click()
   await expect(page.getByRole('log')).toContainText(ASKED.open, { timeout: 20_000 })
   return copy
+}
+
+/** In the viewport and not covered (the pinned "Your shop so far" panel): a tap lands on it. */
+async function expectTappable(target: Locator) {
+  await expect(target).toBeVisible()
+  await expect
+    .poll(() =>
+      target.evaluate((element) => {
+        const box = element.getBoundingClientRect()
+        const x = box.left + box.width / 2
+        const y = box.top + Math.min(box.height / 2, 20)
+        if (box.top < 0 || box.bottom > innerHeight || box.left < 0 || box.right > innerWidth)
+          return `out of view: ${Math.round(box.top)}-${Math.round(box.bottom)}`
+        const hit = document.elementFromPoint(x, y)
+        return hit && element.contains(hit) ? 'ok' : `covered by ${hit?.outerHTML.slice(0, 80)}`
+      }),
+    )
+    .toBe('ok')
 }
 
 async function say(page: Page, copy: Copy, text: string) {
@@ -270,6 +291,92 @@ for (const language of LANGUAGES) {
       if (language.code === 'en') await expect(today).toContainText('Add what you sell')
       await expect(today.getByRole('button')).not.toHaveCount(0)
     })
+
+    for (const scheme of ['light', 'dark'] as const)
+      test(`after the summary, the photo card and the next reply open in view and take a tap (${scheme})`, async ({
+        page,
+      }) => {
+        dependsOn('onboarding v2 (#91)', onboardingV2)
+        test.skip(test.info().project.name !== 'phone', 'phone: 360x800')
+        test.setTimeout(120_000)
+        // Normal motion: the smooth scroll is what the owner sees.
+        await page.emulateMedia({ colorScheme: scheme, reducedMotion: 'no-preference' })
+        await phoneSize(page)
+        const copy = await openFlow(page, language)
+        // Every frame, where "Go to my shop" is: it must not jump while the closing words land.
+        await page.evaluate(() => {
+          const tops: number[] = []
+          ;(window as unknown as { doneTops: number[] }).doneTops = tops
+          const sample = () => {
+            const button = document.querySelector('[data-testid="shop-summary"] button')
+            if (button) tops.push(Math.round(button.getBoundingClientRect().top))
+            requestAnimationFrame(sample)
+          }
+          requestAnimationFrame(sample)
+        })
+        let count = (await askedTopics(page)).length
+        await say(
+          page,
+          copy,
+          'name: Clean Helmet Point; category: self-cleaning helmet station; location: MG Road metro',
+        )
+        await expect(page.getByTestId('shop-live')).toHaveText(copy.live!)
+        let next = await nextQuestion(page, count)
+        while (next) {
+          count = (await askedTopics(page)).length
+          if (next === 'hours') await say(page, copy, DONT_KNOW[language.code]!)
+          else
+            await page
+              .getByTestId('camera-card')
+              .getByRole('button', { name: copy.skipForNow!, exact: true })
+              .click()
+          next = await nextQuestion(page, count)
+        }
+        const summary = page.getByTestId('shop-summary')
+        await expect(summary).toBeVisible()
+        const idle = page.getByRole('button', { name: copy.shopPhoto!, exact: true })
+        await expect(idle).toBeEnabled({ timeout: 20_000 })
+        // Settled: then the last moves of the button, from the closing turn on.
+        await page.waitForTimeout(800)
+        const tops = await page.evaluate(() =>
+          (window as unknown as { doneTops: number[] }).doneTops.slice(),
+        )
+        const final = tops.at(-1)!
+        // Once the button is where it ends, it stays there (no jump down and back).
+        const settled = tops.findIndex((top) => Math.abs(top - final) <= 2)
+        expect(
+          tops.slice(settled).filter((top) => Math.abs(top - final) > 2),
+          `button tops ${tops.join(' ')}`,
+        ).toEqual([])
+        await expectTappable(summary.getByRole('button', { name: copy.done!, exact: true }))
+
+        // The owner taps "Shop photo" (skipped before): the camera card opens in view.
+        await idle.click()
+        const camera = page.getByTestId('camera-card')
+        await expect(camera).toBeVisible()
+        for (const name of [copy.openCamera!, copy.uploadInstead!, copy.skipForNow!])
+          await expectTappable(camera.getByRole('button', { name, exact: true }))
+        await camera.getByRole('button', { name: copy.skipForNow!, exact: true }).click()
+        await expect(camera).toHaveCount(0)
+        await expect(idle).toBeEnabled({ timeout: 20_000 })
+
+        // The owner asks the coach something: the reply lands in view.
+        const log = page.getByRole('log').locator('ol').first().locator(':scope > li')
+        const question = language.code === 'en' ? 'what do I do next?' : 'अब मैं क्या करूँ?'
+        await say(page, copy, question)
+        const asked = log.filter({ hasText: question })
+        await expect(asked).toHaveCount(1)
+        await expect(idle).toBeEnabled({ timeout: 30_000 })
+        const after = await log.evaluateAll(
+          (items, text) =>
+            items.length - 1 - items.findIndex((li) => li.textContent?.includes(text)),
+          question,
+        )
+        expect(after, 'a coach reply after the question').toBeGreaterThan(0)
+        await page.waitForTimeout(800)
+        await expectTappable(log.last())
+        await expectTappable(asked)
+      })
 
     test('GPS pin: "This is my shop" pins the shop and it goes live (name + kind + pin)', async ({
       page,
