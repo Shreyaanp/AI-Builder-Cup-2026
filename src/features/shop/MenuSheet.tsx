@@ -380,7 +380,7 @@ type PriceState =
  * prepares the change, Esc cancels. The owner then confirms the exact sealed proposal with one
  * tap ("Save S$2.20"), the same rule as every other change.
  */
-function PriceField({ product }: { product: Product }) {
+export function PriceField({ product }: { product: Product }) {
   const t = useCopy()
   const copy = useShopCopy()
   const ws = useWorkspace()

@@ -4,7 +4,7 @@ import type { Locale } from '../../i18n/locales'
 const en = {
   connectTitle: 'Link your billing app',
   connectType: 'Billing app',
-  connectSubtitle: 'Link your billing app instead of typing your sales again',
+  connectSubtitle: 'Bring in your sales or your item list instead of typing them again',
   pickSystem: 'Pick your billing app',
   uploadOrPaste: 'Upload export or paste sample',
   mappingTitle: 'Column mapping',
@@ -147,7 +147,7 @@ const translations: Record<Locale, Copy> = {
   hi: {
     connectTitle: 'बिक्री का हिसाब जोड़ें',
     connectType: 'बिक्री और हिसाब',
-    connectSubtitle: 'जानकारी दोबारा लिखे बिना अपना बिक्री हिसाब जोड़ें।',
+    connectSubtitle: 'दोबारा लिखे बिना अपनी बिक्री या सामान की सूची जोड़ें।',
     pickSystem: 'अपना हिसाब चुनें',
     uploadOrPaste: 'फ़ाइल भेजें या नमूना चिपकाएँ',
     mappingTitle: 'खानों का मिलान',

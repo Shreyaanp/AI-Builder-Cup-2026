@@ -1,5 +1,6 @@
 import asyncio
 from collections.abc import AsyncIterator
+from typing import Any
 from uuid import uuid4
 
 import anyio
@@ -41,6 +42,28 @@ ACTION_TOOLS = {
     # An honest "can't do that yet" offers the screen where the owner can do it (OB-172).
     "report_unsupported_request",
 }
+
+
+def history_card(
+    name: str | None, result: dict[str, Any] | None, key: str
+) -> dict[str, Any] | None:
+    """The card a saved tool result stands for, when an old chat is opened. Orders are stored by
+    id only: the app loads their latest state, so a card never shows yesterday's status."""
+    result = result or {}
+    if name == "find_suppliers" and result.get("status") == "found":
+        found = {field: value for field, value in result.items() if field != "card_id"}
+        return {"role": "suppliers", "result": found, "key": key}
+    if name == "prepare_order" and result.get("order_id"):
+        return {"role": "order", "orderId": str(result["order_id"])}
+    if name in SUPPLY_CARD_TOOLS and result.get("order_id") and result.get("po_number"):
+        return {"role": "po", "poId": str(result["order_id"])}
+    return None
+
+
+def same_card(message: dict[str, Any], card: dict[str, Any]) -> bool:
+    return any(field in card and message.get(field) == card[field] for field in ("orderId", "poId"))
+
+
 # Tools that prepare a sealed proposal for the review dialog.
 PROPOSAL_TOOLS = {
     "update_shop",

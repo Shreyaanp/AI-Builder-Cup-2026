@@ -7,7 +7,7 @@ test('sourcing labels demo suppliers, reviews exact quantities, receives reply a
   await say(page, 'My flour is running low')
   const suppliers = page.getByRole('list', { name: /suppliers? nearby/ })
   await expect(suppliers).toBeVisible()
-  await expect(suppliers.getByRole('listitem').first()).toContainText('Demo')
+  await expect(suppliers.getByRole('listitem').first()).toContainText('Sample')
   const message = page.getByRole('textbox', { name: 'Message', exact: true })
   await message.fill('The second one looks good, order 20 kg flour and 5 kg sugar from them')
   if (info.project.name === 'phone') {

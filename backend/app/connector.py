@@ -64,6 +64,7 @@ CONNECTOR_HEADER_HINTS: dict[str, tuple[str, ...]] = {
         "item name",
         "stockitemname",
         "stockitem",
+        "particulars",
         "product name",
         "dish name",
         "item",
@@ -80,6 +81,10 @@ CONNECTOR_HEADER_HINTS: dict[str, tuple[str, ...]] = {
         "variant price",
         "unit price",
         "selling price",
+        "sale price",
+        "sales price",
+        "sell price",
+        "retail price",
         "price",
         "rate",
         "cost",
@@ -124,6 +129,11 @@ CONNECTOR_HEADER_HINTS: dict[str, tuple[str, ...]] = {
     ),
     "stock": (
         "variant inventory qty",
+        "current stock",
+        "closing stock",
+        "stock quantity",
+        "stock qty",
+        "opening stock",
         "closingbalance",
         "openingbalance",
         "stock",
@@ -133,6 +143,12 @@ CONNECTOR_HEADER_HINTS: dict[str, tuple[str, ...]] = {
         "available",
         "qty on hand",
     ),
+}
+
+
+NOT_THIS_ROLE: dict[str, tuple[str, ...]] = {
+    "price": ("purchase", "buying", "cost price", "wholesale"),
+    "stock": ("min", "reorder", "location", "value"),
 }
 
 
@@ -368,7 +384,13 @@ def _heuristic_connector_mapping(
     # Map roles in priority order (stock before quantity so inventory counts map to stock)
     for role in ("name", "price", "unit", "stock", "category", "date", "quantity", "total"):
         hints = CONNECTOR_HEADER_HINTS.get(role, ())
-        free = [(idx, h) for idx, h in enumerate(lowered) if idx not in used_indices]
+        # What the shop paid is not what it sells for; a reorder level is not its stock.
+        not_it = NOT_THIS_ROLE.get(role, ())
+        free = [
+            (idx, h)
+            for idx, h in enumerate(lowered)
+            if idx not in used_indices and not any(word in h for word in not_it)
+        ]
 
         # Exact match first
         best_idx: int | None = None
@@ -408,6 +430,14 @@ def _heuristic_connector_mapping(
     has_qty = any(f.target_field == "quantity" for f in fields)
     has_total = any(f.target_field == "total" for f in fields)
     is_sales = has_date and (has_qty or has_total)
+    if is_sales and not has_total:
+        # "Amount" beside a date and a quantity is what the line came to, not a price per piece:
+        # read as a price, it would be multiplied by the quantity again.
+        for field in fields:
+            if field.target_field == "price" and any(
+                word in field.source_field.casefold() for word in ("amount", "total", "value")
+            ):
+                field.target_field = "total"
 
     return ConnectorMapping(
         source_label=source_label,

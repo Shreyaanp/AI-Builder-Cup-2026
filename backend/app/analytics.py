@@ -32,6 +32,7 @@ import structlog
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
+from .day_total import with_day_totals
 from .forecast import training, weekday_average
 from .limits import enforce_limits
 from .merchant import MerchantRepository
@@ -220,7 +221,10 @@ def build_days(
         )
         if rows:
             # Backtest: what the weekday forecast, trained only on earlier days, said for this day.
-            eligible, _ = training([r for r in sales if r["date"] < iso], day - timedelta(days=1))
+            eligible, _ = training(
+                [r for r in sales if r["date"] < iso and not r.get("whole_day")],
+                day - timedelta(days=1),
+            )
             predicted = [
                 p for p in weekday_average(eligible, day - timedelta(days=1)) if p.date == day
             ]
@@ -447,6 +451,7 @@ async def export(
             context = await anyio.to_thread.run_sync(repository.context, uid, bid)
             fields = context["business"]["fields"]
             sales = await anyio.to_thread.run_sync(repository.sales_history, uid, bid)
+            sales = await anyio.to_thread.run_sync(with_day_totals, repository, bid, sales)
             signals = await anyio.to_thread.run_sync(repository.recap_signals, uid, bid)
             counters = await anyio.to_thread.run_sync(counters_for, repository, bid, days)
             visits = await anyio.to_thread.run_sync(days_for, repository, bid, days)
@@ -581,6 +586,7 @@ class AnalyticsReader:
         yesterday = local_now(fields).date() - timedelta(days=1)
         wanted = [yesterday - timedelta(days=i) for i in range(DAYS_SHOWN - 1, -1, -1)]
         sales = await anyio.to_thread.run_sync(repository.sales_history, uid, bid)
+        sales = await anyio.to_thread.run_sync(with_day_totals, repository, bid, sales)
         signals = await anyio.to_thread.run_sync(repository.recap_signals, uid, bid)
         counters = await anyio.to_thread.run_sync(counters_for, repository, bid, wanted)
         live = {

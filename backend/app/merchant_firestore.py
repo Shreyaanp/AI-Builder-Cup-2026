@@ -433,6 +433,7 @@ class FirestoreMerchantStore:
                 "shop_daily",
                 "owner_habit",
                 "owner_promise",
+                "day_total",
                 *SUPPLY_KINDS,
             ):
                 self.feature_docs.delete_scope(kind, snapshot.id)

@@ -400,7 +400,7 @@ test('Buy stock → Find a supplier → milk 20 L → vendor list → Order → 
   await log.getByRole('button', { name: /Suppliers for Milk/ }).click()
   const list = log.getByRole('list', { name: /suppliers? nearby/ }).last()
   await expect(list).toBeVisible()
-  await expect(list.getByText('Demo', { exact: true }).first()).toBeVisible()
+  await expect(list.getByText('Sample', { exact: true }).first()).toBeVisible()
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(
     true,
   )

@@ -2,7 +2,6 @@
 
 import re
 import unicodedata
-from datetime import date, datetime
 from difflib import SequenceMatcher
 from typing import Any, Literal
 
@@ -22,6 +21,7 @@ from .imports import (
 )
 from .photos import READ_THINKING_LEVEL, PhotoPipeline, PhotoRejected, sanitize
 from .product_units import clean_category, clean_unit
+from .sales import sale_date
 
 log = structlog.get_logger()
 
@@ -180,19 +180,15 @@ def alias(name: str, names: list[str]) -> tuple[str, bool]:
 
 
 def normalise_date(value: str) -> tuple[str, bool]:
+    """The one date reader billing exports go through (sales.sale_date), and whether a person
+    should look at it: 03/04/2026 could be read two ways, even though day-first is the rule."""
     value = value.strip()
     try:
-        return date.fromisoformat(value[:10]).isoformat(), False
+        day = sale_date(value)
     except ValueError:
-        pass
-    for fmt in ("%d/%m/%Y", "%d-%m-%Y", "%Y/%m/%d", "%d %b %Y", "%d %B %Y"):
-        try:
-            day = datetime.strptime(value, fmt).date()
-            ambiguous = fmt in {"%d/%m/%Y", "%d-%m-%Y"} and day.day <= 12 and day.month != day.day
-            return day.isoformat(), ambiguous
-        except ValueError:
-            continue
-    raise ImportRejected(422, "INVALID_SALES_ROWS")
+        raise ImportRejected(422, "INVALID_SALES_ROWS") from None
+    numeric = re.match(r"\d{1,2}[/-]\d{1,2}[/-]\d{2,4}", value) is not None
+    return day.isoformat(), numeric and day.day <= 12 and day.month != day.day
 
 
 def clean(
