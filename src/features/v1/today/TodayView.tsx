@@ -33,6 +33,7 @@ import { HAND_FONT, enterRise, motion, shape } from '../../../design/theme'
 import { productFeminine, productName } from '../../../i18n/productNames'
 import { useLocale } from '../../../state/hooks'
 import { closeDayCopy } from '../../closeday/strings'
+import { useLastDayWords } from '../../forecast/lastDayWords'
 import { formatShopPrice, shopCurrency } from '../format'
 import { useCopy } from '../strings'
 import { isServiceShop } from '../tabsCopy'
@@ -143,7 +144,7 @@ export function TodayView({
         <Typography component="h1" variant="headlineSmall" sx={{ overflowWrap: 'anywhere' }}>
           {tt.greet(plan.part, name ?? '')}
         </Typography>
-        {!plan.pulse && !plan.forecast && <LineText line={plan.line} />}
+        {!plan.pulse && !plan.forecast && !plan.lastDay && <LineText line={plan.line} />}
       </Box>
       {plan.dayOne && (
         <DayOne
@@ -156,7 +157,7 @@ export function TodayView({
       {firstCustomers && ws.shareUrl && (
         <FirstCustomers url={ws.shareUrl} name={shop.fields.name} />
       )}
-      {(plan.pulse || plan.forecast) && <PulseCard plan={plan} actions={actions} />}
+      {(plan.pulse || plan.forecast || plan.lastDay) && <PulseCard plan={plan} actions={actions} />}
       {chips?.(plan.part === 'evening')}
       {/* One card, one filled button: the first row is the lead action, and stock (the supply
           row with its run-out day, low items and supply exceptions) lives only here. Setup steps
@@ -898,6 +899,7 @@ function PulseCard({ plan, actions }: { plan: TodayPlan; actions: TodayActions }
   const roles = useTheme().material
   const number = new Intl.NumberFormat(locale, { maximumFractionDigits: 1 })
   const currency = shopCurrency(ws.active)
+  const lastDay = useLastDayWords()
   // Once the day is closed the pulse is today's, and so is the question it asks (HABIT change 3).
   const ask = plan.pulse?.when === 'today' ? tt.howToday : tt.howYesterday
   // In the evening the card below owns the screen: the weather line would push Reply out of view.
@@ -944,6 +946,7 @@ function PulseCard({ plan, actions }: { plan: TodayPlan; actions: TodayActions }
     }
     lines.push(text)
   }
+  if (plan.lastDay && !quiet) lines.push(lastDay.home(plan.lastDay))
   // The weather or festival line is a reason under the numbers, not a block of its own.
   if (coachLine) lines.push(coachLine)
   if (lines.length === 0) return null

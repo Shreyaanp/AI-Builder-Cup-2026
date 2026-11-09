@@ -193,7 +193,8 @@ def test_demo_answers_every_chat_phrase_on_topic_with_its_screen_path(app, featu
             r"In the last 7 days the demo shop sold [\d,]+ items for ₹[\d,]+\.",
             "Grow → My sales",
         ),
-        ("reorder milk", r"order for milk", "Shop → Buy stock → To do"),
+        # A real draft, not a sentence about one (OB-268).
+        ("reorder milk", r"I drafted \d+ litre from .+ below\.", None),
     ],
 )
 def test_demo_typed_supply_and_week_questions_stay_on_topic(app, message, topic, where):  # noqa: F811

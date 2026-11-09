@@ -11,6 +11,13 @@ import { openBuyStock, stockTile } from './support/grow.js'
 // morning is the browser clock plus the server's own record for that morning (read back with
 // GET /promise?day=), never an invented promise. Local only, offline coach.
 test.skip(({ isMobile }) => !isMobile, 'phone story')
+// morningOf's /today handler reads the server's promise with page.request. Today polls, so a
+// handler can still be running when a test ends; the closing context then disposes its response
+// and the handler's "Response has been disposed" failed a test that had passed (8 Nov, both
+// promise tests at once). Stop the handlers before the context closes.
+test.afterEach(async ({ page }) => {
+  await page.unrouteAll({ behavior: 'ignoreErrors' })
+})
 
 const shopDay = (back: number) =>
   new Date(Date.now() + 5.5 * 3600e3 - back * 86400e3).toISOString().slice(0, 10)
@@ -337,17 +344,19 @@ test('chat and screen both set a promise; doing it marks it done (offline coach)
     item: 'Milk',
   })
 
-  // Next morning: "Order now" asks the coach for the order and marks the promise done. The
-  // chat is still open from last night, so Today is the pill above it, with the same rows.
+  // Next morning: "Order now" asks the coach for the order and marks the promise done. The app
+  // opens on Home with the promise row, not on last night's chat (OB-327).
   await morningOf(page, id, tomorrow)
   await open(page, name)
-  await page.locator('[aria-controls="today-pill-panel"]').click()
+  await expect(page.getByRole('log')).toHaveCount(0)
   const row = page.locator('[data-need="promise"]')
   await expect(row).toContainText('Last night you said: order Milk')
   expect(await fitsWidth(page)).toBe(true)
   await row.getByRole('button', { name: 'Order now' }).click()
   await expect(page.getByRole('log')).toContainText('Order more Milk', { timeout: 20_000 })
   await expect.poll(() => promiseFor(page, id, tomorrow)).toBeNull()
+  // Today refreshes after the order: the test may end while that request is in its route.
+  await page.unrouteAll({ behavior: 'ignoreErrors' })
 })
 
 test('Hindi: the morning promise row is all Hindi', async ({ page }) => {

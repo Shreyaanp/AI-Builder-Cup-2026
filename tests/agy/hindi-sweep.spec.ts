@@ -46,6 +46,10 @@ const ALLOW = [
   'Ginger chai',
   'Bun maska',
   'Ragi biscuit',
+  // The seeded shop's menu items. Shop's Sold out row asks about one during busy hours
+  // ("Kopi अभी है?"), and it shows behind Buy stock now that Buy stock opens on Shop.
+  'Kaya toast',
+  'Kopi',
 ]
 
 async function hindiOnly(page: Page, label: string) {

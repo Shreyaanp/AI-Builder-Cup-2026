@@ -12,7 +12,7 @@ import { StockNote } from './StockNote'
 
 /**
  * "Things I buy" (OB-310): tea dust, milk or flour the shop buys to make its menu, with their
- * stock and − / +. Customers never see these; the item editor's "Customers can buy this" moves
+ * stock and − / +. Customers never see these; the item editor's "Hide from menu" moves
  * one back to the menu. Buy stock orders them.
  */
 export function ThingsIBuySheet({

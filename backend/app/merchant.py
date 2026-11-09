@@ -145,8 +145,9 @@ class BusinessFields(BaseModel):
     place_id: str | None = Field(default=None, max_length=300)
     pin_label: str | None = Field(default=None, max_length=300)
     pin_demo: bool = False
-    # "device": measured by the phone; "pin": placed by the owner on the map.
-    pin_source: Literal["device", "pin"] | None = None
+    # "device": measured by the phone; "pin": placed by the owner on the map; "area": only the
+    # neighbourhood is shown (a home business that keeps its door private, Priya 8 Nov).
+    pin_source: Literal["device", "pin", "area"] | None = None
     pin_accuracy_m: float | None = Field(default=None, ge=0, allow_inf_nan=False)
     description: str = Field(default="", max_length=500)
     # A clearly labelled sample shop (seed_demo_shops.py). Set only by the seed script, never by
@@ -334,6 +335,9 @@ class ProductFields(BaseModel):
     # The owner's "Customers can buy this" switch: False keeps an item in "Things I buy", off the
     # customer menu and page (OB-310). Unset means the app infers it (product_source.for_sale).
     for_sale: bool | None = None
+    # "Sold out today": the shop's date the owner said so. From the next day the item reads as on
+    # sale again (back_on_sale). Unset: sold out stays until the owner changes it.
+    sold_out_day: str | None = Field(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$")
     # Set only when the owner picks a new unit for an item saved under another one: the commit
     # updates that saved item instead of adding a second one. Never stored on the item.
     previous_unit: str | None = Field(default=None, min_length=1, max_length=40)
@@ -349,12 +353,16 @@ class ProductFields(BaseModel):
             data.pop("source", None)
         if data.get("for_sale") is None:
             data.pop("for_sale", None)
+        if data.get("sold_out_day") is None:
+            data.pop("sold_out_day", None)
         return data
 
 
 class AvailabilityRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     available: bool
+    # "Sold out today" on the item sheet: back on sale tomorrow, or as soon as stock is added.
+    today_only: bool = False
 
 
 class SourceRequest(BaseModel):
@@ -400,22 +408,74 @@ def with_stock(fields: dict[str, Any], stock: int | None) -> dict[str, Any]:
         changed["available"] = False
     elif fields.get("stock") == 0 and fields.get("available") is False:
         changed["available"] = True
+    elif (
+        fields.get("sold_out_day")
+        and fields.get("available") is False
+        and stock is not None
+        and stock > (fields.get("stock") or 0)
+    ):
+        # "Sold out today", then more arrived: it is on sale again, as the owner was promised.
+        changed["available"] = True
     return changed
 
 
+def with_availability(
+    fields: dict[str, Any], available: bool, today_only: bool, today: str
+) -> dict[str, Any]:
+    """The owner's sold-out switch: "Sold out today" is dated, any other answer clears the date."""
+    changed = {
+        **{key: value for key, value in fields.items() if key != "sold_out_day"},
+        "available": available,
+    }
+    if today_only and not available:
+        changed["sold_out_day"] = today
+    return changed
+
+
+def back_on_sale(fields: dict[str, Any], today: str) -> dict[str, Any]:
+    """An item as customers and the owner should see it on the shop's date `today`, and what every
+    write starts from, so an old date can never touch a newer answer. "Sold out today" ends with
+    the day, so nothing has to run overnight; with 0 left it stays sold out until stock is added,
+    because there is still nothing to sell. A sold out with no `sold_out_day` stays as the owner
+    left it."""
+    day = fields.get("sold_out_day")
+    if not day or day >= today:
+        return fields
+    current = {key: value for key, value in fields.items() if key != "sold_out_day"}
+    if fields.get("available") is False and fields.get("stock") == 0:
+        return current
+    return {**current, "available": True}
+
+
 class ForSaleRequest(BaseModel):
-    """ "Customers can buy this", or one of the things the shop buys to make others (OB-310)."""
+    """On the menu, or one of the things the shop buys to make others (the owner's "Hide from
+    menu", OB-310)."""
 
     model_config = ConfigDict(extra="forbid")
     for_sale: bool
 
 
-def kept_source(product: dict[str, Any], saved: dict[str, Any] | None) -> dict[str, Any]:
-    """A menu edit never forgets the owner's make-or-buy answer (OB-239) or their "Customers can
-    buy this" switch (OB-310)."""
+def kept_source(
+    product: dict[str, Any], saved: dict[str, Any] | None, today: str
+) -> dict[str, Any]:
+    """A menu edit never forgets the owner's make-or-buy answer (OB-239) or their "Hide from menu"
+    switch (OB-310)."""
+    if saved:
+        saved = back_on_sale(saved, today)
     for key in ("source", "for_sale"):
         if saved and saved.get(key) is not None and product.get(key) is None:
             product = {**product, key: saved[key]}
+    # A price edit on an item sold out for today keeps "back tomorrow"; only the owner's own "Sold
+    # out today" tap ever sets it. A date from an earlier day is gone by here (OB-333), so a sold
+    # out from the coach or a review on a later day stays sold out.
+    product = {key: value for key, value in product.items() if key != "sold_out_day"}
+    if (
+        saved
+        and saved.get("sold_out_day")
+        and saved.get("available") is False
+        and product.get("available") is False
+    ):
+        product["sold_out_day"] = saved["sold_out_day"]
     return product
 
 
@@ -430,7 +490,8 @@ class OwnerLocation(BaseModel):
     lng: float = Field(ge=-180, le=180, allow_inf_nan=False)
     accuracy_m: float = Field(ge=0, allow_inf_nan=False)
     # "pin": the owner moved the map pin onto the shop; the phone's accuracy no longer applies.
-    source: Literal["device", "pin"] = "device"
+    # "area": only the neighbourhood; the point is saved to about a kilometre (AREA_DECIMALS).
+    source: Literal["device", "pin", "area"] = "device"
 
 
 NewShopStep = Literal["hours", "photo", "face"]
@@ -575,7 +636,7 @@ class MerchantRepository(Protocol):
         ...
 
     def set_availability(
-        self, uid: str, bid: str, product_id: str, available: bool
+        self, uid: str, bid: str, product_id: str, available: bool, today_only: bool = False
     ) -> dict[str, Any]:
         """Owner's direct sold-out toggle; bumps the revision so pending proposals go stale."""
         ...
@@ -599,6 +660,11 @@ class MerchantRepository(Protocol):
     def share(self, uid: str, bid: str, public: bool) -> dict[str, Any]: ...
     def public_shop(self, bid: str) -> dict[str, Any] | None:
         """Customer-facing projection of a shared shop, or None when not shared."""
+        ...
+
+    def share_card(self, bid: str) -> dict[str, Any] | None:
+        """OB-273: what a link preview needs (id, name, location, gallery, demo) for a shop
+        public_shop would show, from the shop record alone (no menu or sales reads)."""
         ...
 
     def shared_shops(self) -> list[dict[str, Any]]: ...
@@ -661,6 +727,7 @@ def public_projection(
 ) -> dict[str, Any]:
     """Only what a customer should see: no owners, revisions, stock counts or internal status.
     `sold`: names with saved sales (`product_source.sold_names`), which stay on the menu."""
+    today = today_for(fields).isoformat()
     return {
         "id": bid,
         "name": fields["name"],
@@ -701,7 +768,7 @@ def public_projection(
                 **({"category": product["category"]} if product.get("category") else {}),
                 "price": product["price"],
                 "unit": product["unit"],
-                "available": product.get("available", True),
+                "available": back_on_sale(product, today).get("available", True),
             }
             for product in products
             # Things the shop buys to make others (tea dust) are never on its menu (OB-310).
@@ -719,6 +786,17 @@ class ConsentRequest(BaseModel):
 
 NAME_REQUIRED = "Add your shop's name before opening it."
 PIN_REQUIRED = "Add your location so customers can find you."
+
+
+def card_projection(bid: str, fields: dict[str, Any], gallery: list[str]) -> dict[str, Any]:
+    """OB-273: the few shared-shop fields a link preview reads."""
+    return {
+        "id": bid,
+        "name": fields["name"],
+        "location": fields.get("location", ""),
+        "gallery": gallery,
+        **({"demo": True} if fields.get("demo") else {}),
+    }
 
 
 def has_pin(fields: dict[str, Any]) -> bool:
@@ -955,9 +1033,9 @@ class MerchantStore:
 
     def inventory(self, uid: str, bid: str) -> list[dict[str, Any]]:
         with self.connect() as db:
-            self.owned(db, uid, bid)
+            today = today_for(json.loads(self.owned(db, uid, bid)["fields"])).isoformat()
             return [
-                {"id": row["id"], **json.loads(row["fields"])}
+                {"id": row["id"], **back_on_sale(json.loads(row["fields"]), today)}
                 for row in db.execute(
                     "SELECT * FROM inventory WHERE business_id=? ORDER BY rowid", (bid,)
                 )
@@ -1068,7 +1146,9 @@ class MerchantStore:
                     saved = db.execute(
                         "SELECT fields FROM inventory WHERE id=?", (existing[0],)
                     ).fetchone()
-                    product = kept_source(product, json.loads(saved[0]) if saved else None)
+                    shop = data["business"] if data["kind"] == "business" else None
+                    today = today_for(shop or json.loads(row["fields"])).isoformat()
+                    product = kept_source(product, json.loads(saved[0]) if saved else None, today)
                     db.execute(
                         "UPDATE inventory SET fields=? WHERE id=?",
                         (json.dumps(product), existing[0]),
@@ -1207,13 +1287,14 @@ class MerchantStore:
                 "shop_daily",
                 "owner_habit",
                 "owner_promise",
+                "day_total",
                 *SUPPLY_KINDS,
             ):
                 self.feature_docs.delete_scope(kind, bid)
         return owned
 
     def set_availability(
-        self, uid: str, bid: str, product_id: str, available: bool
+        self, uid: str, bid: str, product_id: str, available: bool, today_only: bool = False
     ) -> dict[str, Any]:
         with self.connect() as db:
             db.execute("BEGIN IMMEDIATE")
@@ -1223,19 +1304,20 @@ class MerchantStore:
             ).fetchone()
             if not row:
                 raise HTTPException(404, "Product not found.")
-            fields = {**json.loads(row[0]), "available": available}
+            today = today_for(json.loads(business["fields"])).isoformat()
+            before = back_on_sale(json.loads(row[0]), today)
+            fields = with_availability(before, available, today_only, today)
             db.execute("DELETE FROM stock_alerts WHERE expires<=?", (time.time(),))
-            if available and not json.loads(row[0]).get("available", True):
+            if available and not before.get("available", True):
                 db.execute(
                     "UPDATE stock_alerts SET ready=1 WHERE business_id=? AND name=? AND unit=?",
                     (bid, fields["name"], fields["unit"]),
                 )
-            if not available and json.loads(row[0]).get("available", True):
-                day = today_for(json.loads(business["fields"])).isoformat()
+            if not available and before.get("available", True):
                 db.execute(
                     "INSERT INTO sold_out_days VALUES(?,?,1) ON CONFLICT(business_id,day) "
                     "DO UPDATE SET count=count+1",
-                    (bid, day),
+                    (bid, today),
                 )
             db.execute("UPDATE inventory SET fields=? WHERE id=?", (json.dumps(fields), product_id))
             db.execute("UPDATE businesses SET revision=revision+1 WHERE id=?", (bid,))
@@ -1250,13 +1332,14 @@ class MerchantStore:
     ) -> dict[str, Any]:
         with self.connect() as db:
             db.execute("BEGIN IMMEDIATE")
-            self.owned(db, uid, bid)
+            business = self.owned(db, uid, bid)
             row = db.execute(
                 "SELECT fields FROM inventory WHERE id=? AND business_id=?", (product_id, bid)
             ).fetchone()
             if not row:
                 raise HTTPException(404, "Product not found.")
-            fields = edit(json.loads(row[0]))
+            today = today_for(json.loads(business["fields"])).isoformat()
+            fields = edit(back_on_sale(json.loads(row[0]), today))
             db.execute("UPDATE inventory SET fields=? WHERE id=?", (json.dumps(fields), product_id))
             # A new revision, like the sold-out switch: the app reloads the item at once.
             db.execute("UPDATE businesses SET revision=revision+1 WHERE id=?", (bid,))
@@ -1383,6 +1466,17 @@ class MerchantStore:
                 ).rowcount
                 changed = bool(inserted) or changed
             return changed
+
+    def share_card(self, bid: str) -> dict[str, Any] | None:
+        with self.connect() as db:
+            row = db.execute(
+                "SELECT b.fields,b.gallery FROM businesses b "
+                "JOIN shares s ON s.business_id=b.id WHERE b.id=?",
+                (bid,),
+            ).fetchone()
+        if not row or not has_pin(fields := json.loads(row[0])):
+            return None
+        return card_projection(bid, fields, json.loads(row[1] or "[]"))
 
     def public_shop(self, bid: str) -> dict[str, Any] | None:
         with self.connect() as db:

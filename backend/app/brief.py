@@ -11,8 +11,9 @@ import anyio
 import httpx
 from pydantic import BaseModel
 
+from .day_total import day_totals
 from .demand import Radar
-from .forecast import Forecast, ForecastService
+from .forecast import Forecast, ForecastService, LastDay, last_day, last_day_words
 from .gemini_schema import gemini_schema, parse_reply
 from .imports import ColumnMapper
 from .merchant import MerchantRepository
@@ -122,6 +123,8 @@ class Brief(BaseModel):
     mode: Literal["offline", "gemini"] = "offline"
     demo: bool
     unavailable_rules: list[str] = ["group_buy", "price_check"]
+    # No forecast yet: what the latest closed day sold, the plan until there is one (OB-329).
+    last_day: LastDay | None = None
 
 
 async def today_forecast(
@@ -220,8 +223,15 @@ def facts(
             for o in orders
         )
     ]
+    # Sample numbers are for the demo shop: a real shop is never told to act on them.
+    sample_shop = bool(business["fields"].get("demo"))
     opportunity = next(
-        (o for o in radar.opportunities if o.fit >= 0.6 and o.band in {"10–19", "20+"}), None
+        (
+            o
+            for o in radar.opportunities
+            if o.fit >= 0.6 and o.band in {"10–19", "20+"} and (sample_shop or not o.demo)
+        ),
+        None,
     )
     waste = []
     for product in context["inventory"]:
@@ -233,8 +243,16 @@ def facts(
                 and row.get("sold") is not None
             ):
                 prepared = row["sold"] + row["waste"]
-                if prepared and row["waste"] / prepared >= 0.2:
-                    waste.append((product["name"], row["waste"], row.get("source") == "demo"))
+                sample = row.get("source") == "demo"
+                if prepared and row["waste"] / prepared >= 0.2 and (sample_shop or not sample):
+                    waste.append((product["name"], row["waste"], sample))
+    closed = (
+        None
+        if prep
+        else last_day(
+            store.sales_history(uid, bid), today, context["inventory"], category, forecast
+        )
+    )
     confirmed = business.get("last_confirmed")
     stale = not confirmed or (today - date.fromisoformat(confirmed[:10])).days >= 7
     if waiting:
@@ -255,7 +273,7 @@ def facts(
         )
     elif stale:
         action = BestAction(kind="confirm_menu", title="Confirm today's menu")
-    elif not prep:
+    elif not prep and not closed and not day_totals(store, bid):
         action = BestAction(kind="record_sales", title="Close one day to start your plan")
     else:
         action = BestAction(kind="none", title="Your shop is up to date")
@@ -268,7 +286,8 @@ def facts(
         weather=None,
         best_action=action,
         summary="",
-        demo=bool(business["fields"].get("demo")) or action.demo,
+        demo=sample_shop,
+        last_day=closed,
     )
 
 
@@ -278,6 +297,7 @@ class BriefWriter(ColumnMapper):
     async def write(self, brief: Brief) -> Brief:
         brief.summary = (
             "; ".join(f"Prep {p.quantity} {p.name}" for p in brief.prep_plan)
+            or last_day_words(brief.last_day, brief.date)
             or "Close one day to start your plan. "
             "Four weeks of saved sales are needed for the forecast."
         )

@@ -38,6 +38,7 @@ Screen = Literal[
     "details",
     "stamps",
     "plan",
+    "make",
     "close_day",
     "google",
     "privacy",
@@ -66,6 +67,8 @@ SCREENS: dict[str, str] = {
     "details": "Shop details and photos",
     "stamps": "Stamp card",
     "plan": "How much to make",
+    # The same list, without "Change the numbers" open: "how much to make?" (OB-328).
+    "make": "How much to make",
     "close_day": "Close the day",
     "google": "Get on Google",
     "privacy": "Your data and privacy",

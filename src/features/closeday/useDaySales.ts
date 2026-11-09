@@ -1,7 +1,16 @@
 import { useEffect, useState } from 'react'
 import { useWorkspace } from '../v1/workspaceContext'
 
-export type SavedSale = { date: string; item: string; quantity: number; revenue: number | null }
+export type SavedSale = {
+  date: string
+  item: string
+  quantity: number
+  revenue: number | null
+  /** A day closed with one total: money only, no item (day_total.py). */
+  whole_day?: boolean
+  cash?: number | null
+  upi?: number | null
+}
 
 /** Check saved records before allowing a new close; a failed check must not look empty. */
 export function useDaySales(day: string) {

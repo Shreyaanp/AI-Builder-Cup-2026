@@ -10,6 +10,8 @@ import { Sheet } from '../v1/Sheet'
 import { PlanTomorrow } from '../planning/PlanTomorrow'
 import { useOrderUnit } from '../supply/supplyData'
 import { useForecast, useRunsOut } from './forecastData'
+import { LastDayPlan } from './LastDayPlan'
+import { useLastDayWords } from './lastDayWords'
 import { useOrderChangeCopy } from '../supply/orderChangeCopy'
 
 /**
@@ -37,7 +39,11 @@ export function MakeRow({
   const line = (row: (typeof tomorrowRows)[number]) =>
     `${productName(row.item, locale)} ${number.format(row.quantity)} ${unit(row.unit)}`
   const list = new Intl.ListFormat(locale, { style: 'narrow', type: 'unit' })
-  const method = value ? (value.method === 'timesfm' ? t.prepTimesfm : t.prepWeekday) : ''
+  // One closed day is already a plan: never "import 4 weeks" after a close (OB-329).
+  const closed = value?.last_day ?? null
+  const lastDay = useLastDayWords()
+  const method =
+    value && !closed ? (value.method === 'timesfm' ? t.prepTimesfm : t.prepWeekday) : ''
   return (
     <>
       <Tile
@@ -49,11 +55,13 @@ export function MakeRow({
             ? t.actionFailed
             : !value
               ? t.prepLoading
-              : value.status === 'insufficient'
-                ? t.prepEmpty
-                : tomorrowRows.length
-                  ? list.format(tomorrowRows.slice(0, 2).map(line))
-                  : t.prepTomorrow
+              : closed
+                ? lastDay.short(closed)
+                : value.status === 'insufficient'
+                  ? t.prepEmpty
+                  : tomorrowRows.length
+                    ? list.format(tomorrowRows.slice(0, 2).map(line))
+                    : t.prepTomorrow
         }
         onClick={() => (state?.error ? retry() : onSheet('list'))}
       />
@@ -76,10 +84,14 @@ export function MakeRow({
           </Button>
         }
       >
-        <Typography variant="titleSmall" color="text.secondary" sx={{ mb: 2 }}>
-          {t.prepTomorrow}
-        </Typography>
-        {tomorrowRows.length > 0 ? (
+        {!closed && (
+          <Typography variant="titleSmall" color="text.secondary" sx={{ mb: 2 }}>
+            {t.prepTomorrow}
+          </Typography>
+        )}
+        {closed ? (
+          <LastDayPlan day={closed} />
+        ) : tomorrowRows.length > 0 ? (
           <Stack component="ul" spacing={2} sx={{ listStyle: 'none', m: 0, p: 0 }}>
             {tomorrowRows.map((row) => (
               <Stack

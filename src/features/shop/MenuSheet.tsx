@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import type { KeyboardEvent } from 'react'
 import {
   Alert,
@@ -68,6 +68,13 @@ export function MenuSheet({
   const usual = useUsualSales(open)
   const order = useOrderChangeCopy()
   const asks = new Set((useSupply(open).data?.to_order ?? []).map((ask) => ask.item))
+  // Editors are their own dialogs and open once this sheet has gone: one mounted while it is still
+  // sliding away came up hidden from screen readers (MUI's modal order), one time in four.
+  const afterClose = useRef<(() => void) | null>(null)
+  const thenOpen = (next: () => void) => {
+    afterClose.current = next
+    onClose()
+  }
   const shop = ws.active
   if (!shop) return null
   // What customers can buy; tea dust and milk the shop buys have their own list (OB-310).
@@ -103,6 +110,11 @@ export function MenuSheet({
         titleId="menu-sheet-title"
         ask="add_menu"
         title={t.menu}
+        onExited={() => {
+          const next = afterClose.current
+          afterClose.current = null
+          next?.()
+        }}
         onEntered={() => {
           if (!focus) return
           const item = Array.from(document.querySelectorAll<HTMLElement>('[data-menu-item]')).find(
@@ -121,11 +133,7 @@ export function MenuSheet({
             <Button
               variant="contained"
               startIcon={<Plus size={18} />}
-              onClick={() => {
-                // Editors are their own dialogs; close the sheet first so modals never stack.
-                onClose()
-                ws.openEditor({ kind: 'product', product: null })
-              }}
+              onClick={() => thenOpen(() => ws.openEditor({ kind: 'product', product: null }))}
             >
               {t.addProduct}
             </Button>
@@ -136,10 +144,7 @@ export function MenuSheet({
         {importing && (
           <ImportPanel
             importer={importer}
-            onTypeItems={() => {
-              onClose()
-              ws.openEditor({ kind: 'product', product: null })
-            }}
+            onTypeItems={() => thenOpen(() => ws.openEditor({ kind: 'product', product: null }))}
           />
         )}
         {asked && <AskForSale product={asked} />}
@@ -210,10 +215,7 @@ export function MenuSheet({
                       key={product.id ?? `${product.name}-${product.unit}`}
                       product={product}
                       usual={usual?.items[product.name]}
-                      onEdit={() => {
-                        onClose()
-                        ws.openEditor({ kind: 'product', product })
-                      }}
+                      onEdit={() => thenOpen(() => ws.openEditor({ kind: 'product', product }))}
                     />
                   ))}
                 </Box>
@@ -409,7 +411,7 @@ type PriceState =
  * prepares the change, Esc cancels. The owner then confirms the exact sealed proposal with one
  * tap ("Save S$2.20"), the same rule as every other change.
  */
-function PriceField({ product }: { product: Product }) {
+export function PriceField({ product }: { product: Product }) {
   const t = useCopy()
   const copy = useShopCopy()
   const ws = useWorkspace()

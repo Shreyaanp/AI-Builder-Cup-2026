@@ -75,6 +75,7 @@ export const ja: Copy = {
   connectionReconnecting: '再接続中…',
   voiceFailed: '音声接続が終了しました。もう一度試すか、文字で入力してください。',
   voiceOffline: '音声には接続が必要です。代わりに文字で入力してください。',
+  voiceUnsupported: 'このブラウザでは音声を使えません。代わりに文字で入力してください。',
   voiceRestarted: '音声が再接続されました。もう一度お話しください。',
   voiceMicDenied:
     'マイクへのアクセスがブロックされています。ブラウザの設定でマイクを許可して再試行するか、文字で入力してください。',
@@ -199,6 +200,8 @@ export const ja: Copy = {
   soldOutToday: '本日の売り切れ',
   soldOutCount: (count: number) => (count ? `${count}品 売り切れ` : 'すべて販売中'),
   soldOutHint: '売り切れた商品をオフにしてください。お客様にすぐ反映されます。',
+  soldOutHintHidden:
+    '売り切れた商品はオフにしてください。お店をお客さんに公開すると、お客さんにも表示されます。',
   shared: '共有中',
   notShared: '未共有',
   messages: 'メッセージ',
@@ -336,6 +339,9 @@ export const ja: Copy = {
   customerPageOff: '有効にすると、メニュー、価格、営業時間を見られるリンクが作成されます。',
   customerPageOn: 'リンクを持つお客様がお店と最新の価格を確認できます。',
   pageSwitch: 'お客様向けページを共有',
+  liveSwitch: 'お客さんがお店を見られる',
+  liveNeedsPlace:
+    'まず、お客さんがどこで見つけられるかを教えてください。確認するとすぐにお店が公開されます。',
   share: '共有',
   copyLink: 'リンクをコピー',
   openPage: 'ページを開く',

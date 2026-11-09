@@ -59,6 +59,7 @@ import {
   Leaf,
   MessageSquare,
   MessageSquarePlus,
+  Sunrise,
   Mic,
   Share2,
   Square,
@@ -88,9 +89,10 @@ import { useBackClose } from '../backStack'
 import { useConnectCopy } from '../../connect/strings'
 import { DOCUMENT_ACCEPT, useImport, type SalesImport } from '../useImport'
 import { NeedsPill, TodayView, type TodayActions } from '../today/TodayView'
+import { useLocalDay } from '../today/useLocalDay'
 import type { ShopSheetKind } from '../ShopTiles'
 import { useUnread } from '../useUnread'
-import { useVoice } from '../useVoice'
+import { useVoice, voiceSupported } from '../useVoice'
 import { useOnboardingCopy } from '../onboardingCopy'
 import { useSpokenReveal } from '../useSpokenReveal'
 import { cardWords, mergeTranscript } from '../speechReveal'
@@ -104,7 +106,7 @@ import { useReceiveOrder } from '../../sourcing/orderData'
 import type { Order, SupplierResult } from '../../sourcing/types'
 import type { SupplyCardData } from '../../supply/SupplyEntry'
 import type { PurchaseOrder, Relationship } from '../../supply/types'
-import { utter } from '../phoneVoice'
+import { speak, canSpeak, stopSpeech, utter } from '../phoneVoice'
 import { useLanguageSwitch } from '../languageSwitch'
 import { ActionChip, MenuLinkChip, ReplyCard, ReplyLineAction } from '../CoachActions'
 import { CollapsibleCard, LineAction } from '../CollapsibleCard'
@@ -203,6 +205,7 @@ const DESTINATIONS: Partial<Record<CoachAction['target'], Destination>> = {
   privacy: 'privacy',
   // How much to make (numbers open) opens over Grow (simplify batch 4b), Buy stock over Shop.
   plan: 'grow',
+  make: 'grow',
   supply: 'shop',
   // The playbook sheet lives under Your data.
   playbook: 'privacy',
@@ -214,7 +217,8 @@ const DESTINATIONS: Partial<Record<CoachAction['target'], Destination>> = {
 }
 /** Screens that open over or inside the destination tab (simplify batch 2). */
 function openInside(target: CoachAction['target']) {
-  if (target === 'radar' || target === 'rider' || target === 'plan') requestOpen(target)
+  if (target === 'radar' || target === 'rider' || target === 'plan' || target === 'make')
+    requestOpen(target)
   if (target === 'supply') requestOpen('stock')
   if (target === 'payments' || target === 'rider') openOwnerFeature('payments')
 }
@@ -263,6 +267,13 @@ function CoachScreen({
   const visible = !ws.creatingShop && !ws.newShopReady
   const [messages, setMessages] = useState<Message[]>([])
   const [showToday, setShowToday] = useState(false)
+  // Left open overnight: the new morning shows Home too; the chat is still there on the next send.
+  const day = useLocalDay()
+  const [seenDay, setSeenDay] = useState(day)
+  if (day !== seenDay) {
+    setSeenDay(day)
+    setShowToday(true)
+  }
   const [reply, setReply] = useState('')
   const [note, setNote] = useState('')
   const [busy, setBusy] = useState<'idle' | 'reply' | 'photo'>('idle')
@@ -308,7 +319,7 @@ function CoachScreen({
       alive.current = false
       controller.current?.abort()
       photoController.current?.abort()
-      speechSynthesis.cancel()
+      stopSpeech()
       speaking.current?.pause()
     }
   }, [])
@@ -569,15 +580,15 @@ function CoachScreen({
       .then(async (items) => {
         if (abort.signal.aborted) return
         setHistory(items)
-        // Coming back (reload, another day) continues this shop's latest conversation instead of
-        // a blank screen. Once per visit: "New chat" still starts fresh.
+        // A shop opens on Home, this morning's list (OB-327); its chats stay under ⋯. With no shop
+        // yet there is no Home, so coming back continues the conversation.
         const latest = items.find((entry) => (entry.business_id ?? null) === activeId)
-        if (latest && !session.current) await restore(latest.session_id)
+        if (!activeId && latest && !session.current) await restore(latest.session_id)
       })
       .catch(() => undefined)
     return () => {
       abort.abort()
-      speechSynthesis.cancel()
+      stopSpeech()
       speaking.current?.pause()
     }
     // `restore` is a plain function re-created each render; this runs once per shop.
@@ -673,7 +684,7 @@ function CoachScreen({
   async function speakReply(text: string) {
     // The read-only demo shows replies as text; it has no recorded voice for live answers.
     if (ws.demo) return
-    speechSynthesis.cancel()
+    stopSpeech()
     speaking.current?.pause()
     const cleanText = stripMarkdown(text)
     try {
@@ -693,8 +704,7 @@ function CoachScreen({
     } catch {
       // Fall through to on-device speech.
     }
-    const utterance = utter(cleanText, language)
-    speechSynthesis.speak(utterance)
+    if (canSpeak()) speak(utter(cleanText, language))
   }
 
   async function send(text = note) {
@@ -973,6 +983,48 @@ function CoachScreen({
     }
   }
 
+  /** An old chat comes back with its cards: each order as it is now, then what the supplier said. */
+  async function withCards(saved: Message[]): Promise<Message[]> {
+    const ids = (role: 'order' | 'po') =>
+      saved.flatMap((message) =>
+        message.role === 'order' && role === 'order'
+          ? [message.orderId]
+          : message.role === 'po' && role === 'po'
+            ? [message.poId]
+            : [],
+      )
+    const [foundOrders, foundPos] = await Promise.all([
+      Promise.all(ids('order').map((id) => api<Order>(orderPath(id)).catch(() => null))),
+      Promise.all(
+        ids('po').map((id) =>
+          api<PurchaseOrder>(
+            `/businesses/${encodeURIComponent(activeId ?? '')}/supply/orders/${encodeURIComponent(id)}`,
+          ).catch(() => null),
+        ),
+      ),
+    ])
+    const loaded = new Map(foundOrders.flatMap((order) => (order ? [[order.id, order]] : [])))
+    const loadedPos = foundPos.flatMap((po) => (po ? [po] : []))
+    setOrders((known) => ({ ...known, ...Object.fromEntries(loaded) }))
+    setPos((known) => ({ ...known, ...Object.fromEntries(loadedPos.map((po) => [po.id, po])) }))
+    const known = new Set(loadedPos.map((po) => po.id))
+    return saved.flatMap((message): Message[] => {
+      if (message.role === 'po') return known.has(message.poId) ? [message] : []
+      if (message.role !== 'order') return [message]
+      const order = loaded.get(message.orderId)
+      if (!order) return []
+      return [
+        message,
+        ...order.messages
+          .filter((entry) => entry.author === 'supplier')
+          .map((entry) => ({
+            role: 'assistant' as const,
+            text: s.replied(order.supplier.name, entry.text),
+          })),
+      ]
+    })
+  }
+
   async function restore(id: string) {
     setShowToday(false)
     setActionsOpen(false)
@@ -980,9 +1032,10 @@ function CoachScreen({
     voice.stop()
     try {
       const data = await api<{ messages: Message[] }>(`/conversations/${id}`)
+      const shown = await withCards(data.messages)
       controller.current?.abort()
       session.current = id
-      setMessages(data.messages)
+      setMessages(shown)
       setReply('')
     } catch {
       setError(t.actionFailed)
@@ -1102,10 +1155,11 @@ function CoachScreen({
   function suggest(id: Suggestion, anchor: HTMLElement) {
     if (id === 'reply') setShopSheet('messages')
     else if (id === 'soldOut') setShopSheet('soldOut')
+    else if (id === 'price') setShopSheet('prices')
     else if (id === 'share') setShopSheet('customer')
     else if (id === 'menu' || id === 'photo') choosePhoto(anchor)
     else {
-      setNote(`${id === 'price' ? t.chipPrice : t.fields.name}: `)
+      setNote(`${t.fields.name}: `)
       messageInput.current?.focus()
     }
   }
@@ -1178,14 +1232,38 @@ function CoachScreen({
     >
       {/* One quiet line: which coach is answering. Every other action is behind the top bar's +. */}
       {!empty && (
-        <Typography
-          variant="labelMedium"
-          color="text.secondary"
-          noWrap
-          sx={{ display: 'block', minHeight: 32, pt: 2 }}
-        >
-          {mode ? (mode === 'gemini' ? t.geminiMode : t.offlineMode) : ''}
-        </Typography>
+        <Stack direction="row" sx={{ alignItems: 'center', gap: 1, minHeight: 48 }}>
+          <Typography variant="labelMedium" color="text.secondary" noWrap sx={{ flex: 1 }}>
+            {/* "Demo" is the demo shop's word: on a real shop it read as "is my shop a demo?". */}
+            {mode === 'gemini' ? t.geminiMode : mode && ws.demo ? t.offlineMode : ''}
+          </Typography>
+          {/* Home's cards are one tap away while chatting, not gone until a reload. */}
+          {ws.active && (
+            <Button
+              size="small"
+              data-testid={showToday ? 'back-to-chat' : 'back-to-today'}
+              startIcon={showToday ? <MessageSquare size={16} /> : <Sunrise size={16} />}
+              onClick={() => setShowToday((value) => !value)}
+              sx={{ minHeight: 48, flexShrink: 0 }}
+            >
+              {showToday ? simple.backToChat : simple.backToToday}
+            </Button>
+          )}
+        </Stack>
+      )}
+      {/* Reopened on Home: the last chat, with its order cards, is one tap away too. */}
+      {empty && ws.active && shopHistory[0] && (
+        <Stack direction="row" sx={{ justifyContent: 'flex-end', minHeight: 48 }}>
+          <Button
+            size="small"
+            data-testid="back-to-chat"
+            startIcon={<MessageSquare size={16} />}
+            onClick={() => void restore(shopHistory[0]!.session_id)}
+            sx={{ minHeight: 48 }}
+          >
+            {simple.backToChat}
+          </Button>
+        </Stack>
       )}
       {sorting ? (
         <AiInfo feature="photo" />
@@ -1381,6 +1459,10 @@ function CoachScreen({
                   evening={evening}
                   disabled={busy !== 'idle' || voice.state !== 'idle'}
                   onSend={(sentence) => void send(sentence)}
+                  onMake={() => {
+                    requestOpen('make')
+                    go('grow')
+                  }}
                 />
               )}
             />
@@ -1886,55 +1968,58 @@ function CoachScreen({
             {speakReplies ? <Volume2 size={20} /> : <VolumeX size={20} />}
           </IconButton>
           {/* Tap to talk, tap again to finish: the icon and its container show the state. No
-              tooltip on touch, which would pop over the composer on a long press. */}
-          <Tooltip
-            title={
-              voice.state === 'recording'
-                ? t.finishTalking
-                : voice.state === 'idle'
-                  ? t.talk
-                  : t.stopVoice
-            }
-            disableTouchListener
-          >
-            <span>
-              <IconButton
-                aria-label={
-                  voice.state === 'recording'
-                    ? t.finishTalking
-                    : voice.state === 'idle'
-                      ? t.talk
-                      : t.stopVoice
-                }
-                aria-pressed={voice.state === 'recording'}
-                disabled={busy !== 'idle'}
-                onClick={() => {
-                  if (voice.state === 'recording') voice.finishRecording()
-                  else if (voice.state === 'idle')
-                    void restored.current.then(() => {
-                      track('voice_used')
-                      return voice.start(session.current)
-                    })
-                  else stopTalking()
-                }}
-                sx={
-                  voice.state === 'recording'
-                    ? {
-                        bgcolor: roles.primaryContainer,
-                        color: roles.onPrimaryContainer,
-                        '&:hover': { bgcolor: roles.primaryContainer },
-                      }
-                    : undefined
-                }
-              >
-                {voice.state === 'idle' || voice.state === 'recording' ? (
-                  <Mic size={22} />
-                ) : (
-                  <Square size={18} />
-                )}
-              </IconButton>
-            </span>
-          </Tooltip>
+              tooltip on touch, which would pop over the composer on a long press. A browser with
+              no live audio (some in-app browsers) gets no mic: typing is the way in. */}
+          {voiceSupported() && (
+            <Tooltip
+              title={
+                voice.state === 'recording'
+                  ? t.finishTalking
+                  : voice.state === 'idle'
+                    ? t.talk
+                    : t.stopVoice
+              }
+              disableTouchListener
+            >
+              <span>
+                <IconButton
+                  aria-label={
+                    voice.state === 'recording'
+                      ? t.finishTalking
+                      : voice.state === 'idle'
+                        ? t.talk
+                        : t.stopVoice
+                  }
+                  aria-pressed={voice.state === 'recording'}
+                  disabled={busy !== 'idle'}
+                  onClick={() => {
+                    if (voice.state === 'recording') voice.finishRecording()
+                    else if (voice.state === 'idle')
+                      void restored.current.then(() => {
+                        track('voice_used')
+                        return voice.start(session.current)
+                      })
+                    else stopTalking()
+                  }}
+                  sx={
+                    voice.state === 'recording'
+                      ? {
+                          bgcolor: roles.primaryContainer,
+                          color: roles.onPrimaryContainer,
+                          '&:hover': { bgcolor: roles.primaryContainer },
+                        }
+                      : undefined
+                  }
+                >
+                  {voice.state === 'idle' || voice.state === 'recording' ? (
+                    <Mic size={22} />
+                  ) : (
+                    <Square size={18} />
+                  )}
+                </IconButton>
+              </span>
+            </Tooltip>
+          )}
           {busy === 'reply' ? (
             <IconButton
               aria-label={t.stop}

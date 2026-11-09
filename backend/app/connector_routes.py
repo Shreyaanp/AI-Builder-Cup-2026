@@ -65,8 +65,11 @@ def validate_mapping(mapping: ConnectorMapping, headers: list[str] | None = None
     if len(set(active_targets)) != len(active_targets) or len(set(sources)) != len(sources):
         raise HTTPException(422, "INVALID_MAPPING")
     roles = set(active_targets)
-    required = {"name", "price"} if mapping.kind == "menu" else {"name", "date"}
+    required = {"name"} if mapping.kind == "menu" else {"name", "date"}
     if mapping.kind == "sales" and not ("total" in roles or "price" in roles):
+        raise HTTPException(422, "INVALID_MAPPING")
+    # A sales report can fill the item list too: its price is the line total / quantity.
+    if mapping.kind == "menu" and not ("price" in roles or {"total", "quantity"} <= roles):
         raise HTTPException(422, "INVALID_MAPPING")
     if not required.issubset(roles):
         raise HTTPException(422, "INVALID_MAPPING")

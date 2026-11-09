@@ -20,7 +20,8 @@ from pydantic import BaseModel, Field, TypeAdapter, ValidationError, field_valid
 
 from . import region
 from .business_profile import QuestionPlanner
-from .forecast import ForecastService
+from .day_total import with_day_totals
+from .forecast import ForecastService, last_day
 from .merchant import (
     FACT_KEYS,
     BusinessFields,
@@ -132,10 +133,14 @@ async def get_forecast() -> dict[str, Any]:
     service = services.get().get("forecaster") or forecaster
     if service is None:
         service = ForecastService(Settings(_env_file=None))  # type: ignore[call-arg]
-    result = await service.forecast(
-        rows, today_for(context["business"]["fields"]), context["inventory"]
-    )
-    return result.model_dump(mode="json")
+    fields = context["business"]["fields"]
+    today = today_for(fields)
+    result = await service.forecast(rows, today, context["inventory"])
+    answer = result.model_dump(mode="json")
+    # The Grow row's own fact, so the coach never asks for weeks of sales after a close (OB-329).
+    found = last_day(rows, today, context["inventory"], str(fields.get("category") or ""), result)
+    answer["last_day"] = found.model_dump(mode="json") if found else None
+    return answer
 
 
 def _planner() -> QuestionPlanner:
@@ -476,7 +481,9 @@ def get_insights() -> dict[str, Any]:
     if not ctx or not ctx.business_id:
         return {"status": "needs_business"}
     signals = ctx.store.recap_signals(ctx.uid, ctx.business_id)
-    sales = ctx.store.sales_history(ctx.uid, ctx.business_id)
+    sales = with_day_totals(
+        ctx.store, ctx.business_id, ctx.store.sales_history(ctx.uid, ctx.business_id)
+    )
     shop = (ctx.store.context(ctx.uid, ctx.business_id) or {}).get("business") or {}
     today = local_now(shop_zone(shop.get("fields")), time.time()).date()
     year, week, _ = today.isocalendar()

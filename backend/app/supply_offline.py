@@ -11,7 +11,9 @@ from typing import Any
 
 from google.genai import types
 
+from .demo_coach_words import speaks_hindi
 from .money import to_minor
+from .owner_order_words import known_supply, order_asked
 from .sourcing import money_text
 from .supply_docs import human_date
 
@@ -25,6 +27,8 @@ REORDER_ITEM = re.compile(
     r"([^\W\d_]+(?:\s[^\W\d_]+)?)",
     re.I,
 )
+_NOT_ORDERED = "Okay, I won't order that. Nothing was drafted."
+_NOT_ORDERED_HI = "ठीक है, कुछ नहीं मँगाया।"
 # Approving a draft far beyond what the shop uses (OB-242), in each app locale; others get
 # English (OB-250).
 TOO_BIG_REPLY = {
@@ -249,7 +253,22 @@ def supply_call(
     answer = make_or_buy(text, contents or [])
     if answer is not None:
         return answer
-    if REORDER.search(text):
+    asked = order_asked(text)
+    if asked and (asked.outright or known_supply(asked.item) or _sells(ctx, asked.item)):
+        if asked.declined:
+            return types.Part(text=_NOT_ORDERED_HI if speaks_hindi(text) else _NOT_ORDERED)
+        if not (asked.needs_known_supply and _sells(ctx, asked.item)):
+            return call(
+                "draft_reorder",
+                # The owner's own word when it is English; "doodh" reads as Milk.
+                {
+                    "item": asked.item.casefold()
+                    if asked.item.casefold() in text.casefold()
+                    else asked.item,
+                    **({"quantity": asked.quantity} if asked.quantity else {}),
+                },
+            )
+    if REORDER.search(text) and not re.search(r"\b(?:don'?t|do not|never|mat)\b", text, re.I):
         args = {}
         found = REORDER_ITEM.search(text)
         if found:
@@ -305,6 +324,17 @@ def order_call(question: str, ctx: Any) -> list[types.Part] | None:
             args.update(quantity=line.quantity, unit=line.unit)
         calls.append(call("draft_reorder", args))
     return calls or None
+
+
+def _sells(ctx: Any, item: str) -> bool:
+    """On this shop's own menu (and, for "chahiye", so never read as an order for it)."""
+    from .demo_coach_words import menu_item
+
+    try:
+        inventory = ctx.store.inventory(ctx.uid, ctx.business_id)
+    except Exception:
+        return False
+    return menu_item(item, inventory, {}, guess=False) is not None
 
 
 def supplier_named(text: str, ctx: Any) -> str:

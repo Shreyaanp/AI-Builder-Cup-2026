@@ -88,21 +88,25 @@ test('Hindi copy keeps interface terms in Devanagari', () => {
 test.describe('India', () => {
   test.use({ locale: 'en-IN', timezoneId: 'Asia/Kolkata', storageState: FRESH })
 
-  test('owner: the language step offers Hindi first with English, then rupees, UPI and Indian rides', async ({
+  test('owner: the language step follows the English phone, offers Hindi, then rupees, UPI and Indian rides', async ({
     page,
   }) => {
     test.setTimeout(90_000)
     await ownerSignIn(page)
-    const choices = page.getByRole('radiogroup', { name: 'अपनी भाषा चुनें' })
+    // Priya, 8 Nov: an English (en-IN) phone is offered English first, in English; India's
+    // languages follow.
+    const choices = page.getByRole('radiogroup', { name: 'Choose your language' })
     await expect(choices).toBeVisible()
-    await expect(choices.getByRole('radio', { name: 'हिन्दी' })).toBeChecked()
-    await expect(choices.getByRole('radio', { name: 'English' })).toBeVisible()
+    await expect(choices.getByRole('radio', { name: 'English' })).toBeChecked()
+    await expect(choices.getByRole('radio', { name: 'हिन्दी' })).toBeVisible()
     await expect(choices.getByRole('radio', { name: 'தமிழ்' })).toBeVisible()
     // Singapore's languages are not offered first in India.
     await expect(choices.getByRole('radio', { name: 'Bahasa Melayu' })).toHaveCount(0)
     await page.screenshot({ path: 'docs/qa/region/01-india-language-step.png' })
     // One tap changes the step's own words; another confirms.
-    await choices.getByRole('radio', { name: 'English' }).check()
+    await choices.getByRole('radio', { name: 'हिन्दी' }).check()
+    await expect(page.getByRole('heading', { name: 'अपनी भाषा चुनें' })).toBeVisible()
+    await page.getByRole('radio', { name: 'English' }).check()
     await expect(page.getByRole('heading', { name: 'Choose your language' })).toBeVisible()
     await page.getByRole('button', { name: 'Continue', exact: true }).click()
     await agree(page)

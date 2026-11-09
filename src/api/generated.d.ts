@@ -2348,6 +2348,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/businesses/{business_id}/day/total": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Save Day Total
+         * @description The owner read the total back on Check and tapped Save; closing again replaces it.
+         */
+        post: operations["save_day_total_api_v1_businesses__business_id__day_total_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/businesses/{business_id}/analytics": {
         parameters: {
             query?: never;
@@ -3824,6 +3844,11 @@ export interface components {
         AvailabilityRequest: {
             /** Available */
             available: boolean;
+            /**
+             * Today Only
+             * @default false
+             */
+            today_only: boolean;
         };
         /**
          * Because
@@ -3939,6 +3964,7 @@ export interface components {
              *     ]
              */
             unavailable_rules: string[];
+            last_day?: components["schemas"]["LastDay"] | null;
         };
         /** BusinessFields */
         BusinessFields: {
@@ -3968,7 +3994,7 @@ export interface components {
              */
             pin_demo: boolean;
             /** Pin Source */
-            pin_source?: ("device" | "pin") | null;
+            pin_source?: ("device" | "pin" | "area") | null;
             /** Pin Accuracy M */
             pin_accuracy_m?: number | null;
             /**
@@ -4498,6 +4524,19 @@ export interface components {
             /** Close */
             close?: string | null;
         };
+        /** DayTotal */
+        DayTotal: {
+            /** Date */
+            date: string;
+            /** Currency */
+            currency: string;
+            /** Total */
+            total: number;
+            /** Cash */
+            cash?: number | null;
+            /** Upi */
+            upi?: number | null;
+        };
         /** Deal */
         Deal: {
             /** Id */
@@ -4856,7 +4895,8 @@ export interface components {
         };
         /**
          * ForSaleRequest
-         * @description "Customers can buy this", or one of the things the shop buys to make others (OB-310).
+         * @description On the menu, or one of the things the shop buys to make others (the owner's "Hide from
+         *     menu", OB-310).
          */
         ForSaleRequest: {
             /** For Sale */
@@ -4892,6 +4932,7 @@ export interface components {
             fallback_reason?: "provider_unavailable" | null;
             /** Confidence Level */
             confidence_level?: number | null;
+            last_day?: components["schemas"]["LastDay"] | null;
         };
         /** ForecastCheck */
         ForecastCheck: {
@@ -5185,6 +5226,34 @@ export interface components {
              */
             backorder_ok: boolean;
         };
+        /**
+         * LastDay
+         * @description The latest saved day, for a shop without four weeks of sales yet (OB-329).
+         */
+        LastDay: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Rows */
+            rows: components["schemas"]["LastDayRow"][];
+            /** Make Same */
+            make_same: boolean;
+        };
+        /** LastDayRow */
+        LastDayRow: {
+            /** Item */
+            item: string;
+            /** Quantity */
+            quantity: number;
+            /** Unit */
+            unit: string;
+            /** Revenue */
+            revenue: number;
+            /** Made */
+            made: boolean;
+        };
         /** LevelView */
         LevelView: {
             /**
@@ -5311,6 +5380,20 @@ export interface components {
              * @enum {string}
              */
             metric: "items_sold" | "sales" | "busy_hours" | "orders_due" | "fittings" | "bookings" | "questions" | "views" | "stamps" | "returning" | "low_stock" | "leftovers";
+        };
+        /** NewDayTotal */
+        NewDayTotal: {
+            /**
+             * Date
+             * @default
+             */
+            date: string;
+            /** Total */
+            total: number;
+            /** Cash */
+            cash?: number | null;
+            /** Upi */
+            upi?: number | null;
         };
         /** NewPromise */
         NewPromise: {
@@ -5518,7 +5601,7 @@ export interface components {
              * @default device
              * @enum {string}
              */
-            source: "device" | "pin";
+            source: "device" | "pin" | "area";
         };
         /** PartnerDocument */
         PartnerDocument: {
@@ -5913,6 +5996,8 @@ export interface components {
             source?: ("made" | "bought") | null;
             /** For Sale */
             for_sale?: boolean | null;
+            /** Sold Out Day */
+            sold_out_day?: string | null;
             /** Previous Unit */
             previous_unit?: string | null;
         };
@@ -7276,6 +7361,7 @@ export interface components {
             /** Has Customer Stamp */
             has_customer_stamp?: boolean | null;
             promise?: components["schemas"]["Promise"] | null;
+            last_day?: components["schemas"]["LastDay"] | null;
         };
         /** TodayArea */
         TodayArea: {
@@ -12365,6 +12451,41 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    save_day_total_api_v1_businesses__business_id__day_total_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NewDayTotal"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DayTotal"];
+                };
             };
             /** @description Validation Error */
             422: {

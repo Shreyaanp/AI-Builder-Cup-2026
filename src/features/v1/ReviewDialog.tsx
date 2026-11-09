@@ -270,7 +270,7 @@ export function ReviewDialog({
                   )}
                   {typeof product.for_sale === 'boolean' && (
                     <Typography variant="bodySmall" color="text.secondary">
-                      {product.for_sale ? stockCopy.forSale : stockCopy.thingsIBuy}
+                      {product.for_sale ? stockCopy.onMenu : stockCopy.hiddenFromMenu}
                     </Typography>
                   )}
                 </Box>

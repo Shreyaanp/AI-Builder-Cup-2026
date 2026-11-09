@@ -71,8 +71,13 @@ async function assertPhoneLayout(page: Page, screen: string) {
             b.top <= a.top + 1 &&
             b.right >= a.right - 1 &&
             b.bottom >= a.bottom - 1)
+        // A text field's floating label sits on its own box by design; only that pair is let off.
+        const ownLabel =
+          (candidates[i] as HTMLLabelElement).htmlFor === candidates[j].id ||
+          (candidates[j] as HTMLLabelElement).htmlFor === candidates[i].id
         if (
           !contained &&
+          !ownLabel &&
           a.left < b.right - 1 &&
           a.right > b.left + 1 &&
           a.top < b.bottom - 1 &&
@@ -128,6 +133,8 @@ for (const width of widths) {
         await expect(menu).toBeVisible()
         await assertPhoneLayout(page, 'Shop menu')
         await menu.locator('[data-menu-item="Kopi"]').click()
+        // The editor opens once the menu has gone (OB-353): check the editor, not the old sheet.
+        await expect(page.getByRole('dialog').locator('#product-form-title')).toBeVisible()
         await assertPhoneLayout(page, 'Shop item details')
         await page.keyboard.press('Escape')
         await page.keyboard.press('Escape')

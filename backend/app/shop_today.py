@@ -19,6 +19,7 @@ from pydantic import BaseModel
 
 from . import brief
 from .close_reward import CloseReward, close_reward
+from .day_total import with_day_totals
 from .limits import enforce_limits
 from .merchant import MerchantRepository
 from .merchant_routes import owner, store
@@ -123,6 +124,8 @@ class Today(BaseModel):
     has_customer_stamp: bool | None = None
     # What the owner wrote down last night for this morning, while still open (HABIT change 4).
     promise: Promise | None = None
+    # No forecast yet: what the latest closed day sold, so Home says what to make (OB-329).
+    last_day: brief.LastDay | None = None
 
 
 def _day(fields: dict[str, Any], at: float | None = None) -> str:
@@ -162,7 +165,8 @@ def pulse(
     asked = sum(1 for q in questions if q.get("created") and _day(fields, q["created"]) == day)
     return Pulse(
         sales=sum(r["revenue"] for r in rows) if rows else None,
-        items=sum(r["quantity"] for r in rows) if rows else None,
+        # A day closed with one total has money but no count of items.
+        items=(sum(r["quantity"] for r in rows) or None) if rows else None,
         views=totals.get("views") or None,
         questions=asked or None,
         stamps=totals.get("stamps") or None,
@@ -321,18 +325,19 @@ async def today_page(business_id: str, request: Request) -> Today:
             )
         except Exception:  # Optional promotion must not take the owner's daily facts away.
             log.warning("customer_stamp_history_unavailable")
+    takings = await anyio.to_thread.run_sync(with_day_totals, service, business_id, sales)
     return Today(
         date=today,
         currency=(shop_currency(fields)),
         yesterday=pulse(
-            sales,
+            takings,
             signals["questions"],
             await anyio.to_thread.run_sync(daily, service, business_id, yesterday),
             fields,
             yesterday,
         ),
         today=pulse(
-            sales,
+            takings,
             signals["questions"],
             await anyio.to_thread.run_sync(daily, service, business_id, today.isoformat()),
             fields,
@@ -360,6 +365,9 @@ async def today_page(business_id: str, request: Request) -> Today:
         hints=hints,
         has_customer_stamp=customer_stamp,
         promise=await anyio.to_thread.run_sync(promise_for, service, business_id, today),
+        last_day=brief.last_day(
+            sales, today, context["inventory"], str(fields.get("category") or ""), forecast
+        ),
     )
 
 
@@ -390,4 +398,5 @@ async def day_reward(business_id: str, day: date, request: Request) -> CloseRewa
     else:
         sales = await anyio.to_thread.run_sync(service.sales_history, uid, business_id)
         forecast = None
-    return close_reward(sales, day, shop_currency(fields), forecast)
+    takings = await anyio.to_thread.run_sync(with_day_totals, service, business_id, sales)
+    return close_reward(takings, day, shop_currency(fields), forecast)

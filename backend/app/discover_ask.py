@@ -1240,6 +1240,31 @@ async def ask(body: AskRequest, request: Request) -> Any:
                 query_google_places(maps, kw_intent, lat, lng, radius, body.q, anchor)
             )
 
+            # Step 3: Gemini starts now too, beside the places lookup and the instant local match
+            # (it waited for the instant answer, adding the local match to every Ask; OB-97). Its
+            # words queue until the instant answer is sent.
+            ai_intent_result: Intent | None = None
+            early_others: list[Pick] | None = None
+            events: asyncio.Queue[tuple[str, Any]] = asyncio.Queue()
+            settings = request.app.state.v1_settings
+
+            async def read_model() -> None:
+                try:
+                    if settings.coach_mode == "gemini":
+                        async for item in ai_intent_stream(request, body):
+                            kind = "intent" if isinstance(item, Intent) else "text"
+                            await events.put((kind, item))
+                finally:
+                    await events.put(("model_done", None))
+
+            async def read_places() -> None:
+                try:
+                    await events.put(("places", await places_task))
+                except Exception:  # noqa: BLE001 - the final step asks again
+                    await events.put(("places", None))
+
+            watchers = [asyncio.create_task(read_model()), asyncio.create_task(read_places())]
+
             try:
                 picks, for_you, personal, shops = await match_local_shops(
                     request,
@@ -1266,28 +1291,6 @@ async def ask(body: AskRequest, request: Request) -> Any:
                 )
                 yield ServerSentEvent(data=instant_resp.model_dump_json(), event="instant")
 
-                # Step 3: Stream Gemini words (if enabled) while the places lookup finishes.
-                ai_intent_result: Intent | None = None
-                early_others: list[Pick] | None = None
-                events: asyncio.Queue[tuple[str, Any]] = asyncio.Queue()
-                settings = request.app.state.v1_settings
-
-                async def read_model() -> None:
-                    try:
-                        if settings.coach_mode == "gemini":
-                            async for item in ai_intent_stream(request, body):
-                                kind = "intent" if isinstance(item, Intent) else "text"
-                                await events.put((kind, item))
-                    finally:
-                        await events.put(("model_done", None))
-
-                async def read_places() -> None:
-                    try:
-                        await events.put(("places", await places_task))
-                    except Exception:  # noqa: BLE001 - the final step asks again
-                        await events.put(("places", None))
-
-                watchers = [asyncio.create_task(read_model()), asyncio.create_task(read_places())]
                 try:
                     while True:
                         kind, item = await events.get()
@@ -1367,6 +1370,8 @@ async def ask(body: AskRequest, request: Request) -> Any:
                 yield ServerSentEvent(data=final_resp.model_dump_json(), event="complete")
             finally:
                 places_task.cancel()
+                for watcher in watchers:
+                    watcher.cancel()
 
         return EventSourceResponse(
             stream_generator(),

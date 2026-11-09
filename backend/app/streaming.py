@@ -1,5 +1,6 @@
 import asyncio
 from collections.abc import AsyncIterator
+from typing import Any
 from uuid import uuid4
 
 import anyio
@@ -13,6 +14,7 @@ from google.adk.runners import Runner
 from google.adk.sessions import BaseSessionService
 from google.genai import types
 
+from . import voice_resume
 from .agent import make_agent, ui_language
 from .auth import Principal
 from .charts import CHART_TOOLS, chart_card
@@ -41,6 +43,28 @@ ACTION_TOOLS = {
     # An honest "can't do that yet" offers the screen where the owner can do it (OB-172).
     "report_unsupported_request",
 }
+
+
+def history_card(
+    name: str | None, result: dict[str, Any] | None, key: str
+) -> dict[str, Any] | None:
+    """The card a saved tool result stands for, when an old chat is opened. Orders are stored by
+    id only: the app loads their latest state, so a card never shows yesterday's status."""
+    result = result or {}
+    if name == "find_suppliers" and result.get("status") == "found":
+        found = {field: value for field, value in result.items() if field != "card_id"}
+        return {"role": "suppliers", "result": found, "key": key}
+    if name == "prepare_order" and result.get("order_id"):
+        return {"role": "order", "orderId": str(result["order_id"])}
+    if name in SUPPLY_CARD_TOOLS and result.get("order_id") and result.get("po_number"):
+        return {"role": "po", "poId": str(result["order_id"])}
+    return None
+
+
+def same_card(message: dict[str, Any], card: dict[str, Any]) -> bool:
+    return any(field in card and message.get(field) == card[field] for field in ("orderId", "poId"))
+
+
 # Tools that prepare a sealed proposal for the review dialog.
 PROPOSAL_TOOLS = {
     "update_shop",
@@ -319,6 +343,9 @@ class CoachRuntime:
         if merchant:
             # Socket text controls exercise the same offline tools as HTTP turns.
             merchant.message = text
+        # A typed turn the Live provider never sees: the next voice connection starts fresh
+        # with the history instead of resuming a session that misses it (OB-181).
+        voice_resume.live_handles.changed(principal.uid, session_id)
         ui_language.set(language)
         timer = FirstOutput("text_agent")
         if merchant and merchant.uid.startswith("public-demo-"):

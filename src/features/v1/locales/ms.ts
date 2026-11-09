@@ -74,6 +74,7 @@ export const ms: Copy = {
   connectionReconnecting: 'Menyambung semula…',
   voiceFailed: 'Sambungan suara tamat. Cuba lagi atau gunakan teks.',
   voiceOffline: 'Suara perlukan sambungan. Taip mesej anda sebaliknya.',
+  voiceUnsupported: 'Pelayar ini tidak menyokong suara. Taip mesej anda sebaliknya.',
   voiceRestarted: 'Suara disambung semula. Sila sebut sekali lagi.',
   voiceMicDenied:
     'Akses mikrofon disekat. Benarkan mikrofon dalam tetapan pelayar dan cuba lagi, atau gunakan teks.',
@@ -200,6 +201,8 @@ export const ms: Copy = {
   soldOutToday: 'Habis dijual hari ini',
   soldOutCount: (count: number) => (count ? `${count} habis dijual` : 'Semua ada'),
   soldOutHint: 'Matikan apa-apa yang sudah habis. Pelanggan nampak serta-merta.',
+  soldOutHintHidden:
+    'Matikan apa-apa yang sudah habis. Pelanggan akan nampak sebaik kedai anda boleh dilihat.',
   shared: 'Dikongsi',
   notShared: 'Tidak dikongsi',
   messages: 'Mesej',
@@ -340,6 +343,9 @@ export const ms: Copy = {
     'Hidupkan untuk mendapatkan pautan menu, harga dan waktu operasi untuk pelanggan.',
   customerPageOn: 'Pelanggan dengan pautan ini melihat kedai dan harga terkini.',
   pageSwitch: 'Kongsi halaman pelanggan',
+  liveSwitch: 'Pelanggan boleh melihat kedai saya',
+  liveNeedsPlace:
+    'Mula-mula, beritahu di mana pelanggan boleh cari anda. Kedai anda kelihatan sebaik anda sahkan.',
   share: 'Kongsi',
   copyLink: 'Salin pautan',
   openPage: 'Buka halaman',

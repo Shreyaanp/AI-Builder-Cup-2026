@@ -27,7 +27,7 @@ export interface Business {
     place_id?: string | null
     pin_label?: string | null
     pin_demo?: boolean
-    pin_source?: 'device' | 'pin' | null
+    pin_source?: 'device' | 'pin' | 'area' | null
     pin_accuracy_m?: number | null
     description?: string
     timezone?: string
@@ -74,6 +74,8 @@ export interface Product {
   for_sale?: boolean
   /** A bare supply name on a maker's menu ("Paneer"): asked once whether customers buy it. */
   ask_for_sale?: boolean
+  /** "Sold out today": the shop's date it was marked; the server puts it back the next day. */
+  sold_out_day?: string
 }
 export interface Proposal {
   /** Client-only guided completion marker, outside the sealed snapshot. */

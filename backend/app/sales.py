@@ -2,10 +2,11 @@
 
 import hashlib
 import json
+import re
 import secrets
 import time
 from collections import defaultdict
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
 from uuid import uuid4
@@ -34,24 +35,78 @@ def today_for(fields: dict[str, Any]) -> date:
     return datetime.now(shop_timezone(shop_zone(fields))).date()
 
 
+# Dates as billing apps export them: ISO first, then the day-first forms Indian apps use
+# (07/11/2026 is 7 November; Ahmed, 8 Nov), each optionally followed by a time.
+DATE_FORMATS = (
+    "%d/%m/%Y",
+    "%d-%m-%Y",
+    "%d.%m.%Y",
+    "%Y/%m/%d",
+    "%d %b %Y",
+    "%d %B %Y",
+    "%d-%b-%Y",
+    "%d-%B-%Y",
+    "%d/%b/%Y",
+    "%d %b %y",
+    "%d-%b-%y",
+    "%d/%m/%y",
+    "%d-%m-%y",
+    "%d.%m.%y",
+)
+# A date cell Excel kept as its day number: 46000 is 9 December 2025.
+EXCEL_DAY_ZERO = date(1899, 12, 30)
+MAX_PROBLEMS = 3
+
+
+def sale_date(value: str) -> date:
+    """The day of one export row, or ValueError."""
+    raw = value.strip()
+    try:
+        return date.fromisoformat(raw[:10])
+    except ValueError:
+        pass
+    if re.fullmatch(r"[3-7]\d{4}(\.\d+)?", raw):
+        return EXCEL_DAY_ZERO + timedelta(days=int(float(raw)))
+    # "7 Nov 2026 10:30 AM": the day is what comes before the time.
+    without_time = re.sub(r"[ T]+\d{1,2}[:.]\d{2}.*$", "", raw)
+    for text in dict.fromkeys((raw, without_time, raw.split(" ")[0], raw.split("T")[0])):
+        for fmt in DATE_FORMATS:
+            try:
+                return datetime.strptime(text, fmt).date()
+            except ValueError:
+                continue
+    raise ValueError("date")
+
+
 def daily_sales(rows: list[list[str]], mapping: ColumnMap, currency: str) -> list[dict[str, Any]]:
-    """Reject incomplete/invalid exports rather than replacing days with partial data."""
+    """Reject incomplete/invalid exports rather than replacing days with partial data. The
+    rejection names what is wrong in the first rows that fail ("INVALID_SALES_ROWS:" + JSON of
+    field, item and value), so the owner can fix the export instead of retrying blind."""
     totals: dict[tuple[str, str], dict[str, Any]] = {}
+    problems: list[dict[str, str]] = []
     for row in rows:
+        field = "date"
         try:
-            day = date.fromisoformat(cell(row, mapping.date)[:10]).isoformat()
+            day = sale_date(cell(row, mapping.date)).isoformat()
+            field = "item"
             item = cell(row, mapping.name).strip()
+            if not item:
+                raise ValueError("item")
+            field = "quantity"
             qty = (
                 number(cell(row, mapping.quantity), currency, "quantity")
                 if mapping.quantity is not None
                 else 1
             )
+            if qty is None or qty < 0:
+                raise ValueError("quantity")
+            field = "total"
             revenue = number(cell(row, mapping.total), currency)
             if revenue is None and mapping.total is None:
                 price = number(cell(row, mapping.price), currency)
-                revenue = price * qty if price is not None and qty is not None else None
-            if qty is None or revenue is None:
-                raise ValueError("Missing quantity or revenue")
+                revenue = price * qty if price is not None else None
+            if revenue is None:
+                raise ValueError("Missing revenue")
             minor = int(
                 (Decimal(str(revenue)) * 10 ** exponent(currency)).quantize(
                     Decimal("1"), rounding=ROUND_HALF_UP
@@ -68,7 +123,22 @@ def daily_sales(rows: list[list[str]], mapping: ColumnMap, currency: str) -> lis
                 DailySale.model_validate(sale)
             totals[key] = sale
         except (ValueError, ArithmeticError):
-            raise HTTPException(422, "INVALID_SALES_ROWS") from None
+            column = {
+                "date": mapping.date,
+                "item": mapping.name,
+                "quantity": mapping.quantity,
+                "total": mapping.total if mapping.total is not None else mapping.price,
+            }[field]
+            problems.append(
+                {
+                    "field": field,
+                    "item": cell(row, mapping.name).strip()[:60],
+                    "value": cell(row, column).strip()[:40] if column is not None else "",
+                }
+            )
+    if problems:
+        shown = json.dumps(problems[:MAX_PROBLEMS], ensure_ascii=False)
+        raise HTTPException(422, f"INVALID_SALES_ROWS:{len(problems)}:{shown}")
     result = sorted(totals.values(), key=lambda r: (r["date"], r["item"].casefold()))
     validate_capacity(result)
     return result

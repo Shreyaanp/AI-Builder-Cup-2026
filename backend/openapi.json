@@ -7026,6 +7026,56 @@
         }
       }
     },
+    "/api/v1/businesses/{business_id}/day/total": {
+      "post": {
+        "summary": "Save Day Total",
+        "description": "The owner read the total back on Check and tapped Save; closing again replaces it.",
+        "operationId": "save_day_total_api_v1_businesses__business_id__day_total_post",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewDayTotal"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DayTotal"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/businesses/{business_id}/analytics": {
       "get": {
         "summary": "Shop Analytics",
@@ -11118,6 +11168,11 @@
           "available": {
             "type": "boolean",
             "title": "Available"
+          },
+          "today_only": {
+            "type": "boolean",
+            "title": "Today Only",
+            "default": false
           }
         },
         "additionalProperties": false,
@@ -11408,6 +11463,16 @@
               "group_buy",
               "price_check"
             ]
+          },
+          "last_day": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LastDay"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
@@ -11504,7 +11569,8 @@
                 "type": "string",
                 "enum": [
                   "device",
-                  "pin"
+                  "pin",
+                  "area"
                 ]
               },
               {
@@ -12884,6 +12950,51 @@
         ],
         "title": "DayHours"
       },
+      "DayTotal": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "title": "Date"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "cash": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cash"
+          },
+          "upi": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Upi"
+          }
+        },
+        "type": "object",
+        "required": [
+          "date",
+          "currency",
+          "total"
+        ],
+        "title": "DayTotal"
+      },
       "Deal": {
         "properties": {
           "id": {
@@ -13826,7 +13937,7 @@
           "for_sale"
         ],
         "title": "ForSaleRequest",
-        "description": "\"Customers can buy this\", or one of the things the shop buys to make others (OB-310)."
+        "description": "On the menu, or one of the things the shop buys to make others (the owner's \"Hide from\nmenu\", OB-310)."
       },
       "Forecast": {
         "properties": {
@@ -13892,6 +14003,16 @@
               }
             ],
             "title": "Confidence Level"
+          },
+          "last_day": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LastDay"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
@@ -14558,6 +14679,67 @@
         ],
         "title": "ItemRule"
       },
+      "LastDay": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date",
+            "title": "Date"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/LastDayRow"
+            },
+            "type": "array",
+            "title": "Rows"
+          },
+          "make_same": {
+            "type": "boolean",
+            "title": "Make Same"
+          }
+        },
+        "type": "object",
+        "required": [
+          "date",
+          "rows",
+          "make_same"
+        ],
+        "title": "LastDay",
+        "description": "The latest saved day, for a shop without four weeks of sales yet (OB-329)."
+      },
+      "LastDayRow": {
+        "properties": {
+          "item": {
+            "type": "string",
+            "title": "Item"
+          },
+          "quantity": {
+            "type": "number",
+            "title": "Quantity"
+          },
+          "unit": {
+            "type": "string",
+            "title": "Unit"
+          },
+          "revenue": {
+            "type": "integer",
+            "title": "Revenue"
+          },
+          "made": {
+            "type": "boolean",
+            "title": "Made"
+          }
+        },
+        "type": "object",
+        "required": [
+          "item",
+          "quantity",
+          "unit",
+          "revenue",
+          "made"
+        ],
+        "title": "LastDayRow"
+      },
       "LevelView": {
         "properties": {
           "key": {
@@ -14893,6 +15075,52 @@
           "metric"
         ],
         "title": "Metric"
+      },
+      "NewDayTotal": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "title": "Date",
+            "default": ""
+          },
+          "total": {
+            "type": "number",
+            "maximum": 1000000000.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Total"
+          },
+          "cash": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1000000000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cash"
+          },
+          "upi": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1000000000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Upi"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total"
+        ],
+        "title": "NewDayTotal"
       },
       "NewPromise": {
         "properties": {
@@ -15410,7 +15638,8 @@
             "type": "string",
             "enum": [
               "device",
-              "pin"
+              "pin",
+              "area"
             ],
             "title": "Source",
             "default": "device"
@@ -16455,6 +16684,18 @@
               }
             ],
             "title": "For Sale"
+          },
+          "sold_out_day": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sold Out Day"
           },
           "previous_unit": {
             "anyOf": [
@@ -19696,6 +19937,16 @@
             "anyOf": [
               {
                 "$ref": "#/components/schemas/Promise"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "last_day": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LastDay"
               },
               {
                 "type": "null"

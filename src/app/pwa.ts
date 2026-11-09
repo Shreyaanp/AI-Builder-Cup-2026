@@ -9,6 +9,8 @@ interface InstallPromptEvent extends Event {
 let deferred: InstallPromptEvent | null = null
 let dismissedKey = 'chalkboard.business.installDismissed'
 let installed = false
+// Declined on this page: holds even where the browser refuses to store it.
+let declined = false
 const listeners = new Set<() => void>()
 const notify = () => listeners.forEach((listener) => listener())
 
@@ -82,7 +84,7 @@ async function keepLoadedFiles() {
 
 /** True when an install offer may be shown: installable, not installed, not declined before. */
 export function canOfferInstall(): boolean {
-  if (installState() !== 'prompt') return false
+  if (installState() !== 'prompt' || declined) return false
   try {
     return localStorage.getItem(dismissedKey) !== '1'
   } catch {
@@ -103,9 +105,10 @@ export async function offerInstall(): Promise<void> {
 }
 
 export function rememberInstallDeclined() {
+  declined = true
   try {
     localStorage.setItem(dismissedKey, '1')
   } catch {
-    /* Offer may reappear next session. */
+    /* The offer may come back next visit, not on this one. */
   }
 }

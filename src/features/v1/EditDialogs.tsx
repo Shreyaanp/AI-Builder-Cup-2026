@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 import {
   Alert,
+  Box,
   Button,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
   FormControlLabel,
+  IconButton,
   InputAdornment,
   MenuItem,
   Stack,
@@ -18,6 +20,7 @@ import {
   useMediaQuery,
   useTheme,
 } from '@mui/material'
+import { Plus, X } from 'lucide-react'
 import type { Business, Product, Proposal } from './api'
 import { currencySymbol, formatShopPrice, shopCurrency, toMajor, toMinor } from './format'
 import { moneyLocale } from '../../region/region'
@@ -32,7 +35,8 @@ import { useWorkspace } from './workspaceContext'
 import { windowClass } from '../../design/theme'
 import { useShopCopy } from '../shop/strings'
 import { AskHint } from './AskHint'
-import { UNITS, unitKey } from '../shop/units'
+import { UNITS, unitKey, unitLabel } from '../shop/units'
+import { useAddManyCopy } from '../shop/addManyCopy'
 import { StockStepper } from '../shop/StockStepper'
 import { useStockCopy } from '../shop/stockCopy'
 import { productName } from '../../i18n/productNames'
@@ -115,6 +119,19 @@ export function ProductDialog() {
   return <ProductForm key={editor.product?.id ?? 'new'} product={editor.product} />
 }
 
+/** One item as a proposal carries it. */
+type NewProduct = {
+  name: string
+  price: number
+  unit: string
+  previous_unit?: string
+  stock: number | null
+  category: string
+  available: boolean
+  source?: 'made' | 'bought'
+  for_sale?: boolean
+}
+
 function ProductForm({ product }: { product: Product | null }) {
   const t = useCopy()
   const shopCopy = useShopCopy()
@@ -122,7 +139,7 @@ function ProductForm({ product }: { product: Product | null }) {
   const stockCopy = useStockCopy()
   const locale = useLocale()
   const roles = useTheme().material
-  const { api, active, openEditor, reload, review } = useWorkspace()
+  const { api, active, openEditor, reload, review, setAvailability } = useWorkspace()
   const compact = useCompact()
   const currency = shopCurrency(active)
   const numberLocale = moneyLocale(currency, locale) ?? locale
@@ -137,14 +154,25 @@ function ProductForm({ product }: { product: Product | null }) {
     category: product?.category ?? '',
   }))
   const [item, setItem] = useState(initial)
+  // Items added with "Add another": one review saves them all, and the form stays open between
+  // them, so the next item doesn't cost Menu > Add product again (Ahmed, 8 Nov).
+  const [waiting, setWaiting] = useState<NewProduct[]>([])
+  const nameInput = useRef<HTMLInputElement>(null)
+  const addMany = useAddManyCopy()
   // A new item asks for its name and price; the rest waits behind "More details".
   const [more, setMore] = useState(Boolean(product))
   const [source, setSource] = useState(product?.source)
-  // "Customers can buy this": off keeps it in Things I buy, off the menu and page (OB-310).
+  // "Hide from menu": on keeps it in Things I buy, off the menu and page (OB-310).
   const [forSale, setForSale] = useState(product?.for_sale !== false)
   // The saved switch, refreshed with the answer below, so the dialog never shows a stale "on".
   const [savedForSale, setSavedForSale] = useState(product?.for_sale !== false)
   const forSaleTapped = useRef(false)
+  // Sold out as saved: "Sold out today" saves on the tap, so Save below must not undo it.
+  const [sold, setSold] = useState({
+    available: product?.available !== false,
+    day: product?.sold_out_day,
+  })
+  const [savingSold, setSavingSold] = useState(false)
   const [savingSource, setSavingSource] = useState(false)
   // The tap saves at once, so Cancel does not undo it: the note says so (OB-243).
   const [sourceSaved, setSourceSaved] = useState(false)
@@ -160,6 +188,7 @@ function ProductForm({ product }: { product: Product | null }) {
         const saved = items.find((entry) => entry.id === productId)
         if (!saved || abort.signal.aborted) return
         if (!sourceTapped.current) setSource(saved.source)
+        setSold({ available: saved.available !== false, day: saved.sold_out_day })
         setSavedForSale(saved.for_sale !== false)
         if (!forSaleTapped.current) setForSale(saved.for_sale !== false)
       })
@@ -173,7 +202,10 @@ function ProductForm({ product }: { product: Product | null }) {
   useBackClose(
     true,
     close,
-    JSON.stringify(item) !== JSON.stringify(initial) || unsavedSource || forSale !== savedForSale,
+    JSON.stringify(item) !== JSON.stringify(initial) ||
+      unsavedSource ||
+      forSale !== savedForSale ||
+      waiting.length > 0,
   )
   const [error, setError] = useState('')
   // One request at a time: repeated taps must not create competing proposals.
@@ -205,20 +237,80 @@ function ProductForm({ product }: { product: Product | null }) {
       setSavingSource(false)
     }
   }
-  async function submit() {
-    if (!item.name.trim()) return setError(t.enterName)
+  /** The owner's own answer, saved at once like the Sold out sheet's switch: no AI, no review. */
+  async function markSold(available: boolean) {
+    if (!product || savingSold) return
+    setSavingSold(true)
+    setError('')
+    if (await setAvailability(product, available, !available))
+      setSold({ available, day: available ? undefined : 'today' })
+    setSavingSold(false)
+  }
+  /** The form as one item for the proposal; on a problem it says so and returns null. */
+  function typedProduct(): NewProduct | null {
+    setError('')
+    if (!item.name.trim()) {
+      setError(t.enterName)
+      return null
+    }
     if (price === null) {
       const money = (value: number) => formatShopPrice(toMinor(value, currency), currency, locale)
-      return setError(
+      setError(
         !priceReading.ok && priceReading.reason === 'ambiguous'
           ? numberQuestion(locale)
               .replace('{a}', money(priceReading.options[0]))
               .replace('{b}', money(priceReading.options[1]))
           : t.enterPrice,
       )
+      return null
     }
-    if (!active || busy) return
     const count = item.stock.trim() ? Number(item.stock) : null
+    return {
+      name: item.name.trim(),
+      price: toMinor(price, currency),
+      unit: item.unit,
+      // A new unit for a saved item changes that item instead of adding a copy.
+      ...(product && product.unit !== item.unit ? { previous_unit: product.unit } : {}),
+      stock: count,
+      category: item.category.trim(),
+      // 0 left is sold out; more after 0 is on sale again, as the − / + do (OB-310).
+      available:
+        count === 0
+          ? false
+          : !sold.available &&
+              count !== null &&
+              // After 0, or more of an item sold out for today: on sale again.
+              (product?.stock === 0 || (sold.day && count > (product?.stock ?? 0)))
+            ? true
+            : sold.available,
+      ...(source ? { source } : {}),
+      // A new item saves the switch as shown, so "Milk" with "Hide from menu" left off
+      // stays on the menu; a saved item sends it only when the owner changed it, so it
+      // keeps the app's own guess.
+      ...(!product || forSale !== savedForSale ? { for_sale: forSale } : {}),
+    }
+  }
+  const sameItem = (a: NewProduct, b: NewProduct) =>
+    a.name.toLowerCase() === b.name.toLowerCase() && a.unit === b.unit
+  function addAnother() {
+    const next = typedProduct()
+    if (!next) return
+    // The same item typed twice is one item, with the later price.
+    setWaiting((all) => [...all.filter((other) => !sameItem(other, next)), next])
+    setItem(initial)
+    setSource(undefined)
+    setForSale(true)
+    setMore(false)
+    nameInput.current?.focus()
+  }
+  async function submit() {
+    if (!active || busy) return
+    const blank = waiting.length > 0 && !item.name.trim() && !item.price.trim()
+    const typed = blank ? null : typedProduct()
+    if (!blank && !typed) return
+    const products = typed
+      ? [...waiting.filter((other) => !sameItem(other, typed)), typed]
+      : waiting
     setBusy(true)
     try {
       const proposal = await api<Proposal>('/proposals', {
@@ -227,29 +319,7 @@ function ProductForm({ product }: { product: Product | null }) {
           kind: 'inventory',
           business_id: active.id,
           revision: active.revision,
-          products: [
-            {
-              name: item.name.trim(),
-              price: toMinor(price, currency),
-              unit: item.unit,
-              // A new unit for a saved item changes that item instead of adding a copy.
-              ...(product && product.unit !== item.unit ? { previous_unit: product.unit } : {}),
-              stock: count,
-              category: item.category.trim(),
-              // 0 left is sold out; more after 0 is on sale again, as the − / + do (OB-310).
-              available:
-                count === 0
-                  ? false
-                  : product?.stock === 0 && product.available === false && count !== null
-                    ? true
-                    : (product?.available ?? true),
-              ...(source ? { source } : {}),
-              // A new item saves the switch as shown, so "Milk" left on "Customers can buy this"
-              // stays on the menu; a saved item sends it only when the owner changed it, so it
-              // keeps the app's own guess.
-              ...(!product || forSale !== savedForSale ? { for_sale: forSale } : {}),
-            },
-          ],
+          products,
         }),
       })
       openEditor({ kind: 'none' })
@@ -275,12 +345,62 @@ function ProductForm({ product }: { product: Product | null }) {
             void submit()
           }}
         >
+          {/* The everyday answer comes first; "Hide from menu" stays further down, and only an
+              item on the menu can sell out. */}
+          {product?.id && forSale && (
+            <Stack spacing={1} data-testid="product-sold-out">
+              {sold.available && product.stock !== 0 ? (
+                <Button
+                  variant="contained"
+                  disableElevation
+                  disabled={savingSold}
+                  onClick={() => void markSold(false)}
+                  aria-describedby="product-sold-out-note"
+                  sx={{
+                    minHeight: 48,
+                    bgcolor: roles.secondaryContainer,
+                    color: roles.onSecondaryContainer,
+                    '&:hover': { bgcolor: roles.secondaryContainer },
+                  }}
+                >
+                  {stockCopy.soldOutToday}
+                </Button>
+              ) : (
+                product.stock !== 0 && (
+                  <Button
+                    variant="outlined"
+                    disabled={savingSold}
+                    onClick={() => void markSold(true)}
+                    aria-describedby="product-sold-out-note"
+                    sx={{ minHeight: 48 }}
+                  >
+                    {stockCopy.backOnSale}
+                  </Button>
+                )
+              )}
+              <Typography
+                id="product-sold-out-note"
+                role="status"
+                variant="bodyMedium"
+                color="text.secondary"
+              >
+                {product.stock === 0
+                  ? stockCopy.soldOutNoStock
+                  : sold.available
+                    ? stockCopy.soldOutTodayHint
+                    : sold.day
+                      ? stockCopy.soldOutTodayDone
+                      : stockCopy.soldOutUntilChanged}
+              </Typography>
+            </Stack>
+          )}
           <TextField
             label={t.productName}
             value={item.name}
             required
             // A new item starts typing; editing a saved one never opens the keyboard by itself.
             autoFocus={!product}
+            inputRef={nameInput}
             onChange={(event) => setItem({ ...item, name: event.target.value })}
             slotProps={{ htmlInput: { maxLength: 180 } }}
           />
@@ -400,26 +520,79 @@ function ProductForm({ product }: { product: Product | null }) {
                 <FormControlLabel
                   control={
                     <Switch
-                      checked={forSale}
+                      checked={!forSale}
                       onChange={(_, checked) => {
                         forSaleTapped.current = true
-                        setForSale(checked)
+                        setForSale(!checked)
                       }}
                       slotProps={{ input: { 'aria-describedby': 'product-for-sale-hint' } }}
                     />
                   }
-                  label={stockCopy.forSale}
+                  label={stockCopy.hideFromMenu}
                   sx={{ minHeight: 48, mx: 0, justifyContent: 'space-between' }}
                   labelPlacement="start"
                 />
                 <Typography id="product-for-sale-hint" variant="bodyMedium" color="text.secondary">
-                  {stockCopy.forSaleHint}
+                  {stockCopy.hideFromMenuHint}
                 </Typography>
               </Stack>
             </>
           )}
-          {!product && <AskHint id="add_menu" />}
+          {!product && (
+            <Button
+              variant="outlined"
+              startIcon={<Plus size={18} />}
+              onClick={addAnother}
+              sx={{ alignSelf: 'flex-start', minHeight: 48 }}
+            >
+              {addMany.addAnother}
+            </Button>
+          )}
           {error && <Alert severity="error">{error}</Alert>}
+          {waiting.length > 0 && (
+            <Box component="section" aria-labelledby="product-waiting-title">
+              <Typography id="product-waiting-title" component="h3" variant="titleSmall">
+                {addMany.waiting.replace(
+                  '{n}',
+                  new Intl.NumberFormat(locale).format(waiting.length),
+                )}
+              </Typography>
+              <Box
+                component="ul"
+                data-testid="product-waiting"
+                sx={{ m: 0, p: 0, listStyle: 'none' }}
+              >
+                {waiting.map((entry) => (
+                  <Stack
+                    component="li"
+                    direction="row"
+                    key={`${entry.name}-${entry.unit}`}
+                    sx={{ alignItems: 'center', gap: 1, borderBottom: 1, borderColor: 'divider' }}
+                  >
+                    <Typography
+                      variant="bodyLarge"
+                      sx={{ flex: 1, minWidth: 0, overflowWrap: 'anywhere' }}
+                    >
+                      {entry.name}
+                    </Typography>
+                    <Typography variant="bodyMedium" sx={{ whiteSpace: 'nowrap' }}>
+                      {formatShopPrice(entry.price, currency)} / {unitLabel(entry.unit, shopCopy)}
+                    </Typography>
+                    <IconButton
+                      aria-label={`${addMany.remove}: ${entry.name}`}
+                      onClick={() =>
+                        setWaiting((all) => all.filter((other) => !sameItem(other, entry)))
+                      }
+                      sx={{ width: 48, height: 48 }}
+                    >
+                      <X size={18} />
+                    </IconButton>
+                  </Stack>
+                ))}
+              </Box>
+            </Box>
+          )}
+          {!product && <AskHint id="add_menu" />}
           <button type="submit" hidden />
         </Stack>
       </DialogContent>
@@ -447,7 +620,9 @@ function ProductForm({ product }: { product: Product | null }) {
           onClick={() => void submit()}
           sx={{ minHeight: 48 }}
         >
-          {t.reviewFirst}
+          {waiting.length
+            ? `${t.reviewFirst} (${waiting.length + (item.name.trim() ? 1 : 0)})`
+            : t.reviewFirst}
         </Button>
       </DialogActions>
     </Dialog>

@@ -77,7 +77,7 @@ import { useGoLiveCopy } from './goLiveCopy'
 import { dietaryMissing, factEntries } from './shopProgress'
 import { useNextStepsCopy } from './nextStepsCopy'
 import { useCopy } from './strings'
-import { useVoice } from './useVoice'
+import { useVoice, voiceSupported } from './useVoice'
 import { useSpokenReveal } from './useSpokenReveal'
 import { cardWords, mergeTranscript } from './speechReveal'
 import type { VoiceProblem } from './useVoice'
@@ -86,7 +86,7 @@ import type { OrbPhase } from './VoiceStage'
 import { useVoiceModeCopy } from './voiceModeCopy'
 import { useWorkspace } from './workspaceContext'
 import type { GalleryPhoto } from './screens/CoachScreen'
-import { utter } from './phoneVoice'
+import { canSpeak, speak as speakOnPhone, stopSpeech, utter } from './phoneVoice'
 import { useLanguageSwitch } from './languageSwitch'
 import {
   loadOnboardingPhoto,
@@ -188,6 +188,22 @@ function withServerDraft(previous: Draft, server: Draft): Draft {
 const hasPlace = (draft: Draft) =>
   Boolean(draft.business && draft.business.lat != null && draft.business.lng != null)
 /** Everything onboarding asks is answered or skipped (owner decision, 17 Oct). */
+/** What the owner has given so far: a turn that leaves this unchanged understood nothing. */
+function progressOf(draft: Draft) {
+  const b = draft.business
+  return JSON.stringify([
+    b?.name,
+    b?.category,
+    b?.location,
+    b?.lat,
+    b?.hours,
+    b?.weekly_hours?.length,
+    draft.skipped,
+    draft.photo,
+    draft.products?.length,
+  ])
+}
+
 function complete(draft: Draft) {
   const b = draft.business
   const skipped = new Set(draft.skipped ?? [])
@@ -294,6 +310,10 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
   // congratulations page, otherwise the sheet with List my shop (#180).
   const [listOpen, setListOpen] = useState(false)
   const [listing, setListing] = useState(false)
+  // Two owner turns in a row that changed nothing (the coach did not understand, or a required
+  // question was skipped): the rest is offered as taps, so setup never loops (Ramesh, 8 Nov).
+  const [misses, setMisses] = useState(0)
+  const turnProgress = useRef<string | null>(null)
   // The owner ended the conversation ("bas", "that's all", or the End button): everything is
   // saved; no nudges, no reconnect, until they tap Continue.
   const [ended, setEndedState] = useState(recovery?.ended ?? false)
@@ -468,7 +488,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
   function silenceAudio() {
     speaking.current?.pause()
     speaking.current = null
-    if ('speechSynthesis' in window) speechSynthesis.cancel()
+    stopSpeech()
   }
   function stopSpeaking() {
     silenceAudio()
@@ -512,7 +532,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
     } catch {
       // Fall through to on-device speech.
     }
-    if (!('speechSynthesis' in window) || mutedRef.current) {
+    if (!canSpeak() || mutedRef.current) {
       setTtsText('')
       return
     }
@@ -525,7 +545,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
         captionReveal.push(text)
         captionReveal.finish()
       }
-      speechSynthesis.speak(utterance)
+      speakOnPhone(utterance)
       // Some devices never report the end of speech.
       window.setTimeout(finish, 1500 + cleanText.length * 70)
     })
@@ -541,6 +561,13 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
    * The coach's turn is in: it joins the chat, is spoken, and the silence clock starts. A live
    * voice turn's words join the chat from the reveal once spoken; only the turn ends here.
    */
+  /** An owner turn was answered: count it as a miss when nothing in the shop changed. */
+  function scoreTurn() {
+    const before = turnProgress.current
+    if (before === null) return
+    turnProgress.current = null
+    setMisses((count) => (progressOf(draftRef.current) === before ? count + 1 : 0))
+  }
   function commitCoach(finished: boolean) {
     if (quiet.current && finished) {
       quiet.current = false
@@ -557,6 +584,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
     ownerTurnOpen.current = false
     addCoachLine(text)
     if (!finished) return
+    scoreTurn()
     pending.current = null
     if (startSent.current) greeted.current = true
     setBusy('idle')
@@ -940,11 +968,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
     }
   }
 
-  const canVoice =
-    typeof window !== 'undefined' &&
-    Boolean(navigator.mediaDevices) &&
-    typeof AudioContext !== 'undefined' &&
-    typeof AudioWorkletNode !== 'undefined'
+  const canVoice = voiceSupported()
   async function begin() {
     started.current = true
     ws.setNewShopPhase('chat')
@@ -1017,7 +1041,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
       window.clearTimeout(silence.current)
       controller.current?.abort()
       speaking.current?.pause()
-      if ('speechSynthesis' in window) speechSynthesis.cancel()
+      stopSpeech()
     },
     [],
   )
@@ -1065,13 +1089,16 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
     nudges.current = 0
     ownerTurnOpen.current = false
     add({ role: 'owner', text })
+    turnProgress.current = progressOf(draftRef.current)
     await say(text, id)
   }
+  /** Skip: the question moves on at once, a required one too (never "I'm not sure"). */
   function skip() {
     if (busy !== 'idle') return
     nudges.current = 0
     add({ role: 'owner', text: f.skip })
-    void say(f.silence)
+    turnProgress.current = progressOf(draftRef.current)
+    void say(f.skipNote)
   }
 
   async function uploadPhoto(file: File) {
@@ -1649,6 +1676,30 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
                   <ChatLine key={line.id} line={line} />
                 ),
               )}
+              {misses >= 2 && !ended && busy === 'idle' && (
+                <Box component="li" sx={{ ml: { xs: 0, sm: 6 } }}>
+                  <Paper
+                    variant="outlined"
+                    role="region"
+                    aria-labelledby="setup-stuck-title"
+                    data-testid="setup-stuck"
+                    sx={{ p: 3, borderRadius: `${shape.lg}px` }}
+                  >
+                    <Typography variant="bodyLarge" id="setup-stuck-title">
+                      {f.stuck}
+                    </Typography>
+                    <Button
+                      variant="contained"
+                      size="large"
+                      startIcon={<ListChecks size={18} />}
+                      onClick={() => ws.setNewShopPhase('manual')}
+                      sx={{ mt: 2, minHeight: 56 }}
+                    >
+                      {c.typeItIn}
+                    </Button>
+                  </Paper>
+                </Box>
+              )}
               {ended && (
                 <Box component="li" sx={{ ml: { xs: 0, sm: 6 } }}>
                   <Paper
@@ -1841,6 +1892,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
             onRetry={() => void retryVoice()}
             onType={typeInstead}
             onClose={dismissProblem}
+            spoken={!muted}
           />
         )}
         {error && (

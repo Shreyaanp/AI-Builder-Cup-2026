@@ -84,10 +84,13 @@ export function TodayChips({
   evening,
   disabled = false,
   onSend,
+  onMake,
 }: {
   evening: boolean
   disabled?: boolean
   onSend: (sentence: string) => void
+  /** How much to make is a list the app already has: it opens, nothing is said for the owner. */
+  onMake: () => void
 }) {
   const t = useToolCopy()
   const s = useSimpleCopy()
@@ -97,23 +100,25 @@ export function TodayChips({
   const ws = useWorkspace()
   const examples = guideExamples(t, ws.active, ws.products, locale)
   const said = (id: string) => examples.find((example) => example.id === id)?.sentence ?? ''
-  const make = { label: s.chipMake, sentence: said('forecast') }
+  const make = { label: s.chipMake, open: onMake }
   const menu = { label: s.chipMenu, sentence: said('menu') }
   // Evenings ask how the day went; the rest of the day, the menu. Close the day is the card's.
-  const chips = evening ? [{ label: tt.howToday, sentence: tt.howToday }, make] : [make, menu]
+  const chips: { label: string; sentence?: string; open?: () => void }[] = evening
+    ? [{ label: tt.howToday, sentence: tt.howToday }, make]
+    : [make, menu]
   return (
     <Box component="section" aria-label={t.guideTitle} data-testid="today-chips">
       <Stack
         direction="row"
         sx={{ columnGap: 2, rowGap: 0, flexWrap: 'wrap', alignItems: 'center' }}
       >
-        {chips.map(({ label, sentence }) => (
+        {chips.map(({ label, sentence, open }) => (
           <Chip
             key={label}
             label={label}
             variant="outlined"
-            disabled={disabled}
-            onClick={() => onSend(sentence)}
+            disabled={disabled && !open}
+            onClick={() => (open ? open() : onSend(sentence ?? ''))}
             sx={{
               height: 'auto',
               minHeight: 48,

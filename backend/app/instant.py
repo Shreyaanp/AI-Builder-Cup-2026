@@ -20,9 +20,16 @@ from .app_guide import guide_reply, where_line
 from .close_reward import close_reward, reward_text
 from .contracts import StreamEvent
 from .coordinator import MerchantContext, propose_products
+from .day_total import with_day_totals
+from .demo_coach_words import HI_PRICE_CUE, HINDI, bare, speaks_hindi
+from .demo_coach_words import PRICE_CUE as OWNER_PRICE_CUE
+from .demo_item_names import hindi_item
 from .discover import open_now
+from .money import to_minor
+from .owner_order_words import order_asked
 from .region import shop_currency, shop_zone
 from .rescue import local_now
+from .sourcing import money_text
 from .voice_tools import SCREENS, get_customer_messages, open_screen, set_open_today
 
 if TYPE_CHECKING:
@@ -30,8 +37,8 @@ if TYPE_CHECKING:
 
 Embedder = Callable[[str], list[float]]
 
-# Only plain-Latin messages take the instant path: the templates reply in English, and the
-# coach model handles every other language and script.
+# Plain-Latin messages take the whole instant path, as the templates reply in English. Hindi sold
+# outs and prices (OB-261, OB-262) are the one exception; the model handles everything else.
 LATIN = re.compile(r"^[\x00-\x7f₹$€£¥]*$")
 
 SCREEN_RULES: tuple[tuple[str, str], ...] = (
@@ -93,6 +100,23 @@ MESSAGES = re.compile(
 HOW_TODAY = re.compile(
     r"^(?:how\s+(?:did|was)\s+(?:today|my\s+day)(?:\s+go)?|how(?:'s|\s+is)\s+today\s+going"
     r"|aaj\s+(?:ka\s+din\s+)?kaisa\s+(?:raha|tha|gaya))\b",
+    re.I,
+)
+# "How much to make?" opens the make list in every script the router knows (OB-328). The owner
+# asks about now: in English a question naming an item is the coach's forecast answer, and a
+# question naming tomorrow is the coach's too, and so is the Make list's own "Ask
+# the coach" sentence. Past tense ("did I make", बनाया) is about what happened, not the list, and
+# a "don't" is never a request to open anything.
+MAKE_LIST = re.compile(
+    r"^(?!.*\b(?:tomorrow|tmrw|kal|did|made|don'?t|dont|mat|nahi|nahin)\b)"
+    r"(?!.*(?:^|\s)(?:कल|मत|नहीं)(?:\s|$)).*(?:"
+    r"\bhow\s+(?:much|many)\s+(?:(?:should|do|can|shall)\s+(?:i|we)\s+|to\s+)?"
+    r"(?:make|prep|prepare|bake|cook)(?:\s+(?:today|now))?$"
+    r"|\bkit(?:na|ne|ni)\b.*\bbana(?:na|ne|ni|u|un|oon|ye|yen)\b"
+    r"|कित(?:ना|ने|नी)\s.*(?:बना(?:ना|ने|नी|ऊँ|ऊं|उँ|उं|एँ|एं|ओ)(?:\s|$)"
+    r"|तैयार(?:ी)?\s*कर(?:ना|ने|नी|ूँ|ूं|ें)(?:\s|$))"
+    r"|(?:मांग|माँग)\s.*अनुमान"
+    r")",
     re.I,
 )
 SOLD_OUT_LIST = re.compile(r"^what(?:'s|\s+is)\s+sold\s+out\b", re.I)
@@ -272,6 +296,15 @@ SCREEN_FEATURE = {
 }
 
 
+def make_list(ctx: MerchantContext, text: str) -> InstantResult | None:
+    """The make list for "how much to make?", the same in the demo, offline and live (OB-328)."""
+    message = " ".join(text.split()).rstrip(" .!?।")
+    if not MAKE_LIST.search(message):
+        return None
+    reply = "Here is how much to make." if LATIN.match(message) else "यह रहा कितना बनाना है।"
+    return _screen(ctx, "make", reply)
+
+
 def _read_intent(ctx: MerchantContext, intent: str) -> InstantResult | None:
     fields, inventory = _shop(ctx)
     if intent == "am_i_open":
@@ -310,7 +343,8 @@ def _read_intent(ctx: MerchantContext, intent: str) -> InstantResult | None:
             else "Nothing is marked sold out right now.",
         )
     if intent == "how_today":
-        sales = ctx.store.sales_history(ctx.uid, ctx.business_id or "")
+        bid = ctx.business_id or ""
+        sales = with_day_totals(ctx.store, bid, ctx.store.sales_history(ctx.uid, bid))
         reward = close_reward(sales, local_now(fields).date(), shop_currency(fields))
         return InstantResult(intent, reward_text(reward))
     if intent.startswith("screen:"):
@@ -395,14 +429,36 @@ def _upkeep(ctx: MerchantContext, text: str) -> InstantResult | None:
     from .agent import upkeep_call
 
     call = upkeep_call(text, ctx)
-    if call is None or not call.function_call:
+    if call is None:
         return None
+    if not call.function_call:
+        # A price said in another currency: the one question, never a card.
+        return InstantResult("upkeep", call.text) if call.text else None
     items = (call.function_call.args or {})["items"]
-    if any("price" in item for item in items) and not PRICE_CUE.search(text):
+    words = bare(text)
+    if any("price" in item for item in items) and not (
+        PRICE_CUE.search(text) or OWNER_PRICE_CUE.search(words) or HI_PRICE_CUE.search(words)
+    ):
         return None
     result = propose_products(items)
     if result.get("status") != "needs_review":
         return None  # let the model repair or ask
+    if not result.get("changes"):
+        return None  # Nothing would change: "prepared: no change" helps nobody.
+    if speaks_hindi(text):
+        currency = shop_currency(ctx.store.context(ctx.uid, ctx.business_id)["business"])
+        lines = "; ".join(
+            f"{hindi_item(item['name'])} {money_text(to_minor(item['price'], currency), currency)}"
+            if "price" in item
+            else f"{hindi_item(item['name'])} "
+            + ("फिर से उपलब्ध" if item.get("available") else "आज के लिए ख़त्म")
+            for item in items
+        )
+        return InstantResult(
+            "upkeep",
+            f"मैंने यह आपके जाँचने के लिए तैयार किया है: {lines}। स्क्रीन पर पक्का करें।",
+            _proposal_events(ctx, result),
+        )
     changes = "; ".join(result["changes"]) or "no change"
     reply = f"I've prepared this for you to check: {changes}. Confirm it on screen."
     if result.get("warnings"):
@@ -437,8 +493,15 @@ async def route(
     promised = promise_words(message.rstrip(" .!।"))
     if promised:
         return _promise(ctx, promised, hindi=not LATIN.match(message))
+    made = make_list(ctx, message)
+    if made:
+        return made
     if not LATIN.match(message):
-        return None
+        from .agent import ui_language
+
+        # Devanagari is Hindi only when the app is not set to Marathi or another language.
+        hindi = HINDI.search(message) and ui_language.get().split("-")[0] in {"en", "hi"}
+        return _upkeep(ctx, message) if hindi else None
     lowered = message.casefold().rstrip(" .!")
     if CLOSED_TODAY.search(lowered) or OPEN_TODAY.search(lowered):
         result = set_open_today(open_today=bool(OPEN_TODAY.search(lowered)))
@@ -477,6 +540,8 @@ async def route(
     guide = guide_reply(message)
     if guide:
         return InstantResult("app_guide", guide)
+    if order_asked(message):
+        return None  # "Reorder milk" drafts the order: never a guess at a screen (OB-268).
     if index is not None and "?" not in message[:-1]:
         try:
             matched = await index.match(message)

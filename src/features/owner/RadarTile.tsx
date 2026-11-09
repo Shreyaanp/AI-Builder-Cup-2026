@@ -8,6 +8,7 @@ import { useLocale } from '../../state/hooks'
 import { Sheet } from '../v1/Sheet'
 import { Supporting, Tile } from '../v1/ShopTiles'
 import { useWorkspace } from '../v1/workspaceContext'
+import { sampleWord } from '../sourcing/sampleWord'
 import { fill, useOwnerCopy } from './copy'
 
 type Radar = components['schemas']['Radar']
@@ -108,7 +109,9 @@ export function RadarSheet({ open, onClose }: { open: boolean; onClose: () => vo
                     >
                       {o.label}
                     </Typography>
-                    {o.demo && <Chip size="small" label={t.demoActivity} />}
+                    {o.demo && (
+                      <Chip size="small" label={ws.demo ? t.demoActivity : sampleWord[locale]} />
+                    )}
                   </Stack>
                   <Typography variant="bodyMedium" sx={{ mt: 0.5 }}>
                     {fill(t.band, { band: o.band })} ·{' '}

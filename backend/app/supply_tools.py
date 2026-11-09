@@ -149,10 +149,10 @@ async def draft_reorder(
     """Draft a purchase order from the forecast, stock and the supplier rules: how much to
     order (covering demand until delivery plus a week, rounded to the MOQ and packs), from the
     best supplier (price tier, arrives before the shop runs out, credit left). Use it for
-    "reorder flour", "what should I order?", "plan my purchase order" or when a forecast shows
-    an item running out. item: only if the owner named one (else the item that runs out
-    first); quantity and unit only if said ("butter 2 kg"). Never for "don't order". Nothing
-    is sent: the owner approves the card.
+    "reorder flour", "what should I order?", "plan my purchase order" or a forecast run-out.
+    item: only if the owner named one (else the item that runs out first); quantity and unit
+    only if said ("butter 2 kg"). Never for "don't order". Nothing is sent: the owner approves
+    the card.
     Explain the choice in one line from reason (stock, runs_out, supplier, price tier, arrival,
     credit) and name any broken rule. If the supplier is demo, say it is a simulated supplier.
     anyway: only after the owner said yes to ordering more of something already on order in

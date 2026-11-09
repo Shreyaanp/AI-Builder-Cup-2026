@@ -80,6 +80,7 @@ export const en = {
   connectionReconnecting: 'Reconnecting…',
   voiceFailed: 'Voice connection ended. Try again or use text.',
   voiceOffline: 'Voice needs a connection. Type your message instead.',
+  voiceUnsupported: 'This browser can’t use voice. Type your message instead.',
   voiceRestarted: 'Voice reconnected. Please say that again.',
   voiceMicDenied:
     'Microphone access is blocked. Allow the microphone in browser settings and try again, or use text.',
@@ -210,6 +211,8 @@ export const en = {
   soldOutToday: 'Sold out today',
   soldOutCount: (count: number) => (count ? `${count} sold out` : 'All available'),
   soldOutHint: 'Switch off anything that has run out. Customers see it straight away.',
+  soldOutHintHidden:
+    'Switch off anything that has run out. Customers will see it once your shop is visible to them.',
   shared: 'Shared',
   notShared: 'Not shared',
   messages: 'Messages',
@@ -354,6 +357,9 @@ export const en = {
   customerPageOff: 'Turn on to get a link customers can open to see your menu, prices and hours.',
   customerPageOn: 'Customers with this link see your shop and live prices.',
   pageSwitch: 'Share customer page',
+  liveSwitch: 'Customers can see my shop',
+  liveNeedsPlace:
+    'First say where customers can find you. Your shop is visible as soon as you confirm it.',
   share: 'Share',
   copyLink: 'Copy link',
   openPage: 'Open page',

@@ -13,6 +13,8 @@ import {
   Tab,
   Tabs,
   TextField,
+  ToggleButton,
+  ToggleButtonGroup,
   Typography,
   useTheme,
 } from '@mui/material'
@@ -20,12 +22,13 @@ import { ArrowRight, CheckCircle2, Sparkles, Upload } from 'lucide-react'
 import { shape } from '../../design/theme'
 import { formatLocale } from '../../i18n/locales'
 import { useLocale } from '../../state/hooks'
-import type { Proposal } from '../v1/api'
+import { ApiError, type Proposal } from '../v1/api'
 import { SalesImportSheet } from '../v1/ImportMenu'
 import type { SalesImport } from '../v1/useImport'
 import { Sheet } from '../v1/Sheet'
 import { useWorkspace } from '../v1/workspaceContext'
 import { extraConnectCopy, useConnectCopy } from './strings'
+import { fillCopy } from './fillCopy'
 import { photoCopy } from './photoCopy'
 import { ScreenPhotoInput } from './ScreenPhotoInput'
 import { useConnectUiCopy } from './uiStrings'
@@ -38,6 +41,10 @@ import type {
 } from './types'
 
 const KNOWN_SYSTEMS = [
+  { key: 'vyapar', label: 'Vyapar' },
+  { key: 'mybillbook', label: 'myBillBook' },
+  { key: 'khatabook', label: 'Khatabook' },
+  { key: 'marg', label: 'Marg' },
   { key: 'petpooja', label: 'Petpooja' },
   { key: 'tally', label: 'Tally' },
   { key: 'zoho', label: 'Zoho' },
@@ -98,7 +105,8 @@ export function ConnectSheet({
       system.key === 'other' ? ui.otherPos : system.key === 'sap' ? ui.bigShop : system.label,
   }))
 
-  const [selectedSystem, setSelectedSystem] = useState<string>(initialSystem ?? 'Petpooja')
+  // Nothing is guessed for the owner: a restaurant's system pre-picked for a kirana read as wrong.
+  const [selectedSystem, setSelectedSystem] = useState<string>(initialSystem ?? 'Other billing app')
   const [tab, setTab] = useState<'upload' | 'paste'>('upload')
   const [pastedText, setPastedText] = useState('')
   const [uploadedFile, setUploadedFile] = useState<File | null>(null)
@@ -268,6 +276,15 @@ export function ConnectSheet({
     setEditingIndex(null)
   }
 
+  // A dated report with quantities and amounts can fill sales or the item list.
+  const mappedRoles = new Set(currentMapping?.fields.map((field) => field.target_field))
+  const fillsEither =
+    mappedRoles.has('name') &&
+    mappedRoles.has('date') &&
+    mappedRoles.has('quantity') &&
+    (mappedRoles.has('total') || mappedRoles.has('price'))
+  const fill = fillCopy[locale]
+
   function openReview(syncResult: SyncResult) {
     // Close connect sheet and open proposal review before saving
     handleClose()
@@ -315,6 +332,32 @@ export function ConnectSheet({
     } finally {
       setBusy(false)
     }
+  }
+
+  /** Why a sync failed, in words: the rows the server could not read (Ahmed, 8 Nov: "Could not
+   * complete sync" for Indian dates, and retrying could never work). */
+  function syncProblem(cause: unknown) {
+    const code = cause instanceof ApiError ? cause.code : ''
+    const found = /^INVALID_SALES_ROWS:(\d+):(.*)$/s.exec(code)
+    if (!found) return ui.syncFailed
+    let rows: { field?: string; item?: string; value?: string }[] = []
+    try {
+      rows = JSON.parse(found[2] ?? '[]') as typeof rows
+    } catch {
+      rows = []
+    }
+    const fill = (text: string, row: { item?: string; value?: string }) =>
+      text.replace('{value}', row.value ?? '').replace('{item}', row.item || '—')
+    const lines = rows.map((row) =>
+      row.field === 'date'
+        ? fill(ui.badDate, row)
+        : row.field === 'item'
+          ? ui.badItem
+          : row.field === 'quantity'
+            ? fill(ui.badQuantity, row)
+            : fill(ui.badTotal, row),
+    )
+    return [ui.badRows.replace('{count}', found[1] ?? ''), ...lines.map((l) => `• ${l}`)].join('\n')
   }
 
   async function handleConfirmAndSync() {
@@ -379,8 +422,8 @@ export function ConnectSheet({
       }
 
       openReview(syncResult)
-    } catch {
-      setError(ui.syncFailed)
+    } catch (cause) {
+      setError(syncProblem(cause))
     } finally {
       setBusy(false)
     }
@@ -429,7 +472,10 @@ export function ConnectSheet({
           </Typography>
 
           {error && (
-            <Alert severity="error" sx={{ mb: 3 }}>
+            <Alert
+              severity="error"
+              sx={{ mb: 3, whiteSpace: 'pre-line', overflowWrap: 'anywhere' }}
+            >
               {error}
             </Alert>
           )}
@@ -686,6 +732,31 @@ export function ConnectSheet({
                   )}
                 </>
               )}
+              {fillsEither && (
+                <Box data-testid="connect-fills">
+                  <Typography id="connect-fills-title" variant="titleSmall" sx={{ mb: 1 }}>
+                    {fill.question}
+                  </Typography>
+                  <ToggleButtonGroup
+                    exclusive
+                    fullWidth
+                    aria-labelledby="connect-fills-title"
+                    value={currentMapping.kind}
+                    onChange={(_, kind: 'sales' | 'menu' | null) => {
+                      if (kind) setCurrentMapping({ ...currentMapping, kind })
+                    }}
+                    sx={{ '& .MuiToggleButton-root': { minHeight: 48, color: roles.onSurface } }}
+                  >
+                    <ToggleButton value="sales">{fill.sales}</ToggleButton>
+                    <ToggleButton value="menu">{fill.items}</ToggleButton>
+                  </ToggleButtonGroup>
+                  {currentMapping.kind === 'menu' && (
+                    <Typography variant="bodySmall" color="text.secondary" sx={{ mt: 1 }}>
+                      {fill.itemsHint}
+                    </Typography>
+                  )}
+                </Box>
+              )}
               <Box>
                 <Typography variant="titleMedium">{t.mappingTitle}</Typography>
                 <Typography variant="bodySmall" color="text.secondary" sx={{ mb: 2 }}>
@@ -841,7 +912,7 @@ export function ConnectSheet({
               )}
 
               {/* Diff Summary */}
-              {analysis?.diff && (
+              {analysis?.diff && currentMapping.kind === analysis.mapping.kind && (
                 <Box>
                   <Typography variant="titleSmall" sx={{ mb: 1 }}>
                     {t.diffTitle}

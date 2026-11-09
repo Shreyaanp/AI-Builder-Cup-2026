@@ -84,12 +84,13 @@ function GrowTiles() {
   // numbers open ("plan tomorrow").
   const [radarOpen, setRadarOpen] = useState(() => wantsOpen('radar'))
   const [make, setMake] = useState<'list' | 'numbers' | null>(() =>
-    wantsOpen('plan') ? 'numbers' : null,
+    wantsOpen('plan') ? 'numbers' : wantsOpen('make') ? 'list' : null,
   )
   const [sales, setSales] = useState(false)
   useEffect(() => {
     clearOpen('radar')
     clearOpen('plan')
+    clearOpen('make')
   }, [])
   const shop = ws.active
   if (!shop) return null

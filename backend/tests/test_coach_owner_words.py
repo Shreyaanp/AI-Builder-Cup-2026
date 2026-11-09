@@ -424,8 +424,13 @@ def test_OB_262_live_instant_path_keeps_two_changes_together(shop):  # noqa: N80
     [event] = both.events
     changed = {p["name"]: (p["price"], p["available"]) for p in event.data["snapshot"]["products"]}
     assert changed["Masala chai"][0] == 1800 and changed["Samosa"][1] is False
-    # "Chai" is not an item here: never a card that silently drops the price; the model reads it.
-    assert run("Chai is 20 rupees now, samosa sold out", shop) is None
+    # "Chai" is this shop's one chai: both changes on one card, never one that drops the price.
+    # (Two chais are for the model to ask: test_coach_intent_table.py, OB-262.)
+    tour = run("Chai is 20 rupees now, samosa sold out", shop)
+    assert tour and tour.intent == "upkeep"
+    [event] = tour.events
+    changed = {p["name"]: (p["price"], p["available"]) for p in event.data["snapshot"]["products"]}
+    assert changed == {"Masala chai": (2000, True), "Samosa": (2000, False)}
     # Running low is not sold out.
     assert run("samosa khatam ho rahi hai", shop) is None
     # An item that is not on the menu: the model reads it, so no card drops it.
