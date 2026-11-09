@@ -63,15 +63,23 @@ function morning() {
   return today.getTime() <= Date.now() ? today : new Date(today.getTime() - 24 * 3600_000)
 }
 
-async function openDemo(page: Page, visitor: string) {
+async function openDemo(page: Page, visitor: string, lang: Lang = 'en') {
   await page.setViewportSize({ width: 390, height: 844 })
   await page.clock.setFixedTime(morning())
   await localOnly(page, visitor)
+  // The app's language: the coach replies in it (owner rule, 9 Nov), and Hindi screens show the
+  // Hindi phrases.
+  if (lang === 'hi')
+    await page.addInitScript(() =>
+      localStorage.setItem('niva.starter.preferences', JSON.stringify({ language: 'hi' })),
+    )
   await page.goto('/demo')
-  await expect(page.getByText('Demo shop · sample data', { exact: true })).toBeVisible({
-    timeout: 60_000,
-  })
-  await page.getByRole('dialog').getByRole('button', { name: 'Skip', exact: true }).click()
+  const banner = lang === 'hi' ? 'डेमो दुकान · नमूना डेटा' : 'Demo shop · sample data'
+  await expect(page.getByText(banner, { exact: true })).toBeVisible({ timeout: 60_000 })
+  await page
+    .getByRole('dialog')
+    .getByRole('button', { name: lang === 'hi' ? 'छोड़ें' : 'Skip', exact: true })
+    .click()
 }
 
 async function tab(page: Page, name: string) {
@@ -123,7 +131,7 @@ async function firstView(page: Page, target: Locator) {
 
 async function closeAll(page: Page) {
   await page.keyboard.press('Escape')
-  const back = page.getByRole('button', { name: 'Back', exact: true })
+  const back = page.getByRole('button', { name: /^(?:Back|वापस)$/ })
   if (await back.isVisible()) await back.click()
   await expect(page.getByRole('dialog')).toHaveCount(0)
 }
@@ -189,10 +197,11 @@ test('Coach: Today is the top of Coach, one tap away', async ({ page }, info) =>
 /** Sends `text`, waits for the chat item after its echo that contains `expected` (by default
  * the echo itself) and returns that item's text. The log keeps only the latest items, so two
  * phrases with the same path are told apart by the echo, not by counting matches. */
-async function ask(page: Page, text: string, expected = '') {
+async function ask(page: Page, text: string, expected = '', lang: Lang = 'en') {
   await tab(page, 'Coach')
-  await page.getByRole('textbox', { name: 'Message', exact: true }).fill(text)
-  await page.getByRole('button', { name: 'Send', exact: true }).click()
+  const [box, send] = lang === 'hi' ? ['संदेश', 'भेजें'] : ['Message', 'Send']
+  await page.getByRole('textbox', { name: box, exact: true }).fill(text)
+  await page.getByRole('button', { name: send, exact: true }).click()
   // A review sheet opened by the reply hides the chat from the accessibility tree, not the page.
   const items = page.locator('[role="log"] li')
   let found = ''
@@ -228,41 +237,48 @@ async function backToEnglish(page: Page) {
   })
 }
 
+/** The language a phrase's reply comes back in: the app's, except "Reply in Hindi", which
+ * switches the app to Hindi first and confirms in it. */
+const replyLang = (feature: Feature, lang: Lang): Lang =>
+  feature.id === 'reply_language' ? 'hi' : lang
+
 // The demo allows 30 coach messages per visitor in ten minutes; each tab's phrases go in groups
-// of 14 features (English and Hindi, at most 28 messages, plus 2 to switch back to English after
-// "Reply in Hindi"), one visitor per group. Shop has more
-// than 14 since the stamp card moved there (simplify batch 3).
+// of 14 features, one language per visitor (the app's language: an English app sends the English
+// phrases, a Hindi app the Hindi ones), plus 2 to switch back to English after "Reply in Hindi".
+// Shop has more than 14 since the stamp card moved there (simplify batch 3).
 const PER_VISITOR = 14
 for (const name of ['Coach', 'Shop', 'Grow', 'You']) {
   const rows = features.filter((f) => f.path[0] === name)
-  for (let start = 0; start < rows.length; start += PER_VISITOR) {
-    const part = start ? ` (part ${start / PER_VISITOR + 1})` : ''
-    test(`${name}${part}: each chat phrase answers on topic with its screen path, and that path exists`, async ({
-      page,
-    }, info) => {
-      test.skip(info.project.name !== 'phone', 'Phone (390) layout')
-      test.setTimeout(360_000)
-      await openDemo(page, `chat-${name}-${start}-${info.testId}`)
-      for (const feature of rows.slice(start, start + PER_VISITOR)) {
-        for (const lang of LANGS) {
-          const reply = await ask(page, phrase(feature, lang), pathLine(feature, lang))
+  for (let start = 0; start < rows.length; start += PER_VISITOR)
+    for (const lang of LANGS) {
+      const part = start ? ` (part ${start / PER_VISITOR + 1})` : ''
+      test(`${name}${part} ${lang}: each chat phrase answers on topic with its screen path, and that path exists`, async ({
+        page,
+      }, info) => {
+        test.skip(info.project.name !== 'phone', 'Phone (390) layout')
+        test.setTimeout(360_000)
+        await openDemo(page, `chat-${name}-${start}-${lang}-${info.testId}`, lang)
+        for (const feature of rows.slice(start, start + PER_VISITOR)) {
+          const said = replyLang(feature, lang)
+          const reply = await ask(page, phrase(feature, lang), pathLine(feature, said), lang)
           expect(reply, `${phrase(feature, lang)}: about ${feature.id}`).toMatch(
-            new RegExp(TOPICS[feature.id]![lang], 'i'),
+            new RegExp(TOPICS[feature.id]![said], 'i'),
           )
           if (await page.getByRole('dialog').count()) await closeAll(page)
           // "Reply in Hindi" really switches the app now (S2-9): back to English for the rest.
-          if (feature.id === 'reply_language') await backToEnglish(page)
+          if (feature.id === 'reply_language' && lang === 'en') await backToEnglish(page)
+          // Screens the coach opens itself are checked below; close them to follow the path.
+          if (await page.getByRole('dialog').count()) await closeAll(page)
+          // The path is followed by its English labels, once, in the English app.
+          if (lang === 'hi' || feature.path.length === 1 || NOT_IN_DEMO.has(feature.path[1]))
+            continue
+          await tab(page, feature.path[0])
+          const target = entry(page, feature.path[1])
+          await target.scrollIntoViewIfNeeded()
+          await expect(target, `${feature.ask} → ${where(feature)}`).toBeVisible()
         }
-        // Screens the coach opens itself are checked below; close them to follow the path by hand.
-        if (await page.getByRole('dialog').count()) await closeAll(page)
-        if (feature.path.length === 1 || NOT_IN_DEMO.has(feature.path[1])) continue
-        await tab(page, feature.path[0])
-        const target = entry(page, feature.path[1])
-        await target.scrollIntoViewIfNeeded()
-        await expect(target, `${feature.ask} → ${where(feature)}`).toBeVisible()
-      }
-    })
-  }
+      })
+    }
 }
 
 // Each phrase on its own, in a fresh demo session (a new visitor each), so no earlier answer or
@@ -285,7 +301,8 @@ test('every chat phrase, in a fresh demo session, answers on topic with its path
       const { session_id } = (await opened.json()) as { session_id: string }
       const sent = await page.request.post(`/api/v1/demo/sessions/${session_id}/coach`, {
         headers,
-        data: { message: phrase(feature, lang) },
+        // Sent from an app in the phrase's language: the reply is in the app's language.
+        data: { message: phrase(feature, lang), language: lang },
       })
       expect(sent.ok(), phrase(feature, lang)).toBe(true)
       const text = await sent.text()
@@ -298,9 +315,10 @@ test('every chat phrase, in a fresh demo session, answers on topic with its path
         .filter((event) => event.kind === 'reply')
         .map((event) => event.text ?? '')
         .join(' ')
-      expect(reply, phrase(feature, lang)).toContain(pathLine(feature, lang))
+      const said = replyLang(feature, lang)
+      expect(reply, phrase(feature, lang)).toContain(pathLine(feature, said))
       expect(reply, `${phrase(feature, lang)}: about ${feature.id}`).toMatch(
-        new RegExp(TOPICS[feature.id]![lang], 'i'),
+        new RegExp(TOPICS[feature.id]![said], 'i'),
       )
     }
   }
