@@ -1,8 +1,5 @@
-import type { FirebaseOptions } from 'firebase/app'
-import type { Auth } from 'firebase/auth'
-
-type AppSdk = typeof import('firebase/app')
-type AuthSdk = typeof import('firebase/auth')
+import type * as AppSdk from 'firebase/app'
+import type * as AuthSdk from 'firebase/auth'
 
 /** The name every customer's session was saved under before separate sign-in (#335). */
 export function legacyAppName(project: string | undefined) {
@@ -10,10 +7,10 @@ export function legacyAppName(project: string | undefined) {
 }
 
 interface Restore {
-  appSdk: AppSdk
-  authSdk: AuthSdk
-  auth: Auth
-  config: FirebaseOptions
+  appSdk: typeof AppSdk
+  authSdk: typeof AuthSdk
+  auth: AuthSdk.Auth
+  config: AppSdk.FirebaseOptions
   /** Joins the old guest into a newer guest on the server; absent while that move is off. */
   merge?: (oldGuestToken: string) => Promise<unknown>
 }
