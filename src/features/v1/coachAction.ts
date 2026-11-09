@@ -8,6 +8,7 @@ export type CoachAction = {
     | 'details'
     | 'stamps'
     | 'plan'
+    | 'make'
     | 'close_day'
     | 'google'
     | 'privacy'
@@ -48,6 +49,7 @@ const TARGETS = new Set<CoachAction['target']>([
   'details',
   'stamps',
   'plan',
+  'make',
   'close_day',
   'google',
   'privacy',

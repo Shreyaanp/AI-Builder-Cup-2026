@@ -46,6 +46,8 @@ import { comparisonKind } from './compare'
 import { AskHint } from '../v1/AskHint'
 import { TomorrowPromise } from './TomorrowPromise'
 import { countClosed } from '../v1/today/habitCount'
+import { bestByMoney, soldParts } from './summary'
+import { useOrderUnit } from '../supply/supplyData'
 import { readNumber } from '../v1/readNumber'
 import type { NumberKind, NumberReading } from '../v1/readNumber'
 import type { components } from '../../api/generated'
@@ -149,6 +151,7 @@ export function CloseDay({
   const ws = useWorkspace()
   const { scope } = useIdentity()
   const roles = useTheme().material
+  const orderUnit = useOrderUnit()
   const phone = useMediaQuery('(max-width:599px)')
   const shop = ws.active
   const currency = shopCurrency(shop)
@@ -382,22 +385,36 @@ export function CloseDay({
 
   // What went well leads: the units sold, named when it was one item, and the best seller.
   const soldCount = reward?.items ?? saved.items
-  const byItem = new Map<string, number>()
-  for (const { line } of sales)
-    byItem.set(line.item, (byItem.get(line.item) ?? 0) + (line.quantity ?? 0))
-  const ranked = [...byItem].sort((x, y) => y[1] - x[1])
-  const number = new Intl.NumberFormat(locale)
-  const soldLine =
-    ranked.length === 1 && t.soldOf
+  const soldLines = sales.map(({ line }) => ({
+    item: line.item,
+    quantity: line.quantity ?? 0,
+    amount: line.amount ?? 0,
+  }))
+  const names = new Set(soldLines.map((line) => line.item))
+  const number = new Intl.NumberFormat(locale, { maximumFractionDigits: 2 })
+  // Kilos and pieces never add up: "3.5 kg cake + 12 brownies", not "15.5 items" (OB-330).
+  const parts = soldParts(soldLines, {
+    locale,
+    unitOf: (item) =>
+      ws.products.find((product) => product.name.toLowerCase() === item.toLowerCase())?.unit ?? '',
+    unitLabel: orderUnit,
+    name: (item) => productName(item, locale),
+    number: (n) => number.format(n),
+    items: (n) => closeDayCount(locale, 'countItems', n),
+  })
+  const soldLine = parts
+    ? t.soldWhat.replace('{what}', parts.join(' + '))
+    : names.size === 1 && t.soldOf
       ? t.soldOf
           .replace('{n}', number.format(soldCount))
-          .replace('{item}', productName(ranked[0]![0], locale))
+          .replace('{item}', productName([...names][0]!, locale))
       : closeDayCount(locale, 'soldItems', soldCount)
+  const best = names.size > 1 ? bestByMoney(soldLines) : null
   const bestLine =
-    ranked.length > 1 && t.bestSeller
+    best && t.bestSeller
       ? t.bestSeller
-          .replace('{item}', productName(ranked[0]![0], locale))
-          .replace('{n}', number.format(ranked[0]![1]))
+          .replace('{item}', productName(best.item, locale))
+          .replace('{n}', formatShopPrice(toMinor(best.amount, currency), currency, locale))
       : ''
 
   const kinds: { kind: Kind; icon: ReactNode; title: string; hint: string }[] = [

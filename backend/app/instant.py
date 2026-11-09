@@ -10,18 +10,19 @@ navigation intents, never to a write. Anything unsure returns None and the coach
 import math
 import re
 from collections import OrderedDict
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Literal
 
 import anyio
+from google.adk.events import Event
 
 from .app_guide import guide_reply, where_line
 from .close_reward import close_reward, reward_text
 from .contracts import StreamEvent
-from .coordinator import MerchantContext, find_suppliers, propose_products
+from .coordinator import MerchantContext, propose_products
 from .discover import open_now
-from .numbers import read_number
+from .instant_supply import order_from_list, supplier_search
 from .region import shop_currency, shop_zone
 from .rescue import local_now
 from .voice_tools import SCREENS, get_customer_messages, open_screen, set_open_today
@@ -96,6 +97,23 @@ HOW_TODAY = re.compile(
     r"|aaj\s+(?:ka\s+din\s+)?kaisa\s+(?:raha|tha|gaya))\b",
     re.I,
 )
+# "How much to make?" opens the make list in every script the router knows (OB-328). The owner
+# asks about now: in English a question naming an item is the coach's forecast answer, and a
+# question naming tomorrow is the coach's too, and so is the Make list's own "Ask
+# the coach" sentence. Past tense ("did I make", बनाया) is about what happened, not the list, and
+# a "don't" is never a request to open anything.
+MAKE_LIST = re.compile(
+    r"^(?!.*\b(?:tomorrow|tmrw|kal|did|made|don'?t|dont|mat|nahi|nahin)\b)"
+    r"(?!.*(?:^|\s)(?:कल|मत|नहीं)(?:\s|$)).*(?:"
+    r"\bhow\s+(?:much|many)\s+(?:(?:should|do|can|shall)\s+(?:i|we)\s+|to\s+)?"
+    r"(?:make|prep|prepare|bake|cook)(?:\s+(?:today|now))?$"
+    r"|\bkit(?:na|ne|ni)\b.*\bbana(?:na|ne|ni|u|un|oon|ye|yen)\b"
+    r"|कित(?:ना|ने|नी)\s.*(?:बना(?:ना|ने|नी|ऊँ|ऊं|उँ|उं|एँ|एं|ओ)(?:\s|$)"
+    r"|तैयार(?:ी)?\s*कर(?:ना|ने|नी|ूँ|ूं|ें)(?:\s|$))"
+    r"|(?:मांग|माँग)\s.*अनुमान"
+    r")",
+    re.I,
+)
 SOLD_OUT_LIST = re.compile(
     r"^(?:what(?:'s|\s+is)|which\s+(?:items?|things)\s+(?:are|is))\s+sold\s+out\b", re.I
 )
@@ -156,10 +174,20 @@ PRICE_CUE = re.compile(
 
 
 @dataclass
+class SavedTool:
+    """A tool the instant path ran, kept in the conversation like one the model called."""
+
+    name: str
+    args: dict[str, Any]
+    response: dict[str, Any]
+
+
+@dataclass
 class InstantResult:
     intent: str
     reply: str
     events: list[StreamEvent] = field(default_factory=list)
+    tool: SavedTool | None = None
 
 
 def _cosine(a: list[float], b: list[float]) -> float:
@@ -273,6 +301,15 @@ SCREEN_FEATURE = {
     "rider": "rider",
     "reminders": "reminders",
 }
+
+
+def make_list(ctx: MerchantContext, text: str) -> InstantResult | None:
+    """The make list for "how much to make?", the same in the demo, offline and live (OB-328)."""
+    message = " ".join(text.split()).rstrip(" .!?।")
+    if not MAKE_LIST.search(message):
+        return None
+    reply = "Here is how much to make." if LATIN.match(message) else "यह रहा कितना बनाना है।"
+    return _screen(ctx, "make", reply)
 
 
 def _read_intent(ctx: MerchantContext, intent: str) -> InstantResult | None:
@@ -428,66 +465,11 @@ def _hours_reply(fields: dict[str, Any]) -> str | None:
     return None
 
 
-# The sentence the Buy stock screen's "Find a supplier" sends (sourcing/copy.ts lowMessage,
-# growCopy.ts needMessage), English and Hindi: the search runs at once, with no model call, so
-# the screen still finds suppliers when the coach model is down.
-SUPPLIER_ASK = (
-    (re.compile(r"^My (?P<what>.{1,80}) is running low\. Find suppliers\.$", re.I), "en"),
-    (re.compile(r"^I need (?P<what>.{1,100})\. Find suppliers\.$", re.I), "en"),
-    (re.compile(r"^मेरा (?P<what>.{1,80}) कम हो रहा है। सप्लायर खोजें।$"), "hi"),
-    (re.compile(r"^मुझे (?P<what>.{1,100}) चाहिए। सप्लायर खोजें।$"), "hi"),
-)
-# "20 kg flour" from the screen's amount box: the amount and unit, then the item.
-AMOUNT = re.compile(
-    r"^(?P<qty>\d[\d.,]*)\s*(?P<unit>kg|g|l|litre|liter|litres|liters|ml|pack|packs"
-    r"|dozen|piece|pieces|crate|crates)\s+(?P<item>[^\s(].*)$",
-    re.I,
-)
-SUPPLIER_REPLY = {
-    "en": (
-        "Here are suppliers near you for {item}. Pick one to prepare an order.",
-        "I found no supplier near you for {item}. Try another name for it.",
-    ),
-    "hi": (
-        "{item} के लिए आपके पास के सप्लायर। ऑर्डर बनाने के लिए एक चुनें।",
-        "{item} के लिए पास में कोई सप्लायर नहीं मिला। कोई दूसरा नाम आज़माएँ।",
-    ),
-}
-
-
-async def _supplier_search(ctx: MerchantContext, message: str) -> InstantResult | None:
-    for pattern, language in SUPPLIER_ASK:
-        found = pattern.match(message)
-        if not found:
-            continue
-        what = found["what"].strip()
-        amount = AMOUNT.match(what)
-        # The app's one number reader: "1,000 kg" is a thousand, as on every screen (#701). An
-        # amount it cannot read for sure stays in the words, never guessed.
-        fields, _ = _shop(ctx)
-        qty = read_number(amount["qty"], shop_currency(fields), "quantity") if amount else None
-        item = (amount["item"] if amount and qty else what).strip()
-        if not item:
-            return None
-        result = await find_suppliers(item, qty, amount["unit"].lower() if amount and qty else "")
-        events = [StreamEvent(kind="sourcing", data={"stage": "searching", "item": item[:80]})]
-        status = result.get("status")
-        if status == "found":
-            card = ctx.cards.get(str(result.get("card_id")))
-            if not card:
-                return None
-            events.append(StreamEvent(kind="suppliers", data=card[1]))
-            reply = SUPPLIER_REPLY[language][0]
-        elif status == "none_found":
-            reply = SUPPLIER_REPLY[language][1]
-        else:
-            return None
-        return InstantResult("find_suppliers", reply.format(item=item), events)
-    return None
-
-
 async def route(
-    text: str, ctx: MerchantContext | None, index: IntentIndex | None = None
+    text: str,
+    ctx: MerchantContext | None,
+    index: IntentIndex | None = None,
+    history: Sequence[Event] = (),
 ) -> InstantResult | None:
     """The instant answer for this owner message, or None to use the coach model."""
     message = " ".join(text.split())
@@ -498,9 +480,12 @@ async def route(
     promised = promise_words(message.rstrip(" .!।"))
     if promised:
         return _promise(ctx, promised, hindi=not LATIN.match(message))
-    supplied = await _supplier_search(ctx, message)
+    supplied = await supplier_search(ctx, message) or order_from_list(ctx, message, history)
     if supplied:
         return supplied
+    made = make_list(ctx, message)
+    if made:
+        return made
     if not LATIN.match(message):
         return None
     lowered = message.casefold().rstrip(" .!")

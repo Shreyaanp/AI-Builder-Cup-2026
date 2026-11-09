@@ -3,7 +3,9 @@ sync"). Sold out, back in stock, a count and a note do the same thing whether th
 screen or the coach's card saves it: the same rules, the same records, the same list."""
 
 import asyncio
+import re
 from collections.abc import Iterator
+from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
@@ -216,6 +218,7 @@ def test_screen_supplier_search_needs_no_model(
     quantity: Any,
 ) -> None:
     import app.instant as instant
+    import app.instant_supply as supply
 
     asked: list[tuple[str, Any, str]] = []
 
@@ -225,7 +228,7 @@ def test_screen_supplier_search_needs_no_model(
         owner_shop.cards[card] = ("suppliers", {"item": what, "suppliers": [{"id": "s1"}]})
         return {"status": "found", "card_id": card, "suppliers": [{"id": "s1"}]}
 
-    monkeypatch.setattr(instant, "find_suppliers", search)
+    monkeypatch.setattr(supply, "find_suppliers", search)
     result = asyncio.run(instant.route(said, owner_shop))
     assert result is not None and result.intent == "find_suppliers"
     assert asked == [(item, quantity, "kg" if quantity else "")]
@@ -237,11 +240,12 @@ def test_screen_supplier_search_says_when_none_found(
     owner_shop: MerchantContext, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     import app.instant as instant
+    import app.instant_supply as supply
 
     async def none(what: str, qty: Any = None, unit: str = "") -> dict[str, Any]:
         return {"status": "none_found"}
 
-    monkeypatch.setattr(instant, "find_suppliers", none)
+    monkeypatch.setattr(supply, "find_suppliers", none)
     result = asyncio.run(instant.route("My saffron is running low. Find suppliers.", owner_shop))
     assert result is not None and result.events[0].kind == "sourcing"
     assert result.reply == "I found no supplier near you for saffron. Try another name for it."
@@ -287,3 +291,246 @@ def test_which_items_are_sold_out_reads_the_switch(owner_shop: MerchantContext) 
     repo.set_availability("owner", bid, pid, True)
     result = asyncio.run(route("Which items are sold out?", owner_shop))
     assert result is not None and result.reply == "Nothing is marked sold out right now."
+
+
+# --- Find a supplier → Order → Send on a saved shop, with the coach model down ----------------
+
+
+def supplier_tool_turn(found: dict[str, Any]) -> list[Any]:
+    """The conversation after a supplier search, as the instant path or the model saves it."""
+    from google.adk.events import Event
+    from google.genai import types
+
+    from app.instant import InstantResult, SavedTool
+    from app.streaming import instant_turn
+
+    tool = SavedTool("find_suppliers", {"item": found["item"]}, found)
+    turn = instant_turn("find", InstantResult("find_suppliers", "ok", [], tool))
+    return [
+        Event(invocation_id="e", author=author, content=types.Content(role=role, parts=[part]))
+        for author, role, part in turn
+    ]
+
+
+def milk_list(ctx: MerchantContext) -> dict[str, Any]:
+    from app.coordinator import find_suppliers
+
+    found = asyncio.run(find_suppliers("milk", 20, "litre"))
+    assert found["status"] == "found" and found["suppliers"]
+    return found
+
+
+def test_a_saved_search_is_a_paired_tool_call_and_result(owner_shop: MerchantContext) -> None:
+    from app.sourcing_offline import last_response
+
+    found = milk_list(owner_shop)
+    events = supplier_tool_turn(found)
+    call, answer = events[1].content.parts[0], events[2].content.parts[0]
+    assert call.function_call.name == answer.function_response.name == "find_suppliers"
+    assert call.function_call.id == answer.function_response.id
+    assert events[1].content.role == "model" and events[2].content.role == "user"
+    assert last_response([event.content for event in events], "find_suppliers") == found
+
+
+def test_order_tap_needs_no_model_and_uses_the_tapped_supplier(
+    owner_shop: MerchantContext,
+) -> None:
+    from app.instant import route
+
+    found = milk_list(owner_shop)
+    history = supplier_tool_turn(found)
+    for rank, row in enumerate(found["suppliers"], 1):
+        said = f"Order from number {rank}: 20 litre milk"
+        result = asyncio.run(route(said, owner_shop, None, history))
+        assert result is not None and result.intent == "prepare_order"
+        [order] = [event.data for event in result.events if event.kind == "order"]
+        assert order["status"] == "draft" and order["supplier"]["id"] == row["id"]
+        assert order["lines"][0]["name"] == row["item"]["name"]
+        assert "Nothing goes until you tap Send" in result.reply
+        assert result.tool is not None and result.tool.name == "prepare_order"
+
+
+def test_order_tap_reads_the_list_it_came_from(owner_shop: MerchantContext) -> None:
+    """Two lists in one chat: Order on the older one is not the newest list's number 1."""
+    from app.coordinator import find_suppliers
+    from app.instant import route
+
+    milk = milk_list(owner_shop)
+    flour = asyncio.run(find_suppliers("flour"))
+    history = [*supplier_tool_turn(milk), *supplier_tool_turn(flour)]
+    result = asyncio.run(route("Order from number 1: 20 litre milk", owner_shop, None, history))
+    assert result is not None
+    [order] = [event.data for event in result.events if event.kind == "order"]
+    assert order["supplier"]["id"] == milk["suppliers"][0]["id"]
+
+
+@pytest.mark.parametrize(
+    ("said", "quantity", "kept_note"),
+    [
+        ("Order from number 1: milk", 1.0, False),  # no amount asked: the card shows 1
+        ("Order from number 1: 20 litre milk", 20.0, False),
+        ("Order from number 1: 500 ml milk", 0.5, False),
+        ("Order from number 1: 1,000 litre milk", 1000.0, False),
+        ("Order from number 1: 3 crates milk", 1.0, True),  # never guessed: told to the supplier
+    ],
+)
+def test_order_tap_amounts(
+    owner_shop: MerchantContext,
+    monkeypatch: pytest.MonkeyPatch,
+    said: str,
+    quantity: float,
+    kept_note: bool,
+) -> None:
+    import app.instant_supply as supply
+    from app.instant import route
+
+    found = {
+        "status": "found",
+        "item": "milk",
+        "suppliers": [{"id": "s1", "name": "Dairy", "item": {"name": "Milk", "unit": "litre"}}],
+    }
+    drafted: list[tuple[str, list[Any], str]] = []
+
+    def prepare(supplier: str, items: list[Any], note: str = "") -> dict[str, Any]:
+        drafted.append((supplier, items, note))
+        owner_shop.cards["o1"] = ("order", {"id": "o"})
+        return {"status": "needs_owner_tap", "card_id": "o1"}
+
+    monkeypatch.setattr(supply, "prepare_order", prepare)
+    result = asyncio.run(route(said, owner_shop, None, supplier_tool_turn(found)))
+    assert result is not None
+    [(supplier, [line], note)] = drafted
+    assert (supplier, line.name, line.quantity, line.unit) == ("s1", "Milk", quantity, "litre")
+    assert (note == said.split(": ", 1)[1]) is kept_note
+
+
+@pytest.mark.parametrize(
+    "said",
+    [
+        "Order from number 9: 20 litre milk",  # no such row
+        "Order from number 1: 20 litre sugar",  # no list for it
+    ],
+)
+def test_order_tap_without_its_list_goes_to_the_model(
+    owner_shop: MerchantContext, said: str
+) -> None:
+    from app.instant import route
+
+    history = supplier_tool_turn(milk_list(owner_shop))
+    assert asyncio.run(route(said, owner_shop, None, history)) is None
+
+
+def test_a_hindi_order_tap_answers_in_hindi(owner_shop: MerchantContext) -> None:
+    from app.instant import route
+
+    history = supplier_tool_turn(milk_list(owner_shop))
+    result = asyncio.run(route("नंबर 1 से ऑर्डर: 20 litre milk", owner_shop, None, history))
+    assert result is not None and "भेजें दबाने तक" in result.reply
+
+
+def template_sentences(path: str, key: str) -> list[str]:
+    source = (Path(__file__).parents[2] / path).read_text(encoding="utf-8")
+    found = re.findall(rf"{key}: \([^)]*\)(?:: string)? =>\s*`([^`]+)`", source)
+    return [re.sub(r"\$\{[^}]+\}", "FILLED", sentence) for sentence in found]
+
+
+def test_every_language_of_the_screen_is_answered_without_the_model() -> None:
+    """Pins instant_supply.py to the app's own copy: a reworded sentence fails here, not live."""
+    from app.instant_supply import ORDERS, REPLIES, SEARCH_SENTENCES, SEARCHES
+
+    low = template_sentences("src/features/sourcing/copy.ts", "lowMessage")
+    need = template_sentences("src/features/v1/growCopy.ts", "needMessage")
+    assert len(low) == len(need) == len(SEARCH_SENTENCES) == 15
+    for sentence in [*low, *need]:
+        matched = [p.match(sentence) for p, _ in SEARCHES if p.match(sentence)]
+        assert matched and matched[0]["what"] == "FILLED", sentence
+    orders = template_sentences("src/features/sourcing/copy.ts", "chooseDraft")
+    assert len(orders) == len(ORDERS)
+    for sentence in orders:
+        filled = sentence.replace("FILLED", "2", 1)
+        assert any(p.match(filled) for p, _ in ORDERS), sentence
+    assert set(REPLIES) == set(SEARCH_SENTENCES)
+
+
+def test_saved_shop_find_order_send_with_the_model_down(
+    app: Any,  # noqa: F811
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Buy stock → Find a supplier → Order → Send on a saved shop: no model call at any step."""
+    from tests.test_merchant_routes import stream_events
+
+    def model_down(*_args: Any, **_kwargs: Any) -> Any:
+        raise AssertionError("the coach model was called")
+
+    with TestClient(app) as client:
+        monkeypatch.setattr(app.state.services.runtime.text_runner, "run_async", model_down)
+        join(client)
+        bid = make_shop(client)
+        turn = stream_events(
+            client, {"message": "I need 20 litre milk. Find suppliers.", "business_id": bid}
+        )
+        [result] = [e["data"] for e in turn if e["kind"] == "suppliers"]
+        session = next(e["session_id"] for e in turn if e.get("session_id"))
+        said = f"Order from number 1: {result['quantity']:g} {result['unit']} {result['item']}"
+        turn = stream_events(client, {"message": said, "business_id": bid, "session_id": session})
+        [order] = [e["data"] for e in turn if e["kind"] == "order"]
+        assert order["status"] == "draft"
+        assert order["supplier"]["id"] == result["suppliers"][0]["id"]
+        sent = client.post(
+            f"/api/v1/businesses/{bid}/orders/{order['id']}/send",
+            json={"version": order["version"]},
+        )
+        assert sent.status_code == 200, sent.text
+        assert sent.json()["status"] != "draft"
+
+
+def test_the_next_turn_sees_the_saved_search(app: Any) -> None:  # noqa: F811
+    """Words the instant path doesn't take still reach the list: the offline coach reads the
+    saved tool result, as the live model does from its history."""
+    from tests.test_merchant_routes import stream_events
+
+    with TestClient(app) as client:
+        join(client)
+        bid = make_shop(client)
+        turn = stream_events(
+            client, {"message": "My milk is running low. Find suppliers.", "business_id": bid}
+        )
+        session = next(e["session_id"] for e in turn if e.get("session_id"))
+        turn = stream_events(
+            client,
+            {
+                "message": "Order 20 litre milk from the second one",
+                "business_id": bid,
+                "session_id": session,
+            },
+        )
+        assert [e["data"] for e in turn if e["kind"] == "order"]
+
+
+# --- A count said in chat is a count, never a price (OB-344) -----------------------------------
+
+
+@pytest.mark.parametrize(
+    ("said", "shown"),
+    [
+        ("Kaya toast is 5 left", "5"),
+        ("Kaya toast is 0 left", "sold out"),
+        ("Kaya toast now 20 left", "20"),
+    ],
+)
+def test_a_count_in_chat_is_never_a_price(
+    owner_shop: MerchantContext, said: str, shown: str
+) -> None:
+    from app.instant import route
+
+    result = asyncio.run(route(said, owner_shop))
+    assert result is not None and result.intent == "upkeep"
+    assert shown in result.reply
+    # The shop's price (2.40) is not in the change the owner reviews.
+    assert "2.4" not in result.reply and "$" not in result.reply
+
+
+def test_a_count_in_words_goes_to_the_model(owner_shop: MerchantContext) -> None:
+    from app.instant import route
+
+    assert asyncio.run(route("Kaya toast is two left", owner_shop)) is None

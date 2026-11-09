@@ -656,6 +656,11 @@ async def public_demo_turn(ctx: Any, question: str) -> list[StreamEvent] | None:
         return None
     text = _plain(question)
     reply: str | None = None
+    from .instant import make_list
+
+    made = make_list(ctx, question)
+    if made:
+        return [*made.events, StreamEvent(kind="reply", text=made.reply)]
     # The owner's own words first: Hindi, Hinglish and two-in-one changes, "what first?", today's
     # sales, closing the day, tomorrow's note and the app language (OB-261, 262, 264, S2-9).
     found = (

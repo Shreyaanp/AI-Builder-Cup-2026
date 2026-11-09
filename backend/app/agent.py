@@ -5,6 +5,7 @@ import re
 from collections.abc import AsyncGenerator, AsyncIterator, Callable
 from contextvars import ContextVar
 from dataclasses import dataclass
+from datetime import date
 from typing import Any
 
 from google.adk.agents import LlmAgent
@@ -39,6 +40,7 @@ from .coordinator import (
     shop_currency,
     ui_currency,
 )
+from .forecast import LastDay, last_day_words
 from .new_shop_resume import (
     done_steps,
     follow_up_plan,
@@ -48,6 +50,7 @@ from .new_shop_resume import (
     progress_note,
 )
 from .new_shop_tools import attach_ready_profile, end_conversation, show_step, update_shop
+from .numbers import read_number
 from .payments import prepare_payment_link
 from .playbook import coach_summary, migrate_stored
 from .region import region_rule, shop_region
@@ -174,8 +177,9 @@ Memory and insights
   figures). If there is no sales data, suggest importing a billing app or Excel sales file.
 - For preparation or demand questions ("how much kopi should I prep tomorrow?"), call
   get_forecast. Give the matching item's quantity and date, say whether it is a forecast or a
-  weekday average, and mention prediction intervals when provided. If insufficient, ask for four
-  weeks of sales via Excel, photo, PDF or pasted notes. Never invent a forecast or save a
+  weekday average, and mention prediction intervals when provided. If it has last_day, say what
+  that day sold and, if make_same, to make about the same; never ask for more weeks of sales.
+  With no last_day, ask the owner to close one day. Never invent a forecast or save a
   preparation plan.
 - The app shows get_forecast and get_insights results as a chart card right above your reply.
   Point to what matters on it ("Chai carries the week, Saturday is your peak") and give the
@@ -335,6 +339,7 @@ NAHI_AFTER_NAME = r"^\s*(?:ab\s+|aaj\s+|abhi\s+)?nahin?\s+(?:hai|bacha)\b"
 CHANGE_NEGATED = r"\b(?:mat|na|nahi\s+hu[aei]|don'?t|do\s+not|never)\b"
 
 BACK = r"back(?:\s+in\s+stock)?|available again|in stock"
+COUNT_LEFT = r"\b(?:left|remaining)\b"
 # Spoken currency names and the shop currencies they can mean; a price in another currency is
 # never converted or guessed.
 CURRENCY_WORDS = {
@@ -514,6 +519,14 @@ def upkeep_call(question: str, ctx: Any) -> types.Part | None:
             continue
         if not rest.strip():
             bare_names.append(name)  # "samosa aur bun maska khatam": the verb covers both
+            continue
+        # "Kopi is 5 left" is a count, never a price; 0 left is sold out, as on the menu.
+        if re.search(COUNT_LEFT, rest):
+            count = re.search(rf"(\d[\d,]*)\s+(?:{COUNT_LEFT})", rest)
+            stock = read_number(count.group(1), currency, "quantity") if count else None
+            if stock is None:
+                return None  # "two left", "a few left": the coach model reads it
+            items.setdefault(name, {"name": name})["stock"] = int(stock)
             continue
         named = [
             codes
@@ -1149,12 +1162,18 @@ class OfflineCoachModel(BaseLlm):
                         )
                         for r in (named or matching)[:3]
                     )
+                    closed = prediction.get("last_day")
                     reply = (
                         f"Offline coach: {tomorrow} demand estimate — {estimates}. "
                         f"Method: {method}."
                         if estimates
-                        else "Offline coach: import and save at least four weeks of sales per item "
-                        "to prepare a forecast."
+                        else "Offline coach: "
+                        + last_day_words(
+                            LastDay.model_validate(closed),
+                            date.fromisoformat(prediction["training_cutoff"]),
+                        )
+                        if closed
+                        else "Offline coach: close one day and I can start your prep plan."
                     )
                 else:
                     reply = (

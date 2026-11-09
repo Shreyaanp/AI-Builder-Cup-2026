@@ -62,6 +62,9 @@ const en = {
   edit: 'Edit',
   soldItems: 'You sold {n} items.',
   soldItemsOne: 'You sold {n} item.',
+  soldWhat: 'You sold {what}.',
+  countItems: '{n} items',
+  countItemsOne: '{n} item',
   loading: 'Checking today’s sales…',
   loadFailed: 'Couldn’t check today’s sales. Please try again.',
   retry: 'Try again',
@@ -124,7 +127,11 @@ export function closeDayCopy(
   }
 }
 
-export function closeDayCount(locale: Locale, key: 'review' | 'lines' | 'soldItems', n: number) {
+export function closeDayCount(
+  locale: Locale,
+  key: 'review' | 'lines' | 'soldItems' | 'countItems',
+  n: number,
+) {
   const t = closeDayCopy(locale)
   const pattern = new Intl.PluralRules(locale).select(n) === 'one' ? t[`${key}One`] : t[key]
   return pattern.replace('{n}', new Intl.NumberFormat(locale).format(n))

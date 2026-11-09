@@ -230,6 +230,19 @@ def intent_index(settings: Settings) -> IntentIndex | None:
     )
 
 
+def instant_turn(text: str, result: InstantResult) -> list[tuple[str, str, types.Part]]:
+    """What an instant answer adds to the conversation. A tool it ran is saved as a call and a
+    result, as when the model calls it: a later turn may need them (Order on a supplier list)."""
+    turn = [("user", "user", types.Part(text=text))]
+    if result.tool:
+        name, tool_id = result.tool.name, f"instant-{uuid4()}"
+        call = types.FunctionCall(id=tool_id, name=name, args=result.tool.args)
+        answer = types.FunctionResponse(id=tool_id, name=name, response=result.tool.response)
+        turn.append(("business_coach", "model", types.Part(function_call=call)))
+        turn.append(("business_coach", "user", types.Part(function_response=answer)))
+    return [*turn, ("business_coach", "model", types.Part(text=result.reply))]
+
+
 class CoachRuntime:
     def __init__(self, settings: Settings, sessions: BaseSessionService) -> None:
         self.settings = settings
@@ -414,20 +427,21 @@ class CoachRuntime:
             session = await self.sessions.get_session(
                 app_name=APP_NAME, user_id=principal.uid, session_id=session_id
             )
-            result = await route(text, current.get(), self.instant_index) if session else None
+            result = (
+                await route(text, current.get(), self.instant_index, session.events)
+                if session
+                else None
+            )
             if session is None or result is None:
                 return None
             invocation = f"e-{uuid4()}"
-            for author, role, words in (
-                ("user", "user", text),
-                ("business_coach", "model", result.reply),
-            ):
+            for author, role, part in instant_turn(text, result):
                 await self.sessions.append_event(
                     session,
                     Event(
                         invocation_id=invocation,
                         author=author,
-                        content=types.Content(role=role, parts=[types.Part(text=words)]),
+                        content=types.Content(role=role, parts=[part]),
                     ),
                 )
             log.info("instant_route", intent=result.intent)

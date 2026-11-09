@@ -11337,6 +11337,16 @@
               "group_buy",
               "price_check"
             ]
+          },
+          "last_day": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LastDay"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
@@ -13762,6 +13772,16 @@
               }
             ],
             "title": "Confidence Level"
+          },
+          "last_day": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LastDay"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
@@ -14427,6 +14447,67 @@
           "item"
         ],
         "title": "ItemRule"
+      },
+      "LastDay": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date",
+            "title": "Date"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/LastDayRow"
+            },
+            "type": "array",
+            "title": "Rows"
+          },
+          "make_same": {
+            "type": "boolean",
+            "title": "Make Same"
+          }
+        },
+        "type": "object",
+        "required": [
+          "date",
+          "rows",
+          "make_same"
+        ],
+        "title": "LastDay",
+        "description": "The latest saved day, for a shop without four weeks of sales yet (OB-329)."
+      },
+      "LastDayRow": {
+        "properties": {
+          "item": {
+            "type": "string",
+            "title": "Item"
+          },
+          "quantity": {
+            "type": "number",
+            "title": "Quantity"
+          },
+          "unit": {
+            "type": "string",
+            "title": "Unit"
+          },
+          "revenue": {
+            "type": "integer",
+            "title": "Revenue"
+          },
+          "made": {
+            "type": "boolean",
+            "title": "Made"
+          }
+        },
+        "type": "object",
+        "required": [
+          "item",
+          "quantity",
+          "unit",
+          "revenue",
+          "made"
+        ],
+        "title": "LastDayRow"
       },
       "LevelView": {
         "properties": {
@@ -19556,6 +19637,16 @@
             "anyOf": [
               {
                 "$ref": "#/components/schemas/Promise"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "last_day": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LastDay"
               },
               {
                 "type": "null"
