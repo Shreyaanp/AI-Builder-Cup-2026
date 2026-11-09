@@ -335,3 +335,89 @@ def test_OB_339_demo_a_dont_orders_nothing(live_parent_demo) -> None:  # noqa: F
     url = f"/api/v1/demo/sessions/{session}/coach"
     events = events_of(client.post(url, json={"message": "2 kilo makhan mat mangao"}))
     assert not [event for event in events if event["kind"] == "order"]
+
+
+# Review HOLD on #704: "भेज दो" names the shop's own item, a chat draft keeps the other lines
+# of a purchase order, the closest shelf name wins, and only the one order skips a guess.
+
+
+@pytest.mark.parametrize(
+    ("text", "item", "quantity", "unit"),
+    [
+        ("दूध 5 लीटर भेज दो", "दूध", 5, "litre"),
+        ("मक्खन दो किलो भेज दो", "मक्खन", 2, "kg"),
+        ("5 लीटर दूध भिजवा दीजिए", "दूध", 5, "litre"),
+        ("butter 2 kg chahiye kal tak", "butter", 2, "kg"),
+        ("milk 5 litre bhej do", "milk", 5, "litre"),
+    ],
+)
+def test_OB_339_send_words_are_not_part_of_the_name(text, item, quantity, unit) -> None:
+    assert lines(text) == [(item, quantity, unit)]
+
+
+def test_OB_339_a_hindi_name_with_more_words_is_still_the_shops_item() -> None:
+    shelf = [{"name": "Milk"}, {"name": "Butter"}]
+    assert resolve_item("दूध भेज", shelf) == "Milk"
+    assert resolve_item("फुल क्रीम दूध", shelf) == "Milk"
+    assert resolve_item("मक्खन भेज", shelf) == "Butter"
+
+
+def test_OB_339_the_closest_shelf_name_wins() -> None:
+    shelf = [{"name": "Milk"}, {"name": "Heritage Milk 500ml"}]
+    assert resolve_item("heritage milk", shelf) == "Heritage Milk 500ml"
+    assert resolve_item("milk", shelf) == "Milk"
+
+
+def test_OB_339_hindi_send_drafts_one_order_for_the_shops_milk(shop) -> None:
+    store, bid = shop
+    made = calls("दूध 5 लीटर भेज दो", store, bid)
+    assert made == [("draft_reorder", {"item": "Milk", "quantity": 5.0, "unit": "litre"})]
+    result = reorder(store, bid, "Milk", 5, unit_said="litre", direct=True)
+    assert result["status"] == "drafted", result
+    assert result["order"]["reason"]["item"] == "Milk"
+    live = waiting(store, bid)
+    assert len(live) == 1 and live[0]["reason"]["item"] == "Milk"
+    assert calls("मक्खन दो किलो भेज दो", store, bid)[0][1]["item"] == "Butter"
+
+
+def test_OB_339_a_chat_draft_takes_only_its_line_from_a_purchase_order(shop) -> None:
+    store, bid = shop
+    po = reorder(store, bid, "Sugar", 10, unit_said="kg", direct=True)["order"]
+    sugar = po["lines"][0]
+    milk = {**sugar, "line": sugar["line"] + 10, "item": "Milk", "quantity": 5, "unit": "litre"}
+    po["lines"] = [sugar, milk]
+    supply_chain._save(store, bid, po)
+    chat_draft(store, bid, "Milk", 5)
+    kept = next(p for p in supply_chain.orders(store, "alice", bid) if p["id"] == po["id"])
+    assert kept["status"] == "draft"
+    assert [line["item"] for line in kept["lines"]] == [sugar["item"]]
+    assert kept["total"] == sum(line["total"] or 0 for line in kept["lines"])
+
+
+def test_OB_339_a_named_amount_never_changes_the_suppliers_saved_rules(shop) -> None:
+    store, bid = shop
+    result = reorder(store, bid, "Butter", 2, unit_said="kg", direct=True)
+    assert result["status"] == "drafted", result
+    assert result["order"]["lines"][0]["quantity"] == 2
+    assert not any(c["code"] == "below_moq" for c in result["order"]["checks"])
+    row = supply_chain.relationship(store, bid, result["order"]["supplier"]["id"])
+    assert row["suggested"]
+    guessed = supply_chain.rules_of(row)
+    rule = supply_chain.item_rule(guessed, result["order"]["lines"][0]["item"])
+    assert rule and (rule.moq or rule.pack), "the guess stays for the next forecast reorder"
+
+
+def test_OB_339_the_live_coach_orders_a_named_amount_directly(shop, monkeypatch) -> None:
+    from app import supply_tools
+
+    seen: dict[str, Any] = {}
+
+    async def fake(*args: Any, **kwargs: Any) -> dict:
+        seen.update(kwargs)
+        return {"status": "needs_item"}
+
+    monkeypatch.setattr(supply_chain, "draft_reorder", fake)
+    asyncio.run(supply_tools.draft_reorder("Butter", 2, unit="kg"))
+    assert seen["direct"] is True
+    asyncio.run(supply_tools.draft_reorder())
+    assert seen["direct"] is False

@@ -103,6 +103,8 @@ test('OB-248 the supplier talks in the owner language', async ({ page }) => {
   await sheet.getByRole('button', { name: /^रास्ते में/ }).click()
   const orders = sheet.getByTestId('po-list')
   await expect(orders.getByText(/Sri Lakshmi/).first()).toBeVisible({ timeout: 15_000 })
+  // The row only counts them now; the list says which item is on its way.
+  await expect(orders).toContainText('चाय पत्ती')
   await orders
     .getByText(/Sri Lakshmi/)
     .first()

@@ -14,7 +14,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from .demo_item_names import item_named_in
-from .sourcing import canonical, matches
+from .sourcing import canonical, matches, words
 
 DEVANAGARI_DIGITS = str.maketrans("०१२३४५६७८९", "0123456789")
 NOT_HINDI = r"(?<![ऀ-ॿ])"
@@ -155,7 +155,7 @@ CUE_WORDS = (
     r"mangwana|mangana"
 )
 # Filler that also goes with other requests ("dukaan ka naam ... karo"): never a cue by itself.
-SOFT_WORDS = r"get|send|lao|la|karo|kar|do|dena|kijiye"
+SOFT_WORDS = r"get|send|lao|la|karo|kar|do|dena|kijiye|bhej\w*|tak"
 CUES = re.compile(
     rf"\b(?:{CUE_WORDS})\b|(?:चाहिए|मँगा\S*|मंगा\S*|मँगवा\S*|मंगवा\S*|लाओ|लाना|ऑर्डर)", re.I
 )
@@ -166,7 +166,7 @@ FILLER = re.compile(
     r"|"
     + _hindi(
         r"मुझे|हमें|मेरे|लिए|सिर्फ़|सिर्फ|केवल|बस|थोड़ा|और|का|की|के|भी|आज|कल|चाहिए|कर|करो|दो|दीजिए|"
-        r"लाओ|लाना|ऑर्डर|मँगा\S*|मंगा\S*|मँगवा\S*|मंगवा\S*"
+        r"लाओ|लाना|ऑर्डर|मँगा\S*|मंगा\S*|मँगवा\S*|मंगवा\S*|भेज\S*|भिजवा\S*|तक|दे|देना|दीजिये"
     ),
     re.I,
 )
@@ -279,13 +279,20 @@ def read_order(text: str) -> OrderWords:
 def resolve_item(said: str, inventory: list[dict[str, Any]]) -> str:
     """The shop's own name for what was said ("दूध" is its Milk), else the plain name of it."""
     wanted = said.strip()
+    # A Hindi name maps to the shop's item however many words were said with it ("दूध भेज").
     hindi = item_named_in(wanted)
-    english = hindi or (canonical(wanted) or "").capitalize() if len(wanted.split()) == 1 else ""
+    english = hindi or ((canonical(wanted) or "").capitalize() if len(wanted.split()) == 1 else "")
     for name in (wanted, english):
         if not name:
             continue
         exact = next((p["name"] for p in inventory if p["name"].casefold() == name.casefold()), "")
-        loose = next((p["name"] for p in inventory if matches(p["name"], name)), "")
-        if exact or loose:
-            return exact or loose
+        if exact:
+            return exact
+        loose = [p["name"] for p in inventory if matches(p["name"], name)]
+        if loose:
+            # The closest of them: "heritage milk" is Heritage Milk 500ml, not Milk.
+            said_words = words(name)
+            return min(
+                loose, key=lambda shelf: (-len(said_words & words(shelf)), len(words(shelf)))
+            )
     return english or wanted

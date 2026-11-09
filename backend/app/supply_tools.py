@@ -176,6 +176,9 @@ async def draft_reorder(
             anyway=anyway,
             source=source if source in {"made", "bought"} else "",
             unit_said=(unit or "").strip()[:20],
+            # "Butter 2 kg": the owner named the item and the amount, so it is ordered as said,
+            # never asked make-or-buy first (the same as the Buy stock box).
+            direct=bool((item or "").strip() and quantity and quantity > 0),
         )
     except HTTPException as error:
         return _invalid(error, ctx)

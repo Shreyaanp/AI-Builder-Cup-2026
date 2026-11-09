@@ -346,6 +346,9 @@ def recheck(store: MerchantRepository, bid: str, po: dict[str, Any], today: date
     """Totals, broken rules and approval reasons, after any change to a draft."""
     row = relationship(store, bid, po["supplier"]["id"])
     rules = rules_of(row) if row else RuleSet()
+    if row and row.get("suggested") and (po.get("reason") or {}).get("guess_waived"):
+        # The owner named the amount: the app's guessed minimum does not apply to this order.
+        rules = waive_guess(rules)
     for line in po["lines"]:
         price_line(line, item_rule(rules, line["item"]))
     po["total"] = sum(line["total"] or 0 for line in po["lines"])
@@ -641,7 +644,8 @@ async def draft_reorder(
         # One draft per need: the open one comes back, sized again for what is now on its way
         # (or with the owner's quantity, if named).
         waiting: dict[str, Any] = coming["draft"]
-        sized = sized_line(store, bid, waiting, target, unit, wanted) if quantity else None
+        waived = bool(direct and quantity)
+        sized = sized_line(store, bid, waiting, target, unit, wanted, waived) if quantity else None
         if quantity and sized:
             # The same rule as a new draft: the open one keeps its amount, and the owner is told.
             amount = sourcing.convert(sized[1], sized[0]["unit"], unit) if sized[1] else None
@@ -671,10 +675,12 @@ async def draft_reorder(
             and not reason.get("owner_quantity")
             and reason.get("on_order") != coming["quantity"]
         ):
-            resize(store, bid, waiting, target, unit, wanted)
+            resize(store, bid, waiting, target, unit, wanted, waived)
             reason["wanted"] = round(wanted, 2)
             reason["on_order"] = coming["quantity"]
             reason["owner_quantity"] = bool(quantity) or bool(reason.get("owner_quantity"))
+            if direct and quantity:
+                reason["guess_waived"] = True
         await anyio.to_thread.run_sync(recheck, store, bid, waiting, today)
         waiting = await anyio.to_thread.run_sync(_save, store, bid, waiting)
         await anyio.to_thread.run_sync(retire_drafts, store, uid, bid, [target], waiting["id"])
@@ -832,6 +838,7 @@ async def draft_reorder(
             "method": need["method"],
             "wanted": round(wanted, 2),
             "owner_quantity": bool(quantity),
+            "guess_waived": bool(direct and quantity),
             "on_order": coming["quantity"],
             "tier_min": best["tier_min"],
             "moq": best["moq"],
@@ -895,23 +902,21 @@ def without_guessed_minimum(
     store: MerchantRepository, bid: str, candidate: dict[str, Any]
 ) -> dict[str, Any]:
     """A supplier's starting rules are the app's guess until the owner saves them (`suggested`):
-    "butter, 2 kg" is not refused for a 10 kg minimum nobody agreed (Priya, 8 Nov). Rules the
-    owner saved still stand, and the draft says what the supplier cannot sell."""
+    "butter, 2 kg" is not refused for a 10 kg minimum nobody agreed (Priya, 8 Nov). Only this
+    order skips the guess: the saved rules are not changed, so the next forecast reorder still
+    meets it. Saved rules still stand, and the draft says what the supplier cannot sell."""
     row = candidate["row"]
     if not row.get("suggested"):
         return row
-    rules = rules_of(row)
-    rule = item_rule(rules, candidate["product"]["name"])
-    if not rule or not (rule.moq or rule.pack):
-        return row
-    rule.moq, rule.pack = 0, 0
-    data = {key: value for key, value in row.items() if key != "version"}
-    data["rules"] = rules.model_dump(mode="json")
-    try:
-        return _versioned(store, RULES, bid, row["supplier"]["id"], data, row["version"])
-    except HTTPException:
-        # Changed at the same moment: the newer rules stand.
-        return row
+    return {**row, "rules": waive_guess(rules_of(row)).model_dump(mode="json")}
+
+
+def waive_guess(rules: RuleSet) -> RuleSet:
+    """The rules without the guessed minimums and pack sizes."""
+    rules = rules.model_copy(deep=True)
+    for rule in rules.items:
+        rule.moq, rule.pack = 0, 0
+    return rules
 
 
 def order_again(store: MerchantRepository, uid: str, bid: str, po_id: str) -> dict[str, Any]:

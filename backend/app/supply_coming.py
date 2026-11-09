@@ -24,6 +24,7 @@ from .supply_chain import (
     recheck,
     relationship,
     rules_of,
+    waive_guess,
 )
 from .supply_io import direction_of
 from .supply_rules import item_rule, round_quantity
@@ -157,6 +158,7 @@ def retire_drafts(
 
     retired: list[str] = []
     now = time.time()
+    today: date | None = None
     for order in sourcing.orders(store, uid, bid, now):
         if order["id"] == keep or order["status"] != "draft":
             continue
@@ -174,8 +176,27 @@ def retire_drafts(
     for po in all_orders(store, bid):
         if po["id"] == keep or po["status"] != "draft" or po.get("sent"):
             continue
-        if direction_of(po) == "in" and any(wanted(line["item"]) for line in po["lines"]):
+        if direction_of(po) != "in":
+            continue
+        left = [line for line in po["lines"] if not wanted(line["item"])]
+        if len(left) == len(po["lines"]):
+            continue
+        if not left:
             withdraw(store, bid, po, "replaced")
+            continue
+        # A draft with other items too (Order again: Sugar and Milk) keeps them; only the line
+        # for this item goes.
+        po["lines"] = left
+        if today is None:
+            from .supply_chain import _owned, shop_today
+
+            today = shop_today(_owned(store, uid, bid))
+        recheck(store, bid, po, today)
+        try:
+            _save(store, bid, po)
+        except HTTPException as error:
+            if error.status_code != 409:
+                raise  # changed at the same moment: the owner's own edit stands
     return retired
 
 
@@ -336,10 +357,17 @@ def cannot_meet(named: float, amount: float | None) -> bool:
 
 
 def sized_line(
-    store: MerchantRepository, bid: str, po: dict[str, Any], item: str, unit: str, wanted: float
+    store: MerchantRepository,
+    bid: str,
+    po: dict[str, Any],
+    item: str,
+    unit: str,
+    wanted: float,
+    waived: bool = False,
 ) -> tuple[dict[str, Any], float | None] | None:
     """The draft's line for this item and the quantity the supplier's rules (MOQ, pack size) make
-    of the wanted amount, as a fresh draft would be; None when the units do not convert."""
+    of the wanted amount, as a fresh draft would be; None when the units do not convert.
+    `waived`: the owner named the amount, so a minimum the app only guessed does not apply."""
     from .sourcing import convert, matches
 
     line = next(
@@ -353,7 +381,11 @@ def sized_line(
     if line is None:
         return None
     row = relationship(store, bid, po["supplier"]["id"])
-    rule = item_rule(rules_of(row), line["item"]) if row else None
+    rules = rules_of(row) if row else None
+    guessed = bool(row and row.get("suggested"))
+    if rules and guessed and (waived or (po.get("reason") or {}).get("guess_waived")):
+        rules = waive_guess(rules)
+    rule = item_rule(rules, line["item"]) if rules else None
     amount = convert(wanted, unit, line["unit"]) if wanted else 0.0
     if amount is None:
         return line, None
@@ -362,10 +394,16 @@ def sized_line(
 
 
 def resize(
-    store: MerchantRepository, bid: str, po: dict[str, Any], item: str, unit: str, wanted: float
+    store: MerchantRepository,
+    bid: str,
+    po: dict[str, Any],
+    item: str,
+    unit: str,
+    wanted: float,
+    waived: bool = False,
 ) -> None:
     """Set the draft's line for this item to the wanted quantity, by the supplier's rules."""
-    sized = sized_line(store, bid, po, item, unit, wanted)
+    sized = sized_line(store, bid, po, item, unit, wanted, waived)
     if sized and sized[1] is not None:
         sized[0]["quantity"] = sized[1]
 
