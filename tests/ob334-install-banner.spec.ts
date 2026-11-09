@@ -42,7 +42,7 @@ async function changePrice(page: Page, item: string, price: string) {
   return review
 }
 
-for (const width of [360, 390])
+for (const width of [360, 390, 412])
   test(`OB-334: the offer waits behind every sheet and comes back after (${width})`, async ({
     page,
   }) => {

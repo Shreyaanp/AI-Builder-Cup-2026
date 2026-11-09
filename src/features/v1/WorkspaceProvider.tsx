@@ -36,8 +36,13 @@ function readSpeak() {
   }
 }
 
-// Anything over the page: a sheet, dialog, menu or the tour. The install offer waits behind these.
-const OVER_THE_PAGE = '.MuiModal-root:not(.MuiModal-hidden), [role="dialog"]'
+/** Anything over the page: a sheet, dialog, menu or the tour. A kept-mounted closed one is not. */
+function pageIsCovered(): boolean {
+  if (document.querySelector('.MuiModal-root:not(.MuiModal-hidden)')) return true
+  return [...document.querySelectorAll('[role="dialog"]')].some(
+    (dialog) => !dialog.closest('.MuiModal-hidden'),
+  )
+}
 // An open sheet (a phone drawer or a dialog); a closed one is unmounted or hidden.
 const OPEN_SHEET = '.MuiModal-root:not(.MuiModal-hidden) [role="dialog"]'
 
@@ -204,7 +209,7 @@ export function WorkspaceProvider({
   const [pageCovered, setPageCovered] = useState(false)
   useLayoutEffect(() => {
     if (!installOffer) return
-    const check = () => setPageCovered(Boolean(document.querySelector(OVER_THE_PAGE)))
+    const check = () => setPageCovered(pageIsCovered())
     check()
     const watch = new MutationObserver(check)
     // Only while an offer is waiting: a sheet opens or closes as a portal on body, or by class.

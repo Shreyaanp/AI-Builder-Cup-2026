@@ -36,7 +36,7 @@ const inViewport = async (page: Page, name: string) => {
   expect(Math.round(box.height)).toBeGreaterThanOrEqual(48)
 }
 
-for (const width of [360, 390])
+for (const width of [360, 390, 412])
   test(`OB-333: Sold out today saves at once and keeps the item on the menu (${width})`, async ({
     page,
   }) => {

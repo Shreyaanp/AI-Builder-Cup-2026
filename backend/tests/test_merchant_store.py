@@ -1,6 +1,8 @@
 import os
 from collections.abc import Iterator
+from datetime import date
 from pathlib import Path
+from typing import Any
 from uuid import uuid4
 
 import pytest
@@ -8,6 +10,7 @@ from fastapi import HTTPException
 from google.auth.credentials import AnonymousCredentials
 from google.cloud import firestore
 
+from app import merchant, merchant_firestore
 from app.merchant import (
     BusinessFields,
     MerchantRepository,
@@ -337,6 +340,29 @@ def test_availability_requires_known_product_and_owner(store: MerchantRepository
         assert denied.value.status_code == 404
     assert store.inventory("alice", bid) == items
     assert store.context("alice", bid)["business"]["revision"] == 1
+
+
+def test_ob333_sold_out_today_returns_the_next_shop_day(
+    store: MerchantRepository, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    days = {"now": date(2026, 11, 8)}
+    for module in (merchant, merchant_firestore):
+        monkeypatch.setattr(module, "today_for", lambda _fields: days["now"])
+    bid = create_with_products(store)
+
+    def chai() -> dict[str, Any]:
+        return next(p for p in store.inventory("alice", bid) if p["name"] == "Chai")
+
+    saved = store.set_availability("alice", bid, chai()["id"], False, True)
+    assert (saved["available"], saved["sold_out_day"]) == (False, "2026-11-08")
+    assert chai()["available"] is False
+    days["now"] = date(2026, 11, 9)
+    assert chai()["available"] is True
+    assert "sold_out_day" not in chai()
+    # A plain sold out has no date, so it stays until the owner changes it.
+    store.set_availability("alice", bid, chai()["id"], False)
+    days["now"] = date(2026, 11, 10)
+    assert chai()["available"] is False
 
 
 def test_erasure_removes_shared_shop(store: MerchantRepository) -> None:
