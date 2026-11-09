@@ -1,11 +1,12 @@
 import type { Locale } from '../../i18n/locales.js'
+import { categoryCopy } from './copyCategories'
 import { moreMoneyCopy } from './copyMore'
 
 export type Category = 'stock' | 'rent' | 'wages' | 'transport' | 'bills' | 'other'
 export const CATEGORIES: Category[] = ['stock', 'rent', 'wages', 'transport', 'bills', 'other']
 
 /** Expenses and cash in hand, in the owner's words, in every app language. */
-export type MoneyCopy = {
+export type MoneyText = {
   title: string
   sales: string
   salesNotYet: string
@@ -17,7 +18,6 @@ export type MoneyCopy = {
   editTitle: string
   amount: (symbol: string) => string
   whatFor: string
-  category: Record<Category, string>
   note: string
   paidBy: string
   cash: string
@@ -62,7 +62,9 @@ export type MoneyCopy = {
   logged: (amount: string) => string
 }
 
-const en: MoneyCopy = {
+export type MoneyCopy = MoneyText & { category: Record<Category, string> }
+
+const en: MoneyText = {
   title: 'Money today',
   sales: 'Sales',
   salesNotYet: 'Not closed yet',
@@ -74,14 +76,6 @@ const en: MoneyCopy = {
   editTitle: 'Change expense',
   amount: (symbol) => `Amount (${symbol})`,
   whatFor: 'What for',
-  category: {
-    stock: 'Stock purchase',
-    rent: 'Rent',
-    wages: 'Wages',
-    transport: 'Transport',
-    bills: 'Bills',
-    other: 'Other',
-  },
   note: 'Note (optional)',
   paidBy: 'Paid by',
   cash: 'Cash',
@@ -126,72 +120,8 @@ const en: MoneyCopy = {
   logged: (amount) => `Noted ${amount} as an expense`,
 }
 
-const hi: MoneyCopy = {
-  title: 'आज का हिसाब',
-  sales: 'बिक्री',
-  salesNotYet: 'अभी दिन बंद नहीं हुआ',
-  spent: 'खर्चा',
-  left: 'खर्चे के बाद बचा',
-  noExpenses: 'आज कोई खर्चा नहीं लिखा।',
-  add: 'खर्चा जोड़ें',
-  addTitle: 'खर्चा जोड़ें',
-  editTitle: 'खर्चा बदलें',
-  amount: (symbol) => `रकम (${symbol})`,
-  whatFor: 'किस लिए',
-  category: {
-    stock: 'माल ख़रीद',
-    rent: 'किराया',
-    wages: 'तनख्वाह',
-    transport: 'आना-जाना',
-    bills: 'बिल',
-    other: 'दूसरा',
-  },
-  note: 'नोट (चाहें तो)',
-  paidBy: 'कैसे दिया',
-  cash: 'नकद',
-  upi: 'यूपीआई',
-  date: 'तारीख़',
-  save: 'सेव करें',
-  cancel: 'रहने दें',
-  delete: 'हटाएँ',
-  deleted: 'खर्चा हटाया',
-  undo: 'वापस लाएँ',
-  failed: 'सेव नहीं हुआ। इंटरनेट देखकर फिर कोशिश करें।',
-  deleteFailed: 'हटा नहीं पाए। इंटरनेट देखकर फिर कोशिश करें।',
-  amountExample: (example) => `रकम लिखें, जैसे ${example}`,
-  amountQuestion: (a, b) => `आपका मतलब ${a} था या ${b}? कृपया फिर से लिखें।`,
-  edit: (what) => `${what} बदलें`,
-  drawer: 'गल्ले में नकद',
-  opening: 'शुरू का नकद',
-  openingFrom: {
-    today: 'आज लिखा',
-    yesterday: 'पिछली गिनती से',
-    usual: 'आपका रोज़ का',
-  },
-  openingAsk: (symbol) => `शुरू का नकद (${symbol})`,
-  cashSales: '+ नकद बिक्री',
-  cashSpent: '− नकद खर्चा',
-  expected: '= गल्ले में होना चाहिए',
-  expectedLater: 'आज की बिक्री के बाद',
-  afterSales: 'कम या ज़्यादा, आज की बिक्री सेव करने के बाद दिखेगा।',
-  upiFromTotal: (amount) => `${amount} यूपीआई से, आज के कुल के साथ सेव है।`,
-  upiSales: (symbol) => `यूपीआई से आई बिक्री (${symbol})`,
-  split: 'बिक्री बाँटें: नकद और यूपीआई',
-  allCash: 'सारी बिक्री नकद मानी गई।',
-  counted: (symbol) => `गिना हुआ नकद (${symbol})`,
-  saveCash: 'नकद सेव करें',
-  short: (amount) => `${amount} कम`,
-  extra: (amount) => `${amount} ज़्यादा`,
-  matches: 'गल्ला पूरा मिला',
-  homeSpent: (amount) => `खर्चा ${amount}`,
-  homeLeft: (amount) => `बचा ${amount}`,
-  week: 'इस हफ़्ते',
-  logOrder: (amount) => `${amount} खर्चे में लिखें`,
-  logged: (amount) => `${amount} खर्चे में लिखा`,
-}
-
-const copy: Record<Locale, MoneyCopy> = { en, hi, ...moreMoneyCopy }
+const copy: Record<Locale, MoneyText> = { en, ...moreMoneyCopy }
 
 export function moneyCopyFor(locale: Locale): MoneyCopy {
-  return copy[locale]
+  return { ...copy[locale], category: categoryCopy[locale] }
 }
