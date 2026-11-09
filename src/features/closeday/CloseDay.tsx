@@ -49,6 +49,7 @@ import { dayTotalCopy } from './totalCopy'
 import { comparisonKind } from './compare'
 import { AskHint } from '../v1/AskHint'
 import { TomorrowPromise } from './TomorrowPromise'
+import { MoneyToday } from '../expenses/MoneyToday'
 import { countClosed } from '../v1/today/habitCount'
 import { bestByMoney, soldParts } from './summary'
 import { useOrderUnit } from '../supply/supplyData'
@@ -514,6 +515,7 @@ export function CloseDay({
             )}
           </Typography>
         )}
+        {phase === 'closed' && <MoneyToday day={today} currency={currency} />}
         {phase === 'capture' && (
           <>
             <CloseDaySupply />
@@ -691,6 +693,7 @@ export function CloseDay({
                 onBlocked={setTypedBlocked}
               />
             )}
+            <MoneyToday day={today} currency={currency} />
             <AskHint id="close_day" />
           </>
         )}
@@ -869,6 +872,7 @@ export function CloseDay({
                 .filter(Boolean)
                 .join(' ')}
             </Typography>
+            <MoneyToday day={today} currency={currency} />
             <TomorrowPromise />
           </Stack>
         )}

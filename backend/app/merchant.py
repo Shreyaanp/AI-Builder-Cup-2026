@@ -559,6 +559,8 @@ def demo_product_id(bid: str, product: ProductFields) -> str:
 PROPOSAL_SECONDS = 600
 # Supply-chain records (supply_chain.py) kept in feature_docs; erased with the shop.
 SUPPLY_KINDS = ("supply_rules", "supply_po", "supply_seq", "supply_inbox")
+# Expenses and cash in hand (expenses.py), the same way.
+MONEY_KINDS = ("money_day", "money_usual", "money_order")
 CHALLENGE_SECONDS = 90
 
 
@@ -1293,6 +1295,7 @@ class MerchantStore:
                 "owner_promise",
                 "day_total",
                 *SUPPLY_KINDS,
+                *MONEY_KINDS,
             ):
                 self.feature_docs.delete_scope(kind, bid)
         return owned

@@ -12,6 +12,7 @@ import re
 from collections import OrderedDict
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
+from datetime import timedelta
 from typing import TYPE_CHECKING, Any, Literal
 
 import anyio
@@ -35,6 +36,7 @@ from .sourcing import money_text
 from .voice_tools import SCREENS, get_customer_messages, open_screen, set_open_today
 
 if TYPE_CHECKING:
+    from .expenses import ChatExpense
     from .owner_promise import Promise
 
 Embedder = Callable[[str], list[float]]
@@ -438,6 +440,59 @@ def _promise(ctx: MerchantContext, what: str, hindi: bool = False) -> InstantRes
     )
 
 
+def save_expense(ctx: MerchantContext, words: "ChatExpense") -> InstantResult | None:
+    """ "doodh 300 ka kharcha", "paid rent 5000": written through the close screen's own
+    endpoint function, and said back with where to change it. None when the amount is unclear
+    (the coach asks)."""
+    from fastapi import HTTPException
+
+    from .agent import ui_language
+    from .demo_coach_words import JOB_LABELS
+    from .expenses import ExpenseInput, add_expense, chat_reply, shop_day
+    from .owner_promise import consent_current
+
+    fields, _ = _shop(ctx)
+    hindi = not LATIN.match(words.said) or ui_language.get().split("-")[0] == "hi"
+    if not fields.get("demo") and not consent_current(ctx.store, ctx.uid):
+        return InstantResult(
+            "expense",
+            "पहले नई शर्तें स्वीकार करें। फिर मैं यह खर्चा लिख लूँगा।"
+            if hindi
+            else "Please accept the updated terms first. Then I can note this expense.",
+        )
+    day = shop_day(fields) - timedelta(days=1) if words.yesterday else None
+    try:
+        expense = add_expense(
+            ctx.store,
+            ctx.business_id or "",
+            fields,
+            ExpenseInput(
+                amount=words.amount,
+                category=words.category,
+                note=words.note,
+                method=words.method,
+                date=day,
+            ),
+            source="chat",
+        )
+    except HTTPException:
+        return None
+    offer = StreamEvent(
+        kind="action",
+        data={
+            "target": "close_day",
+            "label": JOB_LABELS["close_day"][1 if hindi else 0],
+            "business_id": ctx.business_id,
+            "offer": True,
+        },
+    )
+    return InstantResult(
+        "expense",
+        chat_reply(expense, shop_currency(fields), hindi, words.yesterday),
+        [offer],
+    )
+
+
 def _upkeep(ctx: MerchantContext, text: str) -> InstantResult | None:
     from .agent import upkeep_call
 
@@ -515,6 +570,12 @@ async def route(
     made = make_list(ctx, message)
     if made:
         return made
+    # An expense, said in any script: "doodh 300 ka kharcha", "किराया 5000 दिया".
+    from .expenses import expense_words  # lazy: expenses imports the routes
+
+    spent = expense_words(message)
+    if spent:
+        return save_expense(ctx, spent)
     if not LATIN.match(message):
         from .agent import ui_language
 

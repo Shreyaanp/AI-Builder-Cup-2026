@@ -49,6 +49,8 @@ export type Metric = 'sales' | 'items' | 'views' | 'questions' | 'stamps' | 'ret
 export interface PulseLine {
   when: 'yesterday' | 'today'
   values: { metric: Metric; value: number }[]
+  /** Expenses noted for that day (minor units), for "spent ₹800 · left ₹3,700"; 0 with none. */
+  spent?: number
 }
 
 export interface TodayPlan {
@@ -220,7 +222,9 @@ export function todayPlan(input: TodayInput): TodayPlan {
   // Once today is closed, the pulse is today's: the owner just saved it (OB-237).
   const todayLine = facts?.today ? pulseLine(facts.today, 'today', metrics) : null
   const yesterdayLine = facts ? pulseLine(facts.yesterday, 'yesterday', metrics) : null
-  const pulse = isClosed ? (todayLine ?? yesterdayLine) : (yesterdayLine ?? todayLine)
+  const shown = isClosed ? (todayLine ?? yesterdayLine) : (yesterdayLine ?? todayLine)
+  const spent = shown?.when === 'today' ? facts?.spent_today : facts?.spent_yesterday
+  const pulse = shown && spent ? { ...shown, spent } : shown
   const busy = timeRanges(shop.fields.busy_hours ?? '')[0] ?? null
   const forecast = facts?.forecast
     ? { quantity: facts.forecast.quantity, item: facts.forecast.item, busy }
