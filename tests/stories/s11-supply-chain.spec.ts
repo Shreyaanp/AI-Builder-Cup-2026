@@ -135,7 +135,7 @@ test('S11 · forecast → PO → ORDRSP (partial) → ASN → invoice, translate
     // The authored kirana sells Atta; the older supplier fixture calls it Wheat flour.
     await expect(card).toContainText(/kg (?:Wheat flour|Atta) · deliver/)
     await expect(card).toContainText('6 kg left, runs out')
-    await expect(card).toContainText('Demo')
+    await expect(card).toContainText('Sample')
     await expect(page.getByRole('log')).toContainText("I've drafted your order")
     await snap(page, '1-draft', project)
     await axe(page)

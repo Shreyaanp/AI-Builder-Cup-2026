@@ -59,6 +59,7 @@ import {
   Leaf,
   MessageSquare,
   MessageSquarePlus,
+  Sunrise,
   Mic,
   Share2,
   Square,
@@ -978,6 +979,48 @@ function CoachScreen({
     }
   }
 
+  /** An old chat comes back with its cards: each order as it is now, then what the supplier said. */
+  async function withCards(saved: Message[]): Promise<Message[]> {
+    const ids = (role: 'order' | 'po') =>
+      saved.flatMap((message) =>
+        message.role === 'order' && role === 'order'
+          ? [message.orderId]
+          : message.role === 'po' && role === 'po'
+            ? [message.poId]
+            : [],
+      )
+    const [foundOrders, foundPos] = await Promise.all([
+      Promise.all(ids('order').map((id) => api<Order>(orderPath(id)).catch(() => null))),
+      Promise.all(
+        ids('po').map((id) =>
+          api<PurchaseOrder>(
+            `/businesses/${encodeURIComponent(activeId ?? '')}/supply/orders/${encodeURIComponent(id)}`,
+          ).catch(() => null),
+        ),
+      ),
+    ])
+    const loaded = new Map(foundOrders.flatMap((order) => (order ? [[order.id, order]] : [])))
+    const loadedPos = foundPos.flatMap((po) => (po ? [po] : []))
+    setOrders((known) => ({ ...known, ...Object.fromEntries(loaded) }))
+    setPos((known) => ({ ...known, ...Object.fromEntries(loadedPos.map((po) => [po.id, po])) }))
+    const known = new Set(loadedPos.map((po) => po.id))
+    return saved.flatMap((message): Message[] => {
+      if (message.role === 'po') return known.has(message.poId) ? [message] : []
+      if (message.role !== 'order') return [message]
+      const order = loaded.get(message.orderId)
+      if (!order) return []
+      return [
+        message,
+        ...order.messages
+          .filter((entry) => entry.author === 'supplier')
+          .map((entry) => ({
+            role: 'assistant' as const,
+            text: s.replied(order.supplier.name, entry.text),
+          })),
+      ]
+    })
+  }
+
   async function restore(id: string) {
     setShowToday(false)
     setActionsOpen(false)
@@ -985,9 +1028,10 @@ function CoachScreen({
     voice.stop()
     try {
       const data = await api<{ messages: Message[] }>(`/conversations/${id}`)
+      const shown = await withCards(data.messages)
       controller.current?.abort()
       session.current = id
-      setMessages(data.messages)
+      setMessages(shown)
       setReply('')
     } catch {
       setError(t.actionFailed)
@@ -1107,10 +1151,11 @@ function CoachScreen({
   function suggest(id: Suggestion, anchor: HTMLElement) {
     if (id === 'reply') setShopSheet('messages')
     else if (id === 'soldOut') setShopSheet('soldOut')
+    else if (id === 'price') setShopSheet('prices')
     else if (id === 'share') setShopSheet('customer')
     else if (id === 'menu' || id === 'photo') choosePhoto(anchor)
     else {
-      setNote(`${id === 'price' ? t.chipPrice : t.fields.name}: `)
+      setNote(`${t.fields.name}: `)
       messageInput.current?.focus()
     }
   }
@@ -1172,14 +1217,38 @@ function CoachScreen({
     >
       {/* One quiet line: which coach is answering. Every other action is behind the top bar's +. */}
       {!empty && (
-        <Typography
-          variant="labelMedium"
-          color="text.secondary"
-          noWrap
-          sx={{ display: 'block', minHeight: 32, pt: 2 }}
-        >
-          {mode ? (mode === 'gemini' ? t.geminiMode : t.offlineMode) : ''}
-        </Typography>
+        <Stack direction="row" sx={{ alignItems: 'center', gap: 1, minHeight: 48 }}>
+          <Typography variant="labelMedium" color="text.secondary" noWrap sx={{ flex: 1 }}>
+            {/* "Demo" is the demo shop's word: on a real shop it read as "is my shop a demo?". */}
+            {mode === 'gemini' ? t.geminiMode : mode && ws.demo ? t.offlineMode : ''}
+          </Typography>
+          {/* Home's cards are one tap away while chatting, not gone until a reload. */}
+          {ws.active && (
+            <Button
+              size="small"
+              data-testid={showToday ? 'back-to-chat' : 'back-to-today'}
+              startIcon={showToday ? <MessageSquare size={16} /> : <Sunrise size={16} />}
+              onClick={() => setShowToday((value) => !value)}
+              sx={{ minHeight: 48, flexShrink: 0 }}
+            >
+              {showToday ? simple.backToChat : simple.backToToday}
+            </Button>
+          )}
+        </Stack>
+      )}
+      {/* Reopened on Home: the last chat, with its order cards, is one tap away too. */}
+      {empty && ws.active && shopHistory[0] && (
+        <Stack direction="row" sx={{ justifyContent: 'flex-end', minHeight: 48 }}>
+          <Button
+            size="small"
+            data-testid="back-to-chat"
+            startIcon={<MessageSquare size={16} />}
+            onClick={() => void restore(shopHistory[0]!.session_id)}
+            sx={{ minHeight: 48 }}
+          >
+            {simple.backToChat}
+          </Button>
+        </Stack>
       )}
       {sorting ? (
         <AiInfo feature="photo" />

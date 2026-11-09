@@ -435,8 +435,8 @@ def test_morning_brief_forecast_low_stock_best_action_and_cache(setup):
     assert result.status_code == 200, result.text
     data = result.json()
     assert data["prep_plan"] == [] and data["forecast_status"] == "insufficient"
-    assert data["weather"]["demo"] and data["weather"]["sales_effect"] is None
-    assert "Open-Meteo" in data["weather"]["attribution"]
+    # The offline fixture is sample weather: a real shop isn't shown it, or a "Demo" chip (OB-348).
+    assert data["weather"] is None and data["demo"] is False
     assert data["best_action"]["kind"] == "order" and data["best_action"]["item"] == "Milk"
     assert client.get(path).json() == data
     save_history(store, bid, fixed)

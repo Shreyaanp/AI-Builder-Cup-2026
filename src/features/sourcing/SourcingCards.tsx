@@ -27,21 +27,25 @@ import { enterRise, fieldFade, motion, shape } from '../../design/theme'
 import { formatShopPrice, toMinor } from '../v1/format'
 import { formatMoneyText } from '../inquiries/formatMoneyText'
 import { useGrowCopy } from '../v1/growCopy'
+import { useWorkspace } from '../v1/workspaceContext'
 import { useSourcingCopy } from './copy'
+import { sampleWord } from './sampleWord'
 import { deliveryLabel } from './orderData'
 import type { Order, OrderStatus, SupplierCard, SupplierResult } from './types'
 
 const easeOut = motion.easing.emphasizedDecelerate
 
-/** A labelled "Demo" chip: simulated suppliers are never presented as real. */
+/** A labelled chip: simulated suppliers are never presented as real. */
 export function DemoChip() {
   const roles = useTheme().material
   const s = useSourcingCopy()
+  const locale = useLocale()
+  const { demo } = useWorkspace()
   return (
     <Chip
       component="span"
       size="small"
-      label={s.demo}
+      label={demo ? s.demo : sampleWord[locale]}
       sx={{
         height: 22,
         flexShrink: 0,

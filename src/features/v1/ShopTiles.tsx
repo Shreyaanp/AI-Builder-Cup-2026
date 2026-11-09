@@ -39,6 +39,7 @@ import {
 import { FactList } from './FactList'
 import { MenuSheet } from '../shop/MenuSheet'
 import { ThingsIBuySheet } from '../shop/ThingsIBuySheet'
+import { PriceSheet } from '../shop/PriceSheet'
 import { onMenu } from '../shop/stock'
 import { useStockCopy } from '../shop/stockCopy'
 import { ConnectRow } from '../connect/ConnectTile'
@@ -79,6 +80,7 @@ export type ShopSheetKind =
   | 'details'
   | 'menu'
   | 'soldOut'
+  | 'prices'
   | 'customer'
   | 'messages'
   | 'readiness'
@@ -664,6 +666,8 @@ function OneSheet({
       return <MenuSheet {...common} focus={menuFocus} onThingsIBuy={onThingsIBuy} />
     case 'thingsIBuy':
       return <ThingsIBuySheet {...common} />
+    case 'prices':
+      return <PriceSheet {...common} />
     case 'soldOut':
       return (
         <Sheet {...common} titleId="soldout-sheet-title" ask="sold_out" title={t.soldOut}>

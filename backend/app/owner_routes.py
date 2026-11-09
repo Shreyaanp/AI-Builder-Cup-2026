@@ -132,7 +132,9 @@ async def morning_brief(business_id: str, request: Request) -> brief.Brief:
         brief.facts, service, uid, business_id, context, forecast, radar
     )
     result.weather = await request.app.state.weather.get(context["business"]["fields"], result.date)
-    result.demo = result.demo or bool(result.weather and result.weather.demo)
+    # The offline weather is sample data: only the demo shop shows it, labelled (as Today does).
+    if result.weather and result.weather.demo and not result.demo:
+        result.weather = None
     key = brief.cache_key(result)
     cache = await anyio.to_thread.run_sync(service.feature_docs.get, "brief", business_id)
     if cache and cache.get("key") == key:

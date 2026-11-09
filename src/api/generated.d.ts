@@ -2368,6 +2368,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/businesses/{business_id}/day/total": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Save Day Total
+         * @description The owner read the total back on Check and tapped Save; closing again replaces it.
+         */
+        post: operations["save_day_total_api_v1_businesses__business_id__day_total_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/businesses/{business_id}/analytics": {
         parameters: {
             query?: never;
@@ -4483,6 +4503,19 @@ export interface components {
             /** Close */
             close?: string | null;
         };
+        /** DayTotal */
+        DayTotal: {
+            /** Date */
+            date: string;
+            /** Currency */
+            currency: string;
+            /** Total */
+            total: number;
+            /** Cash */
+            cash?: number | null;
+            /** Upi */
+            upi?: number | null;
+        };
         /** Deal */
         Deal: {
             /** Id */
@@ -5316,6 +5349,20 @@ export interface components {
              * @enum {string}
              */
             metric: "items_sold" | "sales" | "busy_hours" | "orders_due" | "fittings" | "bookings" | "questions" | "views" | "stamps" | "returning" | "low_stock" | "leftovers";
+        };
+        /** NewDayTotal */
+        NewDayTotal: {
+            /**
+             * Date
+             * @default
+             */
+            date: string;
+            /** Total */
+            total: number;
+            /** Cash */
+            cash?: number | null;
+            /** Upi */
+            upi?: number | null;
         };
         /** NewPromise */
         NewPromise: {
@@ -12401,6 +12448,41 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    save_day_total_api_v1_businesses__business_id__day_total_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NewDayTotal"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DayTotal"];
+                };
             };
             /** @description Validation Error */
             422: {
