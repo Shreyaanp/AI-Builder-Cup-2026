@@ -54,6 +54,8 @@ HINDI_ITEMS = {
     "Lime soda": "नींबू सोडा",
     "Marigold garland": "गेंदे की माला",
     "Masala chai": "मसाला चाय",
+    "Idli (2 pieces)": "इडली (2 पीस)",
+    "Medu vada": "मेदु वड़ा",
     "Masala dosa": "मसाला डोसा",
     "Milk": "दूध",
     "Milk bread": "दूध ब्रेड",

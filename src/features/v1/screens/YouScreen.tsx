@@ -324,7 +324,7 @@ export function YouScreen() {
           <Row
             icon={<Plus size={20} />}
             label={t.newShop}
-            hint={ws.demo ? demoCopy.startOwn : undefined}
+            hint={ws.demo ? `${demoCopy.startOwn} · ${t.trustFree}` : undefined}
             onClick={ws.startNewShop}
           />
         </Group>

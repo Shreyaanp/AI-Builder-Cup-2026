@@ -6,8 +6,9 @@ import type { Business, Me } from './api'
 import { LEGAL_VERSION } from './legal'
 import { Landing } from './Landing'
 import { AccountError, ConsentScreen, Splash } from './Onboarding'
-import { Box } from '@mui/material'
+import { Stack, Typography } from '@mui/material'
 import { TrustStrip } from './TrustStrip'
+import { useCopy } from './strings'
 
 import { LanguageStep } from '../language/LanguageStep'
 import { useNeedsLanguage } from '../language/needsLanguage'
@@ -21,6 +22,7 @@ const OwnerWorkspace = deferred(() => import('./OwnerWorkspace').then((m) => m.d
 /** First run: splash → welcome/sign-in → language → consent → workspace. */
 export default function V1App() {
   const identity = useIdentity()
+  const t = useCopy()
   const [preview, setPreview] = useState(false)
   useEffect(() => {
     if (identity.status !== 'ready' || (identity.mode === 'local' && !preview))
@@ -30,13 +32,15 @@ export default function V1App() {
   if (identity.status !== 'ready' || (identity.mode === 'local' && !preview))
     return (
       <>
-        {identity.trustStrip?.enabled && (
-          <Box
-            sx={{ maxWidth: 1080, mx: 'auto', px: 3, pt: 'calc(16px + env(safe-area-inset-top))' }}
-          >
-            <TrustStrip />
-          </Box>
-        )}
+        <Stack
+          spacing={2}
+          sx={{ maxWidth: 1080, mx: 'auto', px: 3, pt: 'calc(16px + env(safe-area-inset-top))' }}
+        >
+          <Typography data-testid="cost-line" variant="bodyMedium" color="text.secondary">
+            {t.trustFreeBody}
+          </Typography>
+          {identity.trustStrip?.enabled && <TrustStrip />}
+        </Stack>
         <Landing onPreview={() => setPreview(true)} />
       </>
     )

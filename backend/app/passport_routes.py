@@ -43,6 +43,7 @@ from .games import (
     set_progress,
     shop_in_set,
 )
+from .guest_merge import merge_guest
 from .limits import client_ip, enforce_limits
 from .merchant_routes import owner, store
 from .passport import (
@@ -1066,6 +1067,36 @@ async def preview(
         timezone=tz,
         language=lang,
     )
+
+
+class GuestMergeInput(BaseModel):
+    token: str = Field(min_length=1, max_length=8192)
+
+
+class GuestMergeResult(BaseModel):
+    merged: bool
+    follows: int
+    stamps: int
+
+
+@router.post("/customer/guest/merge", response_model=GuestMergeResult)
+async def guest_merge(body: GuestMergeInput, request: Request) -> GuestMergeResult:
+    """OB-56: join this phone's guest account from before #335 into this one. Off by default."""
+    if not request.app.state.v1_settings.guest_merge:
+        raise HTTPException(404, "Not found.")
+    principal = await customer(request)
+    if not principal.guest:
+        raise HTTPException(403, "Only a guest account can take this over.")
+    await enforce_limits(request, [("passport", principal.uid)], anonymous=True)
+    old = await identity(request).bearer_principal(body.token, customer=True)
+    if not old.guest:
+        raise HTTPException(403, "Only a guest account can be joined.")
+    if old.uid == principal.uid:
+        return GuestMergeResult(merged=False, follows=0, stamps=0)
+    result = await anyio.to_thread.run_sync(
+        merge_guest, passports(request), community(request), old.uid, principal.uid
+    )
+    return GuestMergeResult(**result)
 
 
 @router.post("/customer/passport/merge", response_model=PassportView)

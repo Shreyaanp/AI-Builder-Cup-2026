@@ -299,15 +299,6 @@
       "screen": "privacy"
     },
     {
-      "id": "face_check",
-      "title": "Optional face check",
-      "path": ["You", "Privacy & your data", "Verify it’s you"],
-      "path_hi": ["आप", "गोपनीयता और आपका डेटा", "पुष्टि करें कि यह आप हैं"],
-      "ask": "Verify me",
-      "ask_hi": "मेरा चेहरा जाँचो",
-      "screen": "trust"
-    },
-    {
       "id": "help",
       "title": "What the coach can do",
       "path": ["You", "What can I ask?"],

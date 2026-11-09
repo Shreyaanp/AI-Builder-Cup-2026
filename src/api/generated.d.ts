@@ -1961,6 +1961,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/customer/guest/merge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Guest Merge
+         * @description OB-56: join this phone's guest account from before #335 into this one. Off by default.
+         */
+        post: operations["guest_merge_api_v1_customer_guest_merge_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/customer/passport/merge": {
         parameters: {
             query?: never;
@@ -4925,6 +4945,20 @@ export interface components {
             /** Places */
             places: components["schemas"]["Pick"][];
         };
+        /** GuestMergeInput */
+        GuestMergeInput: {
+            /** Token */
+            token: string;
+        };
+        /** GuestMergeResult */
+        GuestMergeResult: {
+            /** Merged */
+            merged: boolean;
+            /** Follows */
+            follows: number;
+            /** Stamps */
+            stamps: number;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -7733,6 +7767,16 @@ export interface components {
              * @default false
              */
             guest_customer: boolean;
+            /**
+             * Face Check
+             * @default false
+             */
+            face_check: boolean;
+            /**
+             * Guest Merge
+             * @default false
+             */
+            guest_merge: boolean;
         };
     };
     responses: never;
@@ -11579,6 +11623,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PassportView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    guest_merge_api_v1_customer_guest_merge_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GuestMergeInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GuestMergeResult"];
                 };
             };
             /** @description Validation Error */

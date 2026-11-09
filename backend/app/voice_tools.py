@@ -78,7 +78,7 @@ SCREENS: dict[str, str] = {
     "shop": "Shop",
     "grow": "Grow",
     "you": "You",
-    "trust": "Verify it's you",
+    "trust": "You",
     "games": "Stamps and perks",
     "payments": "Payments & rides",
     "supply": "Buy stock",
