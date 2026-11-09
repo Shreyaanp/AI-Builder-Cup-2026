@@ -11,7 +11,7 @@ from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, Request, R
 from pydantic import BaseModel, ConfigDict, Field
 
 from . import erasure
-from .coordinator import MerchantContext, ProductInput, current, propose_products
+from .coordinator import MerchantContext, ProductInput, add_note, current, propose_products
 from .discover import pin_fields, prepare_pin
 from .imports import MAX_BYTES as MAX_IMPORT_BYTES
 from .imports import MAX_MEDIA_BYTES as MAX_IMPORT_MEDIA_BYTES
@@ -679,6 +679,26 @@ async def speak(body: SpeakRequest, request: Request) -> Response:
     if audio is None:
         return Response(status_code=204)
     return Response(content=audio, media_type="audio/mpeg", headers={"Cache-Control": "no-store"})
+
+
+class NoteRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    text: str = Field(min_length=1, max_length=500)
+
+
+@router.post("/businesses/{business_id}/notes")
+async def create_note(business_id: str, body: NoteRequest, request: Request) -> dict[str, Any]:
+    """Owner types something for the coach to remember (no AI involved): the same rule as
+    "remember this" said in chat, so both lists are one."""
+    uid = await consented_owner(request)
+    service = store(request)
+    try:
+        status, notes = await anyio.to_thread.run_sync(
+            add_note, service, uid, business_id, body.text
+        )
+    except ValueError as error:
+        raise HTTPException(422, "Write the note as a short sentence.") from error
+    return {"status": status, "notes": notes}
 
 
 @router.delete("/businesses/{business_id}/notes/{note_id}")

@@ -29,6 +29,7 @@ from .merchant import (
     NewShopDraft,
     ProductFields,
     ProposalRequest,
+    with_stock,
 )
 from .money import to_major, to_minor
 from .passport import local_now
@@ -260,7 +261,10 @@ class ProductInput(BaseModel):
         default="item",
         description="Selling unit, one of: " + ", ".join(UNITS) + ". Pick the closest one.",
     )
-    stock: int | None = Field(default=None, description="Units in stock, only if the owner said")
+    # The same bounds as the menu's − / + (StockRequest): one rule for chat and screen.
+    stock: int | None = Field(
+        default=None, ge=0, le=1_000_000, description="Units in stock, only if the owner said"
+    )
     available: bool = Field(default=True, description="False when the owner says it is sold out")
     category: str | None = Field(
         default=None,
@@ -451,16 +455,44 @@ def remember_note(note: str) -> dict[str, Any]:
     ctx = current.get()
     if not ctx or not ctx.business_id:
         return {"status": "needs_business"}
+    try:
+        status, notes = add_note(ctx.store, ctx.uid, ctx.business_id, note)
+    except ValueError:
+        return {"status": "invalid", "instruction": "Pass the note as a short sentence."}
+    # The confirmation links to where the note lives (My shop → Shop details), and the app
+    # reloads the shop so that list shows it at once.
+    card_id = _card(
+        ctx,
+        "action",
+        {
+            "target": "details",
+            "label": "See it in My shop",
+            "business_id": ctx.business_id,
+            "offer": True,
+            "changed": True,
+        },
+    )
+    if status == "already_remembered":
+        return {"status": status, "card_id": card_id}
+    return {"status": status, "notes": len(notes), "card_id": card_id}
+
+
+def add_note(
+    store: MerchantRepository, uid: str, bid: str, note: str
+) -> tuple[str, list[dict[str, Any]]]:
+    """One rule for a note, said to the coach or typed in My shop: one short line (200
+    characters), never twice, the newest NOTE_LIMIT kept. ValueError for an empty note."""
     text = " ".join((note or "").split())[:200]
     if not text:
-        return {"status": "invalid", "instruction": "Pass the note as a short sentence."}
-    shop = ctx.store.context(ctx.uid, ctx.business_id)["business"]
-    notes = list((shop or {}).get("coach_notes") or [])
+        raise ValueError("empty note")
+    shop = store.context(uid, bid)["business"]
+    if not shop:
+        raise HTTPException(404, "Business not found.")
+    notes = list(shop.get("coach_notes") or [])
     if any(saved["text"].casefold() == text.casefold() for saved in notes):
-        return {"status": "already_remembered"}
+        return "already_remembered", notes
     notes.append({"id": uuid4().hex[:8], "text": text, "created": date.today().isoformat()})
-    ctx.store.set_notes(ctx.uid, ctx.business_id, notes[-NOTE_LIMIT:])
-    return {"status": "remembered", "notes": len(notes[-NOTE_LIMIT:])}
+    return "remembered", store.set_notes(uid, bid, notes[-NOTE_LIMIT:])
 
 
 def get_insights() -> dict[str, Any]:
@@ -986,6 +1018,18 @@ def propose_products(items: list[ProductInput]) -> dict[str, Any]:
                 raise AmbiguousUnitError(f"{matching_name}: which unit? ({options})")
             if item.price is None and not known:
                 raise ValueError(f"{item.name}: a new item needs a price")
+            stock = item.stock if item.stock is not None else (known or {}).get("stock")
+            available = (
+                item.available
+                if "available" in item.model_fields_set or not known
+                else known.get("available", True)
+            )
+            if item.stock is not None and "available" not in item.model_fields_set:
+                # "Samosa: 0 left" is sold out and "made 20 more" is back on sale, exactly as
+                # the menu's − / + saves it (with_stock, OB-310).
+                available = with_stock({**(known or {}), "available": available}, stock)[
+                    "available"
+                ]
             products.append(
                 ProductFields(
                     # Keep the saved spelling so a correction updates the same item.
@@ -994,10 +1038,8 @@ def propose_products(items: list[ProductInput]) -> dict[str, Any]:
                     if item.price is None and known
                     else to_minor(item.price or 0, currency),
                     unit=known["unit"] if known else item.unit,
-                    stock=item.stock if item.stock is not None else (known or {}).get("stock"),
-                    available=item.available
-                    if "available" in item.model_fields_set or not known
-                    else known.get("available", True),
+                    stock=stock,
+                    available=available,
                     # Every new item gets a category (given, else suggested; reviewed with the
                     # rest). A saved item keeps its own; uncategorised ones use "Sort my menu".
                     category=(item.category or "").strip()

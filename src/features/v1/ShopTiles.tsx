@@ -32,11 +32,13 @@ import {
   ShoppingBasket,
   Stamp,
   Store,
-  Trash2,
   UtensilsCrossed,
   ZapOff,
 } from 'lucide-react'
 import { FactList } from './FactList'
+import { CoachNotes } from './CoachNotes'
+import { FactYesNo } from './FactYesNo'
+import { isYesNoFact } from './factAnswers'
 import { MenuSheet } from '../shop/MenuSheet'
 import { ThingsIBuySheet } from '../shop/ThingsIBuySheet'
 import { onMenu } from '../shop/stock'
@@ -48,7 +50,7 @@ import { ClosedTodaySwitch } from './TwoPaths'
 import { ShopQr } from './ShopQr'
 import { OwnerPerks } from '../passport/games/OwnerPerks'
 import { useUnread } from './useUnread'
-import { busyWindow, openNow, readiness } from './shopProgress'
+import { busyWindow, missingFacts, openNow, readiness } from './shopProgress'
 import { useCopy } from './strings'
 import { isServiceShop, useTabsCopy } from './tabsCopy'
 import { RowGroup, ShopRow } from './ShopRow'
@@ -615,48 +617,25 @@ function OneSheet({
             <HoursList hours={shop.fields.weekly_hours} />
             <FactList
               fields={shop.fields}
-              onAnswer={(fact) => then(() => ws.startCoachDraft(`${t.factNames[fact]}: `))()}
+              onAnswer={
+                // Yes / no facts are answered with a tap below; payment and delivery open their
+                // step of Edit details. Only busy hours are typed, in chat (no form step yet).
+                isYesNoFact(missingFacts(shop.fields)[0])
+                  ? undefined
+                  : (fact) =>
+                      then(() =>
+                        fact === 'payment_methods' || fact === 'delivery'
+                          ? ws.openEditor({
+                              kind: 'business',
+                              fields: shop.fields,
+                              step: fact === 'delivery' ? 'delivery' : 'payment',
+                            })
+                          : ws.startCoachDraft(`${t.factNames[fact]}: `),
+                      )()
+              }
             />
-            {(shop.coach_notes ?? []).length > 0 && (
-              <Box component="section" aria-labelledby="coach-memory-title" sx={{ mt: 4 }}>
-                <Typography
-                  id="coach-memory-title"
-                  component="h3"
-                  variant="titleSmall"
-                  color="text.secondary"
-                >
-                  {t.coachMemory}
-                </Typography>
-                <List disablePadding>
-                  {(shop.coach_notes ?? []).map((note) => (
-                    <ListItem
-                      key={note.id}
-                      disableGutters
-                      divider
-                      secondaryAction={
-                        <IconButton
-                          edge="end"
-                          aria-label={`${t.forgetNote}: ${note.text}`}
-                          onClick={() =>
-                            void ws
-                              .api(
-                                `/businesses/${encodeURIComponent(shop.id)}/notes/${encodeURIComponent(note.id)}`,
-                                { method: 'DELETE' },
-                              )
-                              .then(() => ws.reload())
-                              .catch(() => ws.notify(t.actionFailed))
-                          }
-                        >
-                          <Trash2 size={18} />
-                        </IconButton>
-                      }
-                    >
-                      <ListItemText primary={note.text} sx={{ pr: 6 }} />
-                    </ListItem>
-                  ))}
-                </List>
-              </Box>
-            )}
+            <FactYesNo shop={shop} onReview={onClose} />
+            <CoachNotes shop={shop} />
           </Box>
         </Sheet>
       )

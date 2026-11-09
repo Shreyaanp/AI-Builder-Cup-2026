@@ -421,6 +421,11 @@ def said_time(said: str, *, night: bool) -> str | None:
     return clock(f"{int(hour) + (12 if night and int(hour) < 12 else 0)}:{minute or '00'}")
 
 
+# Offline fixture for "remember that the supplier comes on Tuesdays" (remember_note).
+REMEMBER = re.compile(r"^(?:please\s+)?remember(?:\s+that|\s*:)\s+(.{3,200}?)[.!]?$", re.I)
+REMEMBERED = "I'll remember that. You can see or delete it in My shop, under Shop details."
+
+
 def details_call(question: str, ctx: Any) -> types.Part | None:
     """Offline fixture for one saved-shop detail (OB-172): "change my location to HITEC City,
     Hyderabad", "we close at 9 now", or something no tool does ("post this on Instagram")."""
@@ -1096,7 +1101,9 @@ class OfflineCoachModel(BaseLlm):
                     ),
                     None,
                 )
-                if payment_response is not None:
+                if any(r.name == "remember_note" for r in responses):
+                    reply = REMEMBERED
+                elif payment_response is not None:
                     status = str(payment_response.get("status", "invalid"))
                     reply = {
                         "prepared": "Check the payee and amount, then share your link. "
@@ -1224,6 +1231,13 @@ class OfflineCoachModel(BaseLlm):
                     clarify = CLARIFY_TIME if re.search(r"timing", question, re.I) else CLARIFY
                     yield LlmResponse(
                         content=types.Content(role="model", parts=[types.Part(text=clarify)])
+                    )
+                    return
+                remembered = REMEMBER.match(question.strip())
+                if ctx and ctx.business_id and remembered:
+                    note = types.FunctionCall(name="remember_note", args={"note": remembered[1]})
+                    yield LlmResponse(
+                        content=types.Content(role="model", parts=[types.Part(function_call=note)])
                     )
                     return
                 detail_call = details_call(question, ctx)
@@ -1379,6 +1393,8 @@ def shop_snapshot() -> str:
     items = "; ".join(
         f"{p['name']} {p['price']:g}/{p['unit']}"
         + ("" if p.get("available", True) else " (sold out)")
+        # The menu's − / + count, so a count the owner just tapped is what the coach knows.
+        + (f" ({p['stock']} left)" if p.get("stock") and p.get("available", True) else "")
         for p in products
     )
     try:

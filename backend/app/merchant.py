@@ -1071,6 +1071,9 @@ class MerchantStore:
                         "SELECT fields FROM inventory WHERE id=?", (existing[0],)
                     ).fetchone()
                     product = kept_source(product, json.loads(saved[0]) if saved else None)
+                    if saved and exists:
+                        # Sold out or back from the coach's card: the same as the owner's switch.
+                        self._availability_moved(db, bid, row, json.loads(saved[0]), product)
                     db.execute(
                         "UPDATE inventory SET fields=? WHERE id=?",
                         (json.dumps(product), existing[0]),
@@ -1214,6 +1217,32 @@ class MerchantStore:
                 self.feature_docs.delete_scope(kind, bid)
         return owned
 
+    @staticmethod
+    def _availability_moved(
+        db: sqlite3.Connection,
+        bid: str,
+        business: Any,
+        before: dict[str, Any],
+        after: dict[str, Any],
+    ) -> None:
+        """What every sold-out or back-in-stock change does, whichever screen or chat made it:
+        customers waiting for the item are told it is back, and a sold-out day is counted for the
+        prep plan. One rule for the switch, the − button and the coach's card."""
+        was, now = before.get("available", True) is not False, after.get("available", True)
+        db.execute("DELETE FROM stock_alerts WHERE expires<=?", (time.time(),))
+        if now and not was:
+            db.execute(
+                "UPDATE stock_alerts SET ready=1 WHERE business_id=? AND name=? AND unit=?",
+                (bid, after["name"], after["unit"]),
+            )
+        if was and now is False:
+            day = today_for(json.loads(business["fields"])).isoformat()
+            db.execute(
+                "INSERT INTO sold_out_days VALUES(?,?,1) ON CONFLICT(business_id,day) "
+                "DO UPDATE SET count=count+1",
+                (bid, day),
+            )
+
     def set_availability(
         self, uid: str, bid: str, product_id: str, available: bool
     ) -> dict[str, Any]:
@@ -1226,19 +1255,7 @@ class MerchantStore:
             if not row:
                 raise HTTPException(404, "Product not found.")
             fields = {**json.loads(row[0]), "available": available}
-            db.execute("DELETE FROM stock_alerts WHERE expires<=?", (time.time(),))
-            if available and not json.loads(row[0]).get("available", True):
-                db.execute(
-                    "UPDATE stock_alerts SET ready=1 WHERE business_id=? AND name=? AND unit=?",
-                    (bid, fields["name"], fields["unit"]),
-                )
-            if not available and json.loads(row[0]).get("available", True):
-                day = today_for(json.loads(business["fields"])).isoformat()
-                db.execute(
-                    "INSERT INTO sold_out_days VALUES(?,?,1) ON CONFLICT(business_id,day) "
-                    "DO UPDATE SET count=count+1",
-                    (bid, day),
-                )
+            self._availability_moved(db, bid, business, json.loads(row[0]), fields)
             db.execute("UPDATE inventory SET fields=? WHERE id=?", (json.dumps(fields), product_id))
             db.execute("UPDATE businesses SET revision=revision+1 WHERE id=?", (bid,))
             revision = db.execute("SELECT revision FROM businesses WHERE id=?", (bid,)).fetchone()
@@ -1252,13 +1269,15 @@ class MerchantStore:
     ) -> dict[str, Any]:
         with self.connect() as db:
             db.execute("BEGIN IMMEDIATE")
-            self.owned(db, uid, bid)
+            business = self.owned(db, uid, bid)
             row = db.execute(
                 "SELECT fields FROM inventory WHERE id=? AND business_id=?", (product_id, bid)
             ).fetchone()
             if not row:
                 raise HTTPException(404, "Product not found.")
             fields = edit(json.loads(row[0]))
+            # "0 left" from the − button is sold out like the switch (alerts, the prep plan).
+            self._availability_moved(db, bid, business, json.loads(row[0]), fields)
             db.execute("UPDATE inventory SET fields=? WHERE id=?", (json.dumps(fields), product_id))
             # A new revision, like the sold-out switch: the app reloads the item at once.
             db.execute("UPDATE businesses SET revision=revision+1 WHERE id=?", (bid,))

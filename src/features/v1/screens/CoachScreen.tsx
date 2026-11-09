@@ -104,6 +104,7 @@ import { useReceiveOrder } from '../../sourcing/orderData'
 import type { Order, SupplierResult } from '../../sourcing/types'
 import type { SupplyCardData } from '../../supply/SupplyEntry'
 import type { PurchaseOrder, Relationship } from '../../supply/types'
+import { supplyChanged } from '../../supply/supplyEvents'
 import { utter } from '../phoneVoice'
 import { useLanguageSwitch } from '../languageSwitch'
 import { ActionChip, MenuLinkChip, ReplyCard, ReplyLineAction } from '../CoachActions'
@@ -354,7 +355,7 @@ function CoachScreen({
   }
   const speaking = useRef<HTMLAudioElement | null>(null)
   const end = useRef<HTMLDivElement>(null)
-  const { api, activeId, review, setFaceOpen, go, speakReplies } = ws
+  const { api, activeId, review, setFaceOpen, go, speakReplies, reload } = ws
   // One "+" sheet (opened from the top bar) holds every coach action: add shop/product, new
   // chat, earlier chats.
   const actionsOpen = ws.coachActions && visible
@@ -419,6 +420,10 @@ function CoachScreen({
           [...items, { role: 'chart' as const, chart, key: crypto.randomUUID() }].slice(-40),
         )
       }
+      // A chat order, purchase order or supply change: every stock screen loads again (Today,
+      // Grow, Purchase orders), exactly as after the same tap on those screens.
+      if (event.kind === 'order' || event.kind === 'purchase_order' || event.kind === 'supply')
+        supplyChanged()
       if (event.kind === 'order') {
         const order = event.data as unknown as Order
         setOrders((known) => {
@@ -440,6 +445,8 @@ function CoachScreen({
       }
       if (event.kind === 'action') {
         const action = asCoachAction(event.data)
+        // Saved by the coach ("I'll remember that"): the screen it lives on shows it at once.
+        if (action?.changed) void reload().catch(() => undefined)
         if (action) {
           const chip = { role: 'action' as const, action, key: crypto.randomUUID() }
           // An offered button belongs under the answer it comes with ("what first?", OB-264), so
@@ -486,7 +493,7 @@ function CoachScreen({
         setFaceOpen(true)
       }
     },
-    [review, go, setFaceOpen, t.conversationRolledOver, switchLanguage],
+    [review, go, setFaceOpen, reload, t.conversationRolledOver, switchLanguage],
   )
   const restored = useRef<Promise<unknown>>(Promise.resolve())
   /** The coach's reply text (if any), then the menu links its proposals earned so far. */

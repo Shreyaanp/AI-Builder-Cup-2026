@@ -19,8 +19,9 @@ import anyio
 from .app_guide import guide_reply, where_line
 from .close_reward import close_reward, reward_text
 from .contracts import StreamEvent
-from .coordinator import MerchantContext, propose_products
+from .coordinator import MerchantContext, find_suppliers, propose_products
 from .discover import open_now
+from .numbers import read_number
 from .region import shop_currency, shop_zone
 from .rescue import local_now
 from .voice_tools import SCREENS, get_customer_messages, open_screen, set_open_today
@@ -95,7 +96,9 @@ HOW_TODAY = re.compile(
     r"|aaj\s+(?:ka\s+din\s+)?kaisa\s+(?:raha|tha|gaya))\b",
     re.I,
 )
-SOLD_OUT_LIST = re.compile(r"^what(?:'s|\s+is)\s+sold\s+out\b", re.I)
+SOLD_OUT_LIST = re.compile(
+    r"^(?:what(?:'s|\s+is)|which\s+(?:items?|things)\s+(?:are|is))\s+sold\s+out\b", re.I
+)
 # Tomorrow's promise by chat (HABIT change 4): "remind me to order milk tomorrow (morning)",
 # "tomorrow remind me to call Ganesh", "kal subah doodh yaad dilana". Only with "tomorrow" or
 # "kal": "remind me every morning" stays the Remind me screen.
@@ -425,6 +428,64 @@ def _hours_reply(fields: dict[str, Any]) -> str | None:
     return None
 
 
+# The sentence the Buy stock screen's "Find a supplier" sends (sourcing/copy.ts lowMessage,
+# growCopy.ts needMessage), English and Hindi: the search runs at once, with no model call, so
+# the screen still finds suppliers when the coach model is down.
+SUPPLIER_ASK = (
+    (re.compile(r"^My (?P<what>.{1,80}) is running low\. Find suppliers\.$", re.I), "en"),
+    (re.compile(r"^I need (?P<what>.{1,100})\. Find suppliers\.$", re.I), "en"),
+    (re.compile(r"^मेरा (?P<what>.{1,80}) कम हो रहा है। सप्लायर खोजें।$"), "hi"),
+    (re.compile(r"^मुझे (?P<what>.{1,100}) चाहिए। सप्लायर खोजें।$"), "hi"),
+)
+# "20 kg flour" from the screen's amount box: the amount and unit, then the item.
+AMOUNT = re.compile(
+    r"^(?P<qty>\d[\d.,]*)\s*(?P<unit>kg|g|l|litre|liter|litres|liters|ml|pack|packs"
+    r"|dozen|piece|pieces|crate|crates)\s+(?P<item>[^\s(].*)$",
+    re.I,
+)
+SUPPLIER_REPLY = {
+    "en": (
+        "Here are suppliers near you for {item}. Pick one to prepare an order.",
+        "I found no supplier near you for {item}. Try another name for it.",
+    ),
+    "hi": (
+        "{item} के लिए आपके पास के सप्लायर। ऑर्डर बनाने के लिए एक चुनें।",
+        "{item} के लिए पास में कोई सप्लायर नहीं मिला। कोई दूसरा नाम आज़माएँ।",
+    ),
+}
+
+
+async def _supplier_search(ctx: MerchantContext, message: str) -> InstantResult | None:
+    for pattern, language in SUPPLIER_ASK:
+        found = pattern.match(message)
+        if not found:
+            continue
+        what = found["what"].strip()
+        amount = AMOUNT.match(what)
+        # The app's one number reader: "1,000 kg" is a thousand, as on every screen (#701). An
+        # amount it cannot read for sure stays in the words, never guessed.
+        fields, _ = _shop(ctx)
+        qty = read_number(amount["qty"], shop_currency(fields), "quantity") if amount else None
+        item = (amount["item"] if amount and qty else what).strip()
+        if not item:
+            return None
+        result = await find_suppliers(item, qty, amount["unit"].lower() if amount and qty else "")
+        events = [StreamEvent(kind="sourcing", data={"stage": "searching", "item": item[:80]})]
+        status = result.get("status")
+        if status == "found":
+            card = ctx.cards.get(str(result.get("card_id")))
+            if not card:
+                return None
+            events.append(StreamEvent(kind="suppliers", data=card[1]))
+            reply = SUPPLIER_REPLY[language][0]
+        elif status == "none_found":
+            reply = SUPPLIER_REPLY[language][1]
+        else:
+            return None
+        return InstantResult("find_suppliers", reply.format(item=item), events)
+    return None
+
+
 async def route(
     text: str, ctx: MerchantContext | None, index: IntentIndex | None = None
 ) -> InstantResult | None:
@@ -437,6 +498,9 @@ async def route(
     promised = promise_words(message.rstrip(" .!।"))
     if promised:
         return _promise(ctx, promised, hindi=not LATIN.match(message))
+    supplied = await _supplier_search(ctx, message)
+    if supplied:
+        return supplied
     if not LATIN.match(message):
         return None
     lowered = message.casefold().rstrip(" .!")

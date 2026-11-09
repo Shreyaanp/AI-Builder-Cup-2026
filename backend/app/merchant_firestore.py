@@ -276,6 +276,13 @@ class FirestoreMerchantStore:
             ]
             existing = {ref.id: ref.get(transaction=transaction) for ref in items}
             old = {ref.id: ref.get(transaction=transaction) for ref in replaced if ref}
+            # Sold out or back from the coach's card does what the owner's switch does.
+            seen = (
+                _availability_reads(transaction, business_ref, (business.to_dict() or {})["fields"])
+                if business.exists and data["products"]
+                else None
+            )
+            moves: list[tuple[dict[str, Any], dict[str, Any]]] = []
             if data["kind"] == "business":
                 data["business"] = migrate_profile(data["business"])
             if data["kind"] == "business" and business.exists:
@@ -319,7 +326,11 @@ class FirestoreMerchantStore:
                 fields = kept_source(
                     fields, ((saved.to_dict() or {}).get("fields")) if saved else None
                 )
+                if saved is not None:
+                    moves.append(((saved.to_dict() or {}).get("fields") or {}, fields))
                 transaction.set(ref, {"fields": fields, "created": created, "updated": now})
+            if seen is not None:
+                _availability_moved(transaction, seen, moves)
             receipt = {
                 "business_id": bid,
                 "revision": data["revision"] + 1,
@@ -485,24 +496,8 @@ class FirestoreMerchantStore:
             if not item.exists:
                 raise HTTPException(404, "Product not found.")
             fields = {**(item.to_dict() or {})["fields"], "available": available}
-            day = today_for(business["fields"]).isoformat()
-            signal_ref = business_ref.collection("sold_out_days").document(day)
-            signal = signal_ref.get(transaction=transaction).to_dict() or {}
-            alerts = list(business_ref.collection("stock_alerts").stream(transaction=transaction))
-            now = time.time()
-            for alert in alerts:
-                data = alert.to_dict() or {}
-                if data["expires"] <= now:
-                    transaction.delete(alert.reference)
-                elif (
-                    available
-                    and not (item.to_dict() or {})["fields"].get("available", True)
-                    and data["name"] == fields["name"]
-                    and data["unit"] == fields["unit"]
-                ):
-                    transaction.update(alert.reference, {"ready": True})
-            if not available and (item.to_dict() or {})["fields"].get("available", True):
-                transaction.set(signal_ref, {"count": signal.get("count", 0) + 1})
+            seen = _availability_reads(transaction, business_ref, business["fields"])
+            _availability_moved(transaction, seen, [((item.to_dict() or {})["fields"], fields)])
             transaction.update(item_ref, {"fields": fields, "updated": time.time()})
             transaction.update(business_ref, {"revision": business["revision"] + 1})
             return {"id": product_id, **fields, "revision": business["revision"] + 1}
@@ -529,6 +524,9 @@ class FirestoreMerchantStore:
             if not item.exists:
                 raise HTTPException(404, "Product not found.")
             fields = edit((item.to_dict() or {})["fields"])
+            # "0 left" from the − button is sold out like the switch (alerts, the prep plan).
+            seen = _availability_reads(transaction, business_ref, business["fields"])
+            _availability_moved(transaction, seen, [((item.to_dict() or {})["fields"], fields)])
             transaction.update(item_ref, {"fields": fields, "updated": time.time()})
             # A new revision, like the sold-out switch: the app reloads the item at once.
             transaction.update(business_ref, {"revision": business["revision"] + 1})
@@ -1198,3 +1196,46 @@ class FirestoreMerchantStore:
         doc = doc_ref.get()
         if doc.exists:
             doc_ref.update({"last_synced": now})
+
+
+AvailabilityReads = tuple[Any, dict[str, Any], list[Any]]
+
+
+def _availability_reads(
+    transaction: Any, business_ref: Any, fields: dict[str, Any]
+) -> AvailabilityReads:
+    """Everything a sold-out change needs to read (Firestore reads come before any write)."""
+    signal_ref = business_ref.collection("sold_out_days").document(today_for(fields).isoformat())
+    signal = signal_ref.get(transaction=transaction).to_dict() or {}
+    alerts = list(business_ref.collection("stock_alerts").stream(transaction=transaction))
+    return signal_ref, signal, alerts
+
+
+def _availability_moved(
+    transaction: Any,
+    seen: AvailabilityReads,
+    moves: list[tuple[dict[str, Any], dict[str, Any]]],
+) -> None:
+    """What every sold-out or back-in-stock change does, whichever screen or chat made it:
+    customers waiting for the item are told it is back, and a sold-out day is counted for the
+    prep plan. One rule for the switch, the − button and the coach's card."""
+    signal_ref, signal, alerts = seen
+    now = time.time()
+    back = {
+        (after["name"], after["unit"])
+        for before, after in moves
+        if after.get("available", True) and before.get("available", True) is False
+    }
+    for alert in alerts:
+        data = alert.to_dict() or {}
+        if data["expires"] <= now:
+            transaction.delete(alert.reference)
+        elif (data["name"], data["unit"]) in back:
+            transaction.update(alert.reference, {"ready": True})
+    gone = sum(
+        1
+        for before, after in moves
+        if before.get("available", True) is not False and after.get("available", True) is False
+    )
+    if gone:
+        transaction.set(signal_ref, {"count": signal.get("count", 0) + gone})

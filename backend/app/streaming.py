@@ -40,6 +40,8 @@ ACTION_TOOLS = {
     "use_photo_as_icon",
     # An honest "can't do that yet" offers the screen where the owner can do it (OB-172).
     "report_unsupported_request",
+    # "I'll remember that" links to the note in My shop, which reloads to show it.
+    "remember_note",
 }
 # Tools that prepare a sealed proposal for the review dialog.
 PROPOSAL_TOOLS = {
