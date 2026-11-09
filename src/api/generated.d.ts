@@ -3903,6 +3903,7 @@ export interface components {
              *     ]
              */
             unavailable_rules: string[];
+            last_day?: components["schemas"]["LastDay"] | null;
         };
         /** BusinessFields */
         BusinessFields: {
@@ -4833,6 +4834,7 @@ export interface components {
             fallback_reason?: "provider_unavailable" | null;
             /** Confidence Level */
             confidence_level?: number | null;
+            last_day?: components["schemas"]["LastDay"] | null;
         };
         /** ForecastCheck */
         ForecastCheck: {
@@ -5125,6 +5127,34 @@ export interface components {
              * @default true
              */
             backorder_ok: boolean;
+        };
+        /**
+         * LastDay
+         * @description The latest saved day, for a shop without four weeks of sales yet (OB-329).
+         */
+        LastDay: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Rows */
+            rows: components["schemas"]["LastDayRow"][];
+            /** Make Same */
+            make_same: boolean;
+        };
+        /** LastDayRow */
+        LastDayRow: {
+            /** Item */
+            item: string;
+            /** Quantity */
+            quantity: number;
+            /** Unit */
+            unit: string;
+            /** Revenue */
+            revenue: number;
+            /** Made */
+            made: boolean;
         };
         /** LevelView */
         LevelView: {
@@ -7204,6 +7234,7 @@ export interface components {
             /** Has Customer Stamp */
             has_customer_stamp?: boolean | null;
             promise?: components["schemas"]["Promise"] | null;
+            last_day?: components["schemas"]["LastDay"] | null;
         };
         /** TodayArea */
         TodayArea: {

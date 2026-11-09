@@ -95,6 +95,23 @@ HOW_TODAY = re.compile(
     r"|aaj\s+(?:ka\s+din\s+)?kaisa\s+(?:raha|tha|gaya))\b",
     re.I,
 )
+# "How much to make?" opens the make list in every script the router knows (OB-328). The owner
+# asks about now: in English a question naming an item is the coach's forecast answer, and a
+# question naming tomorrow is the coach's too, and so is the Make list's own "Ask
+# the coach" sentence. Past tense ("did I make", बनाया) is about what happened, not the list, and
+# a "don't" is never a request to open anything.
+MAKE_LIST = re.compile(
+    r"^(?!.*\b(?:tomorrow|tmrw|kal|did|made|don'?t|dont|mat|nahi|nahin)\b)"
+    r"(?!.*(?:^|\s)(?:कल|मत|नहीं)(?:\s|$)).*(?:"
+    r"\bhow\s+(?:much|many)\s+(?:(?:should|do|can|shall)\s+(?:i|we)\s+|to\s+)?"
+    r"(?:make|prep|prepare|bake|cook)(?:\s+(?:today|now))?$"
+    r"|\bkit(?:na|ne|ni)\b.*\bbana(?:na|ne|ni|u|un|oon|ye|yen)\b"
+    r"|कित(?:ना|ने|नी)\s.*(?:बना(?:ना|ने|नी|ऊँ|ऊं|उँ|उं|एँ|एं|ओ)(?:\s|$)"
+    r"|तैयार(?:ी)?\s*कर(?:ना|ने|नी|ूँ|ूं|ें)(?:\s|$))"
+    r"|(?:मांग|माँग)\s.*अनुमान"
+    r")",
+    re.I,
+)
 SOLD_OUT_LIST = re.compile(r"^what(?:'s|\s+is)\s+sold\s+out\b", re.I)
 # Tomorrow's promise by chat (HABIT change 4): "remind me to order milk tomorrow (morning)",
 # "tomorrow remind me to call Ganesh", "kal subah doodh yaad dilana". Only with "tomorrow" or
@@ -272,6 +289,15 @@ SCREEN_FEATURE = {
 }
 
 
+def make_list(ctx: MerchantContext, text: str) -> InstantResult | None:
+    """The make list for "how much to make?", the same in the demo, offline and live (OB-328)."""
+    message = " ".join(text.split()).rstrip(" .!?।")
+    if not MAKE_LIST.search(message):
+        return None
+    reply = "Here is how much to make." if LATIN.match(message) else "यह रहा कितना बनाना है।"
+    return _screen(ctx, "make", reply)
+
+
 def _read_intent(ctx: MerchantContext, intent: str) -> InstantResult | None:
     fields, inventory = _shop(ctx)
     if intent == "am_i_open":
@@ -437,6 +463,9 @@ async def route(
     promised = promise_words(message.rstrip(" .!।"))
     if promised:
         return _promise(ctx, promised, hindi=not LATIN.match(message))
+    made = make_list(ctx, message)
+    if made:
+        return made
     if not LATIN.match(message):
         return None
     lowered = message.casefold().rstrip(" .!")
