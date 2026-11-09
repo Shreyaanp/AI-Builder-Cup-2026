@@ -128,6 +128,8 @@ for (const width of widths) {
         await expect(menu).toBeVisible()
         await assertPhoneLayout(page, 'Shop menu')
         await menu.locator('[data-menu-item="Kopi"]').click()
+        // The editor opens once the menu has gone (OB-353): check the editor, not the old sheet.
+        await expect(page.getByRole('dialog').locator('#product-form-title')).toBeVisible()
         await assertPhoneLayout(page, 'Shop item details')
         await page.keyboard.press('Escape')
         await page.keyboard.press('Escape')

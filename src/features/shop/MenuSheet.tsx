@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import type { KeyboardEvent } from 'react'
 import {
   Alert,
@@ -63,6 +63,13 @@ export function MenuSheet({
   const [sorting, setSorting] = useState(false)
   const importer = useImport({ onBeforeReview: onClose, onSales: setSales })
   const usual = useUsualSales(open)
+  // Editors are their own dialogs and open once this sheet has gone: one mounted while it is still
+  // sliding away came up hidden from screen readers (MUI's modal order), one time in four.
+  const afterClose = useRef<(() => void) | null>(null)
+  const thenOpen = (next: () => void) => {
+    afterClose.current = next
+    onClose()
+  }
   const shop = ws.active
   if (!shop) return null
   // What customers can buy; tea dust and milk the shop buys have their own list (OB-310).
@@ -98,6 +105,11 @@ export function MenuSheet({
         titleId="menu-sheet-title"
         ask="add_menu"
         title={t.menu}
+        onExited={() => {
+          const next = afterClose.current
+          afterClose.current = null
+          next?.()
+        }}
         onEntered={() => {
           if (!focus) return
           const item = Array.from(document.querySelectorAll<HTMLElement>('[data-menu-item]')).find(
@@ -116,11 +128,7 @@ export function MenuSheet({
             <Button
               variant="contained"
               startIcon={<Plus size={18} />}
-              onClick={() => {
-                // Editors are their own dialogs; close the sheet first so modals never stack.
-                onClose()
-                ws.openEditor({ kind: 'product', product: null })
-              }}
+              onClick={() => thenOpen(() => ws.openEditor({ kind: 'product', product: null }))}
             >
               {t.addProduct}
             </Button>
@@ -131,10 +139,7 @@ export function MenuSheet({
         {importing && (
           <ImportPanel
             importer={importer}
-            onTypeItems={() => {
-              onClose()
-              ws.openEditor({ kind: 'product', product: null })
-            }}
+            onTypeItems={() => thenOpen(() => ws.openEditor({ kind: 'product', product: null }))}
           />
         )}
         {asked && <AskForSale product={asked} />}
@@ -194,10 +199,7 @@ export function MenuSheet({
                       key={product.id ?? `${product.name}-${product.unit}`}
                       product={product}
                       usual={usual?.items[product.name]}
-                      onEdit={() => {
-                        onClose()
-                        ws.openEditor({ kind: 'product', product })
-                      }}
+                      onEdit={() => thenOpen(() => ws.openEditor({ kind: 'product', product }))}
                     />
                   ))}
                 </Box>

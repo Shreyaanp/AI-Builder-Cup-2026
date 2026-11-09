@@ -272,6 +272,9 @@ test('OB-347: editing one saved item has no "Add another"', async ({ page }) => 
   await page.getByRole('button', { name: 'Shop', exact: true }).click()
   await page.getByRole('button', { name: /^Menu/ }).click()
   await page.getByRole('button', { name: 'Edit Sugar', exact: true }).click()
+  // OB-353: the editor waits for the Menu to go, so it is never left hidden from screen readers.
+  await expect(page.getByRole('dialog', { name: /Sugar/ })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Review', exact: true })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Add another' })).toHaveCount(0)
 })
 
