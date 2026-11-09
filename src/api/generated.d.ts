@@ -3783,6 +3783,11 @@ export interface components {
         AvailabilityRequest: {
             /** Available */
             available: boolean;
+            /**
+             * Today Only
+             * @default false
+             */
+            today_only: boolean;
         };
         /**
          * Because
@@ -4792,7 +4797,8 @@ export interface components {
         };
         /**
          * ForSaleRequest
-         * @description "Customers can buy this", or one of the things the shop buys to make others (OB-310).
+         * @description On the menu, or one of the things the shop buys to make others (the owner's "Hide from
+         *     menu", OB-310).
          */
         ForSaleRequest: {
             /** For Sale */
@@ -5873,6 +5879,8 @@ export interface components {
             source?: ("made" | "bought") | null;
             /** For Sale */
             for_sale?: boolean | null;
+            /** Sold Out Day */
+            sold_out_day?: string | null;
             /** Previous Unit */
             previous_unit?: string | null;
         };

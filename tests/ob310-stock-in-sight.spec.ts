@@ -129,7 +129,7 @@ test('OB-310: the item editor is titled, steps stock and opens without the keybo
   await expect(stock).toHaveValue('4')
   await form.getByRole('button', { name: 'One more Bun maska' }).click()
   await expect(stock).toHaveValue('5')
-  await expect(form.getByRole('switch', { name: 'Customers can buy this' })).toBeChecked()
+  await expect(form.getByRole('switch', { name: 'Hide from menu' })).not.toBeChecked()
   await page.screenshot({ path: test.info().outputPath('editor-390.png') })
 })
 
@@ -431,7 +431,7 @@ test('OB-310: answering Buy in the editor keeps the item on the menu and page', 
   await expect(form.getByTestId('product-source-saved')).toHaveText('Saved')
   await expect.poll(async () => (await paneer()).source).toBe('bought')
   expect(await paneer()).toMatchObject({ for_sale: true, ask_for_sale: true })
-  await expect(form.getByRole('switch', { name: 'Customers can buy this' })).toBeChecked()
+  await expect(form.getByRole('switch', { name: 'Hide from menu' })).not.toBeChecked()
   await form.getByRole('button', { name: 'Cancel' }).click()
   await expect(form).toHaveCount(0)
   await expect(

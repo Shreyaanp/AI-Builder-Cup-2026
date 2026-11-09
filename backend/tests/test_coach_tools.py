@@ -2,6 +2,7 @@ import asyncio
 import hashlib
 import json
 from collections.abc import Iterator
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -10,6 +11,7 @@ from fastapi import HTTPException
 from google.adk.events import Event
 from google.genai import types
 
+from app import merchant
 from app.agent import instruction, ui_language
 from app.coordinator import (
     MAX_REPAIRS,
@@ -188,6 +190,25 @@ def test_bare_string_items_are_repairable_not_a_crash(saved_shop):
     result = propose_products(["Chai"])  # type: ignore[list-item]
     assert result["status"] == "invalid"
     assert saved_shop.proposals == {}
+
+
+def test_ob333_coach_marks_it_sold_out_again_the_day_after_sold_out_today(saved_shop, monkeypatch):
+    days = {"now": date(2026, 11, 8)}
+    monkeypatch.setattr(merchant, "today_for", lambda _fields: days["now"])
+    store, bid = saved_shop.store, saved_shop.business_id
+
+    def chai() -> dict[str, Any]:
+        return next(p for p in store.inventory("alice", bid) if p["name"] == "Chai")
+
+    store.set_availability("alice", bid, chai()["id"], False, True)
+    days["now"] = date(2026, 11, 9)
+    assert chai()["available"] is True
+    # "Chai is sold out", said the next day and confirmed by the owner.
+    result = propose_products([ProductInput(name="chai", available=False)])
+    proposal = saved_shop.proposals[result["proposal_id"]]
+    assert proposal["snapshot"]["products"][0]["available"] is False
+    store.commit("alice", proposal["id"], proposal["digest"])
+    assert chai()["available"] is False
 
 
 def test_sold_out_by_name_keeps_saved_price_and_unit(saved_shop):
