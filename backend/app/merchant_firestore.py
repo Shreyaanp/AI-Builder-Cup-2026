@@ -33,6 +33,7 @@ from .merchant import (
     BusinessFields,
     ProductFields,
     ProposalRequest,
+    back_on_sale,
     card_projection,
     challenge_prompts,
     check_demo_seed,
@@ -43,6 +44,7 @@ from .merchant import (
     require_name,
     seal_proposal,
     validate_proposal,
+    with_availability,
 )
 from .playbook import migrate_stored
 from .product_source import needs_sales, sold_names
@@ -162,14 +164,14 @@ class FirestoreMerchantStore:
         }
 
     def inventory(self, uid: str, bid: str) -> list[dict[str, Any]]:
-        self.owned_business(uid, bid)
+        today = today_for(self.owned_business(uid, bid)["fields"]).isoformat()
         ref = self.businesses.document(document_id(bid, "Business not found."))
         rows = [
             (snapshot.id, snapshot.to_dict() or {})
             for snapshot in ref.collection("inventory").limit(500).stream()
         ]
         rows.sort(key=lambda row: (row[1].get("created", 0), row[0]))
-        return [{"id": pid, **data["fields"]} for pid, data in rows]
+        return [{"id": pid, **back_on_sale(data["fields"], today)} for pid, data in rows]
 
     def propose(
         self, uid: str, request: ProposalRequest, idempotency_key: str | None = None
@@ -324,11 +326,17 @@ class FirestoreMerchantStore:
                     if previous is not None and old[previous.id].exists
                     else None
                 )
+                shop = data["business"] if data["kind"] == "business" else None
+                today = today_for(
+                    shop or (business.to_dict() or {}).get("fields") or {}
+                ).isoformat()
                 fields = kept_source(
-                    fields, ((saved.to_dict() or {}).get("fields")) if saved else None
+                    fields, ((saved.to_dict() or {}).get("fields")) if saved else None, today
                 )
                 if saved is not None:
-                    moves.append(((saved.to_dict() or {}).get("fields") or {}, fields))
+                    moves.append(
+                        (back_on_sale((saved.to_dict() or {}).get("fields") or {}, today), fields)
+                    )
                 transaction.set(ref, {"fields": fields, "created": created, "updated": now})
             if seen is not None:
                 _availability_moved(transaction, seen, moves)
@@ -483,7 +491,7 @@ class FirestoreMerchantStore:
         return owned
 
     def set_availability(
-        self, uid: str, bid: str, product_id: str, available: bool
+        self, uid: str, bid: str, product_id: str, available: bool, today_only: bool = False
     ) -> dict[str, Any]:
         business_ref = self.businesses.document(document_id(bid, "Business not found."))
         if not re.fullmatch(r"[0-9a-f]{64}", product_id):
@@ -496,9 +504,11 @@ class FirestoreMerchantStore:
             item = item_ref.get(transaction=transaction)
             if not item.exists:
                 raise HTTPException(404, "Product not found.")
-            fields = {**(item.to_dict() or {})["fields"], "available": available}
+            day = today_for(business["fields"]).isoformat()
+            before = back_on_sale((item.to_dict() or {})["fields"], day)
+            fields = with_availability(before, available, today_only, day)
             seen = _availability_reads(transaction, business_ref, business["fields"])
-            _availability_moved(transaction, seen, [((item.to_dict() or {})["fields"], fields)])
+            _availability_moved(transaction, seen, [(before, fields)])
             transaction.update(item_ref, {"fields": fields, "updated": time.time()})
             transaction.update(business_ref, {"revision": business["revision"] + 1})
             return {"id": product_id, **fields, "revision": business["revision"] + 1}
@@ -524,10 +534,12 @@ class FirestoreMerchantStore:
             item = item_ref.get(transaction=transaction)
             if not item.exists:
                 raise HTTPException(404, "Product not found.")
-            fields = edit((item.to_dict() or {})["fields"])
+            today = today_for(business["fields"]).isoformat()
+            before = back_on_sale((item.to_dict() or {})["fields"], today)
+            fields = edit(before)
             # "0 left" from the − button is sold out like the switch (alerts, the prep plan).
             seen = _availability_reads(transaction, business_ref, business["fields"])
-            _availability_moved(transaction, seen, [((item.to_dict() or {})["fields"], fields)])
+            _availability_moved(transaction, seen, [(before, fields)])
             transaction.update(item_ref, {"fields": fields, "updated": time.time()})
             # A new revision, like the sold-out switch: the app reloads the item at once.
             transaction.update(business_ref, {"revision": business["revision"] + 1})

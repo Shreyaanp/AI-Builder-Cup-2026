@@ -233,7 +233,12 @@ async def availability(
     """The owner's own sold-out switch: an immediate, explicit action (no AI involved)."""
     uid = await consented_owner(request)
     return await anyio.to_thread.run_sync(
-        store(request).set_availability, uid, business_id, product_id, body.available
+        store(request).set_availability,
+        uid,
+        business_id,
+        product_id,
+        body.available,
+        body.today_only,
     )
 
 

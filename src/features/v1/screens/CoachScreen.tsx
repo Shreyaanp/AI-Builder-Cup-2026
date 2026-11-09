@@ -91,7 +91,7 @@ import { NeedsPill, TodayView, type TodayActions } from '../today/TodayView'
 import { useLocalDay } from '../today/useLocalDay'
 import type { ShopSheetKind } from '../ShopTiles'
 import { useUnread } from '../useUnread'
-import { useVoice } from '../useVoice'
+import { useVoice, voiceSupported } from '../useVoice'
 import { useOnboardingCopy } from '../onboardingCopy'
 import { useSpokenReveal } from '../useSpokenReveal'
 import { cardWords, mergeTranscript } from '../speechReveal'
@@ -106,7 +106,7 @@ import type { Order, SupplierResult } from '../../sourcing/types'
 import type { SupplyCardData } from '../../supply/SupplyEntry'
 import type { PurchaseOrder, Relationship } from '../../supply/types'
 import { supplyChanged } from '../../supply/supplyEvents'
-import { utter } from '../phoneVoice'
+import { speak, canSpeak, stopSpeech, utter } from '../phoneVoice'
 import { useLanguageSwitch } from '../languageSwitch'
 import { ActionChip, MenuLinkChip, ReplyCard, ReplyLineAction } from '../CoachActions'
 import { CollapsibleCard, LineAction } from '../CollapsibleCard'
@@ -319,7 +319,7 @@ function CoachScreen({
       alive.current = false
       controller.current?.abort()
       photoController.current?.abort()
-      speechSynthesis.cancel()
+      stopSpeech()
       speaking.current?.pause()
     }
   }, [])
@@ -590,7 +590,7 @@ function CoachScreen({
       .catch(() => undefined)
     return () => {
       abort.abort()
-      speechSynthesis.cancel()
+      stopSpeech()
       speaking.current?.pause()
     }
     // `restore` is a plain function re-created each render; this runs once per shop.
@@ -686,7 +686,7 @@ function CoachScreen({
   async function speakReply(text: string) {
     // The read-only demo shows replies as text; it has no recorded voice for live answers.
     if (ws.demo) return
-    speechSynthesis.cancel()
+    stopSpeech()
     speaking.current?.pause()
     const cleanText = stripMarkdown(text)
     try {
@@ -706,8 +706,7 @@ function CoachScreen({
     } catch {
       // Fall through to on-device speech.
     }
-    const utterance = utter(cleanText, language)
-    speechSynthesis.speak(utterance)
+    if (canSpeak()) speak(utter(cleanText, language))
   }
 
   async function send(text = note) {
@@ -1889,55 +1888,58 @@ function CoachScreen({
             {speakReplies ? <Volume2 size={20} /> : <VolumeX size={20} />}
           </IconButton>
           {/* Tap to talk, tap again to finish: the icon and its container show the state. No
-              tooltip on touch, which would pop over the composer on a long press. */}
-          <Tooltip
-            title={
-              voice.state === 'recording'
-                ? t.finishTalking
-                : voice.state === 'idle'
-                  ? t.talk
-                  : t.stopVoice
-            }
-            disableTouchListener
-          >
-            <span>
-              <IconButton
-                aria-label={
-                  voice.state === 'recording'
-                    ? t.finishTalking
-                    : voice.state === 'idle'
-                      ? t.talk
-                      : t.stopVoice
-                }
-                aria-pressed={voice.state === 'recording'}
-                disabled={busy !== 'idle'}
-                onClick={() => {
-                  if (voice.state === 'recording') voice.finishRecording()
-                  else if (voice.state === 'idle')
-                    void restored.current.then(() => {
-                      track('voice_used')
-                      return voice.start(session.current)
-                    })
-                  else stopTalking()
-                }}
-                sx={
-                  voice.state === 'recording'
-                    ? {
-                        bgcolor: roles.primaryContainer,
-                        color: roles.onPrimaryContainer,
-                        '&:hover': { bgcolor: roles.primaryContainer },
-                      }
-                    : undefined
-                }
-              >
-                {voice.state === 'idle' || voice.state === 'recording' ? (
-                  <Mic size={22} />
-                ) : (
-                  <Square size={18} />
-                )}
-              </IconButton>
-            </span>
-          </Tooltip>
+              tooltip on touch, which would pop over the composer on a long press. A browser with
+              no live audio (some in-app browsers) gets no mic: typing is the way in. */}
+          {voiceSupported() && (
+            <Tooltip
+              title={
+                voice.state === 'recording'
+                  ? t.finishTalking
+                  : voice.state === 'idle'
+                    ? t.talk
+                    : t.stopVoice
+              }
+              disableTouchListener
+            >
+              <span>
+                <IconButton
+                  aria-label={
+                    voice.state === 'recording'
+                      ? t.finishTalking
+                      : voice.state === 'idle'
+                        ? t.talk
+                        : t.stopVoice
+                  }
+                  aria-pressed={voice.state === 'recording'}
+                  disabled={busy !== 'idle'}
+                  onClick={() => {
+                    if (voice.state === 'recording') voice.finishRecording()
+                    else if (voice.state === 'idle')
+                      void restored.current.then(() => {
+                        track('voice_used')
+                        return voice.start(session.current)
+                      })
+                    else stopTalking()
+                  }}
+                  sx={
+                    voice.state === 'recording'
+                      ? {
+                          bgcolor: roles.primaryContainer,
+                          color: roles.onPrimaryContainer,
+                          '&:hover': { bgcolor: roles.primaryContainer },
+                        }
+                      : undefined
+                  }
+                >
+                  {voice.state === 'idle' || voice.state === 'recording' ? (
+                    <Mic size={22} />
+                  ) : (
+                    <Square size={18} />
+                  )}
+                </IconButton>
+              </span>
+            </Tooltip>
+          )}
           {busy === 'reply' ? (
             <IconButton
               aria-label={t.stop}
