@@ -92,7 +92,9 @@ test('manual add reads 1,000 and 170/-, asks about 1,5, and delete has Undo', as
   await expect(section.getByTestId('money-spent')).toContainText('₹1,000')
   await expect(section.getByRole('button', { name: 'Change Shop rent ₹1,000' })).toBeVisible()
   // UPI is not cash out of the drawer.
-  await expect(dialog.getByTestId('cash-expected')).toContainText('₹0')
+  expect((await moneyOn(page)).cash.expected).toBe(0)
+  // The day's sales are not in: the drawer says so instead of a figure.
+  await expect(dialog.getByTestId('cash-expected')).toContainText('After today’s sales')
   expect((await moneyOn(page)).expenses).toMatchObject([
     { amount: 100000, category: 'rent', method: 'upi', note: 'Shop rent', source: 'manual' },
   ])
@@ -117,6 +119,55 @@ test('manual add reads 1,000 and 170/-, asks about 1,5, and delete has Undo', as
   await expect(section.getByRole('button', { name: 'Change Shop rent ₹170' })).toBeVisible()
   expect((await moneyOn(page)).expenses).toMatchObject([{ amount: 17000, note: 'Shop rent' }])
   await page.screenshot({ path: info.outputPath('money-today-360-en-light.png'), fullPage: true })
+
+  // A delete that fails says so, and the expense stays.
+  await page.route('**/expenses/*/*', (route) =>
+    route.request().method() === 'DELETE' ? route.abort() : route.continue(),
+  )
+  await section.getByRole('button', { name: 'Change Shop rent ₹170' }).click()
+  await page
+    .getByRole('dialog', { name: 'Change expense' })
+    .getByRole('button', { name: 'Delete' })
+    .click()
+  await expect(section.getByTestId('money-problem')).toHaveText(
+    'Couldn’t delete. Check your connection and try again.',
+  )
+  await expect(section.getByRole('button', { name: 'Change Shop rent ₹170' })).toBeVisible()
+})
+
+test('a count before the sales are in waits for them, then compares', async ({ page }, info) => {
+  await page.setViewportSize({ width: 360, height: 800 })
+  await start(page)
+  const id = await shopId(page)
+  await page.request.put(`/api/v1/businesses/${id}/money/${day}/cash`, {
+    data: { opening: '100', counted: '3,050' },
+  })
+  let dialog = await openCloseDay(page)
+  let drawer = dialog.getByTestId('cash-drawer')
+  await expect(drawer.getByTestId('cash-waiting')).toHaveText(
+    'Short or extra shows after you save today’s sales.',
+  )
+  await expect(drawer.getByTestId('cash-difference')).toHaveCount(0)
+  await expect(drawer.getByTestId('cash-expected')).toContainText('After today’s sales')
+  await drawer.scrollIntoViewIfNeeded()
+  await page.screenshot({ path: info.outputPath('cash-waiting-360-en-light.png'), fullPage: true })
+  // Sales saved as one total, with the split: the same count now compares, and one UPI figure.
+  expect(
+    (
+      await page.request.post(`/api/v1/businesses/${id}/day/total`, {
+        data: { date: day, total: 3000, cash: 2950, upi: 50 },
+      })
+    ).ok(),
+  ).toBe(true)
+  await page.reload()
+  await page.getByRole('button', { name: 'Continue local preview' }).click()
+  dialog = await openCloseDay(page)
+  drawer = dialog.getByTestId('cash-drawer')
+  await expect(dialog.getByTestId('money-sales')).toContainText('₹3,000')
+  await expect(drawer.getByTestId('cash-expected')).toContainText('₹3,050')
+  await expect(drawer.getByTestId('cash-difference')).toHaveText('Matches the drawer')
+  await expect(drawer.getByTestId('cash-upi-from-total')).toContainText('₹50')
+  await expect(drawer.getByRole('button', { name: 'Split sales: cash and UPI' })).toHaveCount(0)
 })
 
 test('cash in hand: opening + cash sales - cash spent, and the counted difference', async ({
@@ -169,6 +220,8 @@ test('chat: "doodh 300 ka kharcha" and "paid rent 5000" are noted; a "don\'t" is
   await expect(page.getByRole('log')).toContainText('₹5,000, rent (rent)', { timeout: 20_000 })
   await say('rent mat likho, 5000 nahi diya')
   await expect(page.getByRole('log').getByText('rent mat likho', { exact: false })).toBeVisible()
+  await say('customer paid 500')
+  await expect(page.getByRole('log').getByText('customer paid 500', { exact: true })).toBeVisible()
   // The chat writes through the close screen's endpoint: the same day, the same list.
   await expect
     .poll(async () => (await moneyOn(page)).expenses.map((e) => [e.amount, e.source]))
@@ -269,7 +322,7 @@ for (const [width, height] of [
         const dialog = await openCloseDay(page, language === 'hi' ? 'दिन बंद करें' : undefined)
         const section = dialog.getByTestId('money-today')
         await expect(section.getByTestId('money-spent')).toContainText('₹5,300')
-        await expect(dialog.getByTestId('cash-difference')).toBeVisible()
+        await expect(dialog.getByTestId('cash-waiting')).toBeVisible()
         await section.scrollIntoViewIfNeeded()
         await page.screenshot({
           path: info.outputPath(`money-${width}-${language}-${scheme}.png`),

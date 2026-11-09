@@ -21,6 +21,7 @@ export function MoneyToday({ day, currency }: { day: string; currency: string })
   const money = useMoney(day)
   const [sheet, setSheet] = useState<Expense | 'new' | null>(null)
   const [undo, setUndo] = useState<Expense | null>(null)
+  const [problem, setProblem] = useState('')
   const data = money.data
   const show = (minor: number) => formatShopPrice(minor, currency, locale)
   const rows: [string, string, string][] = data
@@ -125,6 +126,16 @@ export function MoneyToday({ day, currency }: { day: string; currency: string })
       >
         {m.add}
       </Button>
+      {problem && (
+        <Typography
+          role="alert"
+          data-testid="money-problem"
+          variant="bodyMedium"
+          sx={{ mt: 2, color: roles.error }}
+        >
+          {problem}
+        </Typography>
+      )}
       {data && <CashDrawer data={data} currency={currency} onSave={money.cash} />}
       {money.failed && !data && (
         <Typography role="alert" variant="bodyMedium" sx={{ mt: 2, color: roles.error }}>
@@ -143,7 +154,11 @@ export function MoneyToday({ day, currency }: { day: string; currency: string })
               : () => {
                   const gone = sheet
                   setSheet(null)
-                  void money.remove(gone).then(() => setUndo(gone))
+                  setProblem('')
+                  money
+                    .remove(gone)
+                    .then(() => setUndo(gone))
+                    .catch(() => setProblem(m.deleteFailed))
                 }
           }
           onClose={() => setSheet(null)}
@@ -158,7 +173,7 @@ export function MoneyToday({ day, currency }: { day: string; currency: string })
           <Button
             color="inherit"
             onClick={() => {
-              if (undo) void money.restore(undo)
+              if (undo) money.restore(undo).catch(() => setProblem(m.failed))
               setUndo(null)
             }}
             sx={{ minHeight: 48 }}

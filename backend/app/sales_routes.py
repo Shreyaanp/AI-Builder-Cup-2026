@@ -6,6 +6,7 @@ from typing import Annotated, Any
 import anyio
 from fastapi import APIRouter, Query, Request
 
+from .day_total import with_day_totals
 from .limits import enforce_limits
 from .merchant import Approval
 from .merchant_routes import consented_owner, owner, store
@@ -27,9 +28,9 @@ async def approve_sales(
 
 @router.get("/sales")
 async def sales_history(business_id: str, request: Request) -> list[dict[str, Any]]:
-    return await anyio.to_thread.run_sync(
-        store(request).sales_history, await owner(request), business_id
-    )
+    service = store(request)
+    sales = await anyio.to_thread.run_sync(service.sales_history, await owner(request), business_id)
+    return await anyio.to_thread.run_sync(with_day_totals, service, business_id, sales)
 
 
 @router.post("/freshness/confirm")
@@ -65,6 +66,7 @@ async def recap(
     service = store(request)
     await enforce_limits(request, [("recap", uid)])
     sales = await anyio.to_thread.run_sync(service.sales_history, uid, business_id)
+    sales = await anyio.to_thread.run_sync(with_day_totals, service, business_id, sales)
     signals = await anyio.to_thread.run_sync(service.recap_signals, uid, business_id)
     facts = recap_facts(week, sales, signals)
     version = fingerprint({"facts": facts, "mode": request.app.state.v1_settings.coach_mode})

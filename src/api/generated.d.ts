@@ -2385,6 +2385,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/businesses/{business_id}/expenses/order/{order_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Order Expense
+         * @description Whether a received order is already noted, so its card says so after a reload.
+         */
+        get: operations["read_order_expense_api_v1_businesses__business_id__expenses_order__order_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/businesses/{business_id}/expenses": {
         parameters: {
             query?: never;
@@ -2451,6 +2471,26 @@ export interface paths {
         /** Put Cash */
         put: operations["put_cash_api_v1_businesses__business_id__money__day__cash_put"];
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/businesses/{business_id}/day/total": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Save Day Total
+         * @description The owner read the total back on Check and tapped Save; closing again replaces it.
+         */
+        post: operations["save_day_total_api_v1_businesses__business_id__day_total_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3892,6 +3932,11 @@ export interface components {
         AvailabilityRequest: {
             /** Available */
             available: boolean;
+            /**
+             * Today Only
+             * @default false
+             */
+            today_only: boolean;
         };
         /**
          * Because
@@ -4240,6 +4285,8 @@ export interface components {
             cash_sales: number;
             /** Upi Sales */
             upi_sales: number | null;
+            /** Upi From */
+            upi_from?: ("total" | "drawer") | null;
             /** Cash Spent */
             cash_spent: number;
             /** Expected */
@@ -4597,6 +4644,19 @@ export interface components {
             open?: string | null;
             /** Close */
             close?: string | null;
+        };
+        /** DayTotal */
+        DayTotal: {
+            /** Date */
+            date: string;
+            /** Currency */
+            currency: string;
+            /** Total */
+            total: number;
+            /** Cash */
+            cash?: number | null;
+            /** Upi */
+            upi?: number | null;
         };
         /** Deal */
         Deal: {
@@ -5005,7 +5065,8 @@ export interface components {
         };
         /**
          * ForSaleRequest
-         * @description "Customers can buy this", or one of the things the shop buys to make others (OB-310).
+         * @description On the menu, or one of the things the shop buys to make others (the owner's "Hide from
+         *     menu", OB-310).
          */
         ForSaleRequest: {
             /** For Sale */
@@ -5532,6 +5593,20 @@ export interface components {
             /** Left */
             left: number;
         };
+        /** NewDayTotal */
+        NewDayTotal: {
+            /**
+             * Date
+             * @default
+             */
+            date: string;
+            /** Total */
+            total: number;
+            /** Cash */
+            cash?: number | null;
+            /** Upi */
+            upi?: number | null;
+        };
         /** NewPromise */
         NewPromise: {
             /** Text */
@@ -5662,6 +5737,13 @@ export interface components {
             version: number;
             /** Lines */
             lines: components["schemas"]["app__sourcing_routes__LineQuantity"][];
+        };
+        /** OrderExpense */
+        OrderExpense: {
+            /** Noted */
+            noted: boolean;
+            /** Amount */
+            amount?: number | null;
         };
         /** OrderMessage */
         OrderMessage: {
@@ -6128,6 +6210,8 @@ export interface components {
             source?: ("made" | "bought") | null;
             /** For Sale */
             for_sale?: boolean | null;
+            /** Sold Out Day */
+            sold_out_day?: string | null;
             /** Previous Unit */
             previous_unit?: string | null;
         };
@@ -12671,6 +12755,38 @@ export interface operations {
             };
         };
     };
+    read_order_expense_api_v1_businesses__business_id__expenses_order__order_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+                order_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderExpense"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     new_expense_api_v1_businesses__business_id__expenses_post: {
         parameters: {
             query?: never;
@@ -12832,6 +12948,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MoneyDay"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    save_day_total_api_v1_businesses__business_id__day_total_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NewDayTotal"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DayTotal"];
                 };
             };
             /** @description Validation Error */

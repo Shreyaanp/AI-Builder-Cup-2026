@@ -8,8 +8,11 @@ in one get and an old shop with no document simply has no expenses (nothing to m
 Cash in hand = opening cash + cash sales - expenses paid in cash. The opening cash is the owner's
 figure for the day, else yesterday's counted cash, else the usual float the owner set once.
 Sales split into cash and UPI only when the owner says how much came by UPI; without it every sale
-counts as cash (total-only is allowed). A deleted expense is kept, marked deleted, so Undo brings
-it back exactly. Everything is erased with the shop.
+counts as cash (total-only is allowed). A day closed with one total counts as that day's sales,
+and a split saved with that total is the day's split: there is one UPI figure, never two. The
+short-or-extra line waits for the day's sales, since before them there is nothing to compare. A
+deleted expense is kept, marked deleted, so Undo brings it back exactly. Everything is erased with
+the shop.
 """
 
 import re
@@ -24,6 +27,7 @@ import anyio
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
+from .day_total import with_day_totals
 from .limits import enforce_limits
 from .merchant import MONEY_KINDS, MerchantRepository
 from .merchant_routes import consented_owner, owner, store
@@ -92,9 +96,12 @@ class Cash(BaseModel):
     opening_from: Literal["today", "yesterday", "usual"] | None
     cash_sales: int
     upi_sales: int | None
+    # "total": saved with the day's one total and changed there; "drawer": typed in the drawer.
+    upi_from: Literal["total", "drawer"] | None = None
     cash_spent: int
     expected: int
     counted: int | None
+    # None until the count and the day's sales are both in.
     difference: int | None
 
 
@@ -106,6 +113,11 @@ class MoneyDay(BaseModel):
     sales: int | None
     left: int | None
     cash: Cash
+
+
+class OrderExpense(BaseModel):
+    noted: bool
+    amount: int | None = None
 
 
 class WeekDay(BaseModel):
@@ -154,6 +166,16 @@ def sales_on(sales: list[dict[str, Any]], day: date) -> int | None:
     return sum(int(r.get("revenue") or 0) for r in rows) if rows else None
 
 
+def upi_on(
+    sales: list[dict[str, Any]], day: date, typed: int | None
+) -> tuple[int | None, Literal["total", "drawer"] | None]:
+    """The day's one UPI figure: the split saved with its total, else what the drawer was told."""
+    for row in sales:
+        if row.get("date") == day.isoformat() and row.get("upi") is not None:
+            return int(row["upi"]), "total"
+    return typed, "drawer" if typed is not None else None
+
+
 def _opening(
     repository: MerchantRepository, bid: str, day: date, data: dict[str, Any]
 ) -> tuple[int | None, str | None]:
@@ -181,7 +203,7 @@ def summary(
     spent = sum(e.amount for e in expenses)
     cash_spent = sum(e.amount for e in expenses if e.method == "cash")
     sold = sales_on(sales, day)
-    upi = data.get("upi_sales")
+    upi, upi_from = upi_on(sales, day, data.get("upi_sales"))
     cash_sales = max(0, (sold or 0) - (upi or 0))
     opening, opening_from = _opening(repository, bid, day, data)
     expected = (opening or 0) + cash_sales - cash_spent
@@ -199,12 +221,26 @@ def summary(
             opening_from=opening_from,  # type: ignore[arg-type]
             cash_sales=cash_sales,
             upi_sales=upi,
+            upi_from=upi_from,
             cash_spent=cash_spent,
             expected=expected,
             counted=counted,
-            difference=counted - expected if counted is not None else None,
+            # Without the day's sales this would call a full drawer "extra" (cash sales read 0).
+            difference=counted - expected if counted is not None and sold is not None else None,
         ),
     )
+
+
+def order_expense(repository: MerchantRepository, bid: str, order_id: str) -> Expense | None:
+    """The expense a received order was noted as, unless the owner has since deleted it."""
+    logged = repository.feature_docs.get(ORDER_KIND, f"{bid}:{order_id}")
+    if not logged:
+        return None
+    found = repository.feature_docs.get(DAY_KIND, _key(bid, date.fromisoformat(logged["day"])))
+    for entry in (found or {}).get("expenses", []):
+        if entry["id"] == logged["id"] and not entry.get("deleted"):
+            return Expense.model_validate(entry)
+    return None
 
 
 def add_expense(
@@ -224,14 +260,9 @@ def add_expense(
     if day > today or day < today - timedelta(days=60):
         raise HTTPException(422, "DAY_OUT_OF_RANGE")
     if body.order_id:
-        logged = repository.feature_docs.get(ORDER_KIND, f"{bid}:{body.order_id}")
-        if logged:
-            found = repository.feature_docs.get(
-                DAY_KIND, _key(bid, date.fromisoformat(logged["day"]))
-            )
-            for entry in (found or {}).get("expenses", []):
-                if entry["id"] == logged["id"] and not entry.get("deleted"):
-                    return Expense.model_validate(entry)
+        already = order_expense(repository, bid, body.order_id)
+        if already:
+            return already
     expense = Expense(
         id=uuid4().hex[:12],
         amount=amount,
@@ -355,11 +386,16 @@ async def _shop(request: Request, business_id: str, write: bool) -> tuple[str, d
     return uid, business.get("fields") or {}
 
 
+def _takings(repository: Any, uid: str, bid: str) -> list[dict[str, Any]]:
+    """Sales rows plus the days closed with one total: everything that adds up a day's money."""
+    return with_day_totals(repository, bid, repository.sales_history(uid, bid))
+
+
 async def _summary(
     request: Request, uid: str, business_id: str, fields: dict[str, Any], day: date
 ) -> MoneyDay:
     service = store(request)
-    sales = await anyio.to_thread.run_sync(service.sales_history, uid, business_id)
+    sales = await anyio.to_thread.run_sync(_takings, service, uid, business_id)
     return await anyio.to_thread.run_sync(summary, service, business_id, fields, day, sales)
 
 
@@ -367,7 +403,7 @@ async def _summary(
 async def read_week(business_id: str, request: Request, end: date | None = None) -> MoneyWeek:
     uid, fields = await _shop(request, business_id, write=False)
     service = store(request)
-    sales = await anyio.to_thread.run_sync(service.sales_history, uid, business_id)
+    sales = await anyio.to_thread.run_sync(_takings, service, uid, business_id)
     return await anyio.to_thread.run_sync(
         week, service, business_id, fields, end or shop_day(fields), sales
     )
@@ -378,6 +414,14 @@ async def read_day(business_id: str, request: Request, day: date | None = None) 
     """One day's expenses, sales, what is left and the cash in hand (today by default)."""
     uid, fields = await _shop(request, business_id, write=False)
     return await _summary(request, uid, business_id, fields, day or shop_day(fields))
+
+
+@router.get("/{business_id}/expenses/order/{order_id}", response_model=OrderExpense)
+async def read_order_expense(business_id: str, order_id: str, request: Request) -> OrderExpense:
+    """Whether a received order is already noted, so its card says so after a reload."""
+    await _shop(request, business_id, write=False)
+    found = await anyio.to_thread.run_sync(order_expense, store(request), business_id, order_id)
+    return OrderExpense(noted=found is not None, amount=found.amount if found else None)
 
 
 @router.post("/{business_id}/expenses", response_model=MoneyDay)
@@ -453,21 +497,26 @@ async def put_cash(business_id: str, day: date, body: CashInput, request: Reques
 DEVANAGARI_DIGITS = str.maketrans("०१२३४५६७८९", "0123456789")
 
 
+# What may touch a whole Devanagari word: a space or punctuation ("ग्राहक, 500 दिए").
+EDGE = r"\s,.;:!?।/()'\"\-"
+END = rf"(?![^{EDGE}])"
+
+
 def _hi(words: str) -> str:
     """Whole Devanagari words: a regex word edge falls inside them (at vowel signs), so
-    spaces mark the edges instead."""
-    return rf"(?<!\S)(?:{words})(?!\S)"
+    spaces and punctuation mark the edges instead."""
+    return rf"(?<![^{EDGE}])(?:{words}){END}"
 
 
-# Saying it is an expense: kharcha, spent, paid, diya, bhara (a bill), खर्च, दिया, भरा…
+# Saying it is an expense: kharcha, spent, खर्च…
 CUE = re.compile(
-    r"\b(?:kharch[aei]?|kharach[aei]?|expenses?|spent|spend|paid)\b|" + _hi("खर्च[ाेी]?"),
+    r"\b(?:kharch[aei]?|kharach[aei]?|expenses?|spent|spend)\b|" + _hi("खर्च[ाेी]?"),
     re.I,
 )
-# "Gave", "pay", "filled": an expense only with what it was for ("kiraya 5000 diya"), never
-# alone ("bun maska 10 aur bana diye" is what the owner made, OB-310).
+# "Paid", "gave", "filled": an expense only with what it was for ("kiraya 5000 diya"), never
+# alone ("customer paid 500" is money in; "bun maska 10 aur bana diye" is what was made, OB-310).
 WEAK_CUE = re.compile(
-    r"\b(?:pay|diya|diye|di|bhara|bhare|chukaya|chukaye)\b|"
+    r"\b(?:paid|pay|diya|diye|di|bhara|bhare|chukaya|chukaye)\b|"
     + _hi("दिया|दिए|दिये|दी|भरा|भरे|चुकाया|चुकाए"),
     re.I,
 )
@@ -477,13 +526,65 @@ MADE = re.compile(
     + _hi("बना|बनाए|बनाये|बनाया|बनाई|बने|बिक|बिके|बिकी|बिका"),
     re.I,
 )
+# Money coming in, or owed: a customer paying, credit settled, a refund, a return. Saving one of
+# these would take it off the drawer when it went into it, so any of these words means "not an
+# expense" (the owner can still add one by hand on Close the day).
+MONEY_IN = re.compile(
+    r"\b(?:customers?|custmers?|costumers?|grahak|graahak|gahak|clients?|buyers?"
+    r"|refund(?:s|ed)?|return(?:s|ed)?|wapas|wapis|vapas|vapis|lautaya|lautaye|lautayi"
+    r"|udhaar|udhar|udhari|udhaari|credit(?!\s*card)|baaki|baki|bakaya|jama"
+    r"|received?|receiving|got|mila|mile|mili|vasool|wasool|vasooli|wasooli|collected|collection"
+    r"|income|earned|kamaya|kamai|sales?|bikri|mujhe|mujhko|hame|hamein|humein|hume|hamko|humko"
+    r"|to\s+me|to\s+us)\b|"
+    + _hi(
+        "ग्राहक|ग्राहकों|कस्टमर|रिफंड|वापस|लौटाया|लौटाए|लौटाई|उधार|उधारी|बकाया|बाकी|बाक़ी|जमा"
+        "|मिला|मिले|मिली|वसूल|वसूली|आमदनी|कमाई|कमाया|बिक्री|मुझे|मुझको|हमें|हमको"
+    ),
+    re.I,
+)
+# Someone else did the paying: "Sharma ji ne 500 diye", "Raju ne bill bhara", "Sharma ji paid
+# bill 500", "rent paid by Sharma". The owner's own "maine", "main ne", "hum ne" are not this.
+SOMEONE_ELSE = re.compile(
+    r"(?<!\S)(?!(?:main|mai|mein|maine|mene|hum|ham|hamne|humne|मैं|मै|मैंने|हम|हमने)\s)"
+    rf"\S+\s+(?:ne|ने){END}"
+    r"|\b(?:ji|sahab|saab|bhai|bhaiya|didi|aunty|uncle|sir|madam)\s+(?:has\s+|had\s+)?"
+    r"(?:paid|pay|gave|diya|diye|di|bhara|chukaya)\b"
+    r"|\bpaid\s+by\s+(?!(?:cash|upi|gpay|google|phone|paytm|bhim|online|qr|card|credit|debit"
+    r"|cheque|check|neft|imps|rtgs|bank|me|us)\b)"
+    rf"|जी\s+(?:दिया|दिए|दिये|दी|भरा|चुकाया){END}",
+    re.I,
+)
+# Not done yet, so nothing has left the drawer: "kal 500 ka kharcha hoga", "will pay rent 5000".
+FUTURE = re.compile(
+    r"\b(?:hoga|hogi|honge|hoge|karna|karni|karne|karenge|karunga|karungi|dena|deni|denge"
+    r"|dunga|dungi|bharna|bharenge|jayega|jayegi|jaega|jaegi|lagega|lagegi|will|shall|gonna"
+    r"|tomorrow|parso|parson|agle|agla|agli|going\s+to|have\s+to|has\s+to|need\s+to|needs\s+to"
+    r"|next\s+(?:week|month|year))\b|"
+    + _hi(
+        "होगा|होगी|होंगे|करना|करनी|करेंगे|करूंगा|करूँगा|देना|देनी|देंगे|दूंगा|दूँगा|भरना|जाएगा"
+        "|जाएगी|लगेगा|लगेगी|परसों|अगले|अगला|अगली"
+    ),
+    re.I,
+)
+# The one number counts something other than money: "spent 2 hours", "2 kg doodh ka kharcha".
+NOT_MONEY = re.compile(
+    r"\d\s*(?:%|(?:hours?|hrs?|ghant[ae]|minutes?|mins?|seconds?|secs?|days?|din|weeks?|hafte"
+    r"|hafta|months?|mahine|mahina|years?|saal|baar|times|baje|am|pm|kgs?|kilos?|gms?|grams?|g"
+    r"|ltrs?|litres?|liters?|l|ml|packets?|pkts?|pieces?|pcs?|dozen|darjan|boxes|box|bags?|bori"
+    r"|peti|crates?|nag|people|log)\b)|"
+    r"\d\s*(?:घंटे|घंटा|घण्टे|मिनट|सेकंड|दिन|हफ़्ते|हफ्ते|हफ़्ता|हफ्ता|महीने|महीना|साल|बार|बजे"
+    rf"|किलो|ग्राम|लीटर|पैकेट|पीस|दर्जन|बोरी|पेटी|लोग){END}",
+    re.I,
+)
 NEGATION = re.compile(
     r"\b(?:don'?t|do\s+not|did\s+not|didn'?t|not|never|no|mat|nahi|nahin|nai|na)\b|"
     + _hi("मत|नहीं|नही|ना"),
     re.I,
 )
+# Anything that did not come out of the drawer: a card or bank payment is "not cash" here too.
 UPI = re.compile(
-    r"\b(?:upi|gpay|google\s*pay|phone\s*pe|phonepe|paytm|bhim|online|qr)\b|" + _hi("यूपीआई|ऑनलाइन"),
+    r"\b(?:upi|gpay|google\s*pay|phone\s*pe|phonepe|paytm|bhim|online|qr|card|cheque|check|neft"
+    r"|imps|rtgs|bank)\b|" + _hi("यूपीआई|ऑनलाइन|कार्ड|चेक|बैंक"),
     re.I,
 )
 YESTERDAY = re.compile(r"\b(?:yesterday|kal)\b|" + _hi("कल"), re.I)
@@ -542,11 +643,11 @@ FILLER = re.compile(
     r"|chukaya|chukaye|ka|ki|ke|ko|ne|me|mein|on|for|the|a|an|of|to|in|by|with|via|rs|inr"
     r"|rupees?|rupaye|rupay|rupiya|bucks|se|cash|nakad|naqad|upi|gpay|google\s*pay|phone\s*pe"
     r"|phonepe|paytm|bhim|online|qr|today|aaj|yesterday|kal|i|we|hai|tha|hua|hue|hogaya"
-    r"|ho\s+gaya|gaya|aur|maine|mene|kiya|kiye|kar|par|pe|note|add|write|likh\s+do|likho"
+    r"|ho\s+gaya|gaya|aur|maine|mene|main|mai|hum|ham|kiya|kiye|kar|par|pe|note|add|write|likh\s+do|likho"
     r"|likhna|likh|daalo|daal|jodo)\b|"
     + _hi(
         r"खर्च[ाेी]?|दिया|दिए|दिये|दी|भरा|भरे|चुकाया|चुकाए|का|की|के|को|ने|में|से|पर|पे|रुपये|रुपए"
-        r"|रु|नकद|कैश|यूपीआई|ऑनलाइन|आज|कल|है|था|हुआ|हुए|गया|और|मैंने|मैं|हमने|किया|किए|किये|कर"
+        r"|रु|नकद|कैश|यूपीआई|ऑनलाइन|आज|कल|है|था|हुआ|हुए|गया|और|मैंने|मैं|हमने|हम|किया|किए|किये|कर"
         r"|लिख\s+दो|लिखना|लिखो|लिख|जोड़ो|डालो"
     )
     + r"|[₹/\-.,:;!?।]",
@@ -574,6 +675,10 @@ def expense_words(text: str) -> ChatExpense | None:
         or not (CUE.search(said) or WEAK_CUE.search(said))
         or NEGATION.search(said)
         or MADE.search(said)
+        or MONEY_IN.search(said)
+        or SOMEONE_ELSE.search(said)
+        or FUTURE.search(said)
+        or NOT_MONEY.search(said)
     ):
         return None
     amounts = [m.group(1) for m in AMOUNT.finditer(said)]
@@ -581,7 +686,7 @@ def expense_words(text: str) -> ChatExpense | None:
         return None  # none, or two numbers ("2 kg doodh 120"): the coach asks
     category = next((name for name, words in CATEGORY_WORDS if words.search(said)), "other")
     if not CUE.search(said) and category == "other":
-        return None  # "gave 500" with nothing it was for: not clearly an expense
+        return None  # "gave 500", "paid 500" with nothing it was for: not clearly an expense
     rest = AMOUNT.sub(" ", said)
     note = " ".join(FILLER.sub(" ", rest).split())
     return ChatExpense(

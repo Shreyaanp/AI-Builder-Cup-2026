@@ -7,7 +7,18 @@ import { useLanguageSwitch } from './languageSwitch'
 import { useCopy } from './strings'
 import { useOnboardingCopy } from './onboardingCopy'
 import { keepScreenAwake } from './wakeLock'
+import { stopSpeech } from './phoneVoice'
 import type { Business, Product } from './api'
+
+/** Live voice needs a microphone and audio processing; some in-app browsers have neither. */
+export function voiceSupported(): boolean {
+  return (
+    typeof window !== 'undefined' &&
+    Boolean(navigator.mediaDevices) &&
+    typeof AudioContext !== 'undefined' &&
+    typeof AudioWorkletNode !== 'undefined'
+  )
+}
 
 /** One socket to the Live session. A conversation may use many in a row (see `connect`). */
 interface VoiceRuntime {
@@ -47,6 +58,8 @@ export type VoiceProblem =
   | { kind: 'offline' }
   | { kind: 'rate-limited'; seconds: number }
   | { kind: 'unavailable' }
+  /** This browser has no live audio at all (some in-app browsers): typing still works. */
+  | { kind: 'unsupported' }
   /** The reply took too long (no word from the server): thinking stops, Retry is offered. */
   | { kind: 'slow' }
   /** The open conversation reached its time cap: continue by typing, or tap to talk again. */
@@ -192,7 +205,7 @@ export function useVoice(
     releaseSocket()
     releaseMedia()
     held.current = { packets: [], bytes: 0 }
-    speechSynthesis.cancel()
+    stopSpeech()
     if (mounted.current) setState('idle')
   }, [releaseSocket, releaseMedia])
   useEffect(() => {
@@ -209,11 +222,13 @@ export function useVoice(
         ? t.voiceMicDenied
         : next.kind === 'offline'
           ? t.voiceOffline
-          : next.kind === 'rate-limited'
-            ? t.voiceRateLimited(next.seconds)
-            : next.kind === 'slow'
-              ? o.tooSlow
-              : t.voiceFailed,
+          : next.kind === 'unsupported'
+            ? t.voiceUnsupported
+            : next.kind === 'rate-limited'
+              ? t.voiceRateLimited(next.seconds)
+              : next.kind === 'slow'
+                ? o.tooSlow
+                : t.voiceFailed,
     )
   }
   /** No reply in time: the "thinking" state ends with Retry instead of staying on. */
@@ -255,6 +270,10 @@ export function useVoice(
   /** `listening`: a conversation the coach has already opened, so the mic opens at once. */
   async function start(sessionId: string | null = null, listening = false) {
     if (owner.current) return
+    if (!voiceSupported()) {
+      fail({ kind: 'unsupported' })
+      return
+    }
     if (!navigator.onLine) {
       fail({ kind: 'offline' })
       return
@@ -587,8 +606,10 @@ export function useVoice(
           )
           return
         }
-        if (lastCode === 'SESSION_CAP' || event.reason === 'SESSION_CAP') {
-          // The 15-minute cap: a calm pause, never a dead end (typing works; tap to talk again).
+        const paused = ['SESSION_CAP', 'VOICE_PAUSED']
+        if (paused.includes(lastCode) || paused.includes(event.reason)) {
+          // The 5-minute cap, or 45 s without the owner (live voice is billed while it is open):
+          // a calm pause, never a dead end (typing works; tap to talk again).
           fail({ kind: 'session-cap' })
           stop()
           return

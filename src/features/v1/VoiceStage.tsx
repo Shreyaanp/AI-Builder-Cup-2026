@@ -11,6 +11,8 @@ import { useCopy } from './strings'
 import type { VoiceProblem } from './useVoice'
 import { useVoiceModeCopy } from './voiceModeCopy'
 import { useOnboardingCopy } from './onboardingCopy'
+import { utter } from './phoneVoice'
+import { useLocale } from '../../state/hooks'
 
 export type OrbPhase =
   'connecting' | 'reconnecting' | 'listening' | 'thinking' | 'speaking' | 'paused' | 'off'
@@ -593,14 +595,26 @@ export function VoiceAlert({
   onRetry,
   onType,
   onClose,
+  spoken = false,
 }: {
   problem: VoiceProblem
   onRetry: () => void
   onType: () => void
   onClose: () => void
+  /** The coach's replies are spoken: the pause is said aloud too. */
+  spoken?: boolean
 }) {
   const v = useVoiceModeCopy()
   const o = useOnboardingCopy()
+  const locale = useLocale()
+  const paused = problem.kind === 'session-cap'
+  useEffect(() => {
+    // The owner may be looking away while talking: the pause (the 5-minute cap or 45 s of
+    // silence) is said in their language with the phone's own voice (no extra call, no cost).
+    if (!paused || !spoken || !('speechSynthesis' in window)) return
+    speechSynthesis.cancel()
+    speechSynthesis.speak(utter(o.capBody, locale))
+  }, [paused, spoken, o.capBody, locale])
   const [wait, setWait] = useState(problem.kind === 'rate-limited' ? problem.seconds : 0)
   useEffect(() => {
     if (wait <= 0) return

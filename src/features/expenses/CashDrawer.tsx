@@ -19,8 +19,10 @@ function typed(minor: number | null | undefined, currency: string): string {
 
 /**
  * Cash in hand: opening cash + cash sales - expenses paid in cash = what should be in the
- * drawer. The owner types what they counted and sees the difference. Splitting sales into cash
- * and UPI is optional; without it every sale counts as cash.
+ * drawer. The owner types what they counted and sees the difference, once the day's sales are
+ * in: before that there is nothing to compare it to. Splitting sales into cash and UPI is
+ * optional; without it every sale counts as cash. A split saved with the day's one total is the
+ * day's split, shown here but changed there.
  */
 export function CashDrawer({
   data,
@@ -56,6 +58,7 @@ export function CashDrawer({
     if (Object.values(readings).some((r) => r.problem)) return
     const body: CashBody = {}
     for (const key of ['opening', 'upi_sales', 'counted'] as const) {
+      if (key === 'upi_sales' && fromTotal) continue
       const value = readings[key].value
       const before = saved[key] == null ? null : toMajor(saved[key], currency)
       if (value !== before) body[key] = value
@@ -73,13 +76,15 @@ export function CashDrawer({
   }
 
   const difference = cash.difference
+  const salesIn = data.sales != null
+  const fromTotal = cash.upi_from === 'total'
   const lines: [string, string, string][] = [
     [
       'opening',
       cash.opening_from ? `${m.opening} · ${m.openingFrom[cash.opening_from]}` : m.opening,
       show(cash.opening ?? 0),
     ],
-    ['cash-sales', m.cashSales, show(cash.cash_sales)],
+    ['cash-sales', m.cashSales, salesIn ? show(cash.cash_sales) : m.salesNotYet],
     ['cash-spent', m.cashSpent, show(cash.cash_spent)],
   ]
   return (
@@ -101,7 +106,7 @@ export function CashDrawer({
             <Typography
               component="dd"
               variant="bodyLarge"
-              sx={{ m: 0, fontVariantNumeric: 'tabular-nums' }}
+              sx={{ m: 0, fontVariantNumeric: 'tabular-nums', textAlign: 'end' }}
             >
               {value}
             </Typography>
@@ -117,10 +122,11 @@ export function CashDrawer({
           </Typography>
           <Typography
             component="dd"
-            variant="titleMedium"
-            sx={{ m: 0, fontVariantNumeric: 'tabular-nums' }}
+            variant={salesIn ? 'titleMedium' : 'bodyMedium'}
+            color={salesIn ? undefined : 'text.secondary'}
+            sx={{ m: 0, fontVariantNumeric: 'tabular-nums', textAlign: 'end' }}
           >
-            {show(cash.expected)}
+            {salesIn ? show(cash.expected) : m.expectedLater}
           </Typography>
         </Stack>
       </Box>
@@ -136,6 +142,27 @@ export function CashDrawer({
             : difference < 0
               ? m.short(show(-difference))
               : m.extra(show(difference))}
+        </Typography>
+      )}
+      {!salesIn && cash.counted != null && (
+        <Typography
+          role="status"
+          data-testid="cash-waiting"
+          variant="bodyMedium"
+          color="text.secondary"
+          sx={{ mt: 2 }}
+        >
+          {m.afterSales}
+        </Typography>
+      )}
+      {fromTotal && cash.upi_sales != null && (
+        <Typography
+          data-testid="cash-upi-from-total"
+          variant="bodySmall"
+          color="text.secondary"
+          sx={{ mt: 1 }}
+        >
+          {m.upiFromTotal(show(cash.upi_sales))}
         </Typography>
       )}
       {cash.upi_sales == null && data.sales != null && !split && (
@@ -165,7 +192,7 @@ export function CashDrawer({
             showError={tried}
           />
         </Stack>
-        {split ? (
+        {fromTotal ? null : split ? (
           <AmountField
             name="upi"
             label={m.upiSales(symbol)}

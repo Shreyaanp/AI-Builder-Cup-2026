@@ -36,6 +36,7 @@ from .coordinator import MerchantContext, current
 from .customer import CustomerAnswers
 from .customer_routes import router as customer_router
 from .day_close import router as day_close_router
+from .day_total_routes import router as day_total_router
 from .demo_workspace import router as demo_workspace_router
 from .demo_world import WorldGenerator
 from .demo_world import router as demo_world_router
@@ -108,7 +109,7 @@ from .shop_language import ShopTranslator
 from .shop_today import router as shop_today_router
 from .sourcing import SupplierGenerator
 from .sourcing_routes import router as sourcing_router
-from .streaming import CoachRuntime
+from .streaming import CoachRuntime, history_card, same_card
 from .supply_docs import DocumentTranslator
 from .supply_routes import router as supply_router
 from .today import router as today_router
@@ -325,6 +326,7 @@ def create_app(
     app.include_router(owner_habit_router)
     app.include_router(owner_promise_router)
     app.include_router(expenses_router)
+    app.include_router(day_total_router)
     app.include_router(analytics_router)
     app.include_router(playbook_router)
     app.include_router(sourcing_router)
@@ -575,6 +577,13 @@ def create_app(
                     payment = (response.response or {}).get("payment")
                     if isinstance(payment, dict):
                         messages.append({"role": "payment", "payment": payment, "key": event.id})
+                card = (
+                    history_card(response.name, response.response, event.id) if response else None
+                )
+                if card:
+                    # One card per order, moved to where it last changed, as in the live chat.
+                    messages = [m for m in messages if not same_card(m, card)]
+                    messages.append(card)
             # Voice turns are stored as transcripts, not text parts: show the finished ones too.
             for name, role in (
                 ("input_transcription", "user"),

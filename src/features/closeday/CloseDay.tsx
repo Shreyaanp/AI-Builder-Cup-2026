@@ -28,6 +28,7 @@ import {
   exponent,
   formatAmount,
   formatShopPrice,
+  numberForEditing,
   shopCurrency,
   toMajor,
   toMinor,
@@ -42,6 +43,9 @@ import { closeDayCopy, closeDayCount } from './strings'
 import { closingMinutes, shopNow } from '../owner/time'
 import { moneyLocale, shopZone } from '../../region/region'
 import { useDaySales } from './useDaySales'
+import { DayTotalForm } from './DayTotal'
+import { NO_TOTAL, readDayTotal, type DayTotalText } from './dayTotalReading'
+import { dayTotalCopy } from './totalCopy'
 import { comparisonKind } from './compare'
 import { AskHint } from '../v1/AskHint'
 import { TomorrowPromise } from './TomorrowPromise'
@@ -190,6 +194,10 @@ export function CloseDay({
   // A typed number that needs an answer ("1,5": 1.5 or 15?) holds Review until it is fixed.
   const [typedBlocked, setTypedBlocked] = useState(false)
   const [checkTyped, setCheckTyped] = useState(0)
+  // One total for the day, for an owner who doesn't want to enter every item (Ahmed, 8 Nov).
+  const [totalOpen, setTotalOpen] = useState(false)
+  const [totalText, setTotalText] = useState<DayTotalText>(NO_TOTAL)
+  const totalCopy = dayTotalCopy(locale, currency)
   const next = useNextStepsCopy()
   const online = useOnline()
   const started = useRef(false)
@@ -238,6 +246,10 @@ export function CloseDay({
     }
   }
 
+  const totalReading = totalOpen
+    ? readDayTotal(totalText, currency, moneyLocale(currency, locale) ?? locale)
+    : null
+  const dayTotal = totalReading?.entry ?? null
   const done = shots.filter((s) => s.state === 'done')
   const key = (shot: Shot, index: number) => `${shot.id}:${index}`
   const sales = [
@@ -335,15 +347,24 @@ export function CloseDay({
           progress.current.sales = 'saved'
         }
       }
+      if (dayTotal && progress.current.sales !== 'saved') {
+        progress.current.sales = 'unknown'
+        const totalSaved = await ws.api<{ date: string }>(`${base}/day/total`, {
+          method: 'POST',
+          body: JSON.stringify({ date: progress.current.date || day || today, ...dayTotal }),
+        })
+        progress.current.date = totalSaved.date
+        progress.current.sales = 'saved'
+      }
       setSaved({
-        revenue,
+        revenue: dayTotal ? dayTotal.total : revenue,
         stock: stockBody.length,
         items: salesBody.reduce((sum, row) => sum + row.quantity, 0),
       })
       const savedDay = progress.current.date || day
       const [facts] = await Promise.all([
         // What the day pays back, from the saved records; the screen still closes without it.
-        salesBody.length && savedDay
+        (salesBody.length || dayTotal) && savedDay
           ? ws
               .api<CloseReward | null>(`${base}/day/${encodeURIComponent(savedDay)}/reward`, {
                 signal: AbortSignal.timeout(6000),
@@ -363,7 +384,9 @@ export function CloseDay({
         [
           t.saveFailed,
           ...(stockBody.length ? [`${t.stockTitle}: ${status(progress.current.stock)}.`] : []),
-          ...(salesBody.length ? [`${t.salesTitle}: ${status(progress.current.sales)}.`] : []),
+          ...(salesBody.length || dayTotal
+            ? [`${t.salesTitle}: ${status(progress.current.sales)}.`]
+            : []),
         ].join(' '),
       )
       setPhase('review')
@@ -372,7 +395,14 @@ export function CloseDay({
     }
   }
 
-  const lineCount = done.reduce((n, s) => n + s.lines.length, 0) + typed.length + (draft ? 1 : 0)
+  const lineCount =
+    done.reduce((n, s) => n + s.lines.length, 0) +
+    typed.length +
+    (draft ? 1 : 0) +
+    (totalReading?.started ? 1 : 0)
+  // A day that already has item lines keeps them: a total here would be ignored.
+  const canUseTotal =
+    !typing && !typed.length && !draft && !existing.some((row) => !row.whole_day) && !sales.length
   const trouble = !online || shots.some((s) => s.state === 'failed')
   const typeButton = (
     <Button
@@ -622,6 +652,7 @@ export function CloseDay({
               </Box>
             )}
             {!typing &&
+              !totalOpen &&
               (trouble ? (
                 <Alert severity="warning" sx={{ mt: 4 }} data-testid="close-day-trouble">
                   {online ? next.readFailedHelp : next.offlineHelp}
@@ -630,6 +661,26 @@ export function CloseDay({
               ) : (
                 <Box sx={{ mt: 3, ml: -2 }}>{typeButton}</Box>
               ))}
+            {canUseTotal && !totalOpen && (
+              <Box sx={{ mt: 1, ml: -2 }}>
+                <Button color="primary" onClick={() => setTotalOpen(true)}>
+                  {totalCopy.open}
+                </Button>
+              </Box>
+            )}
+            {totalOpen && (
+              <DayTotalForm
+                text={totalText}
+                currency={currency}
+                check={checkTyped}
+                onChange={setTotalText}
+                onItems={() => {
+                  setTotalOpen(false)
+                  setTotalText(NO_TOTAL)
+                  setTyping(true)
+                }}
+              />
+            )}
             {typing && (
               <TypedSales
                 lines={typed}
@@ -677,10 +728,31 @@ export function CloseDay({
                 {t.unreadLines.replace('{n}', new Intl.NumberFormat(locale).format(unread))}
               </Alert>
             )}
-            {sales.length === 0 && stock.length === 0 && (
+            {sales.length === 0 && stock.length === 0 && !dayTotal && (
               <Alert severity="warning" sx={{ mb: 3 }}>
                 {t.reviewEmpty}
               </Alert>
+            )}
+            {dayTotal && (
+              <Box data-testid="close-day-total-review">
+                <Typography variant="labelLarge" color="text.secondary">
+                  {totalCopy.title}
+                </Typography>
+                <Typography variant="displaySmall" sx={{ fontVariantNumeric: 'tabular-nums' }}>
+                  {formatShopPrice(toMinor(dayTotal.total, currency), currency, locale)}
+                </Typography>
+                {dayTotal.cash !== null && dayTotal.upi !== null && (
+                  <Typography
+                    variant="bodyLarge"
+                    sx={{ mt: 1, fontVariantNumeric: 'tabular-nums' }}
+                  >
+                    {`${totalCopy.cash} ${formatShopPrice(toMinor(dayTotal.cash, currency), currency, locale)} · ${totalCopy.online} ${formatShopPrice(toMinor(dayTotal.upi, currency), currency, locale)}`}
+                  </Typography>
+                )}
+                <Typography variant="bodyMedium" color="text.secondary" sx={{ mt: 2 }}>
+                  {totalCopy.note}
+                </Typography>
+              </Box>
             )}
             {sales.length > 0 && (
               <Box>
@@ -757,7 +829,7 @@ export function CloseDay({
                 style={{ animation: `cdDraw 450ms ${EASE} 600ms forwards` }}
               />
             </Box>
-            {(reward || saved.items > 0) && (
+            {(reward || saved.items > 0) && !dayTotal && (
               <Typography variant="headlineSmall" sx={{ mt: 3 }}>
                 {soldLine}
               </Typography>
@@ -794,7 +866,8 @@ export function CloseDay({
                     formatShopPrice(toMinor(saved.revenue, currency), currency),
                   ),
                 saved.stock > 0 && t.doneStock.replace('{n}', String(saved.stock)),
-                t.donePlan,
+                // A total teaches the plan nothing, so the screen doesn't promise it will.
+                dayTotal ? totalCopy.note : t.donePlan,
               ]
                 .filter(Boolean)
                 .join(' ')}
@@ -830,14 +903,34 @@ export function CloseDay({
               // Edit the saved figures; an incoming chat photo must not add them again.
               started.current = true
               setEditing(true)
+              const whole = existing.find((row) => row.whole_day)
+              if (whole) {
+                const text = (minor: number | null | undefined) =>
+                  minor == null
+                    ? ''
+                    : numberForEditing(
+                        toMajor(minor, currency),
+                        moneyLocale(currency, locale) ?? locale,
+                        'money',
+                        currency,
+                      )
+                setTotalText({
+                  total: text(whole.revenue),
+                  cash: text(whole.cash),
+                  upi: text(whole.upi),
+                })
+                setTotalOpen(true)
+              }
               setTyped(
-                existing.map((row) => ({
-                  item: row.item,
-                  read_as: row.item,
-                  quantity: row.quantity,
-                  amount: toMajor(row.revenue ?? 0, currency),
-                  matched: ws.products.some((product) => product.name === row.item),
-                })),
+                existing
+                  .filter((row) => !row.whole_day)
+                  .map((row) => ({
+                    item: row.item,
+                    read_as: row.item,
+                    quantity: row.quantity,
+                    amount: toMajor(row.revenue ?? 0, currency),
+                    matched: ws.products.some((product) => product.name === row.item),
+                  })),
               )
               setPhase('capture')
             }}
@@ -851,7 +944,7 @@ export function CloseDay({
             size="large"
             disabled={lineCount === 0 || shots.some((s) => s.state === 'reading')}
             onClick={() => {
-              if (typing && typedBlocked) {
+              if ((typing && typedBlocked) || (totalOpen && totalReading?.started && !dayTotal)) {
                 setCheckTyped((n) => n + 1)
                 return
               }
@@ -886,7 +979,8 @@ export function CloseDay({
                 )
               }
               disabled={
-                phase !== 'review' || (sales.length === 0 && !stock.some((s) => s.line.matched))
+                phase !== 'review' ||
+                (sales.length === 0 && !dayTotal && !stock.some((s) => s.line.matched))
               }
               onClick={requestSave}
               // On a phone the main action takes the first full-width line, so no label wraps.

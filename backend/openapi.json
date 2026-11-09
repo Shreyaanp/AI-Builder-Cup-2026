@@ -7145,6 +7145,58 @@
         }
       }
     },
+    "/api/v1/businesses/{business_id}/expenses/order/{order_id}": {
+      "get": {
+        "tags": [
+          "money"
+        ],
+        "summary": "Read Order Expense",
+        "description": "Whether a received order is already noted, so its card says so after a reload.",
+        "operationId": "read_order_expense_api_v1_businesses__business_id__expenses_order__order_id__get",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          },
+          {
+            "name": "order_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Order Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderExpense"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/businesses/{business_id}/expenses": {
       "post": {
         "tags": [
@@ -7434,6 +7486,56 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/MoneyDay"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/businesses/{business_id}/day/total": {
+      "post": {
+        "summary": "Save Day Total",
+        "description": "The owner read the total back on Check and tapped Save; closing again replaces it.",
+        "operationId": "save_day_total_api_v1_businesses__business_id__day_total_post",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewDayTotal"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DayTotal"
                 }
               }
             }
@@ -11420,6 +11522,11 @@
           "available": {
             "type": "boolean",
             "title": "Available"
+          },
+          "today_only": {
+            "type": "boolean",
+            "title": "Today Only",
+            "default": false
           }
         },
         "additionalProperties": false,
@@ -12300,6 +12407,21 @@
               }
             ],
             "title": "Upi Sales"
+          },
+          "upi_from": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "total",
+                  "drawer"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Upi From"
           },
           "cash_spent": {
             "type": "integer",
@@ -13333,6 +13455,51 @@
           "day"
         ],
         "title": "DayHours"
+      },
+      "DayTotal": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "title": "Date"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "cash": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cash"
+          },
+          "upi": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Upi"
+          }
+        },
+        "type": "object",
+        "required": [
+          "date",
+          "currency",
+          "total"
+        ],
+        "title": "DayTotal"
       },
       "Deal": {
         "properties": {
@@ -14425,7 +14592,7 @@
           "for_sale"
         ],
         "title": "ForSaleRequest",
-        "description": "\"Customers can buy this\", or one of the things the shop buys to make others (OB-310)."
+        "description": "On the menu, or one of the things the shop buys to make others (the owner's \"Hide from\nmenu\", OB-310)."
       },
       "Forecast": {
         "properties": {
@@ -15672,6 +15839,52 @@
         ],
         "title": "MoneyWeek"
       },
+      "NewDayTotal": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "title": "Date",
+            "default": ""
+          },
+          "total": {
+            "type": "number",
+            "maximum": 1000000000.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Total"
+          },
+          "cash": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1000000000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cash"
+          },
+          "upi": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1000000000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Upi"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total"
+        ],
+        "title": "NewDayTotal"
+      },
       "NewPromise": {
         "properties": {
           "text": {
@@ -16014,6 +16227,30 @@
           "lines"
         ],
         "title": "OrderChange"
+      },
+      "OrderExpense": {
+        "properties": {
+          "noted": {
+            "type": "boolean",
+            "title": "Noted"
+          },
+          "amount": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount"
+          }
+        },
+        "type": "object",
+        "required": [
+          "noted"
+        ],
+        "title": "OrderExpense"
       },
       "OrderMessage": {
         "properties": {
@@ -17218,6 +17455,18 @@
               }
             ],
             "title": "For Sale"
+          },
+          "sold_out_day": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sold Out Day"
           },
           "previous_unit": {
             "anyOf": [

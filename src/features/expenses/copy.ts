@@ -1,12 +1,10 @@
 import type { Locale } from '../../i18n/locales.js'
+import { moreMoneyCopy } from './copyMore'
 
 export type Category = 'stock' | 'rent' | 'wages' | 'transport' | 'bills' | 'other'
 export const CATEGORIES: Category[] = ['stock', 'rent', 'wages', 'transport', 'bills', 'other']
 
-/**
- * Expenses and cash in hand, in the owner's words. English and Hindi are complete; the other
- * languages show English until translated (the close screen's own strings stay translated).
- */
+/** Expenses and cash in hand, in the owner's words, in every app language. */
 export type MoneyCopy = {
   title: string
   sales: string
@@ -31,6 +29,7 @@ export type MoneyCopy = {
   deleted: string
   undo: string
   failed: string
+  deleteFailed: string
   amountExample: (example: string) => string
   amountQuestion: (a: string, b: string) => string
   edit: (what: string) => string
@@ -42,6 +41,11 @@ export type MoneyCopy = {
   cashSales: string
   cashSpent: string
   expected: string
+  /** In place of the expected figure until the day's sales are saved. */
+  expectedLater: string
+  /** A count is saved but the day's sales are not: why no short or extra yet. */
+  afterSales: string
+  upiFromTotal: (amount: string) => string
   upiSales: (symbol: string) => string
   split: string
   allCash: string
@@ -89,6 +93,7 @@ const en: MoneyCopy = {
   deleted: 'Expense deleted',
   undo: 'Undo',
   failed: 'Couldn’t save. Check your connection and try again.',
+  deleteFailed: 'Couldn’t delete. Check your connection and try again.',
   amountExample: (example) => `Type the amount, like ${example}`,
   amountQuestion: (a, b) => `Did you mean ${a} or ${b}? Please type it again.`,
   edit: (what) => `Change ${what}`,
@@ -103,6 +108,9 @@ const en: MoneyCopy = {
   cashSales: '+ Cash sales',
   cashSpent: '− Paid in cash',
   expected: '= Should be in the drawer',
+  expectedLater: 'After today’s sales',
+  afterSales: 'Short or extra shows after you save today’s sales.',
+  upiFromTotal: (amount) => `${amount} by UPI, saved with today’s total.`,
   upiSales: (symbol) => `Sales paid by UPI (${symbol})`,
   split: 'Split sales: cash and UPI',
   allCash: 'All sales counted as cash.',
@@ -149,6 +157,7 @@ const hi: MoneyCopy = {
   deleted: 'खर्चा हटाया',
   undo: 'वापस लाएँ',
   failed: 'सेव नहीं हुआ। इंटरनेट देखकर फिर कोशिश करें।',
+  deleteFailed: 'हटा नहीं पाए। इंटरनेट देखकर फिर कोशिश करें।',
   amountExample: (example) => `रकम लिखें, जैसे ${example}`,
   amountQuestion: (a, b) => `आपका मतलब ${a} था या ${b}? कृपया फिर से लिखें।`,
   edit: (what) => `${what} बदलें`,
@@ -163,6 +172,9 @@ const hi: MoneyCopy = {
   cashSales: '+ नकद बिक्री',
   cashSpent: '− नकद खर्चा',
   expected: '= गल्ले में होना चाहिए',
+  expectedLater: 'आज की बिक्री के बाद',
+  afterSales: 'कम या ज़्यादा, आज की बिक्री सेव करने के बाद दिखेगा।',
+  upiFromTotal: (amount) => `${amount} यूपीआई से, आज के कुल के साथ सेव है।`,
   upiSales: (symbol) => `यूपीआई से आई बिक्री (${symbol})`,
   split: 'बिक्री बाँटें: नकद और यूपीआई',
   allCash: 'सारी बिक्री नकद मानी गई।',
@@ -178,8 +190,8 @@ const hi: MoneyCopy = {
   logged: (amount) => `${amount} खर्चे में लिखा`,
 }
 
-const copy: Partial<Record<Locale, MoneyCopy>> = { en, hi }
+const copy: Record<Locale, MoneyCopy> = { en, hi, ...moreMoneyCopy }
 
 export function moneyCopyFor(locale: Locale): MoneyCopy {
-  return copy[locale] ?? en
+  return copy[locale]
 }

@@ -51,6 +51,7 @@ def test_an_existing_shop_with_no_money_records_reads_as_zero(app, monkeypatch) 
             "opening_from": None,
             "cash_sales": 0,
             "upi_sales": None,
+            "upi_from": None,
             "cash_spent": 0,
             "expected": 0,
             "counted": None,
@@ -201,6 +202,15 @@ def test_week_and_home_lines(app, monkeypatch) -> None:  # noqa: F811
         ("helper ko 2000 pagar diya", "2000", "wages", "helper pagar", "cash"),
         ("auto ka bhada 50 diya", "50", "transport", "auto bhada", "cash"),
         ("sabzi 170/- ka kharcha", "170", "stock", "sabzi", "cash"),
+        # Still the owner's own spending now that "paid" needs a reason.
+        ("rent paid 5000", "5000", "rent", "rent", "cash"),
+        ("paid electricity bill 1200 by upi", "1200", "bills", "electricity bill", "upi"),
+        ("main ne doodh 300 ka kharcha kiya", "300", "stock", "doodh", "cash"),
+        ("हम ने किराया 5000 दिया", "5000", "rent", "किराया", "cash"),
+        ("rent 5000 paid by cash", "5000", "rent", "rent", "cash"),
+        # A card or bank payment never came out of the drawer.
+        ("credit card se rent 5000 paid", "5000", "rent", "credit card rent", "upi"),
+        ("rent 5000 paid by cheque", "5000", "rent", "rent cheque", "upi"),
     ],
 )
 def test_chat_words(said: str, amount: str, category: str, note: str, method: str) -> None:
@@ -232,10 +242,178 @@ def test_chat_words(said: str, amount: str, category: str, note: str, method: st
         "samosa 20 bik gaye",
         # "Gave 500" with nothing it was for is not clearly an expense.
         "Raju ko 500 diye",
+        "paid 500",
+        # Money coming in: a customer paying, in English, Hinglish and Hindi (#709 review).
+        "customer paid 500",
+        "customer paid bill 500",
+        "customer spent 500",
+        "customer ne 500 diye",
+        "customer ne bill 500 bhara",
+        "grahak ne 500 ka bill diya",
+        "grahak ne rent 500 chukaya",
+        "ग्राहक ने 500 दिए",
+        "ग्राहक ने बिल 500 भरा",
+        "ग्राहक, बिल 500 दिया",
+        "कस्टमर ने 500 का बिल चुकाया",
+        # A person paying off their credit.
+        "Sharma ji ne 500 paid kiya",
+        "Sharma ji paid bill 500",
+        "rent paid by Sharma 5000",
+        "Sharma ji ne udhaar 500 chukaya",
+        "Raju ne bill 500 bhara",
+        "Sharma ji ka udhaar 500 ka bill paid",
+        "credit bill 500 paid",
+        "शर्मा जी ने 500 का बिल भरा",
+        "शर्मा जी ने उधार 500 चुकाया",
+        "उधार का बिल 500 चुकाया",
+        # Money paid to the owner.
+        "mujhe rent 5000 diya",
+        "rent 5000 paid to me",
+        "rent 5000 mila diya",
+        "मुझे किराया 5000 दिया",
+        # A refund goes back to a customer: it is not what the shop spent to run.
+        "refund paid 200 to customer",
+        "refund 200 paid for milk",
+        "doodh 200 wapas diye",
+        "200 ka doodh refund kiya kharcha",
+        "ग्राहक को 200 वापस दिए",
+        "दूध के 200 वापस दिए",
+        "रिफंड 200 का बिल दिया",
+        # Words that are not money.
+        "I spent 2 hours on accounts",
+        "spent 30 minutes on bills",
+        "spent 3 days on stock",
+        "2 ghante ka kharcha",
+        "2 din kharch kiye",
+        "2 घंटे खर्च किए",
+        "2 kg doodh ka kharcha",
+        "2 लीटर दूध का खर्चा",
+        "10% kharcha",
+        # Not paid yet: nothing has left the drawer.
+        "kal 500 ka kharcha hoga",
+        "kal rent 5000 dena hai",
+        "will pay rent 5000",
+        "rent 5000 pay karna hai",
+        "tomorrow I have to pay rent 5000",
+        "कल 500 का खर्चा होगा",
+        "किराया 5000 देना है",
     ],
 )
 def test_chat_words_that_are_not_an_expense(said: str) -> None:
     assert expense_words(said) is None
+
+
+@pytest.mark.parametrize(
+    "said",
+    [
+        "customer paid 500",
+        "Sharma ji ne 500 paid kiya",
+        "ग्राहक ने 500 दिए",
+        "refund paid 200 to customer",
+        "I spent 2 hours on accounts",
+        "kal 500 ka kharcha hoga",
+    ],
+)
+async def test_money_in_said_in_chat_leaves_the_drawer_alone(app, monkeypatch, said) -> None:  # noqa: F811
+    """Through the real chat route: nothing saved, nothing spent, the count still matches."""
+    with TestClient(app) as client:
+        uid, bid = owned_shop(client, app)
+        close = evening(app, uid, bid)
+        at(monkeypatch, close)
+        day = close.date().isoformat()
+        save_sales(app, uid, bid, [{"date": day, "item": "Tea", "quantity": 5, "revenue": 100000}])
+        client.put(f"/api/v1/businesses/{bid}/money/{day}/cash", json={"counted": "1,000"})
+        ctx = MerchantContext(store=app.state.merchant, uid=uid, business_id=bid, recalled=[])
+        reply = await route(said, ctx)
+        assert reply is None or reply.intent != "expense"
+        after = money(client, bid)
+        assert after["expenses"] == [] and after["spent"] == 0
+        assert after["cash"]["difference"] == 0
+
+
+def test_the_drawer_difference_waits_for_the_days_sales(app, monkeypatch) -> None:  # noqa: F811
+    """A count before the day's sales are in must not read as "extra" (cash sales are not 0)."""
+    with TestClient(app) as client:
+        uid, bid = owned_shop(client, app)
+        close = evening(app, uid, bid)
+        at(monkeypatch, close)
+        day = close.date().isoformat()
+        cash = f"/api/v1/businesses/{bid}/money/{day}/cash"
+        client.post(f"/api/v1/businesses/{bid}/expenses", json={"amount": "50"})
+        early = client.put(cash, json={"opening": "100", "counted": "4,550"}).json()
+        assert early["sales"] is None
+        assert early["cash"]["counted"] == 455000 and early["cash"]["difference"] is None
+        save_sales(app, uid, bid, [{"date": day, "item": "Tea", "quantity": 9, "revenue": 450000}])
+        # 100 + 4,500 - 50 = 4,550: the same count now matches, it was never "extra".
+        assert money(client, bid)["cash"]["difference"] == 0
+
+
+def day_total(client: TestClient, bid: str, **body: Any) -> None:
+    saved = client.post(f"/api/v1/businesses/{bid}/day/total", json=body)
+    assert saved.status_code == 200, saved.text
+
+
+def test_a_day_closed_with_one_total_counts_everywhere(app, monkeypatch) -> None:  # noqa: F811
+    with TestClient(app) as client:
+        uid, bid = owned_shop(client, app)
+        close = evening(app, uid, bid)
+        at(monkeypatch, close)
+        day = close.date().isoformat()
+        client.post(f"/api/v1/businesses/{bid}/expenses", json={"amount": "500"})
+        cash = f"/api/v1/businesses/{bid}/money/{day}/cash"
+        client.put(cash, json={"opening": "1,000", "counted": "3,500"})
+        assert money(client, bid)["cash"]["difference"] is None
+        day_total(client, bid, date=day, total=3000)
+        closed = money(client, bid)
+        assert (closed["sales"], closed["left"]) == (300000, 250000)
+        assert closed["cash"]["cash_sales"] == 300000 and closed["cash"]["difference"] == 0
+        week = client.get(f"/api/v1/businesses/{bid}/money/week").json()
+        assert (week["sales"], week["spent"], week["left"]) == (300000, 50000, 250000)
+        assert [d["sales"] for d in week["days"] if d["date"] == day] == [300000]
+
+
+def test_one_upi_figure_when_the_total_has_a_split(app, monkeypatch) -> None:  # noqa: F811
+    with TestClient(app) as client:
+        uid, bid = owned_shop(client, app)
+        close = evening(app, uid, bid)
+        at(monkeypatch, close)
+        day = close.date().isoformat()
+        cash = f"/api/v1/businesses/{bid}/money/{day}/cash"
+        # Typed in the drawer first: it counts while the total has no split.
+        client.put(cash, json={"opening": "1,000", "upi_sales": "500"})
+        day_total(client, bid, date=day, total=3000)
+        plain = money(client, bid)["cash"]
+        assert (plain["upi_sales"], plain["upi_from"], plain["cash_sales"]) == (
+            50000,
+            "drawer",
+            250000,
+        )
+        # Saved with a split: the total's figure is the day's, the drawer's stops counting.
+        day_total(client, bid, date=day, total=3000, cash=1800, upi=1200)
+        split = money(client, bid)["cash"]
+        assert (split["upi_sales"], split["upi_from"], split["cash_sales"]) == (
+            120000,
+            "total",
+            180000,
+        )
+        assert split["expected"] == 100000 + 180000
+
+
+def test_a_received_order_says_it_is_noted(app, monkeypatch) -> None:  # noqa: F811
+    with TestClient(app) as client:
+        uid, bid = owned_shop(client, app)
+        at(monkeypatch, evening(app, uid, bid))
+        url = f"/api/v1/businesses/{bid}/expenses/order/po-9"
+        assert client.get(url).json() == {"noted": False, "amount": None}
+        made = client.post(
+            f"/api/v1/businesses/{bid}/expenses",
+            json={"amount": "1,240", "category": "stock", "order_id": "po-9"},
+        ).json()
+        assert client.get(url).json() == {"noted": True, "amount": 124000}
+        # Deleted on the close screen: the card offers it again.
+        gone = made["expenses"][0]["id"]
+        client.delete(f"/api/v1/businesses/{bid}/expenses/{made['date']}/{gone}")
+        assert client.get(url).json()["noted"] is False
 
 
 async def test_chat_adds_through_the_same_endpoint_function(app, monkeypatch) -> None:  # noqa: F811

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Button, CircularProgress, Typography, useTheme } from '@mui/material'
 import { Check, Wallet } from 'lucide-react'
 import { useLocale } from '../../state/hooks'
@@ -8,8 +8,9 @@ import { moneyCopyFor } from './copy'
 
 /**
  * A received supplier order noted as today's stock expense in one tap. The server keeps one
- * expense per order, so a second tap (or a second phone) never counts it twice. Paid in cash by
- * default; the owner changes it on the close screen.
+ * expense per order, so a second tap (or a second phone) never counts it twice, and the card
+ * asks the server, so it still says "noted" after a reload. Paid in cash by default; the owner
+ * changes it on the close screen.
  */
 export function LogOrderExpense({
   orderId,
@@ -27,10 +28,28 @@ export function LogOrderExpense({
   const m = moneyCopyFor(locale)
   const roles = useTheme().material
   const [state, setState] = useState<'idle' | 'busy' | 'done' | 'failed'>('idle')
+  const [noted, setNoted] = useState<number | null>(null)
   const shop = ws.active
+  const shown = Boolean(shop && total && total > 0 && !ws.demo)
+  const shopId = shop?.id
+  const { api } = ws
+  useEffect(() => {
+    if (!shown || !shopId) return
+    const controller = new AbortController()
+    api<{ noted: boolean; amount: number | null }>(
+      `/businesses/${encodeURIComponent(shopId)}/expenses/order/${encodeURIComponent(orderId)}`,
+      { signal: controller.signal },
+    )
+      .then((found) => {
+        if (!controller.signal.aborted && found.noted) setNoted(found.amount)
+      })
+      // Not known: the button stays, and the server still counts the order once.
+      .catch(() => undefined)
+    return () => controller.abort()
+  }, [api, shopId, orderId, shown])
   if (!shop || !total || total <= 0 || ws.demo) return null
-  const amount = formatShopPrice(total, currency, locale)
-  if (state === 'done')
+  const amount = formatShopPrice(noted ?? total, currency, locale)
+  if (state === 'done' || noted !== null)
     return (
       <Typography
         role="status"

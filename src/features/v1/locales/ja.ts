@@ -75,6 +75,7 @@ export const ja: Copy = {
   connectionReconnecting: '再接続中…',
   voiceFailed: '音声接続が終了しました。もう一度試すか、文字で入力してください。',
   voiceOffline: '音声には接続が必要です。代わりに文字で入力してください。',
+  voiceUnsupported: 'このブラウザでは音声を使えません。代わりに文字で入力してください。',
   voiceRestarted: '音声が再接続されました。もう一度お話しください。',
   voiceMicDenied:
     'マイクへのアクセスがブロックされています。ブラウザの設定でマイクを許可して再試行するか、文字で入力してください。',
