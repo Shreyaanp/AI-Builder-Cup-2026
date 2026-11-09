@@ -565,12 +565,11 @@ async def test_offline_new_shop_tool_result_gets_the_next_question_in_hindi(tmp_
     assert "?" in text
 
 
-def _setup_turns(tmp_path: Path, language: str):
-    """A stream client for the offline new-shop coach in one language: (send, topic of reply)."""
+def _setup_turns(client: TestClient, language: str):
+    """One new-shop conversation (a fresh session) with the offline coach in one language:
+    send(message) -> (reply, topic asked, events); state holds the draft."""
     from app.agent import OFFLINE_HI
 
-    app = create_app(settings(tmp_path), InMemorySessionService())
-    client = TestClient(app)
     state: dict = {"sid": None, "draft": {"business": None, "products": []}}
 
     def topic(reply: str) -> str | None:
@@ -602,7 +601,7 @@ def _setup_turns(tmp_path: Path, language: str):
         reply = next(event["text"] for event in reversed(events) if event["kind"] == "reply")
         return reply, topic(reply), events
 
-    return client, send, state
+    return send, state
 
 
 @pytest.mark.parametrize(
@@ -640,10 +639,10 @@ def test_setup_never_loops_on_what_you_sell(
             reply, asked, _ = send(skip_note)
         raise AssertionError(f"never asked what they sell: {reply}")
 
-    # 1. The coach's own example sentence is recorded as what they sell.
-    client, send, state = _setup_turns(tmp_path / "a", language)
-    with client:
+    with TestClient(create_app(settings(tmp_path), InMemorySessionService())) as client:
         join(client)
+        # 1. The coach's own example sentence is recorded as what they sell.
+        send, state = _setup_turns(client, language)
         until_sell(send)
         reply, asked, events = send(unclear)
         assert asked == "sell"  # the example, once
@@ -651,10 +650,10 @@ def test_setup_never_loops_on_what_you_sell(
         assert state["draft"]["business"]["category"] in {"चाय और नाश्ता", "tea and snacks"}
         assert asked != "sell", reply
 
-    # 2. Skip moves on at once, and the question never comes back.
-    client, send, state = _setup_turns(tmp_path / "b", language)
-    with client:
+        # 2. Skip moves on at once, and the question never comes back (a new owner).
+        client.cookies.clear()
         join(client)
+        send, state = _setup_turns(client, language)
         until_sell(send)
         reply, asked, _ = send(skip_note)
         assert asked != "sell", reply
@@ -664,10 +663,10 @@ def test_setup_never_loops_on_what_you_sell(
             seen.append(asked)
         assert "sell" not in seen, seen
 
-    # 3. Two unclear answers: the example once, then the next question.
-    client, send, state = _setup_turns(tmp_path / "c", language)
-    with client:
+        # 3. Two unclear answers: the example once, then the next question (a new owner).
+        client.cookies.clear()
         join(client)
+        send, state = _setup_turns(client, language)
         until_sell(send)
         _, first, _ = send(unclear)
         _, second, _ = send(unclear)
@@ -682,9 +681,9 @@ def test_setup_takes_a_plain_answer_to_the_question_asked(
     tmp_path: Path, language: str, name: str, place: str
 ):
     """A short answer to "What is your business called?" or "where?" is that answer."""
-    client, send, state = _setup_turns(tmp_path, language)
-    with client:
+    with TestClient(create_app(settings(tmp_path), InMemorySessionService())) as client:
         join(client)
+        send, state = _setup_turns(client, language)
         send("Hello! I want to open a new shop.")
         _, asked, _ = send("Hmm, let me think.")
         answers = {"name": name, "location": place, "sell": "चाय" if language == "hi" else "tea"}
