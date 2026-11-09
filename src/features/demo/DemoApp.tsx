@@ -19,6 +19,7 @@ import { AppShell } from '../v1/AppShell'
 import { BackHistory } from '../v1/backStack'
 import { ApiError, type Api } from '../v1/api'
 import { setCoachEndpoint } from '../../api/stream'
+import { useLocale } from '../../state/hooks'
 import { nameSampleShops } from '../../i18n/productNames'
 import { DemoWelcome } from './DemoWelcome'
 import { DemoBrowse } from '../customer/DemoBrowse'
@@ -52,6 +53,8 @@ const demoMe = { legal_version: '', consent: null, consent_current: true }
 
 export default function DemoApp() {
   const t = useDemoCopy()
+  // The owner's chosen language rides on every owner call, as in the real app (reply drafts).
+  const locale = useLocale()
   const bannerRef = useRef<HTMLElement>(null)
   useEffect(() => {
     const banner = bannerRef.current
@@ -164,6 +167,7 @@ export default function DemoApp() {
           signal: init.signal ?? AbortSignal.timeout(25_000),
           headers: {
             ...(typeof init.body === 'string' ? { 'Content-Type': 'application/json' } : {}),
+            'X-App-Language': locale,
             ...init.headers,
           },
         })
@@ -187,7 +191,7 @@ export default function DemoApp() {
         if (raw) return response as T
         return (await response.json()) as T
       },
-    [session, t.expired, t.readOnly],
+    [session, t.expired, t.readOnly, locale],
   )
   useEffect(() => {
     if (!session || customer) return

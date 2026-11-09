@@ -132,11 +132,14 @@ TOPICS = json.loads((ROOT / "tests/askTopics.json").read_text(encoding="utf-8"))
 PREPARES = {"sold_out", "closed_today", "add_menu"}
 
 
-def _ask(client, app, message: str) -> tuple[str, list[dict]]:  # noqa: F811
-    """One message in a fresh demo session: the reply text and the events."""
+def _ask(client, app, message: str, language: str = "en") -> tuple[str, list[dict]]:  # noqa: F811
+    """One message in a fresh demo session, the app in `language`: the reply text and events."""
     app.state.rate_limiter.counters.clear()
     session = open_demo(client).json()["session_id"]
-    response = client.post(f"/api/v1/demo/sessions/{session}/coach", json={"message": message})
+    response = client.post(
+        f"/api/v1/demo/sessions/{session}/coach",
+        json={"message": message, "language": language},
+    )
     assert response.status_code == 200, (message, response.text)
     events = _events(response)
     return " ".join(e.get("text") or "" for e in events if e.get("kind") == "reply"), events
@@ -153,11 +156,15 @@ def test_every_owner_feature_has_a_topic_word():
 def test_demo_answers_every_chat_phrase_on_topic_with_its_screen_path(app, feature, lang):  # noqa: F811
     """Each "Or just ask" phrase, English and Hindi, sent in a fresh public demo session, gets an
     answer about that feature (its topic word) that names the same feature's screen path.
-    Hindi screens show ask_hi, so it must not dead-end or answer another topic (review of #633)."""
+    Hindi screens show ask_hi, so it must not dead-end or answer another topic (review of #633).
+    Each is sent from an app in its own language (Hindi phrases show only on Hindi screens); the
+    reply is in the app's language, except "Reply in Hindi", which switches to Hindi first."""
     with TestClient(app) as client:
         app.state.v1_settings.public_demo_enabled = True
         message = feature.ask if lang == "en" else feature.ask_hi
-        reply, events = _ask(client, app, message)
+        reply, events = _ask(client, app, message, lang)
+    if feature.id == "reply_language":
+        lang = "hi"
     line = f"Next, open {feature.where}." if lang == "en" else f"अब {where_hi(feature.id)} खोलें।"
     assert reply.count(line) == 1, (message, reply)
     assert re.search(TOPICS[feature.id][lang], reply, re.I), (message, reply)
@@ -178,7 +185,7 @@ def test_demo_answers_every_chat_phrase_on_topic_with_its_screen_path(app, featu
             r"Demo suppliers near you for Milk",
             "Grow → Buy stock → Find a supplier",
         ),
-        # And in Hindi: the same work, in the same words the screens use (OB-248).
+        # And in Hindi, from a Hindi app: the same work, in the screens' words (OB-248).
         (
             "मेरा दूध 20 लीटर कम हो रहा है। सप्लायर खोजें।",
             r"दूध के लिए पास के डेमो सप्लायर: 1\. Sri Lakshmi Provisions \(Demo\), [\d.]+ किमी, ₹54 "
@@ -200,7 +207,7 @@ def test_demo_answers_every_chat_phrase_on_topic_with_its_screen_path(app, featu
 def test_demo_typed_supply_and_week_questions_stay_on_topic(app, message, topic, where):  # noqa: F811
     with TestClient(app) as client:
         app.state.v1_settings.public_demo_enabled = True
-        reply, _ = _ask(client, app, message)
+        reply, _ = _ask(client, app, message, "hi" if re.search(r"[ऀ-ॿ]", message) else "en")
     assert re.search(topic, reply), (message, reply)
     assert "Masala chai" not in reply, reply
     if where:

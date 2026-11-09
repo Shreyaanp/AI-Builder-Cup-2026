@@ -3292,7 +3292,7 @@
     "/api/v1/businesses/{business_id}/inquiries/{inquiry_id}/replies": {
       "get": {
         "summary": "Reply Suggestions",
-        "description": "One-tap reply drafts for the customer's latest words (OB-303); never sent from here.",
+        "description": "One-tap reply drafts for the customer's latest words (OB-303); never sent from here.\nThey are in the owner's app language, which the owner app sends with every call.",
         "operationId": "reply_suggestions_api_v1_businesses__business_id__inquiries__inquiry_id__replies_get",
         "parameters": [
           {
@@ -9947,6 +9947,58 @@
             }
           },
           "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReminderResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/reminders/{sid}/locale": {
+      "put": {
+        "tags": [
+          "reminders"
+        ],
+        "summary": "Change Locale",
+        "operationId": "change_locale_api_v1_reminders__sid__locale_put",
+        "parameters": [
+          {
+            "name": "sid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Sid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReminderLocale"
+              }
+            }
+          }
         },
         "responses": {
           "200": {
@@ -17233,6 +17285,20 @@
           "subscription"
         ],
         "title": "ReminderInput"
+      },
+      "ReminderLocale": {
+        "properties": {
+          "locale": {
+            "type": "string",
+            "title": "Locale"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "locale"
+        ],
+        "title": "ReminderLocale"
       },
       "ReminderResult": {
         "properties": {

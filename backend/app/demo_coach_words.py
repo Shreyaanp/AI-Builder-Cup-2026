@@ -205,11 +205,14 @@ def without_polite_na(text: str) -> str:
     return POLITE_NA.sub("", text)
 
 
-def speaks_hindi(question: str) -> bool:
-    """Reply in Hindi for a Devanagari message, or anything typed while the app is in Hindi."""
+def speaks_hindi(question: str = "") -> bool:
+    """Reply in Hindi only when the owner chose Hindi for the app. The words of one message never
+    switch the language (a Hindi word in an English shop's message still gets English): Devanagari
+    is only read to understand what was asked. The question is unused, kept for the callers."""
     from .agent import ui_language
 
-    return bool(HINDI.search(question)) or ui_language.get() == "hi"
+    del question
+    return ui_language.get().split("-")[0] == "hi"
 
 
 def _now(fields: dict[str, Any]) -> datetime:
@@ -799,20 +802,20 @@ def app_language(question: str) -> list[StreamEvent] | None:
         return None
     english, hindi_name = NATIVE.get(chosen.locale, (chosen.name, chosen.name))
     switch = StreamEvent(kind="action", data={"target": "language", "language": chosen.locale})
-    if speaks_hindi(question):
+    # Confirmed in the language just chosen: from this turn on everything uses it.
+    if chosen.locale == "hi":
         return [
             switch,
             _reply(
-                f"ठीक है, अब ऐप और कोच {hindi_name} में हैं। ग्राहकों को जवाब उनकी अपनी भाषा में "
-                "जाते हैं। आप किस भाषा में बात करें, यह कभी भी बदल सकते हैं। "
-                + next_line_hi("reply_language")
+                f"ठीक है, अब ऐप, कोच, सूचनाएँ और ग्राहकों को आपके जवाब {hindi_name} में हैं। आप किस "
+                "भाषा में बात करें, यह कभी भी बदल सकते हैं। " + next_line_hi("reply_language")
             ),
         ]
     return [
         switch,
         _reply(
-            f"Done: the app language is now {english}, for you and the coach. Customer replies "
-            "still follow each customer's own language. " + next_line("reply_language")
+            f"Done: the app language is now {english}, for you, the coach, reminders and the "
+            "replies you send customers. " + next_line("reply_language")
         ),
     ]
 
@@ -952,4 +955,11 @@ def unsure(ctx: Any, question: str) -> list[StreamEvent]:
         ask = f"What should change for {named['name']}: its price, or sold out for today?"
     else:
         ask = FALLBACK
+    if HINDI.search(question):
+        # Written in Hindi in an English shop: the language stays the owner's choice, with
+        # the way to change it.
+        ask += f" I reply in English, the language you chose. {SWITCH_TO_HINDI}"
     return [_reply(ask, SUGGESTIONS)]
+
+
+SWITCH_TO_HINDI = "For Hindi, say “Change language to Hindi” or open You → Language."

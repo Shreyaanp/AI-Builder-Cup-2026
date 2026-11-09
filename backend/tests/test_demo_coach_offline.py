@@ -2,6 +2,7 @@
 example chips for anything else, and never a model or paid Maps call (OB-155)."""
 
 import json
+import re
 from unittest.mock import AsyncMock
 
 import pytest
@@ -12,8 +13,13 @@ from tests.test_photos import app  # noqa: F401
 from tests.test_public_demo import open_demo, owner
 
 
-def coach_events(client: TestClient, session: str, message: str) -> list[dict]:
-    response = client.post(f"/api/v1/demo/sessions/{session}/coach", json={"message": message})
+def coach_events(
+    client: TestClient, session: str, message: str, language: str = "en"
+) -> list[dict]:
+    """One coach turn from an app in `language` (the reply is in it, whatever the script)."""
+    response = client.post(
+        f"/api/v1/demo/sessions/{session}/coach", json={"message": message, "language": language}
+    )
     assert response.status_code == 200, (message, response.text)
     return [
         json.loads(line[6:]) for line in response.text.splitlines() if line.startswith("data: ")
@@ -516,7 +522,9 @@ def test_O_2_demo_coach_builds_a_card_only_for_an_exact_request(app):  # noqa: N
             app.state.rate_limiter.counters.clear()
             if index % 30 == 0:
                 session = open_demo(client).json()["session_id"]
-            events = coach_events(client, session, message)
+            # A Hindi phrasing is typed by an owner whose app is in Hindi.
+            language = "hi" if re.search(r"[ऀ-ॿ]", message) else "en"
+            events = coach_events(client, session, message, language)
             text = " ".join(event.get("text") or "" for event in events)
             cards = [event["data"]["snapshot"] for event in events if event["kind"] == "proposal"]
             got: dict = {"text": text, "cards": cards}
@@ -643,7 +651,7 @@ def test_OB_303_demo_drafts_replies_and_prepares_a_dictated_reply_offline(app, m
             )
             reply = " ".join(e.get("text") or "" for e in events)
             assert "Nothing goes until you do" in reply or "अपने-आप नहीं जाता" in reply
-        hindi = coach_events(client, session, "प्रिया को जवाब दो: हाँ, समोसा है")
+        hindi = coach_events(client, session, "प्रिया को जवाब दो: हाँ, समोसा है", "hi")
         card = next(e["data"] for e in hindi if e["kind"] == "action")
         assert card["thread_id"] == priya["id"] and card["label"] == "Priya को जवाब दें"
         # A real "no" for the customer is a reply, not a "don't".
@@ -670,7 +678,7 @@ def test_OB_303_demo_drafts_replies_and_prepares_a_dictated_reply_offline(app, m
             ), refused
         # A name that matches nobody asks which customer, naming the one who is waiting.
         rahul = " ".join(
-            e.get("text") or "" for e in coach_events(client, session, "राहुल को जवाब दो: हाँ")
+            e.get("text") or "" for e in coach_events(client, session, "राहुल को जवाब दो: हाँ", "hi")
         )
         assert "किस ग्राहक" in rahul and "Priya" in rahul
         zed = " ".join(

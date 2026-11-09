@@ -500,9 +500,13 @@ def test_OB_248_the_screens_own_phrase_does_the_work(
     message: str,
     words: str,
 ) -> None:
-    """Grow → Buy stock → Find a supplier sends this phrase, in English or Hindi."""
+    """Grow → Buy stock → Find a supplier sends this phrase, in English or Hindi (the app's
+    language: the reply is in it)."""
     client, _app, session, _bid = live_parent_demo
-    response = client.post(f"/api/v1/demo/sessions/{session}/coach", json={"message": message})
+    language = "hi" if HINDI_SCRIPT.search(message) else "en"
+    response = client.post(
+        f"/api/v1/demo/sessions/{session}/coach", json={"message": message, "language": language}
+    )
     events = {event["kind"]: event for event in _coach_events(response)}
     assert events["order"]["data"]["lines"][0]["name"] == "Milk"
     assert words in events["reply"]["text"]
@@ -623,7 +627,8 @@ def test_OB_248_writing_to_a_supplier_is_for_an_open_order_in_the_demo_only(
 def test_OB_248_hindi_stock_answer_says_the_unit_in_hindi(live_parent_demo) -> None:  # noqa: F811
     client, _app, session, _bid = live_parent_demo
     response = client.post(
-        f"/api/v1/demo/sessions/{session}/coach", json={"message": "Tea dust का स्टॉक कितना है?"}
+        f"/api/v1/demo/sessions/{session}/coach",
+        json={"message": "Tea dust का स्टॉक कितना है?", "language": "hi"},
     )
     assert "6 किलो" in response.text
 

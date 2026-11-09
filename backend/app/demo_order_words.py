@@ -47,7 +47,6 @@ async def draft_order(
     """The suppliers for one item, then the order card to the nearest: the real coach's
     find_suppliers and prepare_order, on the sandbox's demo suppliers. Nothing goes until the
     visitor taps Send."""
-    from .agent import ui_language
     from .coordinator import find_suppliers, prepare_order
     from .money import to_minor
     from .sourcing import OrderItem, convert, money_text
@@ -68,13 +67,10 @@ async def draft_order(
         if converted and 0 < converted <= 10_000:
             quantity = round(converted, 2)
     line = OrderItem(name=first["item"]["name"], quantity=quantity, unit=unit)
+    # The order, its message to the supplier and this reply are in the shop's chosen language,
+    # whatever script the owner typed in.
     hindi = speaks_hindi(question)
-    # A Hindi question gets a card whose supplier answers in Hindi.
-    token = ui_language.set("hi" if hindi else ui_language.get())
-    try:
-        drafted = prepare_order(first["id"], [line])
-    finally:
-        ui_language.reset(token)
+    drafted = prepare_order(first["id"], [line])
     if drafted.get("status") != "needs_owner_tap":
         return None
     currency = found["currency"]

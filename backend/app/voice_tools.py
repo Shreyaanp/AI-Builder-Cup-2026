@@ -277,8 +277,8 @@ def get_customer_messages() -> dict[str, Any]:
 
 def prepare_customer_reply(thread_id: str, text: str) -> dict[str, Any]:
     """Prepare a reply to one customer thread (thread_id from get_customer_messages), written
-    as the owner would say it, short and polite, in the customer's language. The owner taps
-    Send to deliver it; never say it was sent."""
+    as the owner would say it, short and polite, in the reply language, whatever the customer
+    wrote in. The owner taps Send to deliver it; never say it was sent."""
     ctx = current.get()
     if not ctx or not ctx.business_id:
         return {"status": "needs_business"}

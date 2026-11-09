@@ -340,15 +340,22 @@ def test_S2_9_remind_me_tomorrow_writes_tomorrows_note(demo, message, language, 
     assert "Coach" in reply or "कोच" in reply
 
 
+# The confirmation is in the language just chosen (owner rule, 9 Nov): from this turn on the
+# app, coach, reminders and customer replies all use it.
 @pytest.mark.parametrize(
     ("message", "language", "chosen", "words"),
     [
-        ("Change language to Hindi", "en", "hi", "the app language is now Hindi"),
-        ("Switch to English", "hi", "en", "अंग्रेज़ी"),
-        ("Hindi mein bolo", "en", "hi", "the app language is now Hindi"),
+        (
+            "Change language to Hindi",
+            "en",
+            "hi",
+            "अब ऐप, कोच, सूचनाएँ और ग्राहकों को आपके जवाब हिंदी में हैं",
+        ),
+        ("Switch to English", "hi", "en", "the app language is now English"),
+        ("Hindi mein bolo", "en", "hi", "हिंदी में हैं"),
         ("Reply in Tamil", "en", "ta", "the app language is now Tamil"),
-        ("हिंदी में जवाब दो", "en", "hi", "अब ऐप और कोच हिंदी में हैं"),
-        ("भाषा अंग्रेज़ी करो", "hi", "en", "अब ऐप और कोच अंग्रेज़ी में हैं"),
+        ("हिंदी में जवाब दो", "en", "hi", "हिंदी में हैं"),
+        ("भाषा अंग्रेज़ी करो", "hi", "en", "the app language is now English"),
     ],
 )
 def test_S2_9_change_language_by_chat(demo, message, language, chosen, words):  # noqa: N802

@@ -13,6 +13,7 @@ import { LanguageStep } from '../language/LanguageStep'
 import { useNeedsLanguage } from '../language/needsLanguage'
 import { setAnalyticsConsent } from '../../app/analytics'
 import { useLocale } from '../../state/hooks'
+import { useReminderLanguage } from './reminderPush'
 
 // OB-78/OB-165: the welcome and sign-in no longer wait for the whole owner app. Its code is
 // fetched as soon as an account is known, beside /me, so the workspace itself is not later.
@@ -88,6 +89,7 @@ function Account({ onLeave }: { onLeave: () => void }) {
   useEffect(() => {
     setAnalyticsConsent(me?.consent_current === true)
   }, [me?.consent_current])
+  useReminderLanguage(api, locale, me?.consent_current === true)
   if (failed)
     return <AccountError onSignOut={identity.mode === 'firebase' ? identity.signOut : onLeave} />
   if (!me) return <Splash />

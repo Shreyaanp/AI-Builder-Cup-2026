@@ -1167,6 +1167,7 @@ export interface paths {
         /**
          * Reply Suggestions
          * @description One-tap reply drafts for the customer's latest words (OB-303); never sent from here.
+         *     They are in the owner's app language, which the owner app sends with every call.
          */
         get: operations["reply_suggestions_api_v1_businesses__business_id__inquiries__inquiry_id__replies_get"];
         put?: never;
@@ -3287,6 +3288,23 @@ export interface paths {
         get: operations["status_api_v1_reminders_get"];
         /** Subscribe */
         put: operations["subscribe_api_v1_reminders_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reminders/{sid}/locale": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Change Locale */
+        put: operations["change_locale_api_v1_reminders__sid__locale_put"];
         post?: never;
         delete?: never;
         options?: never;
@@ -6207,6 +6225,11 @@ export interface components {
              */
             locale: string;
             subscription: components["schemas"]["Subscription"];
+        };
+        /** ReminderLocale */
+        ReminderLocale: {
+            /** Locale */
+            locale: string;
         };
         /** ReminderResult */
         ReminderResult: {
@@ -14311,6 +14334,41 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["ReminderInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReminderResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    change_locale_api_v1_reminders__sid__locale_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                sid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReminderLocale"];
             };
         };
         responses: {
