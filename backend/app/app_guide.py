@@ -71,7 +71,6 @@ INNER_LABELS: dict[tuple[str, str], frozenset[str]] = {
     ("Shop", "Buy stock"): frozenset({"To do", "On the way", "My suppliers", "Find a supplier"}),
     ("Grow", "My sales"): frozenset({"Week summary"}),
     ("Grow", "Payments & rides"): frozenset({"Send a rider"}),
-    ("You", "Privacy & your data"): frozenset({"Verify it’s you"}),
 }
 
 
@@ -552,19 +551,6 @@ FEATURES: tuple[Feature, ...] = (
         what_hi="क्या सहेजा है देखें, डाउनलोड करें या अपना डेटा मिटाएँ; हर बार पहले पूछा जाता है।",
     ),
     Feature(
-        "face_check",
-        "owner",
-        "Optional face check",
-        "An optional duplicate-owner check; it never proves identity or ownership.",
-        '"Register me" or "Verify me".',
-        ("You", "Privacy & your data", "Verify it’s you"),
-        ("face", "verify", "register", "registration", "selfie"),
-        "Verify me",
-        "मेरा चेहरा जाँचो",
-        "trust",
-        what_hi="चेहरे की जाँच वैकल्पिक है; यह पहचान या मालिकाना हक़ साबित नहीं करती।",
-    ),
-    Feature(
         "help",
         "owner",
         "What the coach can do",
@@ -713,7 +699,6 @@ HINDI_LABELS = {
     "Sold out": "खत्म",
     "Stamp card": "स्टैम्प कार्ड",
     "To do": "करना है",
-    "Verify it’s you": "पुष्टि करें कि यह आप हैं",
     "What can I ask?": "मैं क्या पूछूँ?",
     "What the coach knows": "कोच क्या जानता है",
     "Your shop page": "आपकी दुकान का पेज",

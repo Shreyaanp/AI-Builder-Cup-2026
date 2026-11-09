@@ -47,7 +47,9 @@ for (const width of [360, 390, 412]) {
           const sheet = page.getByRole('dialog')
           await expect(sheet).toBeVisible()
           if (index === 2)
-            await expect(sheet).toContainText(language === 'hi' ? 'एन्क्रिप्टेड' : 'encrypted')
+            await expect(sheet).toContainText(
+              language === 'hi' ? 'कभी भी मिटाएँ' : 'Delete your data anytime',
+            )
           if (index === 3) await expect(sheet.getByRole('link')).toHaveAttribute('href', support)
           await page.keyboard.press('Escape')
           await expect(sheet).toBeHidden()

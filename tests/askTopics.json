@@ -32,6 +32,5 @@
   "reminders": { "en": "reminder", "hi": "रिमाइंडर" },
   "shops": { "en": "another shop", "hi": "दूसरी दुकान" },
   "privacy": { "en": "delete", "hi": "डेटा" },
-  "face_check": { "en": "face check", "hi": "चेहरे" },
   "help": { "en": "Ask anything", "hi": "पूछिए" }
 }

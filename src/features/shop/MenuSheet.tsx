@@ -25,6 +25,7 @@ import { groupProducts } from './groupProducts'
 import { categoryLabel, useShopCopy } from './strings'
 import { unitLabel } from './units'
 import { onMenu, useUsualSales } from './stock'
+import { listWord, useTabsCopy } from '../v1/tabsCopy'
 import { productName } from '../../i18n/productNames'
 import { useLocale } from '../../state/hooks'
 import { StockLine } from './stockLine'
@@ -57,6 +58,8 @@ export function MenuSheet({
   onThingsIBuy?: () => void
 }) {
   const t = useCopy()
+  const tabs = useTabsCopy()
+  const locale = useLocale()
   const copy = useShopCopy()
   const stock = useStockCopy()
   const roles = useTheme().material
@@ -109,7 +112,7 @@ export function MenuSheet({
         onClose={onClose}
         titleId="menu-sheet-title"
         ask="add_menu"
-        title={t.menu}
+        title={listWord(shop?.fields.category, t.menu, tabs)}
         onExited={() => {
           const next = afterClose.current
           afterClose.current = null
@@ -184,7 +187,7 @@ export function MenuSheet({
                   variant="titleSmall"
                   sx={{ mb: 2, color: 'text.secondary', overflowWrap: 'anywhere' }}
                 >
-                  {categoryLabel(group.category, copy)}
+                  {productName(categoryLabel(group.category, copy), locale)}
                 </Typography>
                 <Box
                   component="ul"

@@ -5,7 +5,6 @@ import { openBuyStock, openGrowTool, showInGrow } from './support/grow.js'
 
 test.setTimeout(90_000)
 
-const NOTICE = 'In the demo this is pretend: nothing is sent'
 const errorsOf = new WeakMap<Page, string[]>()
 
 test.beforeEach(async ({ context, page }, info) => {
@@ -174,14 +173,11 @@ test('Shop: Messages opens the message thread', async ({ page }) => {
   await showsThread(page)
 })
 
-test('You: Verify it is you answers with the demo note', async ({ page }) => {
+test('You: the deferred face check is not offered (OB-269)', async ({ page }) => {
   await openDemo(page)
   await tab(page, 'you')
-  await page
-    .getByRole('button', { name: /Verify it/ })
-    .first()
-    .click()
-  await expect(page.locator('.MuiSnackbar-root', { hasText: NOTICE })).toBeVisible()
+  await expect(page.getByRole('button', { name: /Start my own shop/ })).toBeVisible()
+  await expect(page.getByRole('button', { name: /Verify it/ })).toHaveCount(0)
   await noErrors(page)
 })
 

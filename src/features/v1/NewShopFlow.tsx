@@ -292,6 +292,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
   const photoFile = useRef<File | null>(null)
   const [review, setReview] = useState<Proposal | null>(null)
   const [busy, setBusyState] = useState<'idle' | 'reply' | 'photo' | 'review'>('idle')
+  const [streamRetrying, setStreamRetrying] = useState(false)
   const busyRef = useRef(busy)
   const [note, setNoteState] = useState(recovery?.note || recovery?.pending || '')
   // The restored pending turn: sent again with its first id, so the server can tell.
@@ -922,7 +923,6 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
     lastTurn.current = message
     lastTurnId.current = turnId
     // Any coach event means the server has this turn: it is not offered for sending again.
-    let heard = false
     stopSpeaking()
     controller.current?.abort()
     const abort = new AbortController()
@@ -942,28 +942,29 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
           new_shop_draft: draftRef.current,
         },
         abort.signal,
-        (event) => {
-          heard = true
-          receive(event)
-        },
+        receive,
         identity.getToken,
-        undefined,
+        (state) => setStreamRetrying(state === 'reconnecting'),
         TURN_IDLE_MS,
       )
       if (controller.current === abort && (liveRef.current.trim() || quiet.current))
         commitCoach(true)
     } catch (cause) {
       if (!abort.signal.aborted) {
-        if (liveRef.current.trim()) commitCoach(true)
+        // Half a reply is not a reply (OB-259): it goes, the error stays, the owner's words return.
         setLive('')
+        setHeard('')
+        ownerTurnOpen.current = false
+        pending.current = null
         if (cause instanceof TooSlowError) setStalled(message)
         else setError(cause instanceof RateLimitError ? t.rateLimited : t.replyFailed)
-        if (message !== f.start && !heard) setNote(message)
+        if (message !== f.start) setNote(message)
       }
     } finally {
       if (controller.current === abort) {
         controller.current = null
         setBusy('idle')
+        setStreamRetrying(false)
       }
     }
   }
@@ -1398,7 +1399,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
   const idle = busy === 'idle'
   const canSend = Boolean(note.trim()) && idle
   const orbBase: OrbPhase =
-    voice.state === 'reconnecting'
+    voice.state === 'reconnecting' || streamRetrying
       ? 'reconnecting'
       : voice.state === 'connecting'
         ? 'connecting'

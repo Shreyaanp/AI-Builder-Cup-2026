@@ -709,7 +709,22 @@ def test_OB_248_backend_hindi_names_match_the_apps_table() -> None:
         (quoted or bare): hindi
         for quoted, bare, hindi in re.findall(r"^\s+(?:'([^']+)'|(\w+)): \['([^']+)'", table, re.M)
     }
-    for category in ("Tea stall", "Minimart"):
+    for category in (
+        "Tea stall",
+        "Minimart",
+        "Bakes",
+        "Beverages",
+        "Breads",
+        "Breakfast",
+        "Cakes",
+        "Dairy",
+        "Fresh",
+        "Household",
+        "Packaged",
+        "Personal care",
+        "Snacks",
+        "Staples",
+    ):
         shown.pop(category)  # categories live in the app only, not as coach items
     assert shown and demo_item_names.HINDI_ITEMS == shown
 

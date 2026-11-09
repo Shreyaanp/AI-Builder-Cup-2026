@@ -26,7 +26,8 @@ export function useTodayPlan(unread: number | null): {
   const ws = useWorkspace()
   const facts = useToday()
   const { trust } = useTrust(ws.api)
-  const { scope } = useIdentity()
+  const identity = useIdentity()
+  const { scope } = identity
   const key = `chalkboard.freshness.${scope}.${ws.active?.id ?? ''}`
   const closedKey = `chalkboard.closeday.${scope}.${ws.active?.id ?? ''}`
   const promiseKey = `chalkboard.promise.${scope}.${ws.active?.id ?? ''}`
@@ -68,7 +69,7 @@ export function useTodayPlan(unread: number | null): {
     menuAnswered: Boolean(facts && answered === facts.date),
     dayClosed: Boolean(facts ? closedDay === facts.date : closedDay),
     now,
-    face: trust?.face ?? null,
+    face: identity.features.face_check ? (trust?.face ?? null) : null,
     orderable: supply.toOrder.filter((ask) => ask.sold_out).map((ask) => ask.item),
     supply: supply.item
       ? {

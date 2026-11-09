@@ -5641,6 +5641,45 @@
         }
       }
     },
+    "/api/v1/customer/guest/merge": {
+      "post": {
+        "summary": "Guest Merge",
+        "description": "OB-56: join this phone's guest account from before #335 into this one. Off by default.",
+        "operationId": "guest_merge_api_v1_customer_guest_merge_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GuestMergeInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GuestMergeResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/customer/passport/merge": {
       "post": {
         "summary": "Merge",
@@ -14183,6 +14222,44 @@
         ],
         "title": "Group"
       },
+      "GuestMergeInput": {
+        "properties": {
+          "token": {
+            "type": "string",
+            "maxLength": 8192,
+            "minLength": 1,
+            "title": "Token"
+          }
+        },
+        "type": "object",
+        "required": [
+          "token"
+        ],
+        "title": "GuestMergeInput"
+      },
+      "GuestMergeResult": {
+        "properties": {
+          "merged": {
+            "type": "boolean",
+            "title": "Merged"
+          },
+          "follows": {
+            "type": "integer",
+            "title": "Follows"
+          },
+          "stamps": {
+            "type": "integer",
+            "title": "Stamps"
+          }
+        },
+        "type": "object",
+        "required": [
+          "merged",
+          "follows",
+          "stamps"
+        ],
+        "title": "GuestMergeResult"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -21055,6 +21132,16 @@
           "guest_customer": {
             "default": false,
             "title": "Guest Customer",
+            "type": "boolean"
+          },
+          "face_check": {
+            "default": false,
+            "title": "Face Check",
+            "type": "boolean"
+          },
+          "guest_merge": {
+            "default": false,
+            "title": "Guest Merge",
             "type": "boolean"
           }
         },

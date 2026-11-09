@@ -160,13 +160,6 @@ test('OB-248 what touches the real world says it is pretend, plainly', async ({ 
   await openDemo(page)
   await expect(page.getByTestId('demo-banner')).toContainText('Demo shop · sample data')
   await page.locator('[data-tour="nav-you"]').click()
-  await page
-    .getByRole('button', { name: /Verify it/ })
-    .first()
-    .click()
-  await expect(
-    page.locator('.MuiSnackbar-root', { hasText: 'In the demo this is pretend: nothing is sent' }),
-  ).toBeVisible()
   await expect(page.getByRole('button', { name: /Start my own shop/ })).toBeVisible()
   await page.getByRole('button', { name: /Privacy & your data/ }).click()
   await expect(page.locator('body')).not.toContainText(BLOCKED)

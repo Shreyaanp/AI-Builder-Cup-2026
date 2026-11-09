@@ -40,10 +40,6 @@ const pathLine = (feature: Feature, lang: Lang) =>
 // The check is strict: once a row reaches the first view its test fails until it leaves this list.
 const BELOW_FIRST_VIEW = new Set(['Privacy & your data', 'What the coach knows', 'What can I ask?'])
 
-// The demo hides Get on Google (DemoApp passes hiddenFeatures) while its coach still names it:
-// OB-247 (#632). Its reply is checked; the tile is only looked for outside the demo.
-const NOT_IN_DEMO = new Set(['Get on Google'])
-
 async function localOnly(page: Page, visitor: string) {
   await page.context().setExtraHTTPHeaders({ 'x-forwarded-for': `two-paths-${visitor}` })
   await page
@@ -159,7 +155,6 @@ for (const name of ['Shop', 'Grow', 'You']) {
       if (name === 'Grow')
         await expect(page.getByRole('button', { name: /^Morning brief/ })).toBeVisible()
       const row = feature.path[1]
-      if (NOT_IN_DEMO.has(row)) continue
       const target = entry(page, row)
       await expect(target, `${feature.id}: ${where(feature)}`).toBeAttached()
       expect
@@ -255,7 +250,7 @@ for (const name of ['Coach', 'Shop', 'Grow', 'You']) {
         }
         // Screens the coach opens itself are checked below; close them to follow the path by hand.
         if (await page.getByRole('dialog').count()) await closeAll(page)
-        if (feature.path.length === 1 || NOT_IN_DEMO.has(feature.path[1])) continue
+        if (feature.path.length === 1) continue
         await tab(page, feature.path[0])
         const target = entry(page, feature.path[1])
         await target.scrollIntoViewIfNeeded()
