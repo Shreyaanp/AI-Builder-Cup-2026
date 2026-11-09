@@ -10,7 +10,6 @@ from __future__ import annotations
 import csv
 import io
 import itertools
-import re
 from collections import defaultdict
 from datetime import date, datetime
 from typing import Any, Literal
@@ -19,6 +18,7 @@ import structlog
 from pydantic import BaseModel, Field
 
 from .gemini_schema import gemini_schema, parse_reply
+from .numbers import Kind, read_number
 from .product_categories import suggest_category
 from .product_units import normalize_unit
 from .settings import Settings
@@ -155,38 +155,30 @@ def heuristic_map(headers: list[str]) -> ColumnMap:
     return ColumnMap(kind="sales" if is_sales else "menu", **found)
 
 
-def number(text: str) -> float | None:
-    cleaned = re.sub(r"[^\d.,\-]", "", text or "")
-    if not cleaned:
-        return None
-    if "," in cleaned and "." in cleaned:
-        cleaned = cleaned.replace(",", "")
-    elif cleaned.count(",") == 1 and len(cleaned.split(",")[1]) in (1, 2):
-        cleaned = cleaned.replace(",", ".")
-    else:
-        cleaned = cleaned.replace(",", "")
-    try:
-        return float(cleaned)
-    except ValueError:
-        return None
+def number(text: str, currency: str | None = None, kind: Kind = "money") -> float | None:
+    """An export cell ("1,000", "170/-", "Rp 15.000") read by the one shared number reader in
+    the shop's currency. Export columns carry float noise, so extra decimals are not refused."""
+    return read_number(text, currency, kind, exact=False)
 
 
 def cell(row: list[str], index: int | None) -> str:
     return row[index] if index is not None and 0 <= index < len(row) else ""
 
 
-def menu_items(rows: list[list[str]], mapping: ColumnMap) -> tuple[list[dict[str, Any]], int]:
+def menu_items(
+    rows: list[list[str]], mapping: ColumnMap, currency: str | None = None
+) -> tuple[list[dict[str, Any]], int]:
     """Unique (name, unit) items with a major-unit price; returns items and skipped rows."""
     items: dict[tuple[str, str], dict[str, Any]] = {}
     skipped = 0
     for row in rows:
         name = cell(row, mapping.name)[:180]
-        price = number(cell(row, mapping.price))
+        price = number(cell(row, mapping.price), currency)
         if not name or price is None or price < 0:
             skipped += 1
             continue
         unit = normalize_unit(cell(row, mapping.unit))
-        stock = number(cell(row, mapping.stock))
+        stock = number(cell(row, mapping.stock), currency, "quantity")
         items[(name.casefold(), unit.casefold())] = {
             "name": name,
             "price": price,
@@ -201,7 +193,9 @@ def menu_items(rows: list[list[str]], mapping: ColumnMap) -> tuple[list[dict[str
     return list(items.values())[:200], skipped
 
 
-def sales_summary(rows: list[list[str]], mapping: ColumnMap) -> dict[str, Any]:
+def sales_summary(
+    rows: list[list[str]], mapping: ColumnMap, currency: str | None = None
+) -> dict[str, Any]:
     quantity: dict[str, float] = defaultdict(float)
     revenue: dict[str, float] = defaultdict(float)
     days: set[str] = set()
@@ -209,11 +203,15 @@ def sales_summary(rows: list[list[str]], mapping: ColumnMap) -> dict[str, Any]:
         name = cell(row, mapping.name)
         if not name:
             continue
-        qty = number(cell(row, mapping.quantity)) if mapping.quantity is not None else 1
+        qty = (
+            number(cell(row, mapping.quantity), currency, "quantity")
+            if mapping.quantity is not None
+            else 1
+        )
         qty = qty if qty is not None else 0
-        total = number(cell(row, mapping.total))
+        total = number(cell(row, mapping.total), currency)
         if total is None:
-            total = (number(cell(row, mapping.price)) or 0) * qty
+            total = (number(cell(row, mapping.price), currency) or 0) * qty
         quantity[name] += qty
         revenue[name] += total
         if day := cell(row, mapping.date)[:10]:

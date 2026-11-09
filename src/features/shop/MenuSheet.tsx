@@ -33,6 +33,10 @@ import { useSupply } from '../supply/supplyData'
 import { useOrderChangeCopy } from '../supply/orderChangeCopy'
 import { StockNote } from './StockNote'
 import { useStockCopy } from './stockCopy'
+import { moneyLocale } from '../../region/region'
+import { readNumber } from '../v1/readNumber'
+import { numberForEditing } from '../v1/format'
+import { numberQuestion } from '../v1/numberCopy'
 
 /**
  * The full menu: one section per category, each a grid of item cards (one per row on a phone so
@@ -395,7 +399,8 @@ export function ItemCard({
 
 type PriceState =
   | { mode: 'view' }
-  | { mode: 'edit'; text: string; error: boolean }
+  /** `error`: what is wrong with the typed price, in words; '' when nothing is. */
+  | { mode: 'edit'; text: string; error: string }
   | { mode: 'busy' }
   | { mode: 'confirm'; proposal: Proposal; price: number }
 
@@ -409,19 +414,30 @@ function PriceField({ product }: { product: Product }) {
   const copy = useShopCopy()
   const ws = useWorkspace()
   const roles = useTheme().material
-  const name = productName(product.name, useLocale())
+  const locale = useLocale()
+  const name = productName(product.name, locale)
   const [state, setState] = useState<PriceState>({ mode: 'view' })
   const shop = ws.active
   const currency = shopCurrency(shop)
+  const numberLocale = moneyLocale(currency, locale) ?? locale
   const shown = formatShopPrice(product.price, currency)
 
   async function prepare(text: string) {
-    const value = Number(text.trim().replace(',', '.'))
-    if (!text.trim() || !Number.isFinite(value) || value < 0) {
-      setState({ mode: 'edit', text, error: true })
+    // The same reader as every typed amount: "1,000" and "170/-" are what they say; "1,5" in
+    // a rupee shop is asked about, never saved as ₹1.50 or ₹15 (PR #701).
+    const reading = readNumber(text, numberLocale, currency, 'money')
+    if (!reading.ok) {
+      const money = (value: number) => formatShopPrice(toMinor(value, currency), currency, locale)
+      const error =
+        reading.reason === 'ambiguous'
+          ? numberQuestion(locale)
+              .replace('{a}', money(reading.options[0]))
+              .replace('{b}', money(reading.options[1]))
+          : copy.priceInvalid
+      setState({ mode: 'edit', text, error })
       return
     }
-    const price = toMinor(value, currency)
+    const price = toMinor(reading.value, currency)
     if (price === product.price || !shop) {
       setState({ mode: 'view' })
       return
@@ -466,7 +482,7 @@ function PriceField({ product }: { product: Product }) {
         <InputBase
           autoFocus
           value={state.text}
-          onChange={(event) => setState({ mode: 'edit', text: event.target.value, error: false })}
+          onChange={(event) => setState({ mode: 'edit', text: event.target.value, error: '' })}
           onKeyDown={(event) => {
             cancelOnEscape(event)
             if (event.key === 'Enter') {
@@ -482,7 +498,7 @@ function PriceField({ product }: { product: Product }) {
           }
           inputProps={{
             'aria-label': copy.editPrice(name),
-            'aria-invalid': state.error,
+            'aria-invalid': Boolean(state.error),
             'aria-describedby': state.error ? `price-error-${product.id}` : undefined,
             inputMode: 'decimal',
             enterKeyHint: 'done',
@@ -506,7 +522,7 @@ function PriceField({ product }: { product: Product }) {
             variant="bodyMedium"
             sx={{ display: 'block', mt: 1, color: roles.error }}
           >
-            {copy.priceInvalid}
+            {state.error}
           </Typography>
         )}
       </Box>
@@ -549,7 +565,11 @@ function PriceField({ product }: { product: Product }) {
     <ButtonBase
       disabled={state.mode === 'busy'}
       onClick={() =>
-        setState({ mode: 'edit', text: String(toMajor(product.price, currency)), error: false })
+        setState({
+          mode: 'edit',
+          text: numberForEditing(toMajor(product.price, currency), numberLocale, 'money', currency),
+          error: '',
+        })
       }
       // The name says what the button does; the visible price stays part of it.
       aria-label={`${copy.editPrice(name)}, ${shown}`}

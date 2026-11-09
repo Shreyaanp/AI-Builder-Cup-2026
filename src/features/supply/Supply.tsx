@@ -34,6 +34,9 @@ import type { Board } from './ioTypes'
 import { useDraftReorder, useOrderUnit, useRulesActions, useSupply } from './supplyData'
 import { useOrderChangeCopy } from './orderChangeCopy'
 import type { ItemRule, PurchaseOrder, Relationship, RuleSet, SystemFormat } from './types'
+import { moneyLocale } from '../../region/region'
+import { parseNumber } from '../v1/readNumber'
+import { numberForEditing } from '../v1/format'
 
 type View = { kind: 'list' } | { kind: 'order'; id: string } | { kind: 'rules'; id: string }
 
@@ -307,8 +310,16 @@ export function RulesEditor({ row, onSaved }: { row: Relationship; onSaved: () =
   const currency = row.currency
   const [rules, setRules] = useState<RuleSet>(row.rules)
   const [busy, setBusy] = useState(false)
-  const major = (minor: number) => (minor ? String(toMajor(minor, currency)) : '')
-  const minor = (text: string) => (text.trim() ? toMinor(Number(text) || 0, currency) : 0)
+  const numberLocale = moneyLocale(currency, locale) ?? locale
+  const major = (minor: number) =>
+    minor ? numberForEditing(toMajor(minor, currency), numberLocale, 'money', currency) : ''
+  // The app's one amount reader ("1,000" is a thousand, "₹500" is 500). Text it can't read
+  // keeps the saved amount instead of turning it into 0.
+  const minor = (text: string, previous: number) => {
+    if (!text.trim()) return 0
+    const value = parseNumber(text, numberLocale, currency, 'money')
+    return value === null ? previous : toMinor(value, currency)
+  }
   function item(index: number, change: Partial<ItemRule>) {
     setRules((current) => ({
       ...current,
@@ -356,7 +367,9 @@ export function RulesEditor({ row, onSaved }: { row: Relationship; onSaved: () =
         <TextField
           label={s.creditLimit}
           value={major(rules.credit_limit)}
-          onChange={(event) => setRules({ ...rules, credit_limit: minor(event.target.value) })}
+          onChange={(event) =>
+            setRules({ ...rules, credit_limit: minor(event.target.value, rules.credit_limit) })
+          }
           disabled={rules.terms_days === 0}
           slotProps={{ htmlInput: { inputMode: 'decimal' } }}
           fullWidth
@@ -364,7 +377,9 @@ export function RulesEditor({ row, onSaved }: { row: Relationship; onSaved: () =
         <TextField
           label={s.approvalOver}
           value={major(rules.approval_over)}
-          onChange={(event) => setRules({ ...rules, approval_over: minor(event.target.value) })}
+          onChange={(event) =>
+            setRules({ ...rules, approval_over: minor(event.target.value, rules.approval_over) })
+          }
           slotProps={{ htmlInput: { inputMode: 'decimal' } }}
           fullWidth
         />
@@ -480,7 +495,7 @@ export function RulesEditor({ row, onSaved }: { row: Relationship; onSaved: () =
                   onChange={(event) =>
                     item(index, {
                       tiers: rule.tiers.map((t, i) =>
-                        i === tierIndex ? { ...t, price: minor(event.target.value) } : t,
+                        i === tierIndex ? { ...t, price: minor(event.target.value, t.price) } : t,
                       ),
                     })
                   }
