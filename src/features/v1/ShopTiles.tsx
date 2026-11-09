@@ -50,7 +50,7 @@ import { OwnerPerks } from '../passport/games/OwnerPerks'
 import { useUnread } from './useUnread'
 import { busyWindow, openNow, readiness } from './shopProgress'
 import { useCopy } from './strings'
-import { isServiceShop, useTabsCopy } from './tabsCopy'
+import { listWord, useTabsCopy } from './tabsCopy'
 import { RowGroup, ShopRow } from './ShopRow'
 import { ShopLocation } from './CurrentLocation'
 import { useWorkspace } from './workspaceContext'
@@ -402,7 +402,7 @@ export function ShopTiles({
         <ShopRow
           tour="menu"
           icon={<UtensilsCrossed size={20} />}
-          label={isServiceShop(shop.fields.category) ? tabs.services : t.menu}
+          label={listWord(shop.fields.category, t.menu, tabs)}
           value={menu.length ? t.itemCount(menu.length) : t.noItems}
           onClick={() => onSheet('menu')}
         />

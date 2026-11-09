@@ -51,7 +51,7 @@ test('O-1 a demo menu file opens a labelled sample review, never a silent failur
   const review = page.getByRole('dialog', { name: 'Check before saving' })
   await expect(review).toContainText('Masala dosa', { timeout: 30_000 })
   await expect(review).toContainText('Filter coffee')
-  await expect(review).toContainText('Sample read: the demo never reads your file.')
+  await expect(review).toContainText('The demo does not read your photo or file.')
   await review.getByRole('button', { name: 'Confirm and save' }).click()
   await expect(review).toHaveCount(0)
   // Saved into this visitor's sandbox menu.
@@ -71,7 +71,7 @@ test('O-1 a demo menu photo opens the same sample review', async ({ page }) => {
     buffer: readFileSync('tests/stories/fixtures/bengaluru-board.jpg'),
   })
   const review = page.getByRole('dialog', { name: 'Check before saving' })
-  await expect(review).toContainText('Sample read', { timeout: 30_000 })
+  await expect(review).toContainText('This is a sample', { timeout: 30_000 })
   await expect(review).toContainText('Medu vada')
   expect(refused).toEqual([])
 })

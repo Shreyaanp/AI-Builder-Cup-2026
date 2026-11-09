@@ -24,7 +24,6 @@ from starlette.websockets import WebSocketDisconnect
 
 from app import business_understanding, new_shop_tools
 from app.agent import (
-    FACE_QUESTION,
     GOODBYE,
     NEW_SHOP_INSTRUCTION,
     NEW_SHOP_TOPICS,
@@ -52,6 +51,9 @@ from tests.test_discover import settings
 from tests.test_photos import join
 
 ORIGIN = {"origin": "http://127.0.0.1:3200"}
+
+
+SET_UP = "All set. You can add your menu from Today."
 
 
 def context(tmp_path: Path, uid: str = "alice") -> MerchantContext:
@@ -620,8 +622,6 @@ def asked_about(reply: str) -> str | None:
     def says(english: str) -> bool:
         return english in reply or OFFLINE_HI.get(english, english) in reply
 
-    if says(FACE_QUESTION):
-        return "face"
     if says(OPEN_QUESTION):
         return "open"
     extra = next((key for key, question in TRADE_QUESTIONS.items() if says(question)), None)
@@ -632,7 +632,7 @@ def asked_about(reply: str) -> str | None:
 
 def conversation(tmp_path: Path, language: str, answer: str) -> list[tuple[str, str]]:
     """Greeting, the owner's one answer to the open question, then "pata nahi" to everything
-    until the face check. Every (topic, reply) the coach said, in order."""
+    until the shop is set up. Every (topic, reply) the coach said, in order."""
     app = create_app(settings(tmp_path), InMemorySessionService())
     said: list[tuple[str, str]] = []
     sid: str | None = None
@@ -657,11 +657,11 @@ def conversation(tmp_path: Path, language: str, answer: str) -> list[tuple[str, 
                 if event["kind"] == "draft":
                     draft = event["data"]
             reply = next(e["text"] for e in reversed(events) if e["kind"] == "reply")
+            if any(done in reply for done in (SET_UP, OFFLINE_HI[SET_UP])):
+                break
             topic = asked_about(reply)
             assert topic, f"a question outside the plan: {reply}"
             said.append((topic, reply))
-            if topic == "face":
-                break
     return said
 
 
@@ -729,7 +729,7 @@ def test_eval_open_question_then_at_most_two_smart_follow_ups(
 ) -> None:
     """The coach opens with "tell me about your shop", takes name, kind and place from the one
     answer (never asks them again), then asks at most two follow-ups, the first the trade's own
-    question, the other only the hours; the photo and the face check close it. A Hindi owner
+    question, the other only the hours; the photo closes it. A Hindi owner
     hears all of it in Hindi."""
     answer = f"name: {name}; category: {offers}; location: {place}"
     said = conversation(tmp_path, language, answer)
@@ -738,7 +738,7 @@ def test_eval_open_question_then_at_most_two_smart_follow_ups(
     assert not {"name", "sell", "location"} & set(topics), topics
     follow_ups = [t for t in topics if t.startswith("extra:") or t == "hours"]
     assert follow_ups == [f"extra:{trade}", "hours"], topics
-    assert topics[-2:] == ["photo", "face"], topics
+    assert topics[-1] == "photo", topics
     assert len(topics) == len(set(topics)), f"asked twice: {topics}"
     for _, reply in said:
         question = reply.removeprefix("Offline template: ").removeprefix("ऑफ़लाइन नमूना: ")
@@ -762,7 +762,7 @@ def test_eval_what_the_owner_already_said_is_never_asked(
     """The open answer already says the brands (the seating) and the hours: no follow-up at all,
     straight to the photo."""
     said = conversation(tmp_path, language, f"{answer}; hours: 7 am to 9 pm")
-    assert [topic for topic, _ in said] == ["open", "photo", "face"]
+    assert [topic for topic, _ in said] == ["open", "photo"]
 
 
 def test_never_more_than_two_follow_ups_even_when_the_profile_comes_late() -> None:

@@ -13,7 +13,6 @@ from fastapi.testclient import TestClient
 from google.adk.sessions import InMemorySessionService
 
 from app.agent import (
-    FACE_QUESTION,
     NEW_SHOP_INSTRUCTION,
     NEW_SHOP_TOPICS,
     OFFLINE_HI,
@@ -142,7 +141,7 @@ def test_hours_and_photo_can_be_skipped_and_are_never_invented(tmp_path: Path) -
     assert result["still_missing"] == [result["still_missing"][0]]
     assert result["still_missing"][0].startswith("a photo of the shop")
     done = run(ctx, skip=["photo", "photo"])
-    assert done["still_missing"] == [] and "face check" in done["next"]
+    assert done["still_missing"] == [] and "face check" not in done["next"]
     assert ctx.new_shop_draft and ctx.new_shop_draft.skipped == ["hours", "photo"]
     assert any("hours: skipped" in item for item in done["known_never_ask_again"])
     bid = ctx.new_shop_draft.live_id
@@ -234,7 +233,6 @@ def test_hindi_onboarding_offline_end_to_end_never_repeats_and_never_asks_the_me
             "pata nahi",
             "pata nahi",
             "baad mein",
-            "nahi, skip",
         ]
         for index, message in enumerate(messages):
             response = client.post(
@@ -264,15 +262,16 @@ def test_hindi_onboarding_offline_end_to_end_never_repeats_and_never_asks_the_me
                 live_after = index
         assert live_after == 1
         assert not any(
-            word in " ".join(asked).casefold()
+            word in " ".join(asked[:-1]).casefold()  # the last line closes, it asks nothing
             for word in ("menu", "pay", "delivery", "halal", "मेन्यू", "भुगतान", "डिलीवरी")
         )
         # #112: the open question first; after the basics, the tea stall's own follow-up (in
-        # Hindi), the hours (room for a second), then the photo, each once, then the face check.
+        # Hindi), the hours (room for a second), then the photo, each once.
         assert OFFLINE_HI[OPEN_QUESTION] in asked[0]
         assert OFFLINE_HI[SEATING] in asked[1]
         assert [topic_of(asked[2]), topic_of(asked[3])] == ["hours", "photo"]
-        assert OFFLINE_HI[FACE_QUESTION] in asked[4]
+        # The face check is deferred (OB-269): the coach never offers it.
+        assert len(asked) == 5 and "चेहर" not in " ".join(asked)
         assert sorted(draft["skipped"]) == ["hours", "photo"]
         shops = client.get("/api/v1/businesses").json()
         assert len(shops) == 1 and shops[0]["id"] == draft["live_id"]

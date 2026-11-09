@@ -428,6 +428,7 @@ class PassportState(BaseModel):
     sets_done: dict[str, float] = Field(default_factory=dict)
     coop_helped: dict[str, int] = Field(default_factory=dict)  # "area|week" -> visits given
     coop_claimed: list[str] = Field(default_factory=list)  # "area|week" bonuses collected
+    merged_guests: list[str] = Field(default_factory=list)  # old guest uids joined (OB-56)
 
 
 class Visit(BaseModel):

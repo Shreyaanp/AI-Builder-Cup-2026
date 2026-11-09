@@ -1,5 +1,4 @@
 import {
-  Alert,
   Box,
   Button,
   Dialog,
@@ -36,9 +35,9 @@ export function LegalDialog({ open, onClose }: { open: LegalDocument; onClose: (
       <DialogTitle id="legal-title">{open === 'privacy' ? t.viewPrivacy : t.viewTerms}</DialogTitle>
       <DialogContent dividers>
         <Stack spacing={3}>
-          <Alert severity="warning">
-            {t.draftLegal} · v{LEGAL_VERSION}
-          </Alert>
+          <Typography variant="bodySmall" color="text.secondary">
+            v{LEGAL_VERSION}
+          </Typography>
           {locale !== 'en' && <Typography variant="bodyMedium">{t.legalTranslation}</Typography>}
           {sections.map((section) => (
             <Box key={section.heading} lang={LEGAL[locale] ? locale : 'en'}>
