@@ -192,3 +192,107 @@ test('find a supplier from Buy stock answered with no model call', async ({ page
     timeout: 30_000,
   })
 })
+
+async function openMenu(page: Page) {
+  await toShop(page)
+  await page.getByTestId('shop-tiles').getByRole('button', { name: /^Menu/ }).click()
+  const sheet = page.getByRole('dialog').last()
+  await expect(sheet.locator('[data-menu-card="Kopi"]')).toBeVisible()
+  return sheet
+}
+
+async function factsSheet(page: Page) {
+  await toShop(page)
+  await page.getByRole('button', { name: /^Shop details/ }).click()
+  return page.getByRole('dialog').last()
+}
+
+test('Find a supplier, Order, Send on a saved shop: On the way shows it', async ({ page }) => {
+  await savedShop(page)
+  await page.locator('[data-tour="nav-grow"]').click()
+  const sheet = await openBuyStock(page, 'Find a supplier')
+  await sheet.getByRole('textbox', { name: 'What do you need?' }).fill('Milk')
+  await sheet.getByRole('textbox', { name: /^(How much|Quantity)/ }).fill('20 L')
+  await sheet.getByRole('button', { name: 'Find a supplier', exact: true }).last().click()
+  const log = page.getByRole('log')
+  await expect(log).toContainText(/suppliers near you for milk/i, { timeout: 30_000 })
+  const list = log.getByRole('list', { name: /suppliers? nearby/ }).last()
+  await list.getByRole('button', { name: 'Order', exact: true }).first().click()
+  await expect(log.getByText(/^Order from number 1: 20 litre milk$/i)).toBeVisible()
+  // The instant path's own words: the order card came with no model call.
+  await expect(log).toContainText(/Your order to .+ is ready below/, { timeout: 30_000 })
+  const send = log.getByRole('button', { name: /^Send to / }).last()
+  const supplier = ((await send.getAttribute('aria-label')) ?? '').replace('Send to ', '')
+  await send.click()
+  await expect(log.getByText(`Sent to ${supplier}`).last()).toBeVisible({ timeout: 30_000 })
+  await page.locator('[data-tour="nav-grow"]').click()
+  const hub = await openBuyStock(page, 'On the way')
+  await expect(hub.getByText(supplier).first()).toBeVisible({ timeout: 30_000 })
+})
+
+test('stock said in chat: the menu shows the count', async ({ page }) => {
+  await savedShop(page)
+  await say(page, 'Kopi is 5 left')
+  await confirmReview(page)
+  const menu = await openMenu(page)
+  await expect(menu.locator('[data-stock="Kopi"]')).toHaveText('5 left')
+  // A count is never a price.
+  await expect(menu.getByRole('button', { name: /^Edit price: Kopi, .*1\.80$/ })).toBeVisible()
+})
+
+test('stock tapped to 0 on the menu: the coach lists it sold out', async ({ page }) => {
+  await savedShop(page)
+  await say(page, 'Kopi is 1 left')
+  await confirmReview(page)
+  const menu = await openMenu(page)
+  const card = menu.locator('[data-menu-card="Kopi"]')
+  await card.getByRole('button', { name: 'One less Kopi' }).click()
+  await expect(card.locator('[data-stock="Kopi"]')).toHaveText('Sold out')
+  await closeSheet(page)
+  await toCoach(page)
+  await say(page, 'What is sold out?')
+  await expect(page.getByRole('log')).toContainText(/Sold out right now: .*Kopi/, {
+    timeout: 30_000,
+  })
+})
+
+test('price said in chat: the menu shows the new price', async ({ page }) => {
+  await savedShop(page)
+  await say(page, 'Kopi is 3 dollars now')
+  await confirmReview(page)
+  const menu = await openMenu(page)
+  await expect(menu.getByRole('button', { name: /^Edit price: Kopi, .*3\.00$/ })).toBeVisible()
+})
+
+test('price edited on the menu: the coach starts from it', async ({ page }) => {
+  await savedShop(page)
+  const menu = await openMenu(page)
+  await menu.getByRole('button', { name: /^Edit price: Kopi/ }).click()
+  const field = menu.getByRole('textbox', { name: 'Edit price: Kopi' })
+  await field.fill('2.2')
+  await field.press('Enter')
+  await menu.getByRole('button', { name: /^Save .*2\.20$/ }).click()
+  await expect(menu.getByRole('button', { name: /^Edit price: Kopi, .*2\.20$/ })).toBeVisible()
+  await closeSheet(page)
+  await toCoach(page)
+  await say(page, 'Kopi is 3 dollars now')
+  // The coach's message names the old price: the one just saved on the screen.
+  await expect(page.getByText(/Kopi: price 2.2 → 3/).first()).toBeAttached({ timeout: 30_000 })
+})
+
+test('fact said in chat: Shop details shows it answered', async ({ page }) => {
+  await savedShop(page)
+  await say(page, 'halal yes')
+  await confirmReview(page)
+  const sheet = await factsSheet(page)
+  await expect(sheet.getByRole('region', { name: 'What customers ask' })).toContainText('Halal')
+})
+
+test('fact tapped in Shop details: saved on the record the coach reads', async ({ page }) => {
+  const id = await savedShop(page)
+  const sheet = await factsSheet(page)
+  await sheet.getByRole('button', { name: 'Yes', exact: true }).first().click()
+  await confirmReview(page)
+  const shops = (await (await page.request.get('/api/v1/businesses')).json()) as { id: string }[]
+  expect(JSON.stringify(shops.find((shop) => shop.id === id)).toLowerCase()).toContain('halal')
+})
