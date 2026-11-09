@@ -23,7 +23,15 @@ from .close_reward import close_reward, reward_text
 from .contracts import StreamEvent
 from .coordinator import MerchantContext, propose_products
 from .day_total import with_day_totals
-from .demo_coach_words import HI_PRICE_CUE, HINDI, bare, speaks_hindi
+from .demo_coach_words import (
+    HI_PRICE_CUE,
+    HINDI,
+    asks_close_day,
+    bare,
+    close_day_words,
+    first_jobs,
+    speaks_hindi,
+)
 from .demo_coach_words import PRICE_CUE as OWNER_PRICE_CUE
 from .demo_item_names import hindi_item
 from .discover import open_now
@@ -576,6 +584,21 @@ async def route(
     spent = expense_words(message)
     if spent:
         return save_expense(ctx, spent)
+    # Close the day and "what first?" in English, Hinglish or Hindi: the same answers as the
+    # demo, from the shop's own saved records and Today list (OB-264, OB-290). These templates
+    # are English and Hindi; an app in another language keeps the coach model's reply.
+    from .agent import ui_language
+
+    templated = ui_language.get().split("-")[0] in {"en", "hi"}
+    if templated and asks_close_day(message):
+        return _screen(ctx, "close_day", close_day_words(ctx, speaks_hindi(message), opened=True))
+    first = await first_jobs(ctx, message) if templated else None
+    if first:
+        return InstantResult(
+            "what_first",
+            " ".join(event.text or "" for event in first if event.kind == "reply"),
+            [event for event in first if event.kind != "reply"],
+        )
     if not LATIN.match(message):
         from .agent import ui_language
 

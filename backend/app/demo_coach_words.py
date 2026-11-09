@@ -136,8 +136,16 @@ SALES_TODAY = re.compile(
 )
 CLOSE_DAY = re.compile(
     r"(?:let'?s\s+|i\s+want\s+to\s+|help\s+me\s+)?close\s+(?:the|my|today'?s)\s+day"
-    r"|day\s*end|end\s+(?:of\s+)?(?:the\s+)?day|aaj\s+ka\s+hisaa?b|din\s+band\s+karo",
+    r"|day\s*end|end\s+(?:of\s+)?(?:the\s+)?day"
+    r"|(?:aaj\s+ka\s+)?hisaa?b(?:\s+(?:karo|karna\s+hai|kar\s+do|karein|karen|karu|karoon))?"
+    r"|(?:aaj\s+ka\s+)?din\s+band\s+(?:karo|karna\s+hai|kar\s+do|karein|karen|karu|karoon)",
     re.I,
+)
+# The same in Devanagari: "दिन बंद करें", "आज का हिसाब". "आज दुकान बंद है" is the shop closed
+# today, never this: the day, not the shop, is what gets closed.
+CLOSE_DAY_HI = re.compile(
+    r"(?:आज\s+का\s+)?हिसाब(?:\s+(?:करो|करें|करना\s+है|कर\s+दो|करूँ|करूं))?"
+    r"|(?:आज\s+का\s+)?दिन\s+बंद\s+(?:करें|करो|करना\s+है|कर\s+दो|कर\s+दें|करूँ|करूं)"
 )
 # "Change language to Hindi", "Hindi mein bolo", "हिंदी में जवाब दो" (S2-9).
 LANGUAGE = re.compile(
@@ -604,7 +612,8 @@ async def first_jobs(ctx: Any, question: str) -> list[StreamEvent] | None:
             f"{name}{more_en} {'are' if more_en else 'is'} waiting for a reply.",
             f"{name}{more_hi} आपके जवाब का इंतज़ार कर रहे हैं।",
         )
-    if evening:
+    # A day already closed is done: the evening leads with what is left (OB-290).
+    if evening and closed_today(ctx, fields) is None:
         jobs.append(
             (
                 "close_day",
@@ -740,20 +749,72 @@ def sales_today(ctx: Any, question: str) -> list[StreamEvent] | None:
     ]
 
 
-def close_day(ctx: Any, question: str) -> list[StreamEvent] | None:
-    """ "Close the day" by chat: what it does and a button that opens it (S2-9)."""
-    if not CLOSE_DAY.fullmatch(bare(question)):
+def closed_today(ctx: Any, fields: dict[str, Any]) -> int | None:
+    """Today's saved takings in minor units when the day is already closed, else None: the
+    same saved rows the Close the day sheet and the Today page read."""
+    from .day_total import with_day_totals
+
+    today = _now(fields).date().isoformat()
+    rows = [
+        row
+        for row in with_day_totals(
+            ctx.store, ctx.business_id, ctx.store.sales_history(ctx.uid, ctx.business_id)
+        )
+        if row["date"] == today
+    ]
+    if not rows:
         return None
+    return sum(int(row.get("revenue", row.get("amount", 0)) or 0) for row in rows)
+
+
+def asks_close_day(question: str) -> bool:
+    """ "Close the day", "aaj ka hisaab", "दिन बंद करें": the owner wants the Close the day sheet."""
+    text = bare(question)
+    return bool(CLOSE_DAY.fullmatch(text) or CLOSE_DAY_HI.fullmatch(text))
+
+
+def close_day_words(ctx: Any, hindi: bool, opened: bool = False) -> str:
+    """What the Close the day sheet does, or, once today is closed, its total and that the same
+    sheet edits it (OB-290: the chat never offers a job that is already done). `opened`: the live
+    coach opens the sheet itself; the demo offers a button under the reply."""
     from .app_guide import BY_ID
+    from .coordinator import shop_currency
+    from .sourcing import money_text
+
+    fields, _ = _shop(ctx)
+    closed = closed_today(ctx, fields)
+    if closed is not None:
+        total = money_text(closed, shop_currency({"fields": fields}))
+        if hindi:
+            then = "बदलना हो तो यहीं बदलें।" if opened else "बदलना हो तो नीचे दिन बंद करें खोलें।"
+            return f"आज का दिन पहले ही बंद है: {total}। {then}"
+        then = "Edit it here if something changed." if opened else "Open it below to edit."
+        return f"Today is already closed: {total}. {then}"
+    if opened:
+        return (
+            "चलिए आज का दिन बंद करते हैं। आज की बिक्री की कॉपी की फ़ोटो लें या संख्याएँ खुद लिखें।"
+            if hindi
+            else "Let's close the day. Take a photo of today's sales book, or type the numbers."
+        )
+    feature = BY_ID["close_day"]
+    # The path teaches where it lives, by taps alone; the button below opens it now.
+    return (
+        f"{feature.what_hi} {next_line_hi('close_day')} या नीचे दिन बंद करें खोलें पर टैप करें।"
+        if hindi
+        else f"{feature.title}: {feature.what} {next_line('close_day')} "
+        "Or tap Open Close the day below."
+    )
+
+
+def close_day(ctx: Any, question: str) -> list[StreamEvent] | None:
+    """ "Close the day" by chat: a button that opens the same sheet as Grow, with one line on
+    what it does (S2-9, OB-290)."""
+    if not asks_close_day(question):
+        return None
     from .demo_coach import DEMO_NOTE, DEMO_NOTE_HI
 
-    feature = BY_ID["close_day"]
     hindi = speaks_hindi(question)
-    text = (
-        f"{feature.what_hi} {next_line_hi('close_day')} {DEMO_NOTE_HI}"
-        if hindi
-        else f"{feature.title}: {feature.what} {next_line('close_day')} {DEMO_NOTE}"
-    )
+    text = f"{close_day_words(ctx, hindi)} {DEMO_NOTE_HI if hindi else DEMO_NOTE}"
     return [_offer("close_day", hindi, ctx.business_id), _reply(text)]
 
 
