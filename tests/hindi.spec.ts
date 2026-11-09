@@ -189,12 +189,21 @@ test('the owner app reads in Hindi: Today, coach, Shop, Grow tools, You, privacy
     await readsInHindi(page, '05-grow')
     // The week's summary sits in मेरी बिक्री under its name and dates (batch 4b).
     await growCard(page, /^मेरी बिक्री/)
-    await expect(
-      page.getByRole('dialog').getByRole('button', { name: /^हफ़्ते का सार/ }),
-    ).toContainText(
-      // A Hindi month, whichever week the run falls in (it said only "अक्टू", and failed from 1 Nov).
-      /जन॰|फ़र॰|मार्च|अप्रैल|मई|जून|जुल॰|अग॰|सित॰|अक्टू॰|नव॰|दिस॰/,
-    )
+    // The week shown is the last one, so its Hindi month follows the calendar: this read
+    // "अक्टू" (October) and failed every run from 9 Nov. The browser names the months of the
+    // past 8 days in Hindi; the summary must show one of them.
+    const months = await page.evaluate(() => {
+      const name = new Intl.DateTimeFormat('hi-IN', { month: 'short' })
+      return [...new Set([0, 8].map((back) => name.format(Date.now() - back * 86_400_000)))]
+    })
+    const summary = page.getByRole('dialog').getByRole('button', { name: /^हफ़्ते का सार/ })
+    await expect(summary).toBeVisible()
+    await expect
+      .poll(async () => {
+        const text = (await summary.textContent()) ?? ''
+        return months.some((month) => text.includes(month)) ? 'ok' : text
+      })
+      .toBe('ok')
     await closeSheet(page)
   })
 
