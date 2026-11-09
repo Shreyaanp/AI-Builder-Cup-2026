@@ -1841,6 +1841,7 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
             onRetry={() => void retryVoice()}
             onType={typeInstead}
             onClose={dismissProblem}
+            spoken={!muted}
           />
         )}
         {error && (

@@ -13,7 +13,15 @@ from google.adk.live.live_request_queue import LiveRequestQueue
 from google.genai import types
 from pydantic import ValidationError
 
-from .agent import LiveClose, asks_to_end, background_tools, live_close, ui_language
+from . import voice_resume
+from .agent import (
+    LiveClose,
+    asks_to_end,
+    background_tools,
+    live_close,
+    turn_facts,
+    ui_language,
+)
 from .auth import Principal
 from .contracts import NewShopVoiceContext, StreamEvent, VoiceControl
 from .coordinator import current
@@ -25,7 +33,7 @@ from .new_shop_tools import end_conversation, go_live
 from .reply_language import ReplyLanguage, reply_language
 from .settings import Settings
 from .streaming import CoachRuntime, public_events
-from .voice_resume import LiveHandles
+from .voice_resume import digest
 
 log = structlog.get_logger()
 
@@ -43,6 +51,10 @@ NEW_SHOP_SESSION_CAP_SECONDS = 300
 # the conversation pauses (same calm "tap to talk again" as the time cap; nothing is lost).
 CONVERSATION_IDLE_SECONDS = 45
 IDLE_CHECK_SECONDS = 1.0
+# At the 5-minute cap the conversation waits (up to this long) for the owner or the coach to
+# finish the sentence, so the pause never cuts anyone off mid-word.
+CAP_GRACE_SECONDS = 20
+CAP_QUIET_SECONDS = 2.0
 # Live re-reads the whole session context on every turn. Past this many tokens the provider
 # drops the oldest turns (the instruction and tools always stay), so a long or resumed session
 # never grows the per-turn bill without limit.
@@ -96,9 +108,6 @@ class VoiceIdle(TimeoutError):
 
 class ConversationPaused(Exception):
     """The open conversation heard nothing from the owner for CONVERSATION_IDLE_SECONDS."""
-
-
-live_handles = LiveHandles()
 
 
 class TakenOver(Exception):
@@ -211,6 +220,15 @@ async def publish_if_ready(websocket: WebSocket) -> None:
                 kind="draft", data=merchant.new_shop_draft.model_dump(mode="json")
             ).payload()
         )
+
+
+async def known_facts() -> str:
+    """Digest of the shop facts the coach instruction is built from, read now (OB-181): a
+    resumed Live session is only used while they are what its last connection ended with."""
+    try:
+        return digest(await anyio.to_thread.run_sync(turn_facts))
+    except Exception:  # noqa: BLE001 - unreadable facts: never resume on them
+        return f"unread-{time.monotonic()}"
 
 
 # Owners often pause mid-sentence ("Lakshmi Tea Stall… Indiranagar metro ke paas"): the model
@@ -438,8 +456,20 @@ async def gemini_voice(
     # The owner typed "bas" / "ho gaya": the conversation ends after the coach's goodbye.
     stop_asked = False
     # The provider's session to resume (OB-181): the last mic press, or this socket's last
-    # connection. None: a fresh session that gets the instruction and recent history.
-    handle = live_handles.get(principal.uid, sid, language.locale)
+    # connection, while nothing moved outside Live since (voice_resume). None: a fresh session
+    # that gets the instruction and recent history.
+    uid = principal.uid
+    handles = voice_resume.live_handles
+    carried = handles.take(uid, sid)
+    if carried:
+        # The owner's words the last socket closed on (the cap or a pause): this one answers them.
+        unanswered[:] = [carried]
+        link.queue.send_content(types.Content(role="user", parts=[types.Part(text=carried)]))
+        log.info("voice_spoken_turn_carried_over", length=len(carried))
+
+    def draft_now() -> object:
+        merchant = current.get()
+        return merchant.new_shop_draft if merchant else None
 
     async def upstream() -> None:
         nonlocal text_turns, stop_asked
@@ -457,8 +487,12 @@ async def gemini_voice(
             raw = frame.get("text", "")
             if len(raw) > 5000:
                 raise ValueError("Frame too large")
+            before = draft_now()
             if refresh_new_shop_draft(raw):
                 stats.touch()
+                if draft_now() != before:
+                    # A photo or pin the provider never saw: no resuming past it.
+                    handles.changed(uid, sid)
                 await publish_if_ready(websocket)
                 continue
             command = VoiceControl.model_validate_json(raw)
@@ -487,9 +521,12 @@ async def gemini_voice(
 
     async def one_connection() -> str:
         """Run one Live connection; returns why it ended (the socket itself stays open)."""
-        nonlocal extras, handle
+        nonlocal extras
         # A model that refused the tuned setup gets plain blocking tools too.
         background_tools.set(extras)
+        since = handles.version(uid, sid)
+        handle = handles.get(uid, sid, language.locale, await known_facts())
+        latest: str | None = None
         resuming = bool(handle)
         stats.connections += 1
         stats.resumed_connections += resuming
@@ -516,8 +553,7 @@ async def gemini_voice(
                 first, received = not received, True
                 update = event.live_session_resumption_update
                 if update and update.new_handle:
-                    handle = update.new_handle
-                    live_handles.put(principal.uid, sid, language.locale, handle)
+                    latest = update.new_handle
                 if event.usage_metadata:
                     stats.usage(event.usage_metadata)
                 if event.input_transcription and event.input_transcription.text:
@@ -601,9 +637,14 @@ async def gemini_voice(
                 unanswered[:] = [owner_said.strip()[:2000]]
                 log.info("voice_spoken_turn_carried", length=len(unanswered[0]))
             await events.aclose()
+            if latest:
+                # Saved with the facts as they are now (the coach's own saves included); a typed
+                # turn or app draft since this connection began keeps it from being saved.
+                with anyio.CancelScope(shield=True):
+                    facts = await known_facts()
+                handles.put(uid, sid, language.locale, latest, facts, since)
 
     async def downstream() -> None:
-        nonlocal handle
         while True:
             began = time.monotonic()
             ended = await one_connection()
@@ -617,8 +658,7 @@ async def gemini_voice(
             if ended == "resume_rejected":
                 # The provider no longer holds the session: the same conversation, at once, on a
                 # fresh session with the instruction and recent history (never twice: no handle).
-                handle = None
-                live_handles.drop(principal.uid, sid)
+                handles.drop(uid, sid)
                 log.info("voice_resume_rejected", turns=stats.turns)
                 fresh(resumed=bool(stats.turns))
                 continue
@@ -665,6 +705,9 @@ async def gemini_voice(
         with anyio.CancelScope(shield=True):
             async with asyncio.timeout(5):
                 await asyncio.gather(*tasks, return_exceptions=True)
+        if unanswered and stats.reason in ("time_cap", "owner_silent"):
+            # "Talk again" hears what the owner said (or typed) just before the pause.
+            handles.carry(uid, sid, unanswered[0])
 
 
 async def serve_voice(
@@ -709,6 +752,25 @@ async def serve_voice(
             if stats.silent_for() > CONVERSATION_IDLE_SECONDS:
                 raise ConversationPaused
 
+    # The new-shop conversation keeps one socket for the whole onboarding.
+    seconds = (
+        NEW_SHOP_SESSION_CAP_SECONDS
+        if is_new_shop()
+        else min(runtime.settings.max_voice_seconds, VOICE_SESSION_CAP_SECONDS)
+    )
+
+    async def watch_cap() -> None:
+        """The time cap. The open conversation lets a sentence in progress finish first (the
+        owner's or the coach's, up to CAP_GRACE_SECONDS). Press-to-talk keeps a hard cap."""
+        await asyncio.sleep(seconds)
+        if is_new_shop():
+            grace = time.monotonic() + CAP_GRACE_SECONDS
+            while time.monotonic() < grace:
+                if stats.silent_for() >= CAP_QUIET_SECONDS:
+                    break
+                await asyncio.sleep(0.25)
+        raise TimeoutError
+
     async def watch_takeover() -> None:
         if lost is None:
             await asyncio.Event().wait()
@@ -720,6 +782,7 @@ async def serve_voice(
         asyncio.create_task(heartbeat(), name=f"voice-ping:{sid}"),
         asyncio.create_task(watch_takeover(), name=f"voice-takeover:{sid}"),
         asyncio.create_task(watch_idle(), name=f"voice-idle:{sid}"),
+        asyncio.create_task(watch_cap(), name=f"voice-cap:{sid}"),
         asyncio.create_task(
             offline_voice(websocket, runtime, principal, sid, language, stats)
             if runtime.settings.coach_mode == "offline"
@@ -728,18 +791,11 @@ async def serve_voice(
         ),
     ]
     code, reason = 1000, "Voice session ended"
-    # The new-shop conversation keeps one socket for the whole onboarding.
-    seconds = (
-        NEW_SHOP_SESSION_CAP_SECONDS
-        if is_new_shop()
-        else min(runtime.settings.max_voice_seconds, VOICE_SESSION_CAP_SECONDS)
-    )
     error: str | None = None
     try:
-        async with asyncio.timeout(seconds):
-            done, _ = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
-            for task in done:
-                task.result()
+        done, _ = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
+        for task in done:
+            task.result()
     except WebSocketDisconnect:
         stats.end("client_gone")
     except VoiceIdle:

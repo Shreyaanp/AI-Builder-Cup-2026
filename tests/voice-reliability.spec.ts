@@ -251,11 +251,17 @@ test('Hindi: a reply lost mid-turn never leaves the coach thinking; Retry contin
   await askedAfterName(page, asked)
 })
 
-test('Hindi: the 15-minute cap ends politely: typing works and a tap talks again', async ({
+test('Hindi: the 5-minute cap ends politely, said aloud: typing works and a tap talks again', async ({
   page,
 }) => {
   test.setTimeout(120_000)
   await quietMicrophone(page)
+  // What the phone's own voice says (recorded, not played).
+  await page.addInitScript(() => {
+    const said: string[] = []
+    ;(window as unknown as { said: string[] }).said = said
+    speechSynthesis.speak = (utterance: SpeechSynthesisUtterance) => void said.push(utterance.text)
+  })
   const live = await proxyLive(page)
   const copy = await hindiFlow(page)
   await expect(page.getByRole('log')).toContainText(FIRST_QUESTION, { timeout: 20_000 })
@@ -266,6 +272,10 @@ test('Hindi: the 15-minute cap ends politely: typing works and a tap talks again
   const alert = page.getByTestId('voice-alert')
   await expect(alert).toHaveAttribute('data-problem', 'session-cap')
   await expect(alert).toContainText(copy.capTitle!)
+  // The pause is said too: the owner may not be looking at the screen.
+  await expect
+    .poll(() => page.evaluate(() => (window as unknown as { said: string[] }).said))
+    .toContain(copy.capBody!)
   // No reconnect loop: one socket until the owner asks.
   await page.waitForTimeout(1_500)
   expect(live.sockets).toHaveLength(1)

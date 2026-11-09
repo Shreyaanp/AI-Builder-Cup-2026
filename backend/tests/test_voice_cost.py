@@ -16,15 +16,18 @@ from typing import Any
 import pytest
 from google.adk.events import Event
 from google.adk.live.live_request_queue import LiveRequestQueue
+from google.adk.sessions import InMemorySessionService
 from google.genai import types
 from structlog.testing import capture_logs
 
-from app import voice
+from app import voice, voice_resume
+from app.agent import turn_facts
 from app.auth import Principal
 from app.coordinator import MerchantContext, current
 from app.merchant import MerchantStore
 from app.reply_language import reply_language
 from app.settings import Settings
+from app.streaming import APP_NAME, CoachRuntime
 from app.voice import (
     CONTEXT_TRIGGER_TOKENS,
     NEW_SHOP_SESSION_CAP_SECONDS,
@@ -32,11 +35,12 @@ from app.voice import (
     live_run_config,
     serve_voice,
 )
-from app.voice_resume import LiveHandles
+from app.voice_resume import LiveHandles, digest
 from tests.test_voice_reliability import (
     FakeLive,
     FakeRuntime,
     FakeSocket,
+    chai_draft,
     new_shop_context,
     run_voice,
     turn,
@@ -46,8 +50,16 @@ from tests.test_voice_reliability import (
 @pytest.fixture(autouse=True)
 def handles(monkeypatch: pytest.MonkeyPatch) -> LiveHandles:
     store = LiveHandles()
-    monkeypatch.setattr(voice, "live_handles", store)
+    monkeypatch.setattr(voice_resume, "live_handles", store)
     return store
+
+
+def facts_of(context: MerchantContext) -> str:
+    token = current.set(context)
+    try:
+        return digest(turn_facts())
+    finally:
+        current.reset(token)
 
 
 def recording(live: FakeLive) -> list[Any]:
@@ -248,15 +260,16 @@ async def test_a_rejected_handle_falls_back_to_a_fresh_session(
         for event in turn("15 rupees.", tools=0):
             yield event
 
-    handles.put("alice", "sid", reply_language("hi").locale, "h-old")
+    context = shop_context(tmp_path)
+    handles.put("alice", "sid", reply_language("hi").locale, "h-old", facts_of(context))
     live = FakeLive([refuses, answers])
     configs = recording(live)
     with capture_logs() as logs:
-        stats = await run_voice(live, socket, shop_context(tmp_path))
+        stats = await run_voice(live, socket, context)
     assert [c.session_resumption.handle for c in configs] == ["h-old", None]
     assert stats.turns == 1 and stats.connections == 2 and stats.resumed_connections == 1
     assert any(entry["event"] == "voice_resume_rejected" for entry in logs)
-    assert handles.get("alice", "sid", reply_language("hi").locale) == "h-new"
+    assert handles.get("alice", "sid", reply_language("hi").locale, facts_of(context)) == "h-new"
 
 
 async def test_a_rotation_resumes_instead_of_replaying_the_conversation(tmp_path: Path) -> None:
@@ -338,3 +351,178 @@ async def test_voice_closed_carries_audio_seconds_and_token_counts(tmp_path: Pat
     }
     assert fields["connections"] == 1 and fields["resumed_connections"] == 0
     json.dumps(fields)  # the log line stays plain JSON
+
+
+# --- A resumed session never misses what happened outside it (review of #699) ---
+
+
+async def answered_with_handle(queue: LiveRequestQueue) -> AsyncIterator[Event]:
+    yield resumption("h-1")
+    for event in turn("Masala chai added.", tools=0):
+        yield event
+
+
+async def test_a_typed_turn_after_a_pause_makes_the_next_connection_start_fresh(
+    tmp_path: Path, handles: LiveHandles
+) -> None:
+    """The owner types "sold 3 sugar" in the chat (the text path, which the Live provider never
+    sees), then presses the mic: that connection starts fresh with the history, not resumed."""
+    live = FakeLive([answered_with_handle])
+    configs = recording(live)
+    context = shop_context(tmp_path)
+    await run_voice(live, FakeSocket(), context)
+    assert ("alice", "sid") in handles.items
+
+    sessions = InMemorySessionService()
+    await sessions.create_session(app_name=APP_NAME, user_id="alice", session_id="sid")
+    runtime = CoachRuntime(Settings(app_env="test", _env_file=None), sessions)
+    token = current.set(context)
+    try:
+        typed = [
+            event
+            async for event in runtime.text_events(
+                Principal("alice", "test"), "sid", "sold 3 sugar", "en"
+            )
+        ]
+    finally:
+        current.reset(token)
+    assert typed[-1].kind == "turn_complete"
+    assert ("alice", "sid") not in handles.items
+
+    await run_voice(live, FakeSocket(), context)
+    assert [c.session_resumption.handle for c in configs] == [None, None]
+
+
+async def test_changed_shop_facts_make_the_next_connection_start_fresh(
+    tmp_path: Path, handles: LiveHandles
+) -> None:
+    """A tap or edit since the last connection (here the new-shop draft the app sends with the
+    next socket) changes the facts in the instruction: the next connection gets it fresh."""
+
+    def closes_after_a_turn(socket: FakeSocket) -> Any:
+        async def script(queue: LiveRequestQueue) -> AsyncIterator[Event]:
+            yield resumption("h-1")
+            for event in turn("Masala chai added.", tools=0):
+                yield event
+            socket.push({"kind": "close"})
+            await asyncio.Event().wait()
+
+        return script
+
+    handles_used: list[str | None] = []
+    for context in (new_shop_context(tmp_path), new_shop_context(tmp_path), edited(tmp_path)):
+        socket = FakeSocket()
+        live = FakeLive([closes_after_a_turn(socket)])
+        configs = recording(live)
+        await run_voice(live, socket, context)
+        handles_used.append(configs[0].session_resumption.handle)
+    # The second socket resumes (nothing moved); the third has an edited draft: fresh.
+    assert handles_used == [None, "h-1", None]
+
+
+def edited(tmp_path: Path) -> MerchantContext:
+    context = new_shop_context(tmp_path)
+    context.new_shop_draft = chai_draft(phone="+919800000000")
+    return context
+
+
+async def test_a_draft_from_the_app_mid_connection_is_never_resumed_past(
+    tmp_path: Path, handles: LiveHandles
+) -> None:
+    """A photo or pin arrives as a draft frame while the coach is connected: the handle of that
+    connection is not saved, so the next one starts fresh and sees it in the instruction."""
+
+    def with_frame(socket: FakeSocket, draft: dict[str, Any]) -> Any:
+        async def script(queue: LiveRequestQueue) -> AsyncIterator[Event]:
+            yield resumption("h-1")
+            socket.push({"kind": "new_shop", "draft": draft})
+            await asyncio.sleep(0.05)
+            for event in turn("Nice photo.", tools=0):
+                yield event
+            socket.push({"kind": "close"})
+            await asyncio.Event().wait()
+
+        return script
+
+    same = chai_draft().model_dump(mode="json")
+    socket = FakeSocket()
+    await run_voice(FakeLive([with_frame(socket, same)]), socket, new_shop_context(tmp_path))
+    assert ("alice", "sid") in handles.items  # the app resent what the coach already had
+
+    handles.items.clear()
+    pinned = chai_draft(lat=12.97, lng=77.59).model_dump(mode="json")
+    socket = FakeSocket()
+    context = new_shop_context(tmp_path)
+    await run_voice(FakeLive([with_frame(socket, pinned)]), socket, context)
+    assert ("alice", "sid") not in handles.items
+    assert context.new_shop_draft and context.new_shop_draft.business
+    assert context.new_shop_draft.business.lat == 12.97
+
+
+async def test_words_cut_off_by_the_cap_are_heard_after_talk_again(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, handles: LiveHandles
+) -> None:
+    """The owner was talking when the 5-minute cap closed the socket: "talk again" opens a
+    connection that gets those words first, so nothing said is lost."""
+    monkeypatch.setattr(voice, "NEW_SHOP_SESSION_CAP_SECONDS", 0.2)
+    monkeypatch.setattr(voice, "CAP_QUIET_SECONDS", 0.1)
+
+    async def cut_off(queue: LiveRequestQueue) -> AsyncIterator[Event]:
+        yield Event(
+            author="business_coach",
+            input_transcription=types.Transcription(text="mera naam Ramesh hai"),
+        )
+        await asyncio.Event().wait()
+
+    first = ClosingSocket()
+    stats = await serve(first, new_shop_context(tmp_path), FakeLive([cut_off]))
+    assert stats.reason == "time_cap" and first.closed == (1000, "SESSION_CAP")
+
+    heard: list[str] = []
+    second = ClosingSocket()
+
+    async def hears(queue: LiveRequestQueue) -> AsyncIterator[Event]:
+        request = await queue.get()
+        assert request.content and request.content.parts
+        heard.append(request.content.parts[0].text or "")
+        for event in turn("Namaste Ramesh ji.", tools=0):
+            yield event
+        second.push({"kind": "close"})
+        await asyncio.Event().wait()
+
+    monkeypatch.setattr(voice, "NEW_SHOP_SESSION_CAP_SECONDS", 60)
+    await serve(second, new_shop_context(tmp_path), FakeLive([hears]))
+    assert heard == ["mera naam Ramesh hai"]
+    assert handles.take("alice", "sid") is None
+
+
+async def test_the_cap_lets_a_sentence_in_progress_finish(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(voice, "NEW_SHOP_SESSION_CAP_SECONDS", 0.1)
+    monkeypatch.setattr(voice, "CAP_QUIET_SECONDS", 0.3)
+    monkeypatch.setattr(voice, "CAP_GRACE_SECONDS", 5)
+
+    async def talking(queue: LiveRequestQueue) -> AsyncIterator[Event]:
+        for word in ("mera", "naam", "Ramesh", "hai", "aur", "dukaan"):
+            yield Event(author="business_coach", input_transcription=types.Transcription(text=word))
+            await asyncio.sleep(0.15)
+        await asyncio.Event().wait()
+
+    began = time.monotonic()
+    stats = await serve(ClosingSocket(), new_shop_context(tmp_path), FakeLive([talking]))
+    assert stats.reason == "time_cap"
+    assert time.monotonic() - began >= 0.9  # six words, 0.15 s apart, then quiet
+
+    monkeypatch.setattr(voice, "CAP_GRACE_SECONDS", 0.3)
+
+    async def endless(queue: LiveRequestQueue) -> AsyncIterator[Event]:
+        while True:
+            yield Event(
+                author="business_coach", input_transcription=types.Transcription(text="aur")
+            )
+            await asyncio.sleep(0.05)
+
+    began = time.monotonic()
+    stats = await serve(ClosingSocket(), new_shop_context(tmp_path), FakeLive([endless]))
+    assert stats.reason == "time_cap" and time.monotonic() - began < 2
