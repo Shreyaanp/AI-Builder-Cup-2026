@@ -445,8 +445,8 @@ def test_a_live_dont_or_question_prepares_nothing(shop, message, language):  # n
 def test_the_coach_is_told_out_of_stock_is_never_a_purchase():
     from app.agent import INSTRUCTION
 
-    assert "is never a purchase: propose_products
-  available=false" in INSTRUCTION
+    assert "is never a purchase: propose_products" in INSTRUCTION
+    assert "available=false." in INSTRUCTION
     assert "running low, finished or needed" not in INSTRUCTION
     assert "दूध मँगाना है" in INSTRUCTION and "Never screen directions." in INSTRUCTION
     assert "Put every item the owner mentioned in one propose_products call." in INSTRUCTION
