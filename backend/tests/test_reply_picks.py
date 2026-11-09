@@ -3,12 +3,15 @@ sentences. Sold-out items, stock the shop buys and closed days keep the template
 
 import asyncio
 import json
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
 from fastapi.testclient import TestClient
+from google.adk.sessions import InMemorySessionService
 
 from app import reply_picks, text_model
+from app.main import create_app
 from app.reply_copy import (
     COPY,
     HOW_MANY,
@@ -24,6 +27,7 @@ from app.reply_copy import (
 from app.reply_language import LANGUAGES
 from app.reply_picks import Pick, Picks, mentions, model_choice, templates_only, written
 from app.reply_suggestions import _name, _price, templates
+from app.settings import Settings
 from tests.test_customer import app as app
 from tests.test_customer import create_shop, owner_of
 from tests.test_reply_suggestions import ADVERSARIAL, CLOSED, SHOP, WEDNESDAY
@@ -80,9 +84,17 @@ def fake_model(monkeypatch):
     """The text model returns `answers.text`; `answers.calls` counts the calls."""
     holder: dict[str, Answers] = {}
 
-    async def generate(*_: object, **__: object) -> object:
-        holder["answers"].calls += 1
-        return SimpleNamespace(parsed=None, text=holder["answers"].text)
+    async def generate(*_: object, **request: object) -> object:
+        answers = holder["answers"]
+        answers.calls += 1
+        instruction = str(getattr(request.get("config"), "system_instruction", ""))
+        _, _, listed = instruction.partition("Items:\n")
+        items = json.loads(listed) if listed else []
+        # "{Kaya toast}" stands for that item's number in the list this request sent.
+        text = answers.text
+        for item in items:
+            text = text.replace(json.dumps("{" + item["name"] + "}"), str(item["item"]))
+        return SimpleNamespace(parsed=None, text=text)
 
     monkeypatch.setattr(text_model, "generate", generate)
 
@@ -264,7 +276,8 @@ def test_route_asks_the_model_only_for_a_real_shop_it_can_help(
         uid = owner_of(service, owned_shop(owner_client))
         bid = create_shop(service, uid, "Kaya House")
         service.share(uid, bid, True)
-        answers = fake_model(json.dumps({"picks": [{"kind": "yes_price", "item": 2}]}))
+        # The item list's order is the store's (SQLite and Firestore differ): pick by name.
+        answers = fake_model(json.dumps({"picks": [{"kind": "yes_price", "item": "{Kaya toast}"}]}))
         real = app.state.customer_answers
         monkeypatch.setattr(real.settings, "coach_mode", "gemini")
         monkeypatch.setattr(real, "ready", answers.ready)
@@ -305,7 +318,19 @@ def test_route_asks_the_model_only_for_a_real_shop_it_can_help(
         assert answers.calls == 1
 
 
-def test_public_demo_never_asks_the_model_even_when_it_could_help(app, monkeypatch) -> None:
+@pytest.fixture
+def demo_app(tmp_path: Path):
+    settings = Settings(
+        app_env="test",
+        v1_enabled=True,
+        merchant_database=str(tmp_path / "merchant.sqlite3"),
+        recall_path=str(tmp_path / "recall"),
+        _env_file=None,
+    )
+    return create_app(settings, InMemorySessionService())
+
+
+def test_public_demo_never_asks_the_model_even_when_it_could_help(demo_app, monkeypatch) -> None:
     """The demo guard comes first: with the coach online and every question treated as one the
     model could help with, the public demo's drafts are still the templates alone."""
     from app import customer_routes
@@ -316,10 +341,10 @@ def test_public_demo_never_asks_the_model_even_when_it_could_help(app, monkeypat
 
     monkeypatch.setattr(text_model, "generate", model_called)
     monkeypatch.setattr(customer_routes, "may_ask", lambda *_: True)
-    with TestClient(app) as client:
-        app.state.v1_settings.public_demo_enabled = True
-        monkeypatch.setattr(app.state.customer_answers.settings, "coach_mode", "gemini")
-        app.state.rate_limiter.counters.clear()
+    with TestClient(demo_app) as client:
+        demo_app.state.v1_settings.public_demo_enabled = True
+        monkeypatch.setattr(demo_app.state.customer_answers.settings, "coach_mode", "gemini")
+        demo_app.state.rate_limiter.counters.clear()
         session = open_demo(client).json()["session_id"]
         bid = owner(client, session, "businesses").json()[0]["id"]
         threads = owner(client, session, f"businesses/{bid}/inquiries").json()
