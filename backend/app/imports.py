@@ -108,12 +108,53 @@ def parse_table(data: bytes, content_type: str) -> tuple[list[str], list[list[st
         raise ImportRejected(415, "UNSUPPORTED_FILE")
     if len(rows) > MAX_ROWS + 1:
         raise ImportRejected(413, "TOO_MANY_ROWS")
-    rows = [row for row in rows if any(cell.strip() for cell in row)]
+    rows = report_rows([row for row in rows if any(cell.strip() for cell in row)])
     if len(rows) < 2:
         raise ImportRejected(422, "EMPTY_FILE")
     width = max(len(row) for row in rows)
     rows = [row + [""] * (width - len(row)) for row in rows]
     return [cell.strip() for cell in rows[0]], [[c.strip() for c in row] for row in rows[1:]]
+
+
+HEADER_WORDS = (
+    "item",
+    "product",
+    "name",
+    "date",
+    "qty",
+    "quantity",
+    "price",
+    "rate",
+    "amount",
+    "total",
+    "stock",
+    "particular",
+)
+TOTAL_ROWS = {"total", "grand total", "sub total", "sub-total", "subtotal", "net total", "कुल"}
+
+
+def report_rows(rows: list[list[str]]) -> list[list[str]]:
+    """A billing report as it comes: title lines ("Sale report", "Duration: ...") above the
+    column names and a "Total" line under the items. Neither is a row of data."""
+    if not rows:
+        return rows
+    counts = [sum(1 for value in row if value.strip()) for row in rows[:10]]
+    widest = max(counts)
+    start = next(
+        (
+            index
+            for index, count in enumerate(counts)
+            if count >= 2
+            and count >= widest * 0.6
+            and any(word in value.casefold() for value in rows[index] for word in HEADER_WORDS)
+        ),
+        0,
+    )
+    return [rows[start]] + [
+        row
+        for row in rows[start + 1 :]
+        if not any(value.strip().casefold() in TOTAL_ROWS for value in row[:3])
+    ]
 
 
 def _text(value: Any) -> str:
@@ -174,6 +215,11 @@ def menu_items(
     for row in rows:
         name = cell(row, mapping.name)[:180]
         price = number(cell(row, mapping.price), currency)
+        if price is None and mapping.total is not None and mapping.quantity is not None:
+            # A sales report has no price column: what one sold for is the line total / quantity.
+            total = number(cell(row, mapping.total), currency)
+            sold = number(cell(row, mapping.quantity), currency, "quantity")
+            price = round(total / sold, 2) if total is not None and sold else None
         if not name or price is None or price < 0:
             skipped += 1
             continue

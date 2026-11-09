@@ -608,10 +608,10 @@ def demo_records(
         fields = BusinessFields(
             name=supplier.name,
             category="Wholesale supplier",
-            location=f"{km:.1f} km from your shop (demo)",
+            location=f"{km:.1f} km from your shop (sample)",
             lat=plat,
             lng=plng,
-            pin_label="Approximate (demo)",
+            pin_label="Approximate (sample)",
             demo=True,
             supplier=True,
             supplies=[s[:40] for s in supplier.supplies if s.strip()][:12],

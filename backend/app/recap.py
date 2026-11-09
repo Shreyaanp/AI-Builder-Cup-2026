@@ -70,6 +70,8 @@ def recap_facts(
     prior = [r for r in sales if previous.isoformat() <= r["date"] < start.isoformat()]
     items: dict[str, dict[str, Any]] = {}
     for row in current:
+        if row.get("whole_day"):  # counted in the week's money, but it is not an item
+            continue
         key = row["item"].casefold()
         item = items.setdefault(key, {"item": row["item"], "quantity": 0.0, "revenue": 0})
         item["quantity"] += row["quantity"]

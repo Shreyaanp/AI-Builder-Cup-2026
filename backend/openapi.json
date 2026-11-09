@@ -7026,6 +7026,56 @@
         }
       }
     },
+    "/api/v1/businesses/{business_id}/day/total": {
+      "post": {
+        "summary": "Save Day Total",
+        "description": "The owner read the total back on Check and tapped Save; closing again replaces it.",
+        "operationId": "save_day_total_api_v1_businesses__business_id__day_total_post",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewDayTotal"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DayTotal"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/businesses/{business_id}/analytics": {
       "get": {
         "summary": "Shop Analytics",
@@ -12777,6 +12827,51 @@
         ],
         "title": "DayHours"
       },
+      "DayTotal": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "title": "Date"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "cash": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cash"
+          },
+          "upi": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Upi"
+          }
+        },
+        "type": "object",
+        "required": [
+          "date",
+          "currency",
+          "total"
+        ],
+        "title": "DayTotal"
+      },
       "Deal": {
         "properties": {
           "id": {
@@ -14797,6 +14892,52 @@
           "metric"
         ],
         "title": "Metric"
+      },
+      "NewDayTotal": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "title": "Date",
+            "default": ""
+          },
+          "total": {
+            "type": "number",
+            "maximum": 1000000000.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Total"
+          },
+          "cash": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1000000000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cash"
+          },
+          "upi": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1000000000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Upi"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total"
+        ],
+        "title": "NewDayTotal"
       },
       "NewPromise": {
         "properties": {

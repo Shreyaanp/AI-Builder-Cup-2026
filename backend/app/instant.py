@@ -20,6 +20,7 @@ from .app_guide import guide_reply, where_line
 from .close_reward import close_reward, reward_text
 from .contracts import StreamEvent
 from .coordinator import MerchantContext, propose_products
+from .day_total import with_day_totals
 from .demo_coach_words import HI_PRICE_CUE, HINDI, bare, speaks_hindi
 from .demo_coach_words import PRICE_CUE as OWNER_PRICE_CUE
 from .demo_item_names import hindi_item
@@ -342,7 +343,8 @@ def _read_intent(ctx: MerchantContext, intent: str) -> InstantResult | None:
             else "Nothing is marked sold out right now.",
         )
     if intent == "how_today":
-        sales = ctx.store.sales_history(ctx.uid, ctx.business_id or "")
+        bid = ctx.business_id or ""
+        sales = with_day_totals(ctx.store, bid, ctx.store.sales_history(ctx.uid, bid))
         reward = close_reward(sales, local_now(fields).date(), shop_currency(fields))
         return InstantResult(intent, reward_text(reward))
     if intent.startswith("screen:"):

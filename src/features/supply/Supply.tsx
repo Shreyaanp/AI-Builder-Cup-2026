@@ -24,6 +24,7 @@ import { enterRise, shape } from '../../design/theme'
 import { formatShopPrice, toMajor, toMinor } from '../v1/format'
 import { LineAction } from '../v1/CollapsibleCard'
 import { useWorkspace } from '../v1/workspaceContext'
+import { sampleWord } from '../sourcing/sampleWord'
 import { useShowcaseCopy } from './showcaseCopy'
 import { useSupplyCopy } from './copy'
 import { useIoCopy } from './ioCopy'
@@ -160,7 +161,7 @@ export function PurchaseOrders({
                 secondary={[
                   termsLabel(s.terms, row.rules.terms_days),
                   s.system[row.rules.system_format],
-                  row.supplier.demo ? s.simulation : '',
+                  row.supplier.demo ? (ws.demo ? s.simulation : sampleWord[locale]) : '',
                 ]
                   .filter(Boolean)
                   .join(' · ')}

@@ -14,6 +14,9 @@ export type SimpleCopy = {
   /** Two short chips under Today; each sends a full sentence to the coach. */
   chipMake: string
   chipMenu: string
+  /** From a chat to Home's cards, and back. */
+  backToToday: string
+  backToChat: string
 }
 
 const copy: Record<Locale, SimpleCopy> = {
@@ -24,6 +27,8 @@ const copy: Record<Locale, SimpleCopy> = {
     startAgain: 'Start again',
     chipMake: 'How much to make?',
     chipMenu: 'Change my menu',
+    backToToday: "Today's list",
+    backToChat: 'Back to chat',
   },
   'zh-Hans': {
     askPlaceholder: '随便问…',
@@ -32,6 +37,8 @@ const copy: Record<Locale, SimpleCopy> = {
     startAgain: '重新开始',
     chipMake: '该做多少？',
     chipMenu: '改菜单',
+    backToToday: '今日清单',
+    backToChat: '回到聊天',
   },
   ms: {
     askPlaceholder: 'Tanya apa saja…',
@@ -40,6 +47,8 @@ const copy: Record<Locale, SimpleCopy> = {
     startAgain: 'Mula semula',
     chipMake: 'Berapa nak buat?',
     chipMenu: 'Tukar menu',
+    backToToday: 'Senarai hari ini',
+    backToChat: 'Kembali ke sembang',
   },
   ta: {
     askPlaceholder: 'கேளுங்கள்…',
@@ -48,6 +57,8 @@ const copy: Record<Locale, SimpleCopy> = {
     startAgain: 'மீண்டும் தொடங்கு',
     chipMake: 'எவ்வளவு செய்வது?',
     chipMenu: 'மெனுவை மாற்று',
+    backToToday: 'இன்றைய பட்டியல்',
+    backToChat: 'அரட்டைக்குத் திரும்பு',
   },
   ja: {
     askPlaceholder: '何でも聞いて…',
@@ -56,6 +67,8 @@ const copy: Record<Locale, SimpleCopy> = {
     startAgain: 'はじめからやり直す',
     chipMake: 'どれだけ作る？',
     chipMenu: 'メニューを変える',
+    backToToday: '今日のリスト',
+    backToChat: 'チャットに戻る',
   },
   ko: {
     askPlaceholder: '물어보세요…',
@@ -64,6 +77,8 @@ const copy: Record<Locale, SimpleCopy> = {
     startAgain: '다시 시작',
     chipMake: '얼마나 만들까?',
     chipMenu: '메뉴 바꾸기',
+    backToToday: '오늘의 목록',
+    backToChat: '채팅으로 돌아가기',
   },
   id: {
     askPlaceholder: 'Tanya apa saja…',
@@ -72,6 +87,8 @@ const copy: Record<Locale, SimpleCopy> = {
     startAgain: 'Mulai lagi',
     chipMake: 'Berapa yang dibuat?',
     chipMenu: 'Ubah menu',
+    backToToday: 'Daftar hari ini',
+    backToChat: 'Kembali ke chat',
   },
   th: {
     askPlaceholder: 'ถามอะไรก็ได้…',
@@ -80,6 +97,8 @@ const copy: Record<Locale, SimpleCopy> = {
     startAgain: 'เริ่มใหม่',
     chipMake: 'ทำเท่าไหร่ดี?',
     chipMenu: 'แก้เมนู',
+    backToToday: 'รายการวันนี้',
+    backToChat: 'กลับไปที่แชต',
   },
   vi: {
     askPlaceholder: 'Hỏi bất cứ gì…',
@@ -88,6 +107,8 @@ const copy: Record<Locale, SimpleCopy> = {
     startAgain: 'Bắt đầu lại',
     chipMake: 'Làm bao nhiêu?',
     chipMenu: 'Đổi thực đơn',
+    backToToday: 'Danh sách hôm nay',
+    backToChat: 'Quay lại trò chuyện',
   },
   fil: {
     askPlaceholder: 'Magtanong…',
@@ -96,6 +117,8 @@ const copy: Record<Locale, SimpleCopy> = {
     startAgain: 'Magsimula ulit',
     chipMake: 'Ilan ang gagawin?',
     chipMenu: 'Baguhin ang menu',
+    backToToday: 'Listahan ngayon',
+    backToChat: 'Bumalik sa chat',
   },
   hi: {
     askPlaceholder: 'कुछ भी पूछें…',
@@ -104,6 +127,8 @@ const copy: Record<Locale, SimpleCopy> = {
     startAgain: 'फिर से शुरू करें',
     chipMake: 'कितना बनाना है?',
     chipMenu: 'मेन्यू बदलें',
+    backToToday: 'आज की सूची',
+    backToChat: 'चैट पर वापस',
   },
   bn: {
     askPlaceholder: 'জিজ্ঞেস করুন…',
@@ -112,6 +137,8 @@ const copy: Record<Locale, SimpleCopy> = {
     startAgain: 'আবার শুরু করুন',
     chipMake: 'কতটা বানাব?',
     chipMenu: 'মেনু বদলান',
+    backToToday: 'আজকের তালিকা',
+    backToChat: 'চ্যাটে ফিরুন',
   },
   te: {
     askPlaceholder: 'ఏదైనా అడగండి…',
@@ -120,6 +147,8 @@ const copy: Record<Locale, SimpleCopy> = {
     startAgain: 'మళ్లీ మొదలుపెట్టండి',
     chipMake: 'ఎంత తయారు చేయాలి?',
     chipMenu: 'మెనూ మార్చండి',
+    backToToday: 'ఈరోజు జాబితా',
+    backToChat: 'చాట్‌కు తిరిగి',
   },
   mr: {
     askPlaceholder: 'काहीही विचारा…',
@@ -128,6 +157,8 @@ const copy: Record<Locale, SimpleCopy> = {
     startAgain: 'पुन्हा सुरू करा',
     chipMake: 'किती बनवायचे?',
     chipMenu: 'मेन्यू बदला',
+    backToToday: 'आजची यादी',
+    backToChat: 'चॅटवर परत',
   },
   kn: {
     askPlaceholder: 'ಏನಾದರೂ ಕೇಳಿ…',
@@ -136,6 +167,8 @@ const copy: Record<Locale, SimpleCopy> = {
     startAgain: 'ಮತ್ತೆ ಪ್ರಾರಂಭಿಸಿ',
     chipMake: 'ಎಷ್ಟು ಮಾಡಬೇಕು?',
     chipMenu: 'ಮೆನು ಬದಲಿಸಿ',
+    backToToday: 'ಇಂದಿನ ಪಟ್ಟಿ',
+    backToChat: 'ಚಾಟ್‌ಗೆ ಹಿಂತಿರುಗಿ',
   },
 }
 
