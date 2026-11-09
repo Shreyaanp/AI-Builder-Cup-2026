@@ -262,7 +262,7 @@ def test_hindi_onboarding_offline_end_to_end_never_repeats_and_never_asks_the_me
                 live_after = index
         assert live_after == 1
         assert not any(
-            word in " ".join(asked[:-1]).casefold()  # the last line closes, it asks nothing
+            word in " ".join(asked).casefold()
             for word in ("menu", "pay", "delivery", "halal", "मेन्यू", "भुगतान", "डिलीवरी")
         )
         # #112: the open question first; after the basics, the tea stall's own follow-up (in

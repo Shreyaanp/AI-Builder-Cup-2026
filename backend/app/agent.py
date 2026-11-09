@@ -1071,7 +1071,7 @@ def _new_shop_reply(
     if not (done["name"] and done["sell"] and done["location"]):
         # Basics put off: the rest is finished with taps, never asked in a loop.
         return prefix + FINISH_BY_TAP
-    return prefix + "All set. You can add your menu from Today."
+    return prefix + "Your shop is set up. "
 
 
 class OfflineCoachModel(BaseLlm):

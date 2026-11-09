@@ -53,7 +53,7 @@ from tests.test_photos import join
 ORIGIN = {"origin": "http://127.0.0.1:3200"}
 
 
-SET_UP = "All set. You can add your menu from Today."
+SET_UP = "Your shop is set up. "
 
 
 def context(tmp_path: Path, uid: str = "alice") -> MerchantContext:
@@ -657,7 +657,7 @@ def conversation(tmp_path: Path, language: str, answer: str) -> list[tuple[str, 
                 if event["kind"] == "draft":
                     draft = event["data"]
             reply = next(e["text"] for e in reversed(events) if e["kind"] == "reply")
-            if any(done in reply for done in (SET_UP, OFFLINE_HI[SET_UP])):
+            if any(done.strip() in reply for done in (SET_UP, OFFLINE_HI[SET_UP])):
                 break
             topic = asked_about(reply)
             assert topic, f"a question outside the plan: {reply}"
