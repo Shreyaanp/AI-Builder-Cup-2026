@@ -318,8 +318,12 @@ class FirestoreMerchantStore:
                     if previous is not None and old[previous.id].exists
                     else None
                 )
+                shop = data["business"] if data["kind"] == "business" else None
+                today = today_for(
+                    shop or (business.to_dict() or {}).get("fields") or {}
+                ).isoformat()
                 fields = kept_source(
-                    fields, ((saved.to_dict() or {}).get("fields")) if saved else None
+                    fields, ((saved.to_dict() or {}).get("fields")) if saved else None, today
                 )
                 transaction.set(ref, {"fields": fields, "created": created, "updated": now})
             receipt = {
@@ -531,7 +535,8 @@ class FirestoreMerchantStore:
             item = item_ref.get(transaction=transaction)
             if not item.exists:
                 raise HTTPException(404, "Product not found.")
-            fields = edit((item.to_dict() or {})["fields"])
+            today = today_for(business["fields"]).isoformat()
+            fields = edit(back_on_sale((item.to_dict() or {})["fields"], today))
             transaction.update(item_ref, {"fields": fields, "updated": time.time()})
             # A new revision, like the sold-out switch: the app reloads the item at once.
             transaction.update(business_ref, {"revision": business["revision"] + 1})

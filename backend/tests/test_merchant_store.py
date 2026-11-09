@@ -365,6 +365,36 @@ def test_ob333_sold_out_today_returns_the_next_shop_day(
     assert chai()["available"] is False
 
 
+def test_ob333_a_review_on_a_later_day_marks_it_sold_out_again(
+    store: MerchantRepository, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    days = {"now": date(2026, 11, 8)}
+    for module in (merchant, merchant_firestore):
+        monkeypatch.setattr(module, "today_for", lambda _fields: days["now"])
+    bid = create_with_products(store)
+
+    def chai() -> dict[str, Any]:
+        return next(p for p in store.inventory("alice", bid) if p["name"] == "Chai")
+
+    store.set_availability("alice", bid, chai()["id"], False, True)
+    days["now"] = date(2026, 11, 9)
+    assert chai()["available"] is True
+    proposal = store.propose(
+        "alice",
+        ProposalRequest(
+            kind="inventory",
+            business_id=bid,
+            revision=store.context("alice", bid)["business"]["revision"],
+            products=[
+                ProductFields(name="Chai", price=chai()["price"], unit="cup", available=False)
+            ],
+        ),
+    )
+    store.commit("alice", proposal["id"], proposal["digest"])
+    assert chai()["available"] is False
+    assert "sold_out_day" not in chai()
+
+
 def test_erasure_removes_shared_shop(store: MerchantRepository) -> None:
     bid = create_with_products(store)
     store.share("alice", bid, True)

@@ -171,3 +171,87 @@ def test_ob333_a_proposal_cannot_date_a_sold_out_by_itself(shop):
     assert "sold_out_day" not in item(store, bid, "Masala chai")
     days["now"] = TOMORROW
     assert item(store, bid, "Masala chai")["available"] is False
+
+
+WEDNESDAY = date(2026, 11, 10)
+
+
+def mark_by_tap(store: MerchantStore, bid: str) -> None:
+    store.set_availability("alice", bid, item(store, bid, "Masala chai")["id"], False, True)
+
+
+def mark_by_review(store: MerchantStore, bid: str) -> None:
+    edit(store, bid, "Masala chai", lambda fields: {**fields, "available": False})
+
+
+@pytest.mark.parametrize("mark", [mark_by_tap, mark_by_review])
+def test_ob333_a_later_day_can_mark_it_sold_out_again(shop, mark):
+    """The review's Monday/Tuesday case: Monday's date must not undo Tuesday's answer."""
+    store, bid, days = shop
+    mark_by_tap(store, bid)
+    days["now"] = TOMORROW
+    assert item(store, bid, "Masala chai")["available"] is True
+    assert public_item(store, bid, "Masala chai")["available"] is True
+    mark(store, bid)
+    assert item(store, bid, "Masala chai")["available"] is False
+    assert public_item(store, bid, "Masala chai")["available"] is False
+
+
+def test_ob333_a_later_review_sold_out_is_a_plain_one(shop):
+    """Only the owner's own "Sold out today" tap is dated, so this one stays until changed."""
+    store, bid, days = shop
+    mark_by_tap(store, bid)
+    days["now"] = TOMORROW
+    mark_by_review(store, bid)
+    assert "sold_out_day" not in item(store, bid, "Masala chai")
+    days["now"] = WEDNESDAY
+    assert item(store, bid, "Masala chai")["available"] is False
+
+
+def test_ob333_a_later_tap_comes_back_the_day_after_it(shop):
+    store, bid, days = shop
+    mark_by_tap(store, bid)
+    days["now"] = TOMORROW
+    mark_by_tap(store, bid)
+    assert item(store, bid, "Masala chai")["sold_out_day"] == TOMORROW.isoformat()
+    days["now"] = WEDNESDAY
+    assert item(store, bid, "Masala chai")["available"] is True
+
+
+def test_ob333_an_old_date_on_an_empty_item_never_undoes_a_review(shop):
+    """0 left keeps it sold out past its date: restocked by a review that still says sold out, it
+    must not read as on sale because of that old date."""
+    store, bid, days = shop
+    biscuit = item(store, bid, "Ragi biscuit")
+    store.set_availability("alice", bid, biscuit["id"], False, True)
+    days["now"] = TOMORROW
+    edit(store, bid, "Ragi biscuit", lambda fields: {**fields, "stock": 5, "available": False})
+    saved = item(store, bid, "Ragi biscuit")
+    assert (saved["stock"], saved["available"]) == (5, False)
+    assert "sold_out_day" not in saved
+    assert public_item(store, bid, "Ragi biscuit")["available"] is False
+
+
+def test_ob333_a_stock_tap_on_a_later_day_starts_from_what_it_reads_as(shop):
+    store, bid, days = shop
+    mark_by_tap(store, bid)
+    chai = item(store, bid, "Masala chai")
+    days["now"] = TOMORROW
+    saved = store.edit_item("alice", bid, chai["id"], StockRequest(add=-40).apply)
+    assert (saved["stock"], saved["available"]) == (0, False)
+    assert "sold_out_day" not in saved
+    days["now"] = WEDNESDAY
+    assert item(store, bid, "Masala chai")["available"] is False
+
+
+def test_ob333_undo_on_the_same_day_keeps_back_tomorrow(shop):
+    store, bid, days = shop
+    mark_by_tap(store, bid)
+    chai = item(store, bid, "Masala chai")
+    assert store.edit_item("alice", bid, chai["id"], StockRequest(add=1).apply)["available"] is True
+    undone = store.edit_item(
+        "alice", bid, chai["id"], StockRequest(stock=40, available=False).apply
+    )
+    assert undone["available"] is False
+    days["now"] = TOMORROW
+    assert item(store, bid, "Masala chai")["available"] is True

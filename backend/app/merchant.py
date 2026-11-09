@@ -433,19 +433,18 @@ def with_availability(
 
 
 def back_on_sale(fields: dict[str, Any], today: str) -> dict[str, Any]:
-    """An item as customers and the owner should see it on the shop's date `today`. "Sold out
-    today" ends with the day, so nothing has to run overnight; with 0 left it stays sold out until
-    stock is added, because there is still nothing to sell. A sold out with no `sold_out_day`
-    stays exactly as the owner left it."""
+    """An item as customers and the owner should see it on the shop's date `today`, and what every
+    write starts from, so an old date can never touch a newer answer. "Sold out today" ends with
+    the day, so nothing has to run overnight; with 0 left it stays sold out until stock is added,
+    because there is still nothing to sell. A sold out with no `sold_out_day` stays as the owner
+    left it."""
     day = fields.get("sold_out_day")
-    if not day:
+    if not day or day >= today:
         return fields
-    if fields.get("available") is False and (day >= today or fields.get("stock") == 0):
-        return fields
-    return {
-        **{key: value for key, value in fields.items() if key != "sold_out_day"},
-        "available": True,
-    }
+    current = {key: value for key, value in fields.items() if key != "sold_out_day"}
+    if fields.get("available") is False and fields.get("stock") == 0:
+        return current
+    return {**current, "available": True}
 
 
 class ForSaleRequest(BaseModel):
@@ -456,14 +455,19 @@ class ForSaleRequest(BaseModel):
     for_sale: bool
 
 
-def kept_source(product: dict[str, Any], saved: dict[str, Any] | None) -> dict[str, Any]:
-    """A menu edit never forgets the owner's make-or-buy answer (OB-239) or their "Customers can
-    buy this" switch (OB-310)."""
+def kept_source(
+    product: dict[str, Any], saved: dict[str, Any] | None, today: str
+) -> dict[str, Any]:
+    """A menu edit never forgets the owner's make-or-buy answer (OB-239) or their "Hide from menu"
+    switch (OB-310)."""
+    if saved:
+        saved = back_on_sale(saved, today)
     for key in ("source", "for_sale"):
         if saved and saved.get(key) is not None and product.get(key) is None:
             product = {**product, key: saved[key]}
     # A price edit on an item sold out for today keeps "back tomorrow"; only the owner's own "Sold
-    # out today" tap ever sets it.
+    # out today" tap ever sets it. A date from an earlier day is gone by here (OB-333), so a sold
+    # out from the coach or a review on a later day stays sold out.
     product = {key: value for key, value in product.items() if key != "sold_out_day"}
     if (
         saved
@@ -1126,7 +1130,9 @@ class MerchantStore:
                     saved = db.execute(
                         "SELECT fields FROM inventory WHERE id=?", (existing[0],)
                     ).fetchone()
-                    product = kept_source(product, json.loads(saved[0]) if saved else None)
+                    shop = data["business"] if data["kind"] == "business" else None
+                    today = today_for(shop or json.loads(row["fields"])).isoformat()
+                    product = kept_source(product, json.loads(saved[0]) if saved else None, today)
                     db.execute(
                         "UPDATE inventory SET fields=? WHERE id=?",
                         (json.dumps(product), existing[0]),
@@ -1309,13 +1315,14 @@ class MerchantStore:
     ) -> dict[str, Any]:
         with self.connect() as db:
             db.execute("BEGIN IMMEDIATE")
-            self.owned(db, uid, bid)
+            business = self.owned(db, uid, bid)
             row = db.execute(
                 "SELECT fields FROM inventory WHERE id=? AND business_id=?", (product_id, bid)
             ).fetchone()
             if not row:
                 raise HTTPException(404, "Product not found.")
-            fields = edit(json.loads(row[0]))
+            today = today_for(json.loads(business["fields"])).isoformat()
+            fields = edit(back_on_sale(json.loads(row[0]), today))
             db.execute("UPDATE inventory SET fields=? WHERE id=?", (json.dumps(fields), product_id))
             # A new revision, like the sold-out switch: the app reloads the item at once.
             db.execute("UPDATE businesses SET revision=revision+1 WHERE id=?", (bid,))
