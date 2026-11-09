@@ -696,3 +696,33 @@ def test_setup_takes_a_plain_answer_to_the_question_asked(
         assert business["name"] == name
         assert business["category"]
         assert business["location"]
+
+
+async def test_area_only_pin_keeps_the_neighbourhood_not_the_door(tmp_path: Path):
+    """Priya, 8 Nov: a home baker goes live with her area only. The point is kept to about a
+    kilometre and labelled by the neighbourhood; no accuracy, no street address."""
+    store = MerchantStore(str(tmp_path / "shops.sqlite"))
+    body = ProposalRequest(
+        kind="business",
+        business=BusinessFields(name="Priya's Bakes", location="Koramangala"),
+        owner_location=OwnerLocation(lat=12.9352871, lng=77.6245432, accuracy_m=0, source="area"),
+    )
+    maps = MapsService(settings(tmp_path))
+    try:
+        await prepare_pin(body, store, "alice", maps)
+    finally:
+        await maps.close()
+    business = body.business
+    assert business and business.pin_source == "area"
+    assert (business.lat, business.lng) == (12.94, 77.62)
+    assert business.pin_accuracy_m is None and business.place_id is None
+    assert business.pin_label == business.location == "Koramangala"
+
+
+def test_typed_area_in_india_is_found_and_never_singapore(tmp_path: Path):
+    """Ahmed, 8 Nov: "Tolichowki, Hyderabad" typed in the map card finds Hyderabad."""
+    app = create_app(settings(tmp_path), InMemorySessionService())
+    with TestClient(app) as client:
+        join(client)
+        found = client.get("/api/v1/places/pin", params={"q": "Tolichowki, Hyderabad"}).json()
+        assert 17 < found["lat"] < 18 and 78 < found["lng"] < 79
