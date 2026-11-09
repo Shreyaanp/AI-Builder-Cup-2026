@@ -194,9 +194,10 @@ export function moneyLocale(currency: string, locale?: string): string | undefin
 }
 
 /**
- * The languages offered after sign-in, best guess first: the phone's own language when the
- * region speaks it, else the area's regional language (Bengaluru → Kannada), else the region's
- * first (India → Hindi, Singapore → English). English is always offered.
+ * The languages offered after sign-in, best guess first: the phone's first language when the
+ * region speaks it (English included: an English phone in India gets English), else the area's
+ * regional language (Bengaluru → Kannada), else the region's first (India → Hindi, Singapore →
+ * English). English is always offered.
  */
 export function languageChoices(
   region: RegionProfile,
@@ -210,7 +211,13 @@ export function languageChoices(
     })
     .filter(isLocale)
   const regional = areaLanguage(point?.lat, point?.lng)
-  const own = spoken.find((code) => code !== 'en' && region.languages.includes(code))
+  // The phone's first language leads, English too (Priya, 8 Nov: an English phone was offered
+  // Hindi first); a later regional language still beats the region's default.
+  const first = spoken[0]
+  const own =
+    first && (first === 'en' || region.languages.includes(first))
+      ? first
+      : spoken.find((code) => code !== 'en' && region.languages.includes(code))
   const fallback = region.languages[0] ?? 'en'
   const suggested: Locale =
     own ??

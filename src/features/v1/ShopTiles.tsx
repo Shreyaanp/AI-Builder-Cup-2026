@@ -6,6 +6,7 @@ import {
   Box,
   Button,
   ButtonBase,
+  FormControlLabel,
   IconButton,
   List,
   ListItem,
@@ -60,7 +61,7 @@ import { HoursList } from '../shop/Hours'
 import { hasHours } from '../shop/hoursModel'
 
 import { MapsHandoff } from './MapsHandoff'
-import { shopZone } from '../../region/region'
+import { countryArea, shopRegion, shopZone } from '../../region/region'
 import { ShopIcon } from '../google/ShopIcon'
 import { GalleryEditor } from '../google/GalleryEditor'
 import { useGallery } from '../google/useGallery'
@@ -667,7 +668,12 @@ function OneSheet({
       return (
         <Sheet {...common} titleId="soldout-sheet-title" ask="sold_out" title={t.soldOut}>
           <Typography variant="bodyMedium" color="text.secondary" sx={{ mb: 4 }}>
-            {menu.length ? t.soldOutHint : t.productsEmpty}
+            {/* "Customers see it straight away" only while they can (Priya, 8 Nov). */}
+            {!menu.length
+              ? t.productsEmpty
+              : shop.public && ws.shareUrl
+                ? t.soldOutHint
+                : t.soldOutHintHidden}
           </Typography>
           {menu.length > 0 && (
             <List disablePadding sx={list}>
@@ -712,7 +718,7 @@ function OneSheet({
     case 'customer':
       return (
         <Sheet {...common} titleId="customer-sheet-title" ask="share" title={tabs.yourPage}>
-          <CustomerPage onReview={onClose} />
+          <CustomerPage />
         </Sheet>
       )
     case 'stamps':
@@ -804,37 +810,87 @@ function OneSheet({
   }
 }
 
-/** Customer page switch, link and share actions (moved from the old My shop page). */
-function CustomerPage({ onReview }: { onReview: () => void }) {
+/**
+ * Customer page: ONE labelled switch shows the shop to customers (Priya, 8 Nov: the place was
+ * saved and the shop stayed hidden behind a second, unlabelled switch). Without a place yet, the
+ * owner says where (typed area, phone location or area only) and confirming it shows the shop.
+ */
+function CustomerPage() {
   const t = useCopy()
   const ws = useWorkspace()
   const roles = useTheme().material
   const [busy, setBusy] = useState(false)
   const shop = ws.active
   if (!shop) return null
-  if (shop.fields.lat == null || shop.fields.lng == null)
-    return (
-      <MapCard
-        initial={null}
-        placeName={shop.fields.location}
-        done={null}
-        onConfirm={async (owner_location) => {
-          const proposal = await ws.api<Proposal>('/proposals', {
-            method: 'POST',
-            body: JSON.stringify({
-              kind: 'business',
-              business_id: shop.id,
-              revision: shop.revision,
-              business: shop.fields,
-              owner_location,
-            }),
-          })
-          onReview()
-          ws.review(proposal)
-        }}
-      />
-    )
+  const placed = shop.fields.lat != null && shop.fields.lng != null
   const url = ws.shareUrl
+  const region = shopRegion(shop.fields)
+  const near = region.country ? countryArea(region.country) : null
+  const liveSwitch = (
+    <FormControlLabel
+      labelPlacement="start"
+      control={
+        <Switch
+          checked={shop.public}
+          // Not disabled while saving: a disabled control drops focus out of the sheet (and Esc).
+          disabled={placed && !url}
+          onChange={(_, checked) => {
+            if (busy) return
+            if (!placed) {
+              // The place comes first: the area box below takes the owner's answer.
+              document.querySelector<HTMLInputElement>('[data-testid="map-area"]')?.focus()
+              return
+            }
+            setBusy(true)
+            ws.setShared(checked)
+              .catch(() => ws.notify(ws.readOnlyMessage ?? t.actionFailed))
+              .finally(() => setBusy(false))
+          }}
+        />
+      }
+      label={
+        <Typography variant="titleMedium" component="span">
+          {t.liveSwitch}
+        </Typography>
+      }
+      sx={{ mx: 0, gap: 2, width: '100%', justifyContent: 'space-between', minHeight: 48 }}
+    />
+  )
+  if (!placed)
+    return (
+      <Box>
+        {liveSwitch}
+        <Typography variant="bodyMedium" color="text.secondary" sx={{ mt: 1, mb: 3 }}>
+          {t.liveNeedsPlace}
+        </Typography>
+        <MapCard
+          initial={null}
+          placeName={shop.fields.location}
+          done={null}
+          near={near ? { lat: near.lat, lng: near.lng } : null}
+          areaOption
+          onConfirm={async (owner_location) => {
+            const proposal = await ws.api<Proposal>('/proposals', {
+              method: 'POST',
+              body: JSON.stringify({
+                kind: 'business',
+                business_id: shop.id,
+                revision: shop.revision,
+                business: shop.fields,
+                owner_location,
+              }),
+            })
+            // The owner just confirmed the place on the map: it is saved and the shop shown
+            // in one go, with no second review of the same pin.
+            await ws.api(`/proposals/${proposal.id}/approve`, {
+              method: 'POST',
+              body: JSON.stringify({ digest: proposal.digest }),
+            })
+            await ws.setShared(true).catch(() => ws.notify(ws.readOnlyMessage ?? t.actionFailed))
+          }}
+        />
+      </Box>
+    )
   return (
     <Box>
       {ws.readOnlyMessage && (
@@ -842,24 +898,10 @@ function CustomerPage({ onReview }: { onReview: () => void }) {
           {ws.readOnlyMessage}
         </Alert>
       )}
-      <Stack direction="row" sx={{ alignItems: 'center', gap: 2 }}>
-        <Typography variant="bodySmall" color="text.secondary" sx={{ flex: 1 }}>
-          {shop.public ? t.customerPageOn : t.customerPageOff}
-        </Typography>
-        <Switch
-          checked={shop.public}
-          // Not disabled while saving: a disabled control drops focus out of the sheet (and Esc).
-          disabled={!url}
-          onChange={(_, checked) => {
-            if (busy) return
-            setBusy(true)
-            ws.setShared(checked)
-              .catch(() => ws.notify(ws.readOnlyMessage ?? t.actionFailed))
-              .finally(() => setBusy(false))
-          }}
-          slotProps={{ input: { 'aria-label': t.pageSwitch } }}
-        />
-      </Stack>
+      {liveSwitch}
+      <Typography variant="bodyMedium" color="text.secondary" sx={{ mt: 1 }}>
+        {shop.public ? t.customerPageOn : t.customerPageOff}
+      </Typography>
       {shop.public && url && (
         <>
           <Typography
