@@ -56,7 +56,7 @@ from .reply_language import language_rule, reply_language
 from .settings import Settings
 from .shop_details import DAYS, clock, report_unsupported_request, update_shop_details
 from .sourcing_offline import sourcing_call, sourcing_reply
-from .supply_offline import supply_call, supply_reply
+from .supply_offline import order_call, supply_call, supply_reply
 from .supply_tools import SUPPLY_TOOLS
 from .text_model import SteadyGemini
 from .vendor_profile import food_segment, profile_for, vocabulary
@@ -196,9 +196,11 @@ Sourcing supplies (find suppliers, order, talk to them)
   last order's supplier_id and lines.
 - prepare_order only prepares. Say you've prepared the request (supplier, items, estimated
   total, delivery) and that they tap Send to confirm. Never say it was sent or ordered.
-- "Change the quantity to 15": if the order is still a draft, call prepare_order again with
-  replaces_order_id; if it was already sent, use message_supplier ("Please make the flour
-  15 kg"). "Cancel that order": cancel_order. "Ask them if they deliver on Sunday" or "can you
+- "Change the quantity to 15" or "no, only 5 litres": if the order is still a draft, call
+  prepare_order again with replaces_order_id, or draft_reorder for a purchase order; the old
+  draft is replaced, so there is only ever one to send. If it was already sent, use
+  message_supplier ("Please make the flour 15 kg"). "Cancel that order": cancel_order. "Ask them
+  if they deliver on Sunday" or "can you
   deliver by 8?": message_supplier on the latest sent order (get_orders gives its id).
 - If the item is unclear ("I need stuff"), ask once, briefly, which item. If a supplier lacks an
   item (not_stocked), say so and offer another supplier.
@@ -208,6 +210,9 @@ Sourcing supplies (find suppliers, order, talk to them)
 - When the owner asks whether a supplier replied, call get_orders and read the last message.
 
 Supply chain (purchase orders, supplier rules, documents)
+- "Butter 2 kg", "2 किलो मक्खन चाहिए", "makhan 2 kilo mangao": the owner is ordering stock. Call
+  draft_reorder with item, quantity and unit in that turn, in any language, even if nothing
+  looks low; never say there is nothing to reorder. "Don't order" or "mat mangao" orders nothing.
 - "Reorder flour", "what should I order?", "plan my purchase order", or a forecast showing an
   item running out: call draft_reorder (item only if named). It drafts a purchase order (PO)
   from the forecast, stock and the supplier rules. In one line say why: what is left, when it
@@ -1021,18 +1026,26 @@ class OfflineCoachModel(BaseLlm):
                 detail = next(
                     (r.response for r in responses if r.name == "update_shop_details"), None
                 )
-                sourced = next(
-                    (
-                        reply_text
-                        for r in responses
-                        if (
-                            reply_text := supply_reply(
-                                r.name or "", dict(r.response or {}), ui_language.get()
-                            )
-                            or sourcing_reply(r.name or "", dict(r.response or {}))
+                # "Butter 2 kg and milk 5 L" is one reply about every item.
+                sourced_all = [
+                    reply_text
+                    for r in responses
+                    if (
+                        reply_text := supply_reply(
+                            r.name or "", dict(r.response or {}), ui_language.get()
                         )
-                    ),
-                    None,
+                        or sourcing_reply(r.name or "", dict(r.response or {}))
+                    )
+                ]
+                sourced = (
+                    " ".join(
+                        [
+                            sourced_all[0],
+                            *(t.removeprefix("Offline coach: ") for t in sourced_all[1:]),
+                        ]
+                    )
+                    if sourced_all
+                    else None
                 )
                 if payment_response is not None:
                     status = str(payment_response.get("status", "invalid"))
@@ -1176,6 +1189,10 @@ class OfflineCoachModel(BaseLlm):
                 )
                 if sourcing is not None:
                     yield LlmResponse(content=types.Content(role="model", parts=[sourcing]))
+                    return
+                ordered = order_call(question, ctx) if ctx and ctx.business_id else None
+                if ordered:
+                    yield LlmResponse(content=types.Content(role="model", parts=ordered))
                     return
                 renamed = rename_call(question, ctx)
                 if renamed is not None:

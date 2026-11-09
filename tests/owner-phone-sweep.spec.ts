@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { enter, localOnly, seedShop } from './stories/support.js'
-import { showInGrow } from './support/grow.js'
+import { stockTile } from './support/grow.js'
 
 const widths = [360, 390, 412]
 const languages = ['en', 'hi'] as const
@@ -136,7 +136,7 @@ for (const width of widths) {
         // Supply orders and purchase orders
         await page.locator('[data-tour="nav-grow"]').click()
         // Grow → Buy stock (simplify batch 4b) holds the purchase orders.
-        await (await showInGrow(page, page.locator('[data-tour="supply"]'))).click()
+        await (await stockTile(page)).click()
         await page.getByRole('button', { name: /Try supply demo|डेमो/ }).click()
         await assertPhoneLayout(page, 'Supply orders')
         const supply = page.getByRole('region', { name: /Supply chain|सामान मँगाना/ })
@@ -145,10 +145,10 @@ for (const width of widths) {
         // has no button (OB-263): ordering more is Buy stock → Draft a reorder.
         await expect(supply.getByRole('button')).toHaveCount(0)
         await page.locator('[data-tour="nav-grow"]').click()
-        await (await showInGrow(page, page.locator('[data-tour="supply"]'))).click()
+        await (await stockTile(page)).click()
         await page
           .getByRole('dialog')
-          .getByRole('button', { name: /Draft a reorder|फिर से सामान मँगाएँ/ })
+          .getByRole('button', { name: /Order more|और मँगाएँ/ })
           .click()
         const order = page.getByRole('article')
         await expect(order).toBeVisible()

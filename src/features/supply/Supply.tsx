@@ -196,28 +196,31 @@ export function PurchaseOrders({
           {demo.demo}
         </Button>
       )}
-      <Button
-        variant="outlined"
-        startIcon={
-          drafting ? <CircularProgress size={16} color="inherit" /> : <Sparkles size={18} />
-        }
-        disabled={drafting}
-        onClick={async () => {
-          setDrafting(true)
-          setNote('')
-          const { order, note, ask } = await draft()
-          setDrafting(false)
-          setNote(note)
-          setAsk(ask ?? '')
-          if (order) {
-            update(order)
-            setView({ kind: 'order', id: order.id })
+      {/* Every sold-out or low item has its own Order more above; this one is for the rest. */}
+      {!data?.to_order?.length && (
+        <Button
+          variant="outlined"
+          startIcon={
+            drafting ? <CircularProgress size={16} color="inherit" /> : <Sparkles size={18} />
           }
-        }}
-        sx={{ alignSelf: 'flex-start', minHeight: 48 }}
-      >
-        {drafting ? s.drafting : s.draftReorder}
-      </Button>
+          disabled={drafting}
+          onClick={async () => {
+            setDrafting(true)
+            setNote('')
+            const { order, note, ask } = await draft()
+            setDrafting(false)
+            setNote(note)
+            setAsk(ask ?? '')
+            if (order) {
+              update(order)
+              setView({ kind: 'order', id: order.id })
+            }
+          }}
+          sx={{ alignSelf: 'flex-start', minHeight: 48 }}
+        >
+          {drafting ? s.drafting : change.orderMore}
+        </Button>
+      )}
       {/* Why nothing was drafted, in the sheet itself rather than a toast over it (OB-227). */}
       {note && (
         <Typography role="status" variant="bodyLarge">

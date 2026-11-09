@@ -37,7 +37,7 @@ test.describe('Supply chain flows on phone (390px)', () => {
     // 2. Ordering more is Buy stock → Draft a reorder
     await page.getByRole('button', { name: 'Grow', exact: true }).click()
     const stock = await openBuyStock(page)
-    await stock.getByRole('button', { name: 'Draft a reorder' }).click()
+    await stock.getByRole('button', { name: 'Order more', exact: true }).click()
     const orderCard = page.getByRole('article')
     await expect(orderCard).toBeVisible()
     await expect(orderCard).toContainText('Drafted for you')

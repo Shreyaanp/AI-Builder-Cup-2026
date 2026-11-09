@@ -78,13 +78,7 @@ test('the demo shows no developer words on Coach, Shop, Grow and You', async ({ 
 test('the demo sheets show no developer words', async ({ page }) => {
   await openDemo(page)
   await tab(page, 'grow')
-  for (const button of [
-    /^Buy stock/,
-    /^How much to make/,
-    /Rescue deals/,
-    /^My sales/,
-    /^Close the day/,
-  ]) {
+  for (const button of [/^How much to make/, /Rescue deals/, /^My sales/, /^Close the day/]) {
     await growTool(page, button)
     await sheet(page, button)
   }
@@ -97,6 +91,7 @@ test('the demo sheets show no developer words', async ({ page }) => {
     await noJargon(page, JARGON)
   }
   await page.keyboard.press('Escape')
+  await tab(page, 'grow')
   await openMake(page, true)
   await page.waitForTimeout(500)
   await noJargon(page, JARGON)
@@ -122,7 +117,7 @@ test('the order card speaks of the supplier and the item, not an order number', 
   // comes from Buy stock.
   await tab(page, 'grow')
   const stock = await openBuyStock(page)
-  await stock.getByRole('button', { name: 'Draft a reorder' }).click({ timeout: 10_000 })
+  await stock.getByRole('button', { name: 'Order more', exact: true }).click({ timeout: 10_000 })
   const dialog = page.getByRole('dialog')
   await expect(dialog.getByRole('article')).toBeVisible({ timeout: 10_000 })
   await expect(dialog.getByRole('article')).toHaveAccessibleName(/ from /)

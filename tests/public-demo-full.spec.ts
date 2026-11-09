@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
-import { showInGrow } from './support/grow.js'
+import { stockTile } from './support/grow.js'
 
 // Issues #280-#289: /demo is the full owner app on the visitor's own sandbox, at 390 px.
 test.setTimeout(120_000)
@@ -96,13 +96,13 @@ test('public demo walks the whole owner lifecycle at 390 px', async ({ page }, i
   // WhatsApp PO, timeline and SAP view.
   await page.locator('[data-tour="nav-grow"]').click()
   await noSideScroll(page)
-  await expect(await showInGrow(page, page.locator('[data-tour="supply"]'))).toBeVisible()
+  await expect(await stockTile(page)).toBeVisible()
   await page.screenshot({ path: 'output/playwright/demo-full-03-grow.png', fullPage: true })
-  await (await showInGrow(page, page.locator('[data-tour="supply"]'))).click()
+  await (await stockTile(page)).click()
   const sheet = page.getByRole('dialog')
   await expect(page.getByText('In the demo this is pretend: nothing is sent')).toHaveCount(0)
   // #282: draft a reorder inside the sandbox.
-  await sheet.getByRole('button', { name: 'Draft a reorder' }).click()
+  await sheet.getByRole('button', { name: 'Order more', exact: true }).click()
   await expect(sheet.locator('article')).toBeVisible({ timeout: 15_000 })
   await page.screenshot({ path: 'output/playwright/demo-full-04-reorder.png' })
   const back = sheet.getByRole('button', { name: 'Buy stock', exact: true })
@@ -124,6 +124,7 @@ test('public demo walks the whole owner lifecycle at 390 px', async ({ page }, i
   await expect(page.getByRole('dialog')).toHaveCount(0)
 
   // #285: Close the day opens on Grow.
+  await page.locator('[data-tour="nav-grow"]').click()
   await page.locator('[data-tour="closeday"]').click()
   await expect(page.getByRole('dialog')).toBeVisible()
   await page.screenshot({ path: 'output/playwright/demo-full-07-closeday.png' })

@@ -404,7 +404,9 @@ def test_ob242_a_wrong_draft_is_never_auto_sent(store) -> None:
 def test_ob242_the_automatic_reorder_withdraws_a_wrong_draft(store) -> None:
     bid = tea_stall(store)
     seed_wrong_draft(store, bid)
-    assert draft(store, bid)["status"] == "needs_item"
+    # Nothing is drafted at the wrong size; what is low asks how much instead (OB-339).
+    result = draft(store, bid)
+    assert result["status"] == "needs_quantity" and "order" not in result
     assert only_order(store, bid)["status"] == "cancelled"
 
 

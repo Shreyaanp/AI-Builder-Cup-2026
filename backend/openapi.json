@@ -7442,6 +7442,16 @@
               "type": "string",
               "title": "Business Id"
             }
+          },
+          {
+            "name": "drafts",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Drafts"
+            }
           }
         ],
         "responses": {
@@ -7687,6 +7697,67 @@
                   "type": "object",
                   "additionalProperties": true,
                   "title": "Response Cancel Order Api V1 Businesses  Business Id  Orders  Order Id  Cancel Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/businesses/{business_id}/orders/{order_id}/edit": {
+      "post": {
+        "summary": "Edit Order",
+        "description": "New amounts on a draft that has not been sent; the supplier is not told anything.",
+        "operationId": "edit_order_api_v1_businesses__business_id__orders__order_id__edit_post",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          },
+          {
+            "name": "order_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Order Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DraftEdit"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Edit Order Api V1 Businesses  Business Id  Orders  Order Id  Edit Post"
                 }
               }
             }
@@ -8196,6 +8267,58 @@
                   "type": "object",
                   "additionalProperties": true,
                   "title": "Response Reorder Api V1 Businesses  Business Id  Supply Reorder Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/businesses/{business_id}/supply/order-text": {
+      "post": {
+        "summary": "Order Text",
+        "description": "The Buy stock box: \"butter, 2 kg\" in the owner's words, even when nothing looks low. Each\nitem with an amount is drafted; one without asks how much. A \"don't\" drafts nothing.",
+        "operationId": "order_text_api_v1_businesses__business_id__supply_order_text_post",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrderText"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Order Text Api V1 Businesses  Business Id  Supply Order Text Post"
                 }
               }
             }
@@ -13088,6 +13211,60 @@
         ],
         "title": "DiscoveryResponse"
       },
+      "DraftEdit": {
+        "properties": {
+          "version": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Version"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/DraftLine"
+            },
+            "type": "array",
+            "maxItems": 50,
+            "minItems": 1,
+            "title": "Lines"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "version",
+          "lines"
+        ],
+        "title": "DraftEdit"
+      },
+      "DraftLine": {
+        "properties": {
+          "line": {
+            "type": "integer",
+            "maximum": 50.0,
+            "minimum": 0.0,
+            "title": "Line"
+          },
+          "quantity": {
+            "type": "number",
+            "maximum": 1000000.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Quantity"
+          },
+          "unit": {
+            "type": "string",
+            "maxLength": 20,
+            "title": "Unit",
+            "default": ""
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "line",
+          "quantity"
+        ],
+        "title": "DraftLine"
+      },
       "EventInput": {
         "properties": {
           "kind": {
@@ -13522,6 +13699,12 @@
               }
             ],
             "title": "Value"
+          },
+          "unit": {
+            "type": "string",
+            "maxLength": 20,
+            "title": "Unit",
+            "default": ""
           }
         },
         "additionalProperties": false,
@@ -15069,6 +15252,22 @@
           "text"
         ],
         "title": "OrderMessage"
+      },
+      "OrderText": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Text"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "OrderText"
       },
       "OrderVersion": {
         "properties": {
@@ -17071,6 +17270,17 @@
             ],
             "title": "Source",
             "default": ""
+          },
+          "unit": {
+            "type": "string",
+            "maxLength": 20,
+            "title": "Unit",
+            "default": ""
+          },
+          "direct": {
+            "type": "boolean",
+            "title": "Direct",
+            "default": false
           }
         },
         "additionalProperties": false,

@@ -29,8 +29,7 @@ const en = {
       : `Cancelled here. Remember to tell ${supplier}.`,
   failed: 'That didn’t work. Try again.',
   // Why "Draft a reorder" made nothing, with the way forward.
-  nothingToReorder:
-    'Nothing runs out soon, so there is nothing to reorder. Add stock counts and sales to get a forecast.',
+  nothingToReorder: 'Nothing looks low right now. Type what you need above, like: butter, 2 kg.',
   noSupplierFor: (item: string) =>
     `No supplier near you sells ${item} yet. Ask the coach to find suppliers for it.`,
   onOrder: (quantity: string, unit: string, item: string, day: string) =>
@@ -112,8 +111,7 @@ const hi: OrderChangeCopy = {
       ? `रद्द हो गया। ${supplier} को बता दिया।`
       : `यहाँ रद्द हो गया। ${supplier} को बताना न भूलें।`,
   failed: 'नहीं हो पाया। फिर कोशिश करें।',
-  nothingToReorder:
-    'जल्द कुछ खत्म नहीं हो रहा, इसलिए फिर मँगाने को कुछ नहीं। अनुमान के लिए स्टॉक और बिक्री जोड़ें।',
+  nothingToReorder: 'अभी कुछ कम नहीं दिख रहा। ऊपर लिखें क्या चाहिए, जैसे: मक्खन, 2 किलो।',
   noSupplierFor: (item) =>
     `आपके पास अभी कोई सप्लायर ${item} नहीं बेचता। कोच से इसके सप्लायर खोजने को कहें।`,
   onOrder: (quantity, unit, item, day) =>

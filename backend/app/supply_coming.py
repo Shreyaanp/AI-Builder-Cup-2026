@@ -126,6 +126,169 @@ def on_order(
     }
 
 
+def _alike(name: str, item: str, shelf: set[str]) -> bool:
+    """The same stock: not when the name is another thing the shop keeps (Milk, Rose milk)."""
+    from . import sourcing
+
+    if name.casefold() == item.casefold():
+        return True
+    if name.casefold() in shelf:
+        return False
+    return sourcing.matches(name, item) or sourcing.matches(item, name)
+
+
+def retire_drafts(
+    store: MerchantRepository, uid: str, bid: str, items: list[str], keep: str
+) -> list[str]:
+    """One live draft per item (persona runs, 8 Nov): a new draft replaces any other draft for the
+    same stock, in both order systems, so the old amount can never be sent by mistake. An order
+    with other items too only loses this one. Returns the chat orders replaced outright."""
+    import time
+
+    from . import sourcing
+
+    names = [item for item in items if item.strip()]
+    shelf = {p["name"].casefold() for p in store.inventory(uid, bid)} - {
+        n.casefold() for n in names
+    }
+
+    def wanted(name: str) -> bool:
+        return any(_alike(name, item, shelf) for item in names)
+
+    retired: list[str] = []
+    now = time.time()
+    for order in sourcing.orders(store, uid, bid, now):
+        if order["id"] == keep or order["status"] != "draft":
+            continue
+        left = [line for line in order["lines"] if not wanted(line["name"])]
+        if len(left) == len(order["lines"]):
+            continue
+        if left:
+            order["lines"] = left
+            order["total"] = sum(line["total"] or 0 for line in left)
+        else:
+            order["status"] = "replaced"
+            order["replaced_by"] = keep
+            retired.append(order["id"])
+        sourcing.save(store, uid, bid, order, now)
+    for po in all_orders(store, bid):
+        if po["id"] == keep or po["status"] != "draft" or po.get("sent"):
+            continue
+        if direction_of(po) == "in" and any(wanted(line["item"]) for line in po["lines"]):
+            withdraw(store, bid, po, "replaced")
+    return retired
+
+
+def _last_order(
+    item: str, unit: str, known: tuple[list[dict[str, Any]], list[dict[str, Any]]]
+) -> tuple[float | None, str]:
+    """How much of this item the shop last ordered, in its unit, and from which supplier."""
+    from . import sourcing
+
+    def same(name: str) -> bool:
+        return sourcing.matches(name, item) or sourcing.matches(item, name)
+
+    rows: list[tuple[float, float, str, str]] = []
+    for po in known[0]:
+        if po["status"] not in {"draft", "cancelled"}:
+            rows += [
+                (
+                    float(po.get("created") or 0),
+                    float(x["quantity"]),
+                    x["unit"],
+                    po["supplier"]["id"],
+                )
+                for x in po["lines"]
+                if same(x["item"])
+            ]
+    for order in known[1]:
+        if order["status"] in CHAT_ON_ITS_WAY | {"received"}:
+            rows += [
+                (float(order.get("created") or 0), float(x["quantity"]), x["unit"], "")
+                for x in order["lines"]
+                if same(x["name"])
+            ]
+    if not rows:
+        return None, ""
+    newest = max(rows)
+    return sourcing.convert(newest[1], newest[2], unit), next(
+        (row[3] for row in sorted(rows, reverse=True) if row[3]), ""
+    )
+
+
+def usual_supplier(
+    item: str, unit: str, known: tuple[list[dict[str, Any]], list[dict[str, Any]]]
+) -> str:
+    """The supplier this item last came from, so "Order more" goes to the usual one."""
+    return _last_order(item, unit, known)[1]
+
+
+def amount_ask(
+    product: dict[str, Any] | None,
+    item: str,
+    need: dict[str, Any],
+    known: tuple[list[dict[str, Any]], list[dict[str, Any]]],
+) -> dict[str, Any]:
+    """ "How much?" for one item, with an amount to suggest: what was last ordered, else about a
+    week and two days of its own use less the shelf, else nothing to go on."""
+    unit = (product or {}).get("unit") or ""
+    last, _ = _last_order(item, unit, known) if unit else (None, "")
+    use = still_wanted(need, 0.0) if need.get("daily") else 0.0
+    suggested = last if last else math.ceil(use) if use else None
+    sold_out = bool(product) and (
+        (product or {}).get("available") is False or (product or {}).get("stock") == 0
+    )
+    stock = (product or {}).get("stock")
+    return {
+        "status": "needs_quantity",
+        "item": (product or {}).get("name") or item,
+        "unit": unit,
+        "left": 0 if sold_out else stock,
+        "sold_out": sold_out,
+        "suggested": round(suggested, 2) if suggested else None,
+    }
+
+
+def to_order(
+    store: MerchantRepository,
+    uid: str,
+    bid: str,
+    inventory: list[dict[str, Any]],
+    forecast: dict[str, Any],
+    today: date,
+    category: str,
+    known: tuple[list[dict[str, Any]], list[dict[str, Any]]],
+) -> list[dict[str, Any]]:
+    """Stock the shop buys that is sold out or low (5 or fewer, the Today rule) with nothing on
+    its way and no draft waiting: each gets "Order more", so "nothing to reorder" is never said
+    beside a sold-out item (Ahmed, 8 Nov). Sold out comes first."""
+    from . import sourcing
+    from .supply_chain import bought
+
+    rows = []
+    for product in inventory:
+        stock = product.get("stock")
+        sold_out = product.get("available") is False or stock == 0
+        if not bought(product, category) or not (sold_out or (stock is not None and stock <= 5)):
+            continue
+        coming = on_order(store, uid, bid, product["name"], product.get("unit") or "kg", known)
+        drafted = any(
+            order["status"] == "draft"
+            and any(
+                sourcing.matches(line["name"], product["name"])
+                or sourcing.matches(product["name"], line["name"])
+                for line in order["lines"]
+            )
+            for order in known[1]
+        )
+        if coming["quantity"] or coming["other"] or coming["draft"] or drafted:
+            continue
+        need = need_from_forecast(product, forecast, product["name"], today)
+        rows.append(amount_ask(product, product["name"], need, known))
+    rows.sort(key=lambda row: (not row["sold_out"], row["left"] or 0, row["item"]))
+    return rows
+
+
 def arrivals_by_item(
     store: MerchantRepository, uid: str, bid: str, inventory: list[dict[str, Any]]
 ) -> dict[str, list[tuple[str, float]]]:

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { growTool, openBuyStock } from './support/grow.js'
+import { openBuyStock, stockTile } from './support/grow.js'
 
 // Offline coach script: the same tool calls Gemini makes, so the story runs without a model.
 async function openWithShop(page: Page) {
@@ -58,8 +58,8 @@ test('running low → demo suppliers → one-tap order → supplier reply → Or
   await expect(page.getByRole('dialog')).toHaveCount(0)
 
   await page.getByRole('button', { name: 'Grow', exact: true }).click()
-  // The order is Grow → Buy stock → On the way (simplify batch 4b).
-  const tile = await growTool(page, /^Buy stock/)
+  // The order is Shop → Buy stock → On the way (simplify batch 4b, OB-339).
+  const tile = await stockTile(page)
   await expect(tile).toContainText('1 on the way')
   const orders = await openBuyStock(page, 'On the way')
   await expect(orders).toContainText('Confirmed')

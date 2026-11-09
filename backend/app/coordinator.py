@@ -1211,7 +1211,8 @@ def prepare_order(
     get_orders ("the same as last time"). items: every item the owner named, each with quantity
     and unit exactly as said (20 kg flour, 500 g yeast, 2 litre oil). note: anything to tell the
     supplier. delivery: only if the owner asked for a time. To change a draft that is not sent
-    yet (e.g. "change the quantity to 15"), call again with replaces_order_id."""
+    yet (e.g. "change the quantity to 15"), call again with replaces_order_id. A new draft for
+    the same item always replaces the old one, so there is only ever one to send."""
     import time as clock
 
     from . import sourcing
@@ -1247,6 +1248,15 @@ def prepare_order(
                 old["status"] = "replaced"
                 old["replaced_by"] = order["id"]
                 sourcing.save(ctx.store, ctx.uid, ctx.business_id, old, now)
+    from .supply_coming import retire_drafts
+
+    # Never two live drafts for one item, however the second came about (Ramesh, 8 Nov).
+    retired = retire_drafts(
+        ctx.store, ctx.uid, ctx.business_id, [line["name"] for line in order["lines"]], order["id"]
+    )
+    if retired:
+        order["retired"] = retired
+        order.setdefault("replaces", retired[0])
     ctx.store.save_supplier_order(ctx.uid, ctx.business_id, order)
     missing = [line["name"] for line in order["lines"] if line["price"] is None]
     return {

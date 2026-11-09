@@ -201,9 +201,9 @@ const DESTINATIONS: Partial<Record<CoachAction['target'], Destination>> = {
   close_day: 'grow',
   google: 'google',
   privacy: 'privacy',
-  // How much to make (numbers open) and Buy stock open over Grow (simplify batch 4b).
+  // How much to make (numbers open) opens over Grow (simplify batch 4b), Buy stock over Shop.
   plan: 'grow',
-  supply: 'grow',
+  supply: 'shop',
   // The playbook sheet lives under Your data.
   playbook: 'privacy',
   // Payments & rides opens over Grow, so Back returns there.
@@ -424,10 +424,14 @@ function CoachScreen({
         setOrders((known) => {
           const old = order.replaces ? known[order.replaces] : undefined
           // The edited draft replaces the old one on the server (OB-222): its card stops offering Send.
-          const replaced =
-            old?.status === 'draft'
-              ? { [old.id]: { ...old, status: 'replaced' as const, replaced_by: order.id } }
-              : {}
+          const replaced = Object.fromEntries(
+            [old, ...(order.retired ?? []).map((id) => known[id])]
+              .filter((was) => was?.status === 'draft')
+              .map((was) => [
+                was!.id,
+                { ...was!, status: 'replaced' as const, replaced_by: order.id },
+              ]),
+          )
           return { ...known, ...replaced, [order.id]: order }
         })
         // One card per order, moved to the end when the coach updates it.
@@ -1532,6 +1536,9 @@ function CoachScreen({
                           onSend={sendOrder}
                           onDiscard={discardOrder}
                           onOpen={(order) => setThread(order.id)}
+                          onChanged={(order) =>
+                            setOrders((known) => ({ ...known, [order.id]: order }))
+                          }
                           onReceived={(order) =>
                             void receiveOrder(order).then((received) => {
                               if (received)

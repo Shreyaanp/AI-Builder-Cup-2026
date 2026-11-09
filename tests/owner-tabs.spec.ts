@@ -52,6 +52,7 @@ for (const scheme of ['light', 'dark'] as const) {
       page.locator('section[aria-label="Shop"]').getByRole('button', { name: 'Share page' }),
     ).toBeInViewport()
     await expect(page.getByRole('button', { name: /^Menu/ })).toBeVisible()
+    await expect(page.getByRole('button', { name: /^Buy stock/ })).toBeVisible({ timeout: 15_000 })
     await expect(page.locator('[data-tour="closeday"]')).toHaveCount(0)
     await expect(page.locator('[data-tour="prep"]')).toHaveCount(0)
     await axe(page)
@@ -64,7 +65,6 @@ for (const scheme of ['light', 'dark'] as const) {
     for (const card of [
       /^How much to make/,
       /^Close the day/,
-      /^Buy stock/,
       /^Rescue deals/,
       /^Get on Google/,
       /^Stamps & perks/,

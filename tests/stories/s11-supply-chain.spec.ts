@@ -215,9 +215,10 @@ test('S11 · forecast → PO → ORDRSP (partial) → ASN → invoice, translate
   })
 
   await test.step('5 · rules screen on Grow', async () => {
-    await page.getByRole('button', { name: 'Grow', exact: true }).click()
-    // Buy stock (simplify batch 4b): the finished order is under On the way, the rules under
-    // My suppliers.
+    // The "received" note and its Undo go by themselves; on a phone they sit over the sheet.
+    await expect(page.getByRole('button', { name: 'Undo' })).toHaveCount(0, { timeout: 15_000 })
+    // Buy stock (simplify batch 4b, on Shop since OB-339): the finished order is under On the
+    // way, the rules under My suppliers.
     const sheet = await openBuyStock(page, 'On the way')
     await expect(sheet).toContainText(drafted)
     await sheet.getByRole('button', { name: /^My suppliers/ }).click()

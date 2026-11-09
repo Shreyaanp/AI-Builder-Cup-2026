@@ -69,6 +69,7 @@ export function useTodayPlan(unread: number | null): {
     dayClosed: Boolean(facts ? closedDay === facts.date : closedDay),
     now,
     face: trust?.face ?? null,
+    orderable: supply.toOrder.filter((ask) => ask.sold_out).map((ask) => ask.item),
     supply: supply.item
       ? {
           item: supply.item,

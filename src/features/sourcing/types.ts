@@ -76,6 +76,8 @@ export interface Order {
   pending: { kind: 'text' | 'cancel'; text: string; created: number } | null
   reply_due: number | null
   unread: boolean
+  /** Other drafts for the same items that this one replaced: never two to send. */
+  retired?: string[]
   /** The draft this one replaced ("change it to 30 kg"); that draft can no longer be sent. */
   replaces?: string
   /** The order that replaced this draft after an edit; unset when the owner discarded it. */

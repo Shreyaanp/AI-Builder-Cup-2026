@@ -51,6 +51,9 @@ import { countAction, countShown } from './habitCount'
 import { useLocalDay } from './useLocalDay'
 import { FirstCustomers } from '../FirstCustomers'
 import { TodaySupplyNeeds } from '../../supply/SupplyEntry'
+import { OrderMoreSheet } from '../../supply/OrderMore'
+import { useOrderChangeCopy } from '../../supply/orderChangeCopy'
+import { useSupply, type OrderAsk } from '../../supply/supplyData'
 
 /** What the Coach screen lets Today do: talk to the coach, open sheets, start the mic. */
 export interface TodayActions {
@@ -553,6 +556,9 @@ function NeedRow({
   const roles = useTheme().material
   const [busy, setBusy] = useState(false)
   const [making, setMaking] = useState(false)
+  const [asking, setAsking] = useState<OrderAsk | null>(null)
+  const order = useOrderChangeCopy()
+  const toOrder = useSupply(need.kind === 'low').data?.to_order ?? []
   const step = useStepAction(need.kind === 'step' ? need.step : 'items')
   const promiseSettle = usePromiseSettle(
     need.kind === 'promise' ? need.promise : null,
@@ -731,11 +737,35 @@ function NeedRow({
         <Button
           variant={primary}
           sx={{ minHeight: 48 }}
-          onClick={() => actions.ask(tt.orderDraft(need.item))}
+          onClick={() =>
+            setAsking(
+              toOrder.find((ask) => ask.item === need.item) ?? {
+                item: need.item,
+                unit: '',
+                left: need.left,
+                sold_out: need.left === 0,
+                suggested: null,
+              },
+            )
+          }
         >
-          {tt.order}
+          {order.orderMore}
         </Button>
       )
+      const shelf = need.left === 0 ? ws.products.find((p) => p.name === need.item) : undefined
+      if (shelf)
+        buttons = (
+          <>
+            {buttons}
+            <Button
+              disabled={busy}
+              sx={{ minHeight: 48 }}
+              onClick={() => void run(() => ws.setAvailability(shelf, true))}
+            >
+              {tt.backInStock}
+            </Button>
+          </>
+        )
     }
   } else if (need.kind === 'soldOut') {
     icon = <ZapOff size={20} />
@@ -832,6 +862,7 @@ function NeedRow({
         </Stack>
       )}
       {panel}
+      <OrderMoreSheet ask={asking} onClose={() => setAsking(null)} />
     </Box>
   )
 }

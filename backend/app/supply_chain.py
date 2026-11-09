@@ -459,10 +459,15 @@ async def draft_reorder(
     supplier_id: str = "",
     anyway: bool = False,
     source: str = "",
+    unit_said: str = "",
+    direct: bool = False,
 ) -> dict[str, Any]:
     """Draft the purchase order the forecast and rules call for (nothing is sent). When some is
     on order in a unit that does not convert, it asks first: `anyway` is the owner's yes.
-    `source` is the owner's answer to "Do you make it or buy it?", saved on the item."""
+    `source` is the owner's answer to "Do you make it or buy it?", saved on the item.
+    `unit_said`: the unit of a named quantity, if it is not the shop's own. `direct`: the owner
+    asked for this item themselves (Order more, the Buy stock box), so an item they have not
+    said they make or buy is not asked about first."""
     import anyio
 
     from . import sourcing
@@ -475,9 +480,12 @@ async def draft_reorder(
         flag_wrong_sizes,
         on_order,
         resize,
+        retire_drafts,
         settle_drafts,
         sized_line,
         still_wanted,
+        to_order,
+        usual_supplier,
         withdraw,
         wrong_size,
     )
@@ -535,7 +543,11 @@ async def draft_reorder(
         await anyio.to_thread.run_sync(
             settle_drafts, store, uid, bid, inventory, forecast, today, known, ""
         )
-        return {"status": "needs_item"}
+        # Sold out or low with no forecast to size it: ask how much, never "nothing to reorder".
+        waiting_items = await anyio.to_thread.run_sync(
+            to_order, store, uid, bid, inventory, forecast, today, category, known
+        )
+        return waiting_items[0] if waiting_items else {"status": "needs_item"}
     named = next(
         (p for p in inventory if p["name"].casefold() == target.casefold()),
         next((p for p in inventory if sourcing.matches(p["name"], target)), None),
@@ -546,7 +558,7 @@ async def draft_reorder(
         made_or_bought = source_of(named, category)
         if made_or_bought == "made":
             return {"status": "made", "item": named["name"]}
-        if made_or_bought == "unknown":
+        if made_or_bought == "unknown" and not direct:
             return {"status": "ask_source", "item": named["name"], "product_id": named.get("id")}
     if not item.strip():
         # Items this reorder skipped as covered: their unsent drafts are sized again or withdrawn
@@ -558,7 +570,14 @@ async def draft_reorder(
         (p for p in inventory if p["name"].casefold() == target.casefold()),
         next((p for p in inventory if sourcing.matches(p["name"], target)), None),
     )
-    unit = (product or {}).get("unit") or "kg"
+    unit = (product or {}).get("unit") or sourcing.unit_of(unit_said) or "kg"
+    if quantity and unit_said:
+        # "2 kg" of what the shop counts in grams; a unit that does not convert stands as said.
+        said = sourcing.convert(quantity, unit_said, unit)
+        if said is None:
+            unit = sourcing.unit_of(unit_said)
+        else:
+            quantity = round(said, 3)
     need = need_from_forecast(product, forecast, target, today)
     need_by = need["runs_out"] or ""
     coming = await anyio.to_thread.run_sync(on_order, store, uid, bid, target, unit, known)
@@ -658,6 +677,7 @@ async def draft_reorder(
             reason["owner_quantity"] = bool(quantity) or bool(reason.get("owner_quantity"))
         await anyio.to_thread.run_sync(recheck, store, bid, waiting, today)
         waiting = await anyio.to_thread.run_sync(_save, store, bid, waiting)
+        await anyio.to_thread.run_sync(retire_drafts, store, uid, bid, [target], waiting["id"])
         return {"status": "drafted", "order": await send_if_right(waiting), "existing": True}
     if done:
         return {"status": "on_order", "item": target, "unit": unit, **coming}
@@ -721,6 +741,12 @@ async def draft_reorder(
                 return option
         return quote(store, bid, candidate, supplied["name"], supplied["unit"], 0.0, need_by, today)
 
+    if direct and quantity:
+        # The owner named the amount: a minimum the app only guessed never overrules it.
+        candidates = [
+            {**candidate, "row": without_guessed_minimum(store, bid, candidate)}
+            for candidate in candidates
+        ]
     options = [option for option in map(offer, candidates) if option]
     if not options:
         return {"status": "no_supplier", "item": target}
@@ -731,11 +757,9 @@ async def draft_reorder(
             o["total"] / max(o["quantity_in_unit"], 0.001),
         )
     )
-    best = (
-        next((o for o in options if o["supplier"]["id"] == supplier_id), options[0])
-        if supplier_id
-        else options[0]
-    )
+    # The owner's pick, else the supplier this item usually comes from for an amount they named.
+    chosen = supplier_id or (usual_supplier(target, unit, known) if quantity else "")
+    best = next((o for o in options if o["supplier"]["id"] == chosen), options[0])
     faster = next((o for o in options if o["on_time"] and o is not best), None)
     line = best["line"]
     amount = sourcing.convert(line["quantity"], line["unit"], unit)
@@ -840,7 +864,54 @@ async def draft_reorder(
     }
     await anyio.to_thread.run_sync(recheck, store, bid, po, today)
     po = await anyio.to_thread.run_sync(_save, store, bid, po)
+    await anyio.to_thread.run_sync(retire_drafts, store, uid, bid, [target], po["id"])
     return {"status": "drafted", "order": await send_if_right(po)}
+
+
+async def ask_amount(
+    store: MerchantRepository, uid: str, bid: str, item: str, forecaster: Any
+) -> dict[str, Any]:
+    """ "How much?" for an item named without an amount, with an amount to suggest."""
+    import anyio
+
+    from . import sourcing
+    from .supply_coming import amount_ask, coming_orders
+
+    context = await anyio.to_thread.run_sync(_owned, store, uid, bid)
+    rows = await anyio.to_thread.run_sync(store.sales_history, uid, bid)
+    today = shop_today(context)
+    inventory = context["inventory"]
+    forecast = (await forecaster.forecast(rows, today, inventory)).model_dump(mode="json")
+    product = next(
+        (p for p in inventory if p["name"].casefold() == item.casefold()),
+        next((p for p in inventory if sourcing.matches(p["name"], item)), None),
+    )
+    need = need_from_forecast(product, forecast, (product or {}).get("name", item), today)
+    known = await anyio.to_thread.run_sync(coming_orders, store, uid, bid)
+    return amount_ask(product, item, need, known)
+
+
+def without_guessed_minimum(
+    store: MerchantRepository, bid: str, candidate: dict[str, Any]
+) -> dict[str, Any]:
+    """A supplier's starting rules are the app's guess until the owner saves them (`suggested`):
+    "butter, 2 kg" is not refused for a 10 kg minimum nobody agreed (Priya, 8 Nov). Rules the
+    owner saved still stand, and the draft says what the supplier cannot sell."""
+    row = candidate["row"]
+    if not row.get("suggested"):
+        return row
+    rules = rules_of(row)
+    rule = item_rule(rules, candidate["product"]["name"])
+    if not rule or not (rule.moq or rule.pack):
+        return row
+    rule.moq, rule.pack = 0, 0
+    data = {key: value for key, value in row.items() if key != "version"}
+    data["rules"] = rules.model_dump(mode="json")
+    try:
+        return _versioned(store, RULES, bid, row["supplier"]["id"], data, row["version"])
+    except HTTPException:
+        # Changed at the same moment: the newer rules stand.
+        return row
 
 
 def order_again(store: MerchantRepository, uid: str, bid: str, po_id: str) -> dict[str, Any]:
@@ -1074,6 +1145,14 @@ def apply_fix(
         value = float(fix.get("value") or 0)
         if line is None or not 0 < value <= 1_000_000:
             raise HTTPException(422, "Pick a line and a quantity above zero.")
+        # 500 g on a line sold by the kg is saved as 0.5 kg, the supplier's own unit.
+        if fix.get("unit"):
+            from .sourcing import convert
+
+            converted = convert(value, str(fix["unit"]), line["unit"])
+            if not converted:
+                raise HTTPException(422, "UNITS")
+            value = converted
         line["quantity"] = round(value, 3)
         # The owner set this amount, so it stays whatever the forecast says (OB-242).
         po["reason"] = {**(po.get("reason") or {}), "owner_quantity": True}

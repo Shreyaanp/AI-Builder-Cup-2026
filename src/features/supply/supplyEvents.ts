@@ -9,3 +9,10 @@ export const supplyBus = new EventTarget()
 export function supplyChanged() {
   supplyBus.dispatchEvent(new Event('changed'))
 }
+
+/** "Open Buy stock" from the Shop tab's own sheets; `item` goes straight to "how much?". */
+export const buyStockBus = new EventTarget()
+
+export function openBuyStock(item?: string) {
+  buyStockBus.dispatchEvent(new CustomEvent('open', { detail: item ?? '' }))
+}

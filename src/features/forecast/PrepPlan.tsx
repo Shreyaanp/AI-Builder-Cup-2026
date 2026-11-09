@@ -6,7 +6,6 @@ import { Tile, Supporting } from '../v1/ShopTiles'
 import { useCopy } from '../v1/strings'
 import { useGrowCopy } from '../v1/growCopy'
 import { useWorkspace } from '../v1/workspaceContext'
-import { useSourcingCopy } from '../sourcing/copy'
 import { Sheet } from '../v1/Sheet'
 import { PlanTomorrow } from '../planning/PlanTomorrow'
 import { useOrderUnit } from '../supply/supplyData'
@@ -139,7 +138,6 @@ export function MakeRow({
 
 /** Buy stock → To do: "Tea dust runs out Thu · Find suppliers", leading what needs buying now. */
 export function RunsOutCard({ onAct }: { onAct: () => void }) {
-  const s = useSourcingCopy()
   const c = useOrderChangeCopy()
   const runsOut = useRunsOut()
   if (!runsOut || runsOut.arriving) return null
@@ -149,7 +147,7 @@ export function RunsOutCard({ onAct }: { onAct: () => void }) {
       alert
       icon={<PackageSearch size={20} />}
       label={runsOut.label}
-      value={need?.covered ? onOrder : s.findSuppliers}
+      value={need?.covered ? onOrder : c.orderMore}
       onClick={() => {
         onAct()
         runsOut.act()

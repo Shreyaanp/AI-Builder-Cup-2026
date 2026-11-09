@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { enter, localOnly, seedShop } from './stories/support.js'
-import { openBuyStock } from './support/grow.js'
+import { openBuyStock, stockTile } from './support/grow.js'
 import { kirana } from './support/kirana.js'
 
 // Simplify batch 4 (owner app, SIMPLIFY-owner.md §3.11, §3.12, §7). 4a: Grow opens on a short
@@ -46,7 +46,7 @@ async function openGrow(page: Page) {
   await page.locator('[data-tour="nav-grow"]').click()
   await expect(page.locator('[data-tour="nav-grow"]')).toHaveAttribute('aria-current', 'page')
   // Rows settle once the brief, the forecast, the stock and the week have loaded.
-  for (const row of [/^Morning brief/, /^How much to make/, /^Buy stock/, /^My sales/])
+  for (const row of [/^Morning brief/, /^How much to make/, /^My sales/])
     await expect(grow(page).getByRole('button', { name: row })).toBeVisible({ timeout: 15_000 })
   await expect(grow(page).getByRole('button', { name: /^How much to make/ })).not.toContainText(
     'Preparing',
@@ -136,9 +136,13 @@ test('Grow: a short list and a More tools grid, calm at 390 and about one screen
   const text = await grow(page).innerText()
   for (const name of OLD_ENTRIES) expect(text, `"${name}" on Grow`).not.toContain(name)
   // OB-254: the Buy stock row says what needs buying, not the names of tools.
-  const stock = grow(page).getByRole('button', { name: /^Buy stock/ })
-  await expect(stock).toContainText(/runs out|arriving|to do|on the way|Reorder or find a supplier/)
+  await expect(grow(page).getByRole('button', { name: /^Buy stock/ })).toHaveCount(0)
+  const stock = await stockTile(page)
+  await expect(stock).toContainText(
+    /runs out|arriving|to do|on the way|Order more or find a supplier/,
+  )
   await expect(stock).not.toContainText(/Orders|Purchase orders|Supply chain/)
+  await page.locator('[data-tour="nav-grow"]').click()
   // How much to make shows tomorrow's numbers; My sales this week's.
   await expect(grow(page).getByRole('button', { name: /^How much to make/ })).toContainText(/\d/)
   await expect(grow(page).getByRole('button', { name: /^My sales/ })).toContainText(
@@ -183,14 +187,16 @@ const FORMER: {
   {
     was: 'Purchase orders (reorder)',
     path: ['Buy stock'],
-    shows: (page) => page.getByRole('dialog').getByRole('button', { name: 'Draft a reorder' }),
+    shows: (page) =>
+      page.getByRole('dialog').getByRole('button', { name: 'Order more', exact: true }),
   },
   {
     // Its order on the way counted and nothing runs out before it lands: no card, and ordering
     // more stays one tap away (OB-263).
     was: 'Tea dust runs out · Find suppliers',
     path: ['Buy stock'],
-    shows: (page) => page.getByRole('dialog').getByRole('button', { name: 'Draft a reorder' }),
+    shows: (page) =>
+      page.getByRole('dialog').getByRole('button', { name: 'Order more', exact: true }),
   },
   {
     was: 'Supply chain (needs me now, must send)',
@@ -249,12 +255,16 @@ test('Grow: every former tool is a visible name inside the merged sheets, 2 taps
 }) => {
   await openDemo(page)
   for (const { was, path, shows } of FORMER) {
-    await openGrow(page)
     const [row, inside] = path
-    // Tap 1: the row or More tools icon, by its name.
-    await grow(page)
-      .getByRole('button', { name: new RegExp(`^${row!.replace(/[&]/g, '\\$&')}`) })
-      .click()
+    // Tap 1: the row or More tools icon, by its name. Buy stock is on Shop (OB-339).
+    if (row === 'Buy stock') {
+      await (await stockTile(page)).click()
+    } else {
+      await openGrow(page)
+      await grow(page)
+        .getByRole('button', { name: new RegExp(`^${row!.replace(/[&]/g, '\\$&')}`) })
+        .click()
+    }
     // Tap 2: the tab or control inside the sheet, by its name.
     if (inside) {
       const dialog = page.getByRole('dialog')
@@ -289,14 +299,10 @@ test('Buy stock: reorder from the Grow tab in 3 taps, to an order ready to send'
 }) => {
   await openDemo(page)
   let taps = 0
-  await page.locator('[data-tour="nav-grow"]').click()
-  taps += 1
-  await grow(page)
-    .getByRole('button', { name: /^Buy stock/ })
-    .click()
-  taps += 1
+  await (await stockTile(page)).click()
+  taps += 2
   const sheet = page.getByRole('dialog', { name: /^Buy stock/ })
-  await sheet.getByRole('button', { name: 'Draft a reorder' }).click()
+  await sheet.getByRole('button', { name: 'Order more', exact: true }).click()
   taps += 1
   const card = sheet.getByRole('article')
   await expect(card).toBeVisible({ timeout: 15_000 })
@@ -313,7 +319,7 @@ test('Buy stock: a drafted reorder is one card in To do and "1 to do" on the row
   await openDemo(page)
   await page.locator('[data-tour="nav-grow"]').click()
   const sheet = await openBuyStock(page)
-  await sheet.getByRole('button', { name: 'Draft a reorder' }).click()
+  await sheet.getByRole('button', { name: 'Order more', exact: true }).click()
   await expect(sheet.getByRole('article')).toBeVisible({ timeout: 15_000 })
   await sheet.getByRole('button', { name: 'Buy stock', exact: true }).click()
   await expect(sheet.getByRole('article')).toHaveCount(0)
@@ -322,9 +328,7 @@ test('Buy stock: a drafted reorder is one card in To do and "1 to do" on the row
   await expect(sheet.getByRole('button', { name: /^To do/ })).toHaveText(/^To do\s*1$/)
   await sheet.getByRole('button', { name: 'Close', exact: true }).last().click()
   await expect(page.getByRole('dialog')).toHaveCount(0, { timeout: 10_000 })
-  await expect(grow(page).getByRole('button', { name: /^Buy stock/ })).toContainText(
-    /(^|· )1 to do$/,
-  )
+  await expect(await stockTile(page)).toContainText(/(^|· )1 to do$/)
 })
 
 test('Buy stock: the seeded tea dust order shows once in On the way (demo)', async ({ page }) => {
@@ -343,7 +347,7 @@ test('Buy stock (fresh shop): an approved and sent reorder is one card in On the
   await kirana(page, { width: 390, height: 844 })
   await page.locator('[data-tour="nav-grow"]').click()
   const sheet = await openBuyStock(page)
-  await sheet.getByRole('button', { name: 'Draft a reorder' }).click()
+  await sheet.getByRole('button', { name: 'Order more', exact: true }).click()
   const card = sheet.getByRole('article')
   await expect(card).toBeVisible({ timeout: 15_000 })
   const item = ((await card.getAttribute('aria-label')) ?? '').split(' from ')[0].trim()
@@ -363,7 +367,7 @@ test('Buy stock (fresh shop): an order with changes to check is one card in To d
   await kirana(page, { width: 390, height: 844 })
   await page.locator('[data-tour="nav-grow"]').click()
   const sheet = await openBuyStock(page)
-  await sheet.getByRole('button', { name: 'Draft a reorder' }).click()
+  await sheet.getByRole('button', { name: 'Order more', exact: true }).click()
   const card = sheet.getByRole('article')
   await expect(card).toBeVisible({ timeout: 15_000 })
   const item = ((await card.getAttribute('aria-label')) ?? '').split(' from ')[0].trim()
@@ -465,9 +469,9 @@ test('Grow (local shop): Get on Google is a row; old deep links and coach links 
   // tomorrow) open Buy stock and How much to make with its numbers.
   await page.goto('/')
   await page.getByRole('button', { name: 'Continue local preview' }).click()
-  for (const [target, label, dialog, shows] of [
-    ['supply', 'Buy stock', /^Buy stock/, 'Draft a reorder'],
-    ['plan', 'How much to make', 'How much to make', 'Change the numbers'],
+  for (const [target, label, dialog, shows, tab] of [
+    ['supply', 'Buy stock', /^Buy stock/, 'Order more', 'nav-shop'],
+    ['plan', 'How much to make', 'How much to make', 'Change the numbers', 'nav-grow'],
   ] as const) {
     await page.route('**/api/v1/coach/stream', (route) =>
       route.fulfill({ contentType: 'text/event-stream', body: streamAction(target, label) }),
@@ -477,7 +481,7 @@ test('Grow (local shop): Get on Google is a row; old deep links and coach links 
     await page.getByRole('button', { name: 'Send', exact: true }).click()
     const sheet = page.getByRole('dialog', { name: dialog })
     await expect(sheet).toBeVisible({ timeout: 15_000 })
-    await expect(page.locator('[data-tour="nav-grow"]')).toHaveAttribute('aria-current', 'page')
+    await expect(page.locator(`[data-tour="${tab}"]`)).toHaveAttribute('aria-current', 'page')
     await expect(sheet.getByRole('button', { name: shows }).first()).toBeVisible()
     if (target === 'plan')
       await expect(sheet.getByRole('button', { name: 'Change the numbers' })).toHaveAttribute(

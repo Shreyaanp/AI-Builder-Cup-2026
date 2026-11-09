@@ -35,6 +35,7 @@ import { SupplierTalk } from './SupplierTalk'
 import { LineAction } from '../v1/CollapsibleCard'
 import { Code } from './Code'
 import { ConfirmUndo } from './ConfirmUndo'
+import { ChangeAmount } from './ChangeAmount'
 import { useOrderChangeCopy } from './orderChangeCopy'
 import { useShowcaseCopy } from './showcaseCopy'
 import { agreedQuantity, orderLabel, orderTotal } from './orderFormat'
@@ -94,7 +95,7 @@ function why(order: PurchaseOrder, s: SupplyCopy, f: ReturnType<typeof useFormat
   const parts = [
     r.runs_out
       ? s.left(f.qty(r.stock), f.unit(r.unit), f.day(r.runs_out))
-      : r.method === 'none'
+      : r.method === 'none' && !r.owner_quantity
         ? s.noForecast
         : '',
     r.tier_min ? s.tier(f.qty(r.tier_min), f.unit(order.lines[0]?.unit ?? r.unit)) : '',
@@ -265,8 +266,9 @@ export function PurchaseOrderCard({
         </Typography>
         {draft && (
           <Typography variant="bodyMedium" color="text.secondary" sx={{ mt: 1 }}>
-            {order.reason.moq != null &&
-              `${s.moq}: ${f.qty(order.reason.moq)} ${f.unit(order.reason.unit)} · `}
+            {order.reason.moq
+              ? `${s.moq}: ${f.qty(order.reason.moq)} ${f.unit(order.reason.unit)} · `
+              : ''}
             {why(order, s, f)}
           </Typography>
         )}
@@ -286,6 +288,32 @@ export function PurchaseOrderCard({
           </Typography>
         )}
       </Box>
+
+      {draft && (
+        <ChangeAmount
+          key={order.version}
+          disabled={busy !== null}
+          rows={order.lines.map((line) => ({
+            key: line.line,
+            label: f.item(line.item),
+            quantity: line.quantity,
+            unit: line.unit,
+          }))}
+          onSave={async (changes) => {
+            let next: PurchaseOrder | null = order
+            for (const row of changes) {
+              if (!next) return false
+              next = await actions.fix(next, {
+                kind: 'quantity',
+                line: row.key,
+                value: row.quantity,
+                unit: row.unit,
+              })
+            }
+            return next !== null
+          }}
+        />
+      )}
 
       {draft && blocking.length > 0 && (
         <Stack spacing={2}>

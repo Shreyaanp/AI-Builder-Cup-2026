@@ -117,7 +117,8 @@ export function FindSupplier({ onStart }: { onStart: () => void }) {
         name="supply-amount"
         value={amount}
         onChange={(event) => setAmount(event.target.value)}
-        slotProps={{ htmlInput: { maxLength: 20 } }}
+        // Long enough for "2 crates (24 packets)": a cut-off amount lost its bracket (Ahmed, B7).
+        slotProps={{ htmlInput: { maxLength: 60 } }}
       />
       <Button
         type="submit"
