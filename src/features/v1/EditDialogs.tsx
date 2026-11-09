@@ -19,7 +19,11 @@ import {
   useTheme,
 } from '@mui/material'
 import type { Business, Product, Proposal } from './api'
-import { currencySymbol, shopCurrency, toMajor, toMinor } from './format'
+import { currencySymbol, formatShopPrice, shopCurrency, toMajor, toMinor } from './format'
+import { moneyLocale } from '../../region/region'
+import { readNumber } from './readNumber'
+import { numberForEditing } from './format'
+import { numberQuestion } from './numberCopy'
 import { useBackClose } from './backStack'
 import { GuidedDetails, type GuidedResult } from './GuidedDetails'
 import { useCopy } from './strings'
@@ -121,9 +125,12 @@ function ProductForm({ product }: { product: Product | null }) {
   const { api, active, openEditor, reload, review, setAvailability } = useWorkspace()
   const compact = useCompact()
   const currency = shopCurrency(active)
+  const numberLocale = moneyLocale(currency, locale) ?? locale
   const [initial] = useState(() => ({
     name: product?.name ?? '',
-    price: product ? String(toMajor(product.price, currency)) : '',
+    price: product
+      ? numberForEditing(toMajor(product.price, currency), numberLocale, 'money', currency)
+      : '',
     // A known legacy spelling ("pcs") opens as its unit; other free text stays until replaced.
     unit: product ? (unitKey(product.unit) ?? product.unit) : 'item',
     stock: product?.stock == null ? '' : String(product.stock),
@@ -178,7 +185,9 @@ function ProductForm({ product }: { product: Product | null }) {
   const [error, setError] = useState('')
   // One request at a time: repeated taps must not create competing proposals.
   const [busy, setBusy] = useState(false)
-  const price = Number(item.price)
+  // The app's one amount reader: "1,000" and "₹170/-" are what they say; "1,5" is asked about.
+  const priceReading = readNumber(item.price, numberLocale, currency, 'money')
+  const price = priceReading.ok ? priceReading.value : null
   /** The same saved answer Today's question writes (OB-239). It only saves: never a reorder. */
   async function chooseSource(next: 'made' | 'bought') {
     sourceTapped.current = true
@@ -214,7 +223,16 @@ function ProductForm({ product }: { product: Product | null }) {
   }
   async function submit() {
     if (!item.name.trim()) return setError(t.enterName)
-    if (!item.price.trim() || !Number.isFinite(price) || price < 0) return setError(t.enterPrice)
+    if (price === null) {
+      const money = (value: number) => formatShopPrice(toMinor(value, currency), currency, locale)
+      return setError(
+        !priceReading.ok && priceReading.reason === 'ambiguous'
+          ? numberQuestion(locale)
+              .replace('{a}', money(priceReading.options[0]))
+              .replace('{b}', money(priceReading.options[1]))
+          : t.enterPrice,
+      )
+    }
     if (!active || busy) return
     const count = item.stock.trim() ? Number(item.stock) : null
     setBusy(true)

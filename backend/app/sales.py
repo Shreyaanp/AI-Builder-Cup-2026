@@ -41,10 +41,14 @@ def daily_sales(rows: list[list[str]], mapping: ColumnMap, currency: str) -> lis
         try:
             day = date.fromisoformat(cell(row, mapping.date)[:10]).isoformat()
             item = cell(row, mapping.name).strip()
-            qty = number(cell(row, mapping.quantity)) if mapping.quantity is not None else 1
-            revenue = number(cell(row, mapping.total))
+            qty = (
+                number(cell(row, mapping.quantity), currency, "quantity")
+                if mapping.quantity is not None
+                else 1
+            )
+            revenue = number(cell(row, mapping.total), currency)
             if revenue is None and mapping.total is None:
-                price = number(cell(row, mapping.price))
+                price = number(cell(row, mapping.price), currency)
                 revenue = price * qty if price is not None and qty is not None else None
             if qty is None or revenue is None:
                 raise ValueError("Missing quantity or revenue")

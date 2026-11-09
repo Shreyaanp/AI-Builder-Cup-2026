@@ -51,7 +51,10 @@ export function Landing({ onPreview }: { onPreview: () => void }) {
           }}
         >
           <Stack spacing={3} sx={{ minWidth: 0, overflowWrap: 'anywhere' }}>
-            <Typography variant="labelLarge" sx={{ color: roles.primary }}>
+            <Typography
+              variant="bodyLarge"
+              sx={{ color: roles.primary, fontWeight: 500, textWrap: 'balance' }}
+            >
               {t.landingEyebrow}
             </Typography>
             <Typography
@@ -102,11 +105,11 @@ export function Landing({ onPreview }: { onPreview: () => void }) {
         component="footer"
         sx={{ ...section, pb: 'calc(24px + env(safe-area-inset-bottom))', textAlign: 'center' }}
       >
-        <Typography variant="bodySmall" color="text.secondary">
+        <Typography variant="bodyLarge" color="text.secondary">
           <Button
             type="button"
             variant="text"
-            sx={{ typography: 'bodySmall', py: 2 }}
+            sx={{ typography: 'bodyLarge', py: 2 }}
             onClick={() => setLegal('terms')}
           >
             {t.viewTerms}
@@ -115,7 +118,7 @@ export function Landing({ onPreview }: { onPreview: () => void }) {
           <Button
             type="button"
             variant="text"
-            sx={{ typography: 'bodySmall', py: 2 }}
+            sx={{ typography: 'bodyLarge', py: 2 }}
             onClick={() => setLegal('privacy')}
           >
             {t.viewPrivacy}
@@ -126,6 +129,9 @@ export function Landing({ onPreview }: { onPreview: () => void }) {
     </Box>
   )
 }
+
+/** One type role for every sign-in button, in both the local and the production branch. */
+const actionSx = { '&.MuiButton-sizeLarge': { typography: 'bodyLarge', fontWeight: 500 } } as const
 
 function SignInActions({
   onPreview,
@@ -138,31 +144,36 @@ function SignInActions({
   const identity = useIdentity()
   const demo = useDemoCopy()
   return (
-    <Stack spacing={1.5} sx={{ alignItems: { xs: 'stretch', sm: 'flex-start' } }}>
+    <Stack spacing={2} sx={{ alignItems: { xs: 'stretch', sm: 'flex-start' } }}>
       {identity.error && !compact && <Alert severity="error">{identity.error}</Alert>}
       {identity.mode === 'local' ? (
         <>
           {/* The closing CTA uses its own label so each action has a unique accessible name. */}
-          <Button variant="contained" size="large" onClick={onPreview}>
+          <Button variant="contained" size="large" sx={actionSx} onClick={onPreview}>
             {compact ? t.getStarted : t.continuePreview}
           </Button>
           {!compact && (
-            <Typography variant="bodySmall" color="text.secondary">
+            <Typography variant="bodyLarge" color="text.secondary">
               {t.previewNote}
             </Typography>
           )}
         </>
       ) : identity.status === 'error' ? (
-        <Button variant="contained" size="large" onClick={() => location.reload()}>
+        <Button variant="contained" size="large" sx={actionSx} onClick={() => location.reload()}>
           {t.retry}
         </Button>
       ) : (
         <>
-          <Button variant="contained" size="large" onClick={() => void identity.signIn()}>
+          <Button
+            variant="contained"
+            size="large"
+            sx={actionSx}
+            onClick={() => void identity.signIn()}
+          >
             {compact ? t.getStarted : t.signIn}
           </Button>
           {/* No account needed: the public demo shop is the way in for anyone just looking. */}
-          <Button variant="outlined" size="large" href="/demo">
+          <Button variant="outlined" size="large" sx={actionSx} href="/demo">
             {demo.tryDemo}
           </Button>
         </>
@@ -175,7 +186,7 @@ function Feature({ title, items }: { title: string; items: { icon: ReactNode; te
   const roles = useTheme().material
   return (
     <Box>
-      <Typography component="h2" variant="headlineSmall" sx={{ mb: 2.5 }}>
+      <Typography component="h2" variant="headlineSmall" sx={{ mb: 3 }}>
         {title}
       </Typography>
       <Stack component="ul" spacing={2} sx={{ m: 0, p: 0, listStyle: 'none' }}>
