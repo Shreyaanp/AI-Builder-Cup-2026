@@ -71,13 +71,17 @@ def daily_sales(rows: list[list[str]], mapping: ColumnMap, currency: str) -> lis
             if not item:
                 raise ValueError("item")
             field = "quantity"
-            qty = number(cell(row, mapping.quantity)) if mapping.quantity is not None else 1
+            qty = (
+                number(cell(row, mapping.quantity), currency, "quantity")
+                if mapping.quantity is not None
+                else 1
+            )
             if qty is None or qty < 0:
                 raise ValueError("quantity")
             field = "total"
-            revenue = number(cell(row, mapping.total))
+            revenue = number(cell(row, mapping.total), currency)
             if revenue is None and mapping.total is None:
-                price = number(cell(row, mapping.price))
+                price = number(cell(row, mapping.price), currency)
                 revenue = price * qty if price is not None else None
             if revenue is None:
                 raise ValueError("Missing revenue")

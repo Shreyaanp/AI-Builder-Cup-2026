@@ -256,7 +256,7 @@ async def analyze_export(
     if mapping.kind == "menu":
         currency = shop_currency(business["fields"])
         _, _, col_map = apply_mapping(mapping, headers, rows)
-        mapped_items, _ = menu_items(rows, col_map)
+        mapped_items, _ = menu_items(rows, col_map, currency)
         diff = compute_diff(context["inventory"], mapped_items, currency=currency)
 
     if readings:
@@ -384,7 +384,7 @@ async def build_import(
     if mapping.kind == "sales":
         sales_rows, currency_mismatches = matching_currency_rows(rows, col_map, currency)
         aggregates = daily_sales(sales_rows, col_map, currency) if sales_rows else []
-        summary = sales_summary(sales_rows, col_map)
+        summary = sales_summary(sales_rows, col_map, currency)
         if not aggregates:
             return {
                 "kind": "sales",
@@ -416,7 +416,7 @@ async def build_import(
         }
 
     # Menu export path
-    items, skipped = menu_items(rows, col_map)
+    items, skipped = menu_items(rows, col_map, currency)
     if not items:
         raise HTTPException(422, "NO_PRICED_ITEMS")
 
