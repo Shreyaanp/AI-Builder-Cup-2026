@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useRef, useState, type FormEvent } from 'react'
+import { Suspense, useRef, useState, type FormEvent } from 'react'
 import {
   Box,
   Button,
@@ -11,13 +11,15 @@ import {
   Typography,
   useTheme,
 } from '@mui/material'
-import { Mic, MicOff, ShoppingBasket } from 'lucide-react'
+import { Mic, ShoppingBasket } from 'lucide-react'
 import { useLocale } from '../../state/hooks'
 import { productFeminine, productName } from '../../i18n/productNames'
 import { useGrowCopy } from '../v1/growCopy'
 import { Sheet } from '../v1/Sheet'
 import { useTodayCopy } from '../v1/today/todayCopy'
 import { useTwoPathsCopy } from '../v1/twoPathsCopy'
+import { requestOpen } from '../v1/openRequest'
+import { useWorkspace } from '../v1/workspaceContext'
 import { unitChoices, useReadAmount } from './amount'
 import { useOrderChangeCopy } from './orderChangeCopy'
 import { useOrderMoreCopy } from './orderMoreCopy'
@@ -158,21 +160,6 @@ export function OrderMoreSheet({ ask, onClose }: { ask: OrderAsk | null; onClose
   )
 }
 
-type SpeechLike = {
-  lang: string
-  interimResults: boolean
-  onresult: ((event: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null
-  onend: (() => void) | null
-  onerror: (() => void) | null
-  start: () => void
-  stop: () => void
-}
-
-function speechRecognition(): (new () => SpeechLike) | null {
-  const w = window as unknown as Record<string, unknown>
-  return (w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null) as (new () => SpeechLike) | null
-}
-
 /**
  * The Buy stock box (Priya, 8 Nov): "butter, 2 kg", typed or said, even when the app thinks
  * nothing is needed. What was heard stays in the box to check before Order is tapped.
@@ -180,38 +167,27 @@ function speechRecognition(): (new () => SpeechLike) | null {
 export function OrderBox({
   onOrder,
   onAsk,
+  onLeave,
 }: {
   onOrder: (order: PurchaseOrder) => void
   onAsk: (ask: OrderAsk) => void
+  /** The sheet closes: the coach is listening instead. */
+  onLeave: () => void
 }) {
   const c = useOrderMoreCopy()
+  const ws = useWorkspace()
   const paths = useTwoPathsCopy()
   const grow = useGrowCopy()
-  const locale = useLocale()
   const send = useOrderText()
   const [text, setText] = useState('')
   const [busy, setBusy] = useState(false)
   const [note, setNote] = useState('')
-  const [listening, setListening] = useState(false)
-  const speech = useRef<SpeechLike | null>(null)
   const field = useRef<HTMLInputElement>(null)
-  const Speech = speechRecognition()
-  useEffect(() => () => speech.current?.stop(), [])
-  function listen() {
-    if (listening) {
-      speech.current?.stop()
-      return
-    }
-    if (!Speech) return
-    const heard = new Speech()
-    heard.lang = locale.startsWith('hi') ? 'hi-IN' : 'en-IN'
-    heard.interimResults = false
-    heard.onresult = (event) => setText(event.results[0]?.[0]?.transcript ?? '')
-    heard.onend = () => setListening(false)
-    heard.onerror = () => setListening(false)
-    speech.current = heard
-    setListening(true)
-    heard.start()
+  // Said, not typed: the coach's own voice, which drafts the same order (shared voice rule).
+  function talk() {
+    requestOpen('talk')
+    onLeave()
+    ws.go('coach')
   }
   async function submit(event: FormEvent) {
     event.preventDefault()
@@ -244,7 +220,7 @@ export function OrderBox({
           fullWidth
           name="order-text"
           label={paths.supplierNeed}
-          helperText={listening ? c.listening : c.boxExample}
+          helperText={c.boxExample}
           value={text}
           onChange={(event) => setText(event.target.value)}
           slotProps={{
@@ -253,23 +229,20 @@ export function OrderBox({
             inputLabel: {
               sx: { '&:not(.MuiInputLabel-shrink)': { maxWidth: 'calc(100% - 72px)' } },
             },
-            input: Speech
-              ? {
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <IconButton
-                        edge="end"
-                        aria-label={c.say}
-                        aria-pressed={listening}
-                        onClick={listen}
-                        sx={{ width: 48, height: 48 }}
-                      >
-                        {listening ? <MicOff size={20} /> : <Mic size={20} />}
-                      </IconButton>
-                    </InputAdornment>
-                  ),
-                }
-              : undefined,
+            input: {
+              endAdornment: (
+                <InputAdornment position="end">
+                  <IconButton
+                    edge="end"
+                    aria-label={c.say}
+                    onClick={talk}
+                    sx={{ width: 48, height: 48 }}
+                  >
+                    <Mic size={20} />
+                  </IconButton>
+                </InputAdornment>
+              ),
+            },
           }}
         />
         <Button

@@ -211,6 +211,14 @@ test('OB-339 Find a supplier keeps brackets intact in the chat line', async ({ p
   ).toBeVisible()
 })
 
+test('OB-339 the mic in Buy stock hands over to the coach', async ({ page }) => {
+  await openDemo(page)
+  const sheet = await openBuyStock(page)
+  await sheet.getByRole('button', { name: 'Say what you need' }).click()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await expect(page.locator('[data-tour="nav-coach"]')).toHaveAttribute('aria-current', 'page')
+})
+
 test('OB-339 Buy stock lives on Home and Shop, not Grow', async ({ page }) => {
   await openDemo(page, 'en', 360, 800)
   await page.getByRole('button', { name: 'Buy stock', exact: true }).click({ timeout: 20_000 })

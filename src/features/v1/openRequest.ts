@@ -4,7 +4,7 @@
  * with the numbers open, "supply" opens Buy stock). The tab reads it when it mounts and clears
  * it once shown, so Back and later visits open the plain tab.
  */
-export type OpenRequest = 'radar' | 'rider' | 'plan' | 'stock'
+export type OpenRequest = 'radar' | 'rider' | 'plan' | 'stock' | 'talk'
 let pending: OpenRequest | null = null
 
 export function requestOpen(target: OpenRequest) {

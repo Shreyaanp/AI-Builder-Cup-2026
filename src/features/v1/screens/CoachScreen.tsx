@@ -112,7 +112,7 @@ import { sendPrepared, useCardFold, type ReplyState } from '../chatCards'
 import { cardSummary, summaryCopy, type SummaryInput } from '../cardSummary'
 import { useNextStepsCopy } from '../nextStepsCopy'
 import { asCoachAction, NEEDS_TAP, type CoachAction } from '../coachAction'
-import { requestOpen } from '../openRequest'
+import { clearOpen, requestOpen, wantsOpen } from '../openRequest'
 import type { Destination } from '../workspaceContext'
 import { TodayChips } from '../../owner-tools/CoachGuide'
 import { useSimpleCopy } from '../today/simpleCopy'
@@ -1145,6 +1145,17 @@ function CoachScreen({
       }),
     openCloseDay: () => setCloseDayOpen(true),
   }
+  // Buy stock's mic: the coach listens, with the same order tools as typing.
+  useEffect(() => {
+    if (!visible || !wantsOpen('talk')) return
+    clearOpen('talk')
+    void restored.current.then(() => {
+      track('voice_used')
+      return voice.start(session.current)
+    })
+    // Only when the tab opens; voice changes every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible])
   const lastIsReply =
     messages.at(-1)?.role === 'assistant' && !liveReply && !reveal.active() && busy === 'idle'
   const canSend = Boolean(note.trim()) && busy === 'idle' && voice.state === 'idle'

@@ -281,7 +281,7 @@ function BuyStockSheet({
                     onCancel={stopAsking}
                   />
                 ) : (
-                  <OrderBox onOrder={showDraft} onAsk={setAsk} />
+                  <OrderBox onOrder={showDraft} onAsk={setAsk} onLeave={close} />
                 ))}
               {!drill && <ToOrderRows asks={stock.toOrder} onAsk={setAsk} />}
               {!drill && <RunsOutCard onAct={close} />}
