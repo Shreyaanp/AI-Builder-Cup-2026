@@ -156,7 +156,11 @@ for (const [language, chip, title, sold] of [
     await close(page, id, 1, PRIYA)
     await open(page, language)
     await send(page, chip)
-    await expect(page.getByRole('dialog', { name: title })).toBeVisible({ timeout: 15_000 })
+    const sheet = page.getByRole('dialog', { name: title })
+    await expect(sheet).toBeVisible({ timeout: 15_000 })
+    await expect(sheet).toContainText(sold)
+    // The plain list, exactly as the chip opens it: the numbers stay closed.
+    await expect(sheet.locator('button[aria-expanded]')).toHaveAttribute('aria-expanded', 'false')
   })
 }
 

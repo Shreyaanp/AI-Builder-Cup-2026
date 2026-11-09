@@ -295,7 +295,7 @@ def make_list(ctx: MerchantContext, text: str) -> InstantResult | None:
     if not MAKE_LIST.search(message):
         return None
     reply = "Here is how much to make." if LATIN.match(message) else "यह रहा कितना बनाना है।"
-    return _screen(ctx, "plan", reply)
+    return _screen(ctx, "make", reply)
 
 
 def _read_intent(ctx: MerchantContext, intent: str) -> InstantResult | None:

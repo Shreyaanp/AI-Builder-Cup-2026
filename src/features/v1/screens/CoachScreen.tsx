@@ -204,6 +204,7 @@ const DESTINATIONS: Partial<Record<CoachAction['target'], Destination>> = {
   privacy: 'privacy',
   // How much to make (numbers open) and Buy stock open over Grow (simplify batch 4b).
   plan: 'grow',
+  make: 'grow',
   supply: 'grow',
   // The playbook sheet lives under Your data.
   playbook: 'privacy',
@@ -215,7 +216,8 @@ const DESTINATIONS: Partial<Record<CoachAction['target'], Destination>> = {
 }
 /** Screens that open over or inside the destination tab (simplify batch 2). */
 function openInside(target: CoachAction['target']) {
-  if (target === 'radar' || target === 'rider' || target === 'plan') requestOpen(target)
+  if (target === 'radar' || target === 'rider' || target === 'plan' || target === 'make')
+    requestOpen(target)
   if (target === 'supply') requestOpen('stock')
   if (target === 'payments' || target === 'rider') openOwnerFeature('payments')
 }
