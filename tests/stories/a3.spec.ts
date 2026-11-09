@@ -17,6 +17,9 @@ test('A3 · independent customer context polls visible prices and availability',
   page,
   browser,
 }) => {
+  // About 20 s locally, half of it fixed waits (two 5.2 s poll windows, a 4.3 s hidden-tab
+  // wait); the 30 s default left too little room on slower CI runners (OB-233).
+  test.setTimeout(90_000)
   await localOnly(page)
   await enter(page)
   await seedShop(page)
