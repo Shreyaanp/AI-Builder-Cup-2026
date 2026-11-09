@@ -11,6 +11,7 @@ from typing import Any
 
 from google.genai import types
 
+from .demo_coach_words import speaks_hindi
 from .money import to_minor
 from .owner_order_words import known_supply, order_asked
 from .sourcing import money_text
@@ -26,7 +27,6 @@ REORDER_ITEM = re.compile(
     r"([^\W\d_]+(?:\s[^\W\d_]+)?)",
     re.I,
 )
-HINDI = re.compile(r"[ऀ-ॿ]")
 _NOT_ORDERED = "Okay, I won't order that. Nothing was drafted."
 _NOT_ORDERED_HI = "ठीक है, कुछ नहीं मँगाया।"
 # Approving a draft far beyond what the shop uses (OB-242), in each app locale; others get
@@ -256,7 +256,7 @@ def supply_call(
     asked = order_asked(text)
     if asked and (asked.outright or known_supply(asked.item) or _sells(ctx, asked.item)):
         if asked.declined:
-            return types.Part(text=_NOT_ORDERED_HI if HINDI.search(text) else _NOT_ORDERED)
+            return types.Part(text=_NOT_ORDERED_HI if speaks_hindi(text) else _NOT_ORDERED)
         if not (asked.needs_known_supply and _sells(ctx, asked.item)):
             return call(
                 "draft_reorder",

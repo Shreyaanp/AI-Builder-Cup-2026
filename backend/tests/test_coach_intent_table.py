@@ -14,8 +14,9 @@ import pytest
 
 from app.agent import ui_language, upkeep_call
 from app.demo_coach import FALLBACK
-from app.demo_coach_words import FALLBACK_HI, read_changes
+from app.demo_coach_words import FALLBACK_HI, _money, read_changes
 from app.instant import route
+from app.merchant import BusinessFields, ProductFields, ProposalRequest
 from app.owner_order_words import known_supply, order_asked
 from app.supply_offline import supply_call
 from tests.test_coach_owner_words import demo, no_purchase, reply_of  # noqa: F401
@@ -43,6 +44,7 @@ SOLD_OUT = [
     ("samose bik gaye", "en"),
     ("samosa nahi bacha", "en"),
     ("samosa sold out ho gaya", "en"),
+    ("samosa khatam kar do na", "en"),  # A closing "na" is please, not no.
     ("samosa sold out hai", "en"),
     ("aaj samosa khatam hai", "en"),
     # Hindi, with every spelling of the same words
@@ -58,6 +60,7 @@ SOLD_OUT = [
     ("समोसा नहीं बचा", "hi"),
     ("समोसा सोल्ड आउट", "hi"),
     ("समोसा सोल्ड आउट हो गया", "hi"),
+    ("समोसा खत्म कर दो ना", "hi"),
 ]
 
 # Masala chai is ₹20 on the demo shop, so ₹18 is a real change.
@@ -75,6 +78,8 @@ TWO_IN_ONE = [
     ("चाय 18 रुपये कर दो और समोसे ख़त्म", "hi"),
     ("चाय का दाम 18 कर दो, समोसा खत्म", "hi"),
     ("समोसा खत्म और चाय 18 रुपये", "hi"),
+    ("chai 18 rupaye kar do na, samosa khatam", "en"),
+    ("चाय 18 रुपये कर दो ना, समोसा खत्म", "hi"),
 ]
 
 # (sentence, app language, the amount the order must be for). 30 is the demo's last milk order.
@@ -90,6 +95,11 @@ MILK_ORDERS = [
     ("milk order karo", "en", 30),
     ("milk order kar do", "en", 30),
     ("milk mangao", "en", 30),
+    ("doodh mangao na", "en", 30),  # The review's three: a closing "na" is please.
+    ("milk order karo na", "en", 30),
+    ("दूध मँगाओ ना", "hi", 30),
+    ("doodh mangao na please", "en", 30),
+    ("doodh ka order karo na", "en", 30),
     ("milk mangwa do", "en", 30),
     ("doodh mangao", "en", 30),
     ("doodh mangana hai", "en", 30),
@@ -118,9 +128,12 @@ DONT_ORDER = [
     ("milk order mat karo", "en", "Okay, I won't order milk."),
     ("doodh mat mangao", "en", "Okay, I won't order milk."),
     ("doodh nahi mangana", "en", "Okay, I won't order milk."),
+    ("doodh na mangao", "en", "Okay, I won't order milk."),  # "Na" before the verb is a no.
+    ("doodh mat mangao na", "en", "Okay, I won't order milk."),
     ("दूध मत मँगाओ", "hi", "दूध का ऑर्डर नहीं बनाया"),
     ("दूध नहीं मँगाना", "hi", "दूध का ऑर्डर नहीं बनाया"),
     ("दूध मत मंगाओ", "hi", "दूध का ऑर्डर नहीं बनाया"),
+    ("दूध ना मँगाओ", "hi", "दूध का ऑर्डर नहीं बनाया"),
 ]
 
 DONT_CHANGE = [
@@ -131,6 +144,8 @@ DONT_CHANGE = [
     ("समोसा खत्म नहीं हुआ", "hi"),
     ("क्या समोसा खत्म है?", "hi"),
     ("kya samosa khatam hai?", "en"),
+    ("samosa khatam hai na", "en"),  # After "hai", "na" asks: "it's finished, right?"
+    ("समोसा खत्म है ना", "hi"),
     ("is samosa sold out?", "en"),
 ]
 
@@ -498,3 +513,109 @@ def test_a_price_in_another_currency_is_never_read(message, currency, understood
     """Never converted or guessed, on the demo or the live coach, in any language."""
     items = [{"name": "Samosa", "price": 2000, "unit": "piece"}]
     assert bool(read_changes(message, items, {}, currency)) is understood
+
+
+# --- Second review: another currency is asked about, replies use the shop's own -----------------
+
+
+@pytest.fixture
+def sgd_shop(ctx):  # noqa: F811
+    proposal = ctx.store.propose(
+        "alice",
+        ProposalRequest(
+            kind="business",
+            business=BusinessFields(
+                name="Ah Huat Kopi",
+                category="Tea stall",
+                location="Tiong Bahru",
+                hours="7am-9pm",
+                currency="SGD",
+                timezone="Asia/Singapore",
+            ),
+            products=[
+                ProductFields(name="Kopi", price=180, unit="cup"),
+                ProductFields(name="Samosa", price=250, unit="piece"),
+            ],
+        ),
+    )
+    ctx.business_id = ctx.store.commit("alice", proposal["id"], proposal["digest"])["business_id"]
+    return ctx
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        "Kopi is 20 rupees now",
+        "Kopi is ₹20 now",
+        "Kopi is 20 rupees now, samosa sold out",  # Never a card that drops the price.
+        "kopi 20 rupaye kar do",
+        "samosa 20 rupaye kar do na",
+    ],
+)
+def test_a_price_in_rupees_in_a_singapore_shop_is_asked_about(sgd_shop, message):
+    result = run(message, sgd_shop)
+    assert result and not result.events, message
+    assert result.reply == "Your prices are in S$. What price should I set, in S$?"
+
+
+def test_a_hindi_owner_is_asked_in_hindi_in_the_shops_currency(sgd_shop):
+    result = run("समोसा अब 20 रुपये का है", sgd_shop)
+    assert result and not result.events
+    assert result.reply == "आपकी दुकान के दाम S$ में हैं। नया दाम S$ में कितना रखूँ?"
+
+
+def test_a_dollar_price_in_a_rupee_shop_is_asked_about(shop):  # noqa: F811
+    for message in ("Samosa is 2 dollars now", "Samosa is $2 now", "samosa two dollars"):
+        result = run(message, shop)
+        assert result and not result.events, message
+        assert result.reply == "Your prices are in ₹. What price should I set, in ₹?"
+
+
+def test_a_question_about_another_currency_changes_nothing_and_asks_nothing(sgd_shop):
+    assert upkeep_call("How much is kopi in 20 rupees?", sgd_shop) is None
+    assert upkeep_call("don't make kopi 20 rupees", sgd_shop) is None
+
+
+def test_the_hindi_reply_uses_the_shops_own_currency(sgd_shop):
+    token = ui_language.set("hi")
+    try:
+        result = run("समोसा अब 3 का है", sgd_shop)
+    finally:
+        ui_language.reset(token)
+    assert result and "S$3" in result.reply and "₹" not in result.reply
+    assert snapshot(result) == {"Samosa": (300, True)}
+
+
+def test_the_demos_replies_use_the_shops_own_currency():
+    assert _money(1000.5, "INR") == "₹1,000.50"
+    assert _money(100000, "INR") == "₹100,000"
+    assert _money(12.5, "SGD") == "S$12.50"
+
+
+def test_a_live_hinglish_dont_is_answered_in_the_hindi_app(shop, hindi_app):  # noqa: F811
+    part = supply_call("milk order mat karo", shop, [])
+    assert part and part.text == "ठीक है, कुछ नहीं मँगाया।"
+
+
+def test_nothing_to_change_is_not_a_card_that_says_no_change(shop):  # noqa: F811
+    assert run("samosa 20 rupaye", shop) is None  # Samosa is already ₹20.
+
+
+def test_half_a_sentence_is_never_prepared(shop):  # noqa: F811
+    """ "Chai" is not a saved name here: the price's item is unclear, so the model asks."""
+    assert run("chai aur samosa 25 rupaye", shop) is None
+
+
+def test_one_verb_covers_the_shops_one_chai_too(shop):  # noqa: F811
+    assert snapshot(run("chai aur samosa khatam", shop)) == {
+        "Masala chai": (1500, False),
+        "Samosa": (2000, False),
+    }
+
+
+@pytest.mark.parametrize(
+    "message", ["cheeni ki order karo", "ande ke order kar do", "doodh ka order karo"]
+)
+def test_hinglish_order_takes_every_gender_of_ka(message):
+    asked = order_asked(message)
+    assert asked and known_supply(asked.item) and not asked.declined

@@ -472,8 +472,14 @@ def details_call(question: str, ctx: Any) -> types.Part | None:
 def upkeep_call(question: str, ctx: Any) -> types.Part | None:
     """Daily upkeep by saved name, else in the owner's own words (Hindi, Hinglish, "chai" for the
     shop's one chai): the sentences the public demo reads too (OB-261, OB-262)."""
-    from .demo_coach_words import live_changes
+    from .demo_coach_words import live_changes, live_foreign_price_question
 
+    try:
+        ask = live_foreign_price_question(question, ctx)
+    except Exception:
+        return None
+    if ask:
+        return types.Part(text=ask)
     named = _upkeep_by_saved_name(question, ctx)
     if named is not None:
         return named
@@ -507,12 +513,16 @@ def _upkeep_by_saved_name(question: str, ctx: Any) -> types.Part | None:
     names = sorted({p["name"] for p in inventory}, key=len, reverse=True)
     items: dict[str, dict[str, object]] = {}
     bare_names: list[str] = []
+    tails = {name.casefold().split()[-1] for name in names}
     for clause in re.split(r"[,;.\n]|\band\b|\baur\b|\bbut\b", question, flags=re.I):
         lowered = clause.casefold()
         if re.search(CHANGE_NEGATED, lowered):
             return None
         name = next((n for n in names if n.casefold() in lowered), None)
         if not name:
+            # "chai aur samosa 20 rupaye" with no item called Chai: never a card for half of it.
+            if any(word in tails for word in re.findall(r"[^\W\d_]+", lowered)):
+                return None
             # "Chai is 20 rupees now, samosa sold out" with no item called Chai: a card for the
             # rest would silently drop that change, so the coach model reads it (OB-262).
             if re.search(rf"\d|\b(?:{SOLD_OUT}|{BACK})\b|\bnahin?\s+(?:hai|bacha)\b", lowered):
@@ -538,7 +548,7 @@ def _upkeep_by_saved_name(question: str, ctx: Any) -> types.Part | None:
             if re.search(rf"(?<!\w)(?:{pattern})(?!\w)", rest)
         ]
         if named and not any(currency in codes for codes in named):
-            continue  # "two dollars" for a rupee shop: leave it to the owner, never guess
+            return None  # "two dollars" for a rupee shop: never guessed, never dropped
         number = re.search(r"(\d+(?:[.,]\d{1,3})?)", rest)
         word = next(
             (NUMBER_WORDS[w] for w in re.findall(r"[a-z]+", rest) if w in NUMBER_WORDS), None

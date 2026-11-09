@@ -24,9 +24,11 @@ from .demo_coach_words import HI_PRICE_CUE, HINDI, bare, speaks_hindi
 from .demo_coach_words import PRICE_CUE as OWNER_PRICE_CUE
 from .demo_item_names import hindi_item
 from .discover import open_now
+from .money import to_minor
 from .owner_order_words import order_asked
 from .region import shop_currency, shop_zone
 from .rescue import local_now
+from .sourcing import money_text
 from .voice_tools import SCREENS, get_customer_messages, open_screen, set_open_today
 
 if TYPE_CHECKING:
@@ -399,8 +401,11 @@ def _upkeep(ctx: MerchantContext, text: str) -> InstantResult | None:
     from .agent import upkeep_call
 
     call = upkeep_call(text, ctx)
-    if call is None or not call.function_call:
+    if call is None:
         return None
+    if not call.function_call:
+        # A price said in another currency: the one question, never a card.
+        return InstantResult("upkeep", call.text) if call.text else None
     items = (call.function_call.args or {})["items"]
     words = bare(text)
     if any("price" in item for item in items) and not (
@@ -410,9 +415,12 @@ def _upkeep(ctx: MerchantContext, text: str) -> InstantResult | None:
     result = propose_products(items)
     if result.get("status") != "needs_review":
         return None  # let the model repair or ask
+    if not result.get("changes"):
+        return None  # Nothing would change: "prepared: no change" helps nobody.
     if speaks_hindi(text):
+        currency = shop_currency(ctx.store.context(ctx.uid, ctx.business_id)["business"])
         lines = "; ".join(
-            f"{hindi_item(item['name'])} ₹{item['price']:g}"
+            f"{hindi_item(item['name'])} {money_text(to_minor(item['price'], currency), currency)}"
             if "price" in item
             else f"{hindi_item(item['name'])} "
             + ("फिर से उपलब्ध" if item.get("available") else "आज के लिए ख़त्म")

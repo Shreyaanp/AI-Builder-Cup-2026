@@ -10,7 +10,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-from .demo_coach_words import bare
+from .demo_coach_words import bare, without_polite_na
 from .demo_item_names import HINDI_ITEMS, item_named_in
 from .sourcing import SYNONYMS
 
@@ -70,7 +70,7 @@ ORDER = re.compile(
     + POLITE
 )
 HINGLISH_VERB = (
-    r"(?:ka\s+)?order\s+(?:karo|kar\s*do|kijiye|karna(?:\s+hai)?|karni(?:\s+hai)?|de\s+do"
+    r"(?:(?:ka|ki|ke)\s+)?order\s+(?:karo|kar\s*do|kijiye|karna(?:\s+hai)?|karni(?:\s+hai)?|de\s+do"
     r"|laga\s+do|lagao)"
     r"|ma?ng[wv]?a+(?:o|\s*do|iye|ye|na(?:\s+hai)?|ni(?:\s+hai)?|\s+lo|\s+dena)"
     r"|chahiye|lana\s+hai|le\s+aao|kharidna\s+hai"
@@ -96,7 +96,8 @@ HINDI = re.compile(
     + AFTER_ITEM
     + rf"(?:\s+(?:फिर\s+से|दोबारा))?\s+(?:{HINDI_VERB}){POLITE_HI}"
 )
-# A "don't" about the order. Removed before reading, so "milk order mat karo" reads as an order
+# A "don't" about the order ("na" only before the verb: a closing "na" is already gone, as it
+# means please). Removed before reading, so "milk order mat karo" reads as an order
 # the owner does not want, not as an order for something called "mat".
 DONT_WORDS = re.compile(
     r"\b(?:don'?t|do\s+not|never|mat|nahi|nahin|na)\b\s*|(?<!\S)(?:मत|नहीं|ना)(?!\S)\s*"
@@ -132,7 +133,7 @@ def known_supply(said: str) -> str | None:
 
 def order_asked(question: str) -> OrderAsk | None:
     """The order this sentence asks for, or None when it asks for none."""
-    text = bare(question).replace("ँ", "ं")
+    text = without_polite_na(bare(question)).replace("ँ", "ं")
     without_dont = DONT_WORDS.sub("", text).strip()
     declined = without_dont != text
     found = None

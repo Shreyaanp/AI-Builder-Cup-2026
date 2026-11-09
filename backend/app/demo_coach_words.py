@@ -38,7 +38,8 @@ SOLD = (
 )
 SOLD_TAIL = (
     r"(?:\s*(?:hogaya|hogya|hogaye|hogye|hogayi|hogyi)"
-    r"|\s+(?:ho|hai|hain|gaya|gya|gaye|gye|gayi|gyi|gai|for\s+today|today|aaj|now|ab|already|ji))*"
+    r"|\s+(?:ho|hai|hain|gaya|gya|gaye|gye|gayi|gyi|gai|for\s+today|today|aaj|now|ab|already|ji"
+    r"|karo|kar\s*do))*"
 )
 SOLD_OUT = re.compile(
     rf"{LEAD}(?P<name>{NAME})\s+(?:(?:is|are|as|ab|aaj|today|now|all|sab|pura|poora)\s+)*"
@@ -78,7 +79,7 @@ HI_LEAD = r"(?:(?:आज|अब|मेरा|मेरी|मेरे)\s+)*"
 HI_SOLD = r"(?:खत्म|खतम|समाप्त|सोल्ड\s*आउट|नहीं\s+है|नहीं\s+बचा|नहीं\s+बचे|नहीं\s+बची|बिक\s+ग(?:य[ाेी]|ई|ए))"
 HI_SOLD_OUT = re.compile(
     rf"{HI_LEAD}(?P<name>{HI_NAME})\s+(?:(?:आज|अब|सब|पूरा|पूरे)\s+)*{HI_SOLD}"
-    r"(?:\s+(?:हो|गया|गए|गये|गयी|गई|है|हैं|चुका|चुके|चुकी|आज|अब))*"
+    r"(?:\s+(?:हो|गया|गए|गये|गयी|गई|है|हैं|चुका|चुके|चुकी|आज|अब|करो|कर\s+दो))*"
 )
 HI_BACK = re.compile(rf"{HI_LEAD}(?P<name>{HI_NAME})\s+(?:फिर\s+से|वापस)\s+(?:है|हैं|आ\s+गय[ाेी])")
 HI_PRICE = re.compile(
@@ -88,6 +89,12 @@ HI_PRICE = re.compile(
     r"(?:\s+(?:की|का|के|है|हैं|हो|गई|गयी|गया|कर|दो|दें|करो|अब))*"
 )
 HI_PRICE_CUE = re.compile(r"अब|कीमत|दाम|भाव|रेट|रुपय|रुपए|रूपय|रु|₹|/-")
+# "Doodh mangao na", "दूध मँगाओ ना": at the end of a clause "na" means please, not no. After "hai"
+# it asks ("samosa khatam hai na?"); before the verb it is a real no ("doodh na mangao").
+POLITE_NA = re.compile(
+    r"(?<!hai)(?<!hain)(?<!है)(?<!हैं)\s+(?:na|ना)"
+    r"(?=(?:\s+(?:please|pls|ji|bhai|जी|भाई))*\s*(?:[,;।\n]|$))"
+)
 # "No samosa today" says sold out with a "no" that is not a "don't".
 NO_MORE = re.compile(rf"no(?:\s+more)?\s+(?P<name>{NAME})(?:\s+(?:today|left|aaj))?")
 # A question or a "not" is never a change ("kya samosa khatam hai", "samosa not sold out").
@@ -191,6 +198,11 @@ def bare(text: str) -> str:
     text = unicodedata.normalize("NFD", text.replace("’", "'")).replace("़", "")
     text = unicodedata.normalize("NFC", text).translate(DEVANAGARI_DIGITS).casefold()
     return re.sub(r"[\s.!?।]+$", "", " ".join(text.split()))
+
+
+def without_polite_na(text: str) -> str:
+    """The sentence with its polite closing "na" taken off (on bare() text)."""
+    return POLITE_NA.sub("", text)
 
 
 def speaks_hindi(question: str) -> bool:
@@ -300,8 +312,11 @@ def menu_item(
     return max(tails, key=lambda item: sold.get(item["name"], 0), default=None)
 
 
-def _money(amount: float) -> str:
-    return f"₹{amount:g}"
+def _money(amount: float, currency: str) -> str:
+    from .money import to_minor
+    from .sourcing import money_text
+
+    return money_text(to_minor(amount, currency), currency)
 
 
 Change = tuple[str, dict[str, Any], float | None]
@@ -316,8 +331,44 @@ def _another_currency(text: str, currency: str | None) -> bool:
 
     table = {**CURRENCY_WORDS, RUPEE_WORDS: RUPEE_SHOPS}
     return bool(currency) and any(
-        currency not in codes and re.search(rf"(?<!\w)(?:{words})(?!\w)", text, re.I)
+        currency not in codes and re.search(rf"(?<![a-zऀ-ॿ])(?:{words})(?![a-zऀ-ॿ])", text, re.I)
         for words, codes in table.items()
+    )
+
+
+def foreign_price_question(
+    question: str, inventory: list[dict[str, Any]], currency: str | None
+) -> str | None:
+    """One short question when a price for a saved item is said in another currency: it is never
+    applied, converted or dropped, and nothing else in the sentence is half-done."""
+    from .agent import NUMBER_WORDS
+    from .sourcing import SYMBOLS
+
+    text = without_polite_na(bare(question))
+    words = text.split()
+    if (
+        "?" in question
+        or ASKED.match(text)
+        or NEGATION.search(text)
+        or not currency
+        or not _another_currency(text, currency)
+        or not (re.search(r"\d", text) or any(word in NUMBER_WORDS for word in words))
+        or not any(menu_item(word, inventory, {}) for word in words)
+    ):
+        return None
+    symbol = SYMBOLS.get(currency, currency)
+    if speaks_hindi(question):
+        return f"आपकी दुकान के दाम {symbol} में हैं। नया दाम {symbol} में कितना रखूँ?"
+    return f"Your prices are in {symbol}. What price should I set, in {symbol}?"
+
+
+def live_foreign_price_question(question: str, ctx: Any) -> str | None:
+    """The same question for the real coach's shop."""
+    from .coordinator import shop_currency
+
+    context = ctx.store.context(ctx.uid, ctx.business_id)
+    return foreign_price_question(
+        question, context["inventory"], shop_currency(context["business"])
     )
 
 
@@ -330,7 +381,7 @@ def read_changes(
 ) -> list[Change] | None:
     """Every change one message says, as (kind, saved item, new price); None unless all of it
     is understood, so a change is never half-made."""
-    text = bare(question)
+    text = without_polite_na(bare(question))
     if no_more := NO_MORE.fullmatch(text):
         text = f"{no_more['name']} sold out"
     if "?" in question or ASKED.match(text) or NEGATION.search(text):
@@ -396,6 +447,8 @@ def owner_changes(ctx: Any, question: str) -> list[StreamEvent] | None:
     sold: dict[str, float] = {}
     for row in ctx.store.sales_history(ctx.uid, ctx.business_id):
         sold[row["item"]] = sold.get(row["item"], 0) + float(row["quantity"])
+    if ask := foreign_price_question(question, inventory, currency):
+        return [_reply(ask)]
     said = read_changes(question, inventory, sold, currency)
     if not said:
         return None
@@ -438,11 +491,13 @@ def owner_changes(ctx: Any, question: str) -> list[StreamEvent] | None:
             if not 0 < price <= 100_000:
                 return None
             if price == old:
-                same_en.append(f"The demo price for {name} is {_money(old)}. Nothing changes.")
-                same_hi.append(f"डेमो में {hi} की कीमत पहले से {_money(old)} है।")
+                same_en.append(
+                    f"The demo price for {name} is {_money(old, currency)}. Nothing changes."
+                )
+                same_hi.append(f"डेमो में {hi} की कीमत पहले से {_money(old, currency)} है।")
                 continue
             change.price = price
-            lines_hi.append(f"{hi} {_money(old)} → {_money(price)}")
+            lines_hi.append(f"{hi} {_money(old, currency)} → {_money(price, currency)}")
         else:
             available = kind == "back"
             if (item.get("available") is not False) == available:
@@ -665,20 +720,21 @@ def sales_today(ctx: Any, question: str) -> list[StreamEvent] | None:
     before, before_money = day(today - timedelta(days=1))
     if speaks_hindi(question):
         now_hi = (
-            f"आज अब तक डेमो में {sold:g} चीज़ें बिकीं, ₹{money:,.0f} की।"
+            f"आज अब तक डेमो में {sold:g} चीज़ें बिकीं, {_money(money, currency)} की।"
             if sold
             else "आज की डेमो बिक्री अभी सेव नहीं हुई है।"
         )
-        text_hi = f"{now_hi} कल: {before:g} चीज़ें, ₹{before_money:,.0f}। {next_line_hi('insights')}"
+        yesterday = _money(before_money, currency)
+        text_hi = f"{now_hi} कल: {before:g} चीज़ें, {yesterday}। {next_line_hi('insights')}"
         return [_reply(text_hi)]
     now_en = (
-        f"Today's demo sales so far: {sold:g} items for ₹{money:,.0f}."
+        f"Today's demo sales so far: {sold:g} items for {_money(money, currency)}."
         if sold
         else "Today's demo sales are not saved yet; they are added when you close the day."
     )
     return [
         _reply(
-            f"{now_en} Yesterday: {before:g} items for ₹{before_money:,.0f}. "
+            f"{now_en} Yesterday: {before:g} items for {_money(before_money, currency)}. "
             + next_line("insights")
         )
     ]
