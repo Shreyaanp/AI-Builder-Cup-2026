@@ -205,6 +205,8 @@ export const hi: Copy = {
   soldOutToday: 'आज खत्म हुआ',
   soldOutCount: (count: number) => (count ? `${count} खत्म` : 'सब उपलब्ध'),
   soldOutHint: 'खत्म सामान का स्विच बंद करें। ग्राहक तुरंत देखेंगे।',
+  soldOutHintHidden:
+    'खत्म सामान का स्विच बंद करें। दुकान ग्राहकों को दिखने लगे, तब वे इसे देखेंगे।',
   shared: 'शेयर किया गया',
   notShared: 'शेयर नहीं किया',
   messages: 'संदेश',
@@ -349,6 +351,9 @@ export const hi: Copy = {
   customerPageOff: 'चालू करके लिंक पाएँ। ग्राहक मेन्यू, दाम और समय देख सकेंगे।',
   customerPageOn: 'इस लिंक से ग्राहक दुकान और ताज़ा दाम देखेंगे।',
   pageSwitch: 'ग्राहक पेज शेयर करें',
+  liveSwitch: 'ग्राहक मेरी दुकान देख सकते हैं',
+  liveNeedsPlace:
+    'पहले बताइए कि ग्राहक आपको कहाँ ढूँढें। पक्का करते ही दुकान ग्राहकों को दिखने लगेगी।',
   share: 'शेयर करें',
   copyLink: 'लिंक कॉपी करें',
   openPage: 'पेज खोलें',

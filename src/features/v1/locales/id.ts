@@ -201,6 +201,8 @@ export const id: Copy = {
   soldOutToday: 'Habis hari ini',
   soldOutCount: (count: number) => (count ? `${count} habis` : 'Semua tersedia'),
   soldOutHint: 'Matikan apa pun yang sudah habis. Pelanggan langsung melihatnya.',
+  soldOutHintHidden:
+    'Matikan yang sudah habis. Pelanggan akan melihatnya setelah toko Anda tampil untuk mereka.',
   shared: 'Dibagikan',
   notShared: 'Tidak dibagikan',
   messages: 'Pesan',
@@ -341,6 +343,9 @@ export const id: Copy = {
   customerPageOff: 'Aktifkan untuk mendapatkan tautan menu, harga, dan jam buka bagi pelanggan.',
   customerPageOn: 'Pelanggan dengan tautan ini melihat toko dan harga terbaru.',
   pageSwitch: 'Bagikan halaman pelanggan',
+  liveSwitch: 'Pelanggan bisa melihat toko saya',
+  liveNeedsPlace:
+    'Pertama, beri tahu di mana pelanggan bisa menemukan Anda. Toko langsung tampil setelah Anda konfirmasi.',
   share: 'Bagikan',
   copyLink: 'Salin tautan',
   openPage: 'Buka halaman',

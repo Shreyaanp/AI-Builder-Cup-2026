@@ -33,8 +33,9 @@ for (const viewport of [
     test.use({ viewport, isMobile: viewport.width < 600, hasTouch: viewport.width < 600 })
 
     for (const colorScheme of ['light', 'dark'] as const) {
-      // OB-195 (owner, 23 Oct) replaces the OB-107 default: Light first, even on a dark phone.
-      test(`OB-195: Look defaults to Light and remembers System after reload (${colorScheme})`, async ({
+      // Priya, 8 Nov: the owner app's first run follows the phone (System); OB-195 still starts
+      // the landing and the customer side in light.
+      test(`Look defaults to System on first run and remembers it after reload (${colorScheme})`, async ({
         page,
       }, info) => {
         await localOnly(page)
@@ -43,16 +44,16 @@ for (const viewport of [
         await enter(page)
         await page.getByRole('button', { name: 'You', exact: true }).click()
         // Look is one row saying the current choice; the three choices open under it.
-        await expect(page.getByRole('button', { name: /^Look/ })).toContainText('Light')
+        await expect(page.getByRole('button', { name: /^Look/ })).toContainText('System')
         await page.getByRole('button', { name: /^Look/ }).click()
         const look = page.getByRole('group', { name: 'Look', exact: true })
         const system = look.getByRole('button', { name: 'System', exact: true })
+        await expect(system).toHaveAttribute('aria-pressed', 'true')
         await expect(look.getByRole('button', { name: 'Light', exact: true })).toHaveAttribute(
           'aria-pressed',
-          'true',
+          'false',
         )
-        await expect(system).toHaveAttribute('aria-pressed', 'false')
-        await savedAppearance(page, 'light')
+        await savedAppearance(page, 'system')
         const firstRun = await surface(page)
 
         // Capture each explicit mode as an independent reference for the rendered theme.
@@ -63,7 +64,7 @@ for (const viewport of [
         await savedAppearance(page, 'dark')
         const dark = await surface(page)
         expect(dark).not.toBe(light)
-        expect(firstRun).toBe(light)
+        expect(firstRun).toBe(colorScheme === 'dark' ? dark : light)
 
         await system.click()
         await savedAppearance(page, 'system')

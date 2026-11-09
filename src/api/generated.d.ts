@@ -3932,7 +3932,7 @@ export interface components {
              */
             pin_demo: boolean;
             /** Pin Source */
-            pin_source?: ("device" | "pin") | null;
+            pin_source?: ("device" | "pin" | "area") | null;
             /** Pin Accuracy M */
             pin_accuracy_m?: number | null;
             /**
@@ -5454,7 +5454,7 @@ export interface components {
              * @default device
              * @enum {string}
              */
-            source: "device" | "pin";
+            source: "device" | "pin" | "area";
         };
         /** PartnerDocument */
         PartnerDocument: {

@@ -95,26 +95,10 @@ test('OB-110: Purchase orders do not show SAP sample orders for a small shop', a
 test('OB-111: Rescue links missing closing hours to the Hours step', async ({ page }) => {
   await localOnly(page)
   await enter(page)
-  await seedShop(page)
-  const shop = (await (await page.request.get('/api/v1/businesses')).json())[0]
-  const prepared = await page.request.post('/api/v1/proposals', {
-    data: {
-      kind: 'business',
-      business_id: shop.id,
-      revision: shop.revision,
-      business: { ...shop.fields, weekly_hours: [] },
-    },
-  })
-  const proposal = await prepared.json()
-  expect(
-    (
-      await page.request.post(`/api/v1/proposals/${proposal.id}/approve`, {
-        data: { digest: proposal.digest },
-      })
-    ).ok(),
-  ).toBe(true)
-  await page.reload()
-  await page.getByRole('button', { name: 'Continue local preview' }).click()
+  // Seed the shop without hours in one save. The old second save (GET the shop, then a proposal
+  // on its revision, then a reload) could race the open workspace and timed out once in the
+  // 8 Nov local release gate; the state under test is the same.
+  await seedShop(page, false, undefined, true, { weekly_hours: [] })
   await page.getByRole('button', { name: 'Grow', exact: true }).click()
   await page.getByRole('button', { name: /Rescue/ }).click()
   await expect(page.getByText('Save your closing hours first to send a rescue.')).toBeVisible()

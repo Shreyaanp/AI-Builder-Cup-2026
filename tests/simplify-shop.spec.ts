@@ -102,7 +102,7 @@ test('Shop: "Show to customers" opens the page switch', async ({ page }) => {
   await page.getByRole('button', { name: 'Show to customers', exact: true }).click()
   const sheet = page.getByRole('dialog', { name: 'Your shop page' })
   await expect(sheet).toBeVisible()
-  await expect(sheet.getByRole('switch', { name: 'Share customer page' })).toBeVisible()
+  await expect(sheet.getByRole('switch', { name: 'Customers can see my shop' })).toBeVisible()
   // The quieter thank-you perks moved to the stamp card.
   await expect(sheet.getByRole('textbox')).toHaveCount(0)
 })
@@ -190,7 +190,8 @@ test('You: Language is the first row; Look, What the coach knows and Help are sh
   // Look is one row; its three choices open under it.
   await expect(page.getByRole('group', { name: 'Look', exact: true })).toHaveCount(0)
   const look = page.getByRole('button', { name: /^Look/ })
-  await expect(look).toContainText('Light')
+  // The first run follows the phone (Priya, 8 Nov).
+  await expect(look).toContainText('System')
   await look.click()
   await page
     .getByRole('group', { name: 'Look', exact: true })

@@ -201,6 +201,8 @@ export const ms: Copy = {
   soldOutToday: 'Habis dijual hari ini',
   soldOutCount: (count: number) => (count ? `${count} habis dijual` : 'Semua ada'),
   soldOutHint: 'Matikan apa-apa yang sudah habis. Pelanggan nampak serta-merta.',
+  soldOutHintHidden:
+    'Matikan apa-apa yang sudah habis. Pelanggan akan nampak sebaik kedai anda boleh dilihat.',
   shared: 'Dikongsi',
   notShared: 'Tidak dikongsi',
   messages: 'Mesej',
@@ -341,6 +343,9 @@ export const ms: Copy = {
     'Hidupkan untuk mendapatkan pautan menu, harga dan waktu operasi untuk pelanggan.',
   customerPageOn: 'Pelanggan dengan pautan ini melihat kedai dan harga terkini.',
   pageSwitch: 'Kongsi halaman pelanggan',
+  liveSwitch: 'Pelanggan boleh melihat kedai saya',
+  liveNeedsPlace:
+    'Mula-mula, beritahu di mana pelanggan boleh cari anda. Kedai anda kelihatan sebaik anda sahkan.',
   share: 'Kongsi',
   copyLink: 'Salin pautan',
   openPage: 'Buka halaman',

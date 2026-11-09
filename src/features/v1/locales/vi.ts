@@ -200,6 +200,7 @@ export const vi: Copy = {
   soldOutToday: 'Hết hàng hôm nay',
   soldOutCount: (count: number) => (count ? `${count} món đã hết` : 'Còn đủ tất cả'),
   soldOutHint: 'Tắt món nào đã hết. Khách sẽ thấy ngay.',
+  soldOutHintHidden: 'Tắt món đã hết. Khách sẽ thấy khi cửa hàng của bạn hiển thị với họ.',
   shared: 'Đang chia sẻ',
   notShared: 'Chưa chia sẻ',
   messages: 'Tin nhắn',
@@ -337,6 +338,9 @@ export const vi: Copy = {
   customerPageOff: 'Bật để lấy liên kết cho khách xem thực đơn, giá và giờ mở cửa.',
   customerPageOn: 'Khách có liên kết này xem được cửa hàng và giá mới nhất.',
   pageSwitch: 'Chia sẻ trang khách hàng',
+  liveSwitch: 'Khách có thể xem cửa hàng của tôi',
+  liveNeedsPlace:
+    'Trước hết, cho biết khách tìm bạn ở đâu. Cửa hàng sẽ hiển thị ngay khi bạn xác nhận.',
   share: 'Chia sẻ',
   copyLink: 'Sao chép liên kết',
   openPage: 'Mở trang',
