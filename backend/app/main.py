@@ -386,7 +386,10 @@ def create_app(
             **get_services(request).identity.bootstrap(request, response),
             "v1_enabled": settings.v1_enabled,
             "features": FeatureFlags(
-                google_guide=settings.feature_google_guide, guest_customer=settings.guest_customer
+                google_guide=settings.feature_google_guide,
+                guest_customer=settings.guest_customer,
+                face_check=settings.feature_face_check,
+                guest_merge=settings.guest_merge,
             ).model_dump(),
             "trust_strip": {
                 "enabled": settings.feature_trust_strip,

@@ -42,7 +42,7 @@ def test_O_1_demo_menu_files_get_a_labelled_sample_and_a_real_413(app, monkeypat
             assert made.status_code == 200, made.text
             body = made.json()
             assert body["kind"] == "menu" and body["sample"] is True
-            assert "Sample read" in body["sample_note"]
+            assert "This is a sample" in body["sample_note"]
             names = [p["name"] for p in body["proposal"]["snapshot"]["products"]]
             assert "Masala dosa" in names and "Filter coffee" in names
         approved = owner(
@@ -84,7 +84,7 @@ def test_O_1_demo_menu_files_get_a_labelled_sample_and_a_real_413(app, monkeypat
         )
         assert photo.status_code == 200, photo.text
         assert photo.json()["proposal"]["snapshot"]["products"]
-        assert "Sample read" in photo.json()["extraction"]["uncertain"][0]
+        assert "This is a sample" in photo.json()["extraction"]["uncertain"][0]
         other = owner(
             client,
             session,

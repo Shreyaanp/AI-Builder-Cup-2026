@@ -1,9 +1,9 @@
 import type { Locale } from '../../i18n/locales'
 import { legalTranslations } from './locales/legal'
 
-/** DRAFT prototype legal texts for the APAC demo; not reviewed by a lawyer. */
 export const LEGAL_VERSION = '2026-10-14'
-export const GRIEVANCE_CONTACT = 'Privacy contact: to be published before public launch'
+/** The address owners can write to about privacy. Empty until a real one exists: never invent it. */
+export const PRIVACY_CONTACT = ''
 
 export interface LegalSection {
   heading: string
@@ -71,7 +71,7 @@ export const PRIVACY: LegalSection[] = [
     heading: 'Your rights',
     body: [
       'You can access, correct and erase your data, withdraw consent at any time (this does not affect processing already done), and contact us about privacy concerns.',
-      GRIEVANCE_CONTACT,
+      'You can do all of this yourself from the Privacy tab.',
     ],
   },
 ]
@@ -82,7 +82,24 @@ export interface LegalCopy {
 }
 
 /** Translations are for convenience; English remains the applicable version. */
-export const LEGAL: Partial<Record<Locale, LegalCopy>> = {
+const translated: Partial<Record<Locale, LegalCopy>> = {
   en: { TERMS, PRIVACY },
   ...legalTranslations,
 }
+
+function withContact(copy: LegalCopy): LegalCopy {
+  if (!PRIVACY_CONTACT) return copy
+  const last = copy.PRIVACY.length - 1
+  return {
+    ...copy,
+    PRIVACY: copy.PRIVACY.map((section, index) =>
+      index === last
+        ? { ...section, body: [...section.body, `Privacy contact: ${PRIVACY_CONTACT}`] }
+        : section,
+    ),
+  }
+}
+
+export const LEGAL = Object.fromEntries(
+  Object.entries(translated).map(([locale, copy]) => [locale, withContact(copy)]),
+) as Partial<Record<Locale, LegalCopy>>

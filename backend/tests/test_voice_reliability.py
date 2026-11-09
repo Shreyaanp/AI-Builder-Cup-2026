@@ -105,7 +105,7 @@ def test_progress_order_and_a_complete_draft() -> None:
     assert missing == []
     assert "shop photo taken" in known
     note = progress_note(full, "", resumed=False)
-    assert "Everything is gathered" in note and "face check" in note
+    assert "Everything is gathered" in note and "face check" not in note
     # Skipped hours and photo count as done: never asked again, never invented.
     skipped = chai_draft(location="Lajpat Nagar").model_copy(update={"skipped": ["hours", "photo"]})
     known, missing = known_and_missing(skipped)

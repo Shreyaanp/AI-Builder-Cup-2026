@@ -56,7 +56,7 @@ def progress(draft: NewShopDraft | None) -> dict[str, Any]:
     known, missing = known_and_missing(draft)
     result: dict[str, Any] = {"known_never_ask_again": known, "still_missing": missing}
     if not missing:
-        result["next"] = "Everything is gathered: no more questions; offer the face check once."
+        result["next"] = "Everything is gathered: no more questions."
     elif draft and draft.live_id:
         result["live"] = "The shop is already live for customers."
     elif ready_to_go_live(draft):
@@ -444,8 +444,8 @@ STEP_NOTES: dict[str, str] = {
 def show_step(step: Step) -> dict[str, Any]:
     """Open an in-chat card of the new-shop flow: location (the owner is at the shop now: the
     phone's GPS pins it), camera (a photo of the shop), summary (everything is gathered),
-    review (the owner asked to see or check their shop: "meri dukaan dikhao"), face_check (the
-    optional check at the very end). Opening never changes anything."""
+    review (the owner asked to see or check their shop: "meri dukaan dikhao"). Opening never
+    changes anything."""
     ctx = current.get()
     if not ctx:
         return {"status": "unavailable"}

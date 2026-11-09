@@ -63,6 +63,9 @@ class Settings(BaseSettings):
     reminders_audience: str = ""
     qr_poster_enabled: bool = False
     feature_trust_strip: bool = False
+    feature_face_check: bool = False
+    # OB-56: guests' accounts from before the #335 sign-in change. Writes customer data: off.
+    guest_merge: bool = False
     support_whatsapp: str = Field(default="", pattern=r"^(|https://wa\.me/[1-9][0-9]{6,14})$")
     merchant_backend: Literal["sqlite", "firestore"] = "sqlite"
     embedding_model: str = "gemini-embedding-2"

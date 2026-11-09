@@ -17,6 +17,7 @@ import { useLocale } from '../../state/hooks'
 import { useBackClose } from '../v1/backStack'
 import { formatDate } from '../v1/format'
 import { useWorkspace } from '../v1/workspaceContext'
+import { useIdentity } from '../../auth/useIdentity'
 import { shape } from '../../design/theme'
 import { fill, useTrustCopy } from './copy'
 import { announceTrustChange, useTrust, type Notice } from './useTrust'
@@ -38,6 +39,8 @@ export function TrustCard({ compact = false }: { compact?: boolean }) {
   useBackClose(confirming, () => !busy && setConfirming(false))
   const face = trust?.face ?? 'not_started'
   const verified = face === 'verified'
+  // Deferred (OB-269): never offered, but anyone who already did one keeps status and Delete.
+  const shown = useIdentity().features.face_check || face !== 'not_started'
 
   async function remove() {
     setBusy(true)
@@ -77,67 +80,69 @@ export function TrustCard({ compact = false }: { compact?: boolean }) {
 
   return (
     <>
-      <Box
-        component="section"
-        aria-labelledby="trust-title"
-        sx={{
-          bgcolor: verified ? roles.primaryContainer : roles.surfaceContainerLow,
-          color: verified ? roles.onPrimaryContainer : roles.onSurface,
-          borderRadius: `${compact ? shape.lgIncreased : shape.lg}px`,
-          p: 3,
-          transition: 'background-color 300ms linear',
-        }}
-      >
-        <Stack direction="row" spacing={2} sx={{ alignItems: 'center', mb: 1 }}>
-          <Box
-            aria-hidden="true"
-            sx={{ display: 'flex', color: verified ? 'inherit' : roles.primary }}
-          >
-            {icon}
-          </Box>
-          <Typography
-            id="trust-title"
-            component={compact ? 'h3' : 'h2'}
-            variant="titleMedium"
-            sx={{ flex: 1 }}
-          >
-            {c.title}
+      {shown && (
+        <Box
+          component="section"
+          aria-labelledby="trust-title"
+          sx={{
+            bgcolor: verified ? roles.primaryContainer : roles.surfaceContainerLow,
+            color: verified ? roles.onPrimaryContainer : roles.onSurface,
+            borderRadius: `${compact ? shape.lgIncreased : shape.lg}px`,
+            p: 3,
+            transition: 'background-color 300ms linear',
+          }}
+        >
+          <Stack direction="row" spacing={2} sx={{ alignItems: 'center', mb: 1 }}>
+            <Box
+              aria-hidden="true"
+              sx={{ display: 'flex', color: verified ? 'inherit' : roles.primary }}
+            >
+              {icon}
+            </Box>
+            <Typography
+              id="trust-title"
+              component={compact ? 'h3' : 'h2'}
+              variant="titleMedium"
+              sx={{ flex: 1 }}
+            >
+              {c.title}
+            </Typography>
+            <Chip
+              size="small"
+              label={face === 'not_started' ? c.optional : c.status[face]}
+              sx={{
+                bgcolor: verified ? roles.primary : roles.secondaryContainer,
+                color: verified ? roles.onPrimary : roles.onSecondaryContainer,
+                fontWeight: 600,
+              }}
+            />
+          </Stack>
+          <Typography variant="bodyMedium" sx={{ color: verified ? 'inherit' : 'text.secondary' }}>
+            {body}
           </Typography>
-          <Chip
-            size="small"
-            label={face === 'not_started' ? c.optional : c.status[face]}
-            sx={{
-              bgcolor: verified ? roles.primary : roles.secondaryContainer,
-              color: verified ? roles.onPrimary : roles.onSecondaryContainer,
-              fontWeight: 600,
-            }}
-          />
-        </Stack>
-        <Typography variant="bodyMedium" sx={{ color: verified ? 'inherit' : 'text.secondary' }}>
-          {body}
-        </Typography>
-        <Stack direction="row" sx={{ mt: 2, gap: 1, flexWrap: 'wrap' }}>
-          <Button
-            variant={face === 'not_started' ? 'contained' : 'outlined'}
-            color={verified ? 'inherit' : 'primary'}
-            disabled={!ws.active}
-            startIcon={<ScanFace size={18} />}
-            onClick={() => ws.setFaceOpen(true)}
-          >
-            {face === 'not_started' ? c.start : c.again}
-          </Button>
-          {face !== 'not_started' && (
-            <Button color={verified ? 'inherit' : 'error'} onClick={() => setConfirming(true)}>
-              {c.delete}
+          <Stack direction="row" sx={{ mt: 2, gap: 1, flexWrap: 'wrap' }}>
+            <Button
+              variant={face === 'not_started' ? 'contained' : 'outlined'}
+              color={verified ? 'inherit' : 'primary'}
+              disabled={!ws.active}
+              startIcon={<ScanFace size={18} />}
+              onClick={() => ws.setFaceOpen(true)}
+            >
+              {face === 'not_started' ? c.start : c.again}
             </Button>
+            {face !== 'not_started' && (
+              <Button color={verified ? 'inherit' : 'error'} onClick={() => setConfirming(true)}>
+                {c.delete}
+              </Button>
+            )}
+          </Stack>
+          {!ws.active && (
+            <Typography variant="bodySmall" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+              {c.needsShop}
+            </Typography>
           )}
-        </Stack>
-        {!ws.active && (
-          <Typography variant="bodySmall" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-            {c.needsShop}
-          </Typography>
-        )}
-      </Box>
+        </Box>
+      )}
 
       {!compact && listings.map((notice) => <ListingNotice key={notice.id} notice={notice} />)}
       {!compact && trust?.reviewer && <ReviewQueue queue={trust.queue ?? []} onChange={reload} />}

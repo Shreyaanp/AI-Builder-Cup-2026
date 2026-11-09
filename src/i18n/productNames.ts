@@ -130,6 +130,21 @@ const HINDI: Record<string, readonly [string, boolean]> = {
   'Takeaway containers (100)': ['टेकअवे डिब्बे (100)', false],
   Tomatoes: ['टमाटर', false],
   'Wheat flour': ['गेहूँ का आटा', false],
+  'Idli (2 pieces)': ['इडली (2 पीस)', true],
+  'Medu vada': ['मेदु वड़ा', false],
+  // Menu sections in the sample shops.
+  Bakes: ['बेकरी का सामान', false],
+  Beverages: ['पेय', false],
+  Breads: ['ब्रेड', true],
+  Breakfast: ['सुबह का नाश्ता', false],
+  Cakes: ['केक', false],
+  Dairy: ['डेयरी', true],
+  Fresh: ['ताज़ा सामान', false],
+  Household: ['घर का सामान', false],
+  Packaged: ['पैक्ड सामान', false],
+  'Personal care': ['निजी देखभाल', true],
+  Snacks: ['नाश्ता', false],
+  Staples: ['राशन', false],
 }
 
 let sampleShops = false
