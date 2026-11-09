@@ -13,6 +13,7 @@ import { sendPrepared, type ReplyState } from './chatCards'
  */
 const en = {
   open: (label: string) => `Open ${label}`,
+  seeSaved: 'See it in My shop',
   customerAsked: 'Customer asked',
   yourReply: 'Your reply',
   send: 'Send',
@@ -27,6 +28,7 @@ type Copy = typeof en
 /** Hindi: the coach's buttons name Hindi screens, so no English breadcrumb (OB-261). */
 const hi: Copy = {
   open: (label: string) => `${label} खोलें`,
+  seeSaved: 'मेरी दुकान में देखें',
   customerAsked: 'ग्राहक ने पूछा',
   yourReply: 'आपका जवाब',
   send: 'भेजें',
@@ -51,7 +53,13 @@ export function ActionChip({ action, onOpen }: { action: CoachAction; onOpen: ()
     <Box component="li" sx={{ pl: { xs: 0, sm: 10 }, ...enterRise }}>
       <Chip
         icon={<ArrowUpRight size={18} />}
-        label={NEEDS_TAP.has(action.target) ? action.label : c.open(action.label)}
+        label={
+          action.changed
+            ? c.seeSaved
+            : NEEDS_TAP.has(action.target)
+              ? action.label
+              : c.open(action.label)
+        }
         variant="outlined"
         onClick={onOpen}
         sx={{ minHeight: 48 }}

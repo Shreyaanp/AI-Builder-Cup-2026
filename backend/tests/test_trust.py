@@ -100,7 +100,9 @@ def test_same_face_on_another_account_opens_a_review_not_an_accusation(tmp_path:
         review = next(item for item in status["queue"] if item["kind"] == "duplicate_owner")
         assert review["shops"] == [["Corner Chai"], ["Courtyard Chai"]]
         assert review["similarity"] >= trust.DUPLICATE_SIMILARITY
-        assert "uid" not in str(review) and "owners" not in review
+        # Shop names and a score only, never account IDs. Check the keys: the random review ID
+        # itself can contain the letters "uid", so a substring check on str(review) flakes.
+        assert set(review) == {"id", "kind", "status", "created", "updated", "similarity", "shops"}
 
         # A person decides: different people (say, a family business). Badge follows.
         decided = client.post(f"/api/v1/trust/reviews/{review['id']}", json={"decision": "cleared"})

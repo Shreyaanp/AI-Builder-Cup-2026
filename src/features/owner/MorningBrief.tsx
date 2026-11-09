@@ -29,6 +29,7 @@ import { useInGroup } from '../v1/growLayout'
 import { fill, useOwnerCopy } from './copy'
 import { shopNow } from './time'
 import { dayLabel } from '../supply/supplyData'
+import { useSourcingCopy } from '../sourcing/copy'
 import { shopZone } from '../../region/region'
 
 type Brief = components['schemas']['Brief']
@@ -79,6 +80,7 @@ export function MorningBrief({
   const roles = theme.material
   const lilac = theme.chalk.lilac
   const ws = useWorkspace()
+  const sourcing = useSourcingCopy()
   const shop = ws.active!
   const today = shopNow(shopZone(shop.fields)).date
   const [brief, setBrief] = useState<Brief | null>(null)
@@ -287,7 +289,9 @@ export function MorningBrief({
               case 'reply':
                 return onSheet('messages')
               case 'order':
-                return ws.startCoachDraft(fill(t.orderDraft, { item: action.item ?? '' }))
+                return ws.startCoachDraft(sourcing.lowMessage((action.item ?? '').toLowerCase()), {
+                  send: true,
+                })
               case 'radar':
                 return onRadar()
               case 'reduce_prep':

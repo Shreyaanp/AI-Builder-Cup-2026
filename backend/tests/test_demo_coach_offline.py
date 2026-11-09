@@ -421,8 +421,9 @@ DEMO_COACH_PHRASINGS: list[tuple[str, dict]] = [
     ("add electricity for 2000", {"reply": EXAMPLES}),
     ("add staff for 300", {"reply": EXAMPLES}),
     ("add loan for 5000", {"reply": EXAMPLES}),
-    ("add expense for 500", {"reply": EXAMPLES}),
-    ("add expenses for 500", {"reply": EXAMPLES}),
+    # Said as an expense, it is noted as one (never a menu item): expenses.py.
+    ("add expense for 500", {"reply": "Noted today's expense: ₹500"}),
+    ("add expenses for 500", {"reply": "Noted today's expense: ₹500"}),
     ("add sale for 500", {"reply": EXAMPLES}),
     ("add sales for 500", {"reply": EXAMPLES}),
     ("add order for 20", {"reply": EXAMPLES}),

@@ -43,6 +43,7 @@ import { useSourceCopy } from './sourceCopy'
 import { MakeNow } from './MakeNow'
 import { shopZone } from '../../../region/region'
 import { useTodayCopy, type Festival } from './todayCopy'
+import { moneyCopyFor } from '../../expenses/copy'
 import { promiseCopyFor } from './promiseCopy'
 import type { CoachLine, Need, StepId, TodayPlan } from './todayPlan'
 import { useTodayPlan } from './useTodayPlan'
@@ -902,6 +903,7 @@ function PulseCard({ plan, actions }: { plan: TodayPlan; actions: TodayActions }
   const lastDay = useLastDayWords()
   // Once the day is closed the pulse is today's, and so is the question it asks (HABIT change 3).
   const ask = plan.pulse?.when === 'today' ? tt.howToday : tt.howYesterday
+  const m = moneyCopyFor(locale)
   // In the evening the card below owns the screen: the weather line would push Reply out of view.
   const quiet = plan.part === 'evening'
   // Rain only changes how much to make, and the forecast row already says that: with a forecast it
@@ -924,8 +926,18 @@ function PulseCard({ plan, actions }: { plan: TodayPlan; actions: TodayActions }
       if (metric === 'stamps') return tt.stamps(n)
       return tt.regulars(n)
     })
+    // With expenses noted, the row says what was spent and what is left instead (sales stay first).
+    const sales = plan.pulse.values.find((v) => v.metric === 'sales')?.value
+    const spent = plan.pulse.spent
+    const shown = spent
+      ? [
+          ...(sales != null ? [formatShopPrice(sales, currency, locale)] : []),
+          m.homeSpent(formatShopPrice(spent, currency, locale)),
+          ...(sales != null ? [m.homeLeft(formatShopPrice(sales - spent, currency, locale))] : []),
+        ]
+      : values
     lines.push(
-      `${plan.pulse.when === 'yesterday' ? tt.yesterday : tt.todaySoFar}: ${values.join(' · ')}`,
+      `${plan.pulse.when === 'yesterday' ? tt.yesterday : tt.todaySoFar}: ${shown.join(' · ')}`,
     )
   }
   // In the evening the "How much to make?" chip below answers this, so the card keeps to one line.
