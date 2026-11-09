@@ -899,7 +899,7 @@ function CustomerPage() {
         </Alert>
       )}
       {liveSwitch}
-      <Typography variant="bodyMedium" color="text.secondary" sx={{ mt: 1 }}>
+      <Typography variant="bodySmall" color="text.secondary" sx={{ mt: 1 }}>
         {shop.public ? t.customerPageOn : t.customerPageOff}
       </Typography>
       {shop.public && url && (

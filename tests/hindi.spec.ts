@@ -191,7 +191,10 @@ test('the owner app reads in Hindi: Today, coach, Shop, Grow tools, You, privacy
     await growCard(page, /^मेरी बिक्री/)
     await expect(
       page.getByRole('dialog').getByRole('button', { name: /^हफ़्ते का सार/ }),
-    ).toContainText('अक्टू')
+    ).toContainText(
+      // A Hindi month, whichever week the run falls in (it said only "अक्टू", and failed from 1 Nov).
+      /जन॰|फ़र॰|मार्च|अप्रैल|मई|जून|जुल॰|अग॰|सित॰|अक्टू॰|नव॰|दिस॰/,
+    )
     await closeSheet(page)
   })
 
