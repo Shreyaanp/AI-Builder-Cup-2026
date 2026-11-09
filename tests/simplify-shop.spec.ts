@@ -190,7 +190,8 @@ test('You: Language is the first row; Look, What the coach knows and Help are sh
   // Look is one row; its three choices open under it.
   await expect(page.getByRole('group', { name: 'Look', exact: true })).toHaveCount(0)
   const look = page.getByRole('button', { name: /^Look/ })
-  await expect(look).toContainText('Light')
+  // The first run follows the phone (Priya, 8 Nov).
+  await expect(look).toContainText('System')
   await look.click()
   await page
     .getByRole('group', { name: 'Look', exact: true })

@@ -88,6 +88,7 @@ export function MapCard({
   onActive,
   near,
   areaOption = false,
+  areaSearch = true,
 }: {
   initial: Point | null
   placeName?: string
@@ -107,6 +108,8 @@ export function MapCard({
   near?: Point | null
   /** Offer "Show only my area" (going live: a home business keeps its door private). */
   areaOption?: boolean
+  /** The "Type your area" box (off where the form has its own address field). */
+  areaSearch?: boolean
 }) {
   const t = useCopy()
   const { api } = useWorkspace()
@@ -274,36 +277,38 @@ export function MapCard({
           {c.pinRequired}
         </Typography>
       )}
-      <Stack
-        component="form"
-        direction="row"
-        sx={{ gap: 1, mb: 2, alignItems: 'flex-start' }}
-        onSubmit={(event) => {
-          event.preventDefault()
-          void findArea()
-        }}
-      >
-        <TextField
-          size="small"
-          fullWidth
-          label={c.areaLabel}
-          value={area}
-          onChange={(event) => setArea(event.target.value)}
-          slotProps={{
-            htmlInput: { maxLength: 300, enterKeyHint: 'search', 'data-testid': 'map-area' },
+      {areaSearch && (
+        <Stack
+          component="form"
+          direction="row"
+          sx={{ gap: 1, mb: 2, alignItems: 'flex-start' }}
+          onSubmit={(event) => {
+            event.preventDefault()
+            void findArea()
           }}
-          sx={{ '& .MuiInputBase-root': { minHeight: 48 } }}
-        />
-        <Button
-          type="submit"
-          variant="outlined"
-          disabled={area.trim().length < 2 || searching}
-          startIcon={searching ? <CircularProgress size={16} /> : <Search size={16} />}
-          sx={{ minHeight: 48, flexShrink: 0 }}
         >
-          {c.areaFind}
-        </Button>
-      </Stack>
+          <TextField
+            size="small"
+            fullWidth
+            label={c.areaLabel}
+            value={area}
+            onChange={(event) => setArea(event.target.value)}
+            slotProps={{
+              htmlInput: { maxLength: 300, enterKeyHint: 'search', 'data-testid': 'map-area' },
+            }}
+            sx={{ '& .MuiInputBase-root': { minHeight: 48 } }}
+          />
+          <Button
+            type="submit"
+            variant="outlined"
+            disabled={area.trim().length < 2 || searching}
+            startIcon={searching ? <CircularProgress size={16} /> : <Search size={16} />}
+            sx={{ minHeight: 48, flexShrink: 0 }}
+          >
+            {c.areaFind}
+          </Button>
+        </Stack>
+      )}
       {pin ? (
         <PinMap
           value={pin}

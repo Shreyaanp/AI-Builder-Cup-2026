@@ -409,6 +409,8 @@ export function GuidedDetails({
               fields.lat != null && fields.lng != null ? { lat: fields.lat, lng: fields.lng } : null
             }
             done={null}
+            // The address field above already takes a typed area.
+            areaSearch={false}
             onConfirm={async (choice, address) => {
               const label = address && !address.startsWith('Near ') ? address : ''
               setPin({ choice, label: address ?? '' })
