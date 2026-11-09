@@ -450,3 +450,33 @@ def test_the_coach_is_told_out_of_stock_is_never_a_purchase():
     assert "running low, finished or needed" not in INSTRUCTION
     assert "दूध मँगाना है" in INSTRUCTION and "Never screen directions." in INSTRUCTION
     assert "Put every item the owner mentioned in one propose_products call." in INSTRUCTION
+
+
+MONEY = [
+    ("masala chai 1,000 rupees, samosa sold out", 100_000),
+    ("masala chai 1,00,000 rupees, samosa khatam", 10_000_000),
+    ("masala chai 1000.50 rupees, samosa sold out", 100_050),
+    ("मसाला चाय 1,000 रुपये, समोसा खत्म", 100_000),
+    ("मसाला चाय 1000.50 रुपये, समोसा खत्म", 100_050),
+]
+
+
+@pytest.mark.parametrize(("message", "minor"), MONEY)
+def test_a_two_in_one_price_is_the_amount_said(demo, message, minor):  # noqa: F811
+    [card] = [e["data"]["snapshot"] for e in demo(message, "en") if e["kind"] == "proposal"]
+    assert {p["name"]: p["price"] for p in card["products"]} == {
+        "Masala chai": minor,
+        "Samosa": 2000,
+    }
+
+
+@pytest.mark.parametrize(("message", "minor"), MONEY)
+def test_a_live_two_in_one_price_is_the_amount_said(shop, message, minor):  # noqa: F811
+    call = upkeep_call(message, shop)
+    assert call and call.function_call
+    assert call.function_call.args == {
+        "items": [
+            {"name": "Masala chai", "price": minor / 100},
+            {"name": "Samosa", "available": False},
+        ]
+    }

@@ -20,12 +20,13 @@ from .contracts import StreamEvent
 from .demo_food_words import singular
 from .demo_item_names import HINDI_UNITS, hindi_item
 from .latin_names import strength
+from .numbers import read_number
 
 HINDI = re.compile(r"[ऀ-ॿ]")
 DEVANAGARI_DIGITS = str.maketrans("०१२३४५६७८९", "0123456789")
 # Parts of one message: "Chai is 20 rupees now, samosa sold out", "चाय अब 20 की है और समोसे ख़त्म".
 CLAUSES = re.compile(
-    r"\s*(?:[,;।\n]|\.(?!\d)|(?<!\S)(?:and|aur|but|also|और|तथा|पर)(?!\S))\s*", re.I
+    r"\s*(?:(?<!\d),|,(?!\d)|[;।\n]|\.(?!\d)|(?<!\S)(?:and|aur|but|also|और|तथा|पर)(?!\S))\s*", re.I
 )
 
 # English and Hinglish (romanised Hindi is the normal case, not an edge case).
@@ -55,7 +56,7 @@ BACK = re.compile(
     re.I,
 )
 MONEY = (
-    r"(?:rs\.?\s*|₹\s*|inr\s*)?(?P<price>\d+(?:\.\d{1,2})?)"
+    r"(?:rs\.?\s*|₹\s*|inr\s*)?(?P<price>\d+(?:[.,]\d+)*)"
     r"(?:\s*(?:/-|rupees?|rupaye|rupaiye|rupay|rs\.?|inr))?"
 )
 PRICE = re.compile(
@@ -82,7 +83,7 @@ HI_SOLD_OUT = re.compile(
 HI_BACK = re.compile(rf"{HI_LEAD}(?P<name>{HI_NAME})\s+(?:फिर\s+से|वापस)\s+(?:है|हैं|आ\s+गय[ाेी])")
 HI_PRICE = re.compile(
     rf"{HI_LEAD}(?P<name>{HI_NAME})(?:\s+(?:की|का|के))?(?:\s+(?:कीमत|दाम|भाव|रेट))?"
-    r"(?:\s+(?:अब|अभी|से))*\s*(?:₹\s*|रु\.?\s*)?(?P<price>\d+(?:\.\d{1,2})?)"
+    r"(?:\s+(?:अब|अभी|से))*\s*(?:₹\s*|रु\.?\s*)?(?P<price>\d+(?:[.,]\d+)*)"
     r"(?:\s*(?:रुपये|रुपए|रुपया|रूपये|रु\.?|/-))?"
     r"(?:\s+(?:की|का|के|है|हैं|हो|गई|गयी|गया|कर|दो|दें|करो|अब))*"
 )
@@ -228,13 +229,15 @@ def _shop(ctx: Any) -> tuple[dict[str, Any], list[dict[str, Any]]]:
 # --- Sold out and new prices --------------------------------------------------------------------
 
 
-def _clause(text: str) -> tuple[str, str, float | None] | None:
-    """(kind, the item as said, new price) for one part of a message, or None."""
+def _clause(text: str, currency: str | None = None) -> tuple[str, str, float | None] | None:
+    """(kind, the item as said, new price) for one part of a message, or None. The price is
+    read by the shared number reader ("1,000" is a thousand; "1,5" in a rupee shop is not
+    guessed, so the coach asks instead of changing the price)."""
     if HINDI.search(text):
         for pattern, kind in ((HI_SOLD_OUT, "sold"), (HI_BACK, "back"), (HI_PRICE, "price")):
             found = pattern.fullmatch(text)
             if found and (kind != "price" or HI_PRICE_CUE.search(text)):
-                return kind, found["name"], float(found["price"]) if kind == "price" else None
+                return _said(kind, found, currency)
         return None
     for pattern, kind in (
         (SOLD_OUT, "sold"),
@@ -244,8 +247,17 @@ def _clause(text: str) -> tuple[str, str, float | None] | None:
     ):
         found = pattern.fullmatch(text)
         if found and (kind != "price" or PRICE_CUE.search(text)):
-            return kind, found["name"], float(found["price"]) if kind == "price" else None
+            return _said(kind, found, currency)
     return None
+
+
+def _said(
+    kind: str, found: re.Match[str], currency: str | None
+) -> tuple[str, str, float | None] | None:
+    if kind != "price":
+        return kind, found["name"], None
+    price = read_number(found["price"], currency)
+    return (kind, found["name"], price) if price is not None else None
 
 
 def _words(name: str) -> list[str]:
@@ -296,7 +308,11 @@ Change = tuple[str, dict[str, Any], float | None]
 
 
 def read_changes(
-    question: str, inventory: list[dict[str, Any]], sold: dict[str, float], guess: bool = True
+    question: str,
+    inventory: list[dict[str, Any]],
+    sold: dict[str, float],
+    currency: str | None,
+    guess: bool = True,
 ) -> list[Change] | None:
     """Every change one message says, as (kind, saved item, new price); None unless all of it
     is understood, so a change is never half-made."""
@@ -311,7 +327,7 @@ def read_changes(
     said: list[Change] = []
     bare_items: list[dict[str, Any]] = []
     for clause in clauses:
-        found = _clause(clause)
+        found = _clause(clause, currency)
         item = menu_item(found[1], inventory, sold, guess) if found else None
         if not found and (just_named := menu_item(clause, inventory, sold, guess)):
             bare_items.append(just_named)  # "samosa aur bun maska khatam": one verb, two items
@@ -328,11 +344,13 @@ def read_changes(
 def live_changes(question: str, ctx: Any) -> list[dict[str, Any]] | None:
     """The same sentences for the real coach: propose_products items, or None to let the model
     read it. Never a guess between two chais, and something the shop buys is the model's to ask."""
+    from .coordinator import shop_currency
     from .product_source import source_of
 
     context = ctx.store.context(ctx.uid, ctx.business_id)
     category = str(context["business"]["fields"].get("category") or "")
-    said = read_changes(question, context["inventory"], {}, guess=False)
+    currency = shop_currency(context["business"])
+    said = read_changes(question, context["inventory"], {}, currency, guess=False)
     if not said or any(
         kind == "sold" and source_of(item, category) == "bought" for kind, item, _ in said
     ):
@@ -362,7 +380,7 @@ def owner_changes(ctx: Any, question: str) -> list[StreamEvent] | None:
     sold: dict[str, float] = {}
     for row in ctx.store.sales_history(ctx.uid, ctx.business_id):
         sold[row["item"]] = sold.get(row["item"], 0) + float(row["quantity"])
-    said = read_changes(question, inventory, sold)
+    said = read_changes(question, inventory, sold, currency)
     if not said:
         return None
     hindi = speaks_hindi(question)

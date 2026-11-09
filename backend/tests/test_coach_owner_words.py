@@ -491,3 +491,22 @@ def test_OB_262_demo_keeps_both_items_of_one_verb(demo):  # noqa: N802
     for message in ("samosa aur bun maska khatam", "samosa and bun maska are sold out"):
         both = products(demo(message, "en"))
         assert set(both) == {"Samosa", "Bun maska"} and not any(a for _, a in both.values())
+
+
+@pytest.mark.parametrize(
+    ("message", "language"),
+    [
+        ("चाय का दाम 1,000 कर दो", "hi"),
+        ("Chai is 1,000 rupees now", "en"),
+        ("chai ab 1,000/- hai", "en"),
+    ],
+)
+def test_PR701_a_grouped_price_is_a_thousand_not_one(demo, message, language):  # noqa: N802
+    # The coach reads prices with the same reader as every typed amount (PR #701 review).
+    events = demo(message, language)
+    assert products(events) == {"Masala chai": (100000, True)}, events
+
+
+def test_PR701_a_lone_comma_price_is_not_guessed(demo):  # noqa: N802
+    events = demo("Chai is 1,5 rupees now", "en")
+    assert cards(events) == [], events
