@@ -20,9 +20,15 @@ from .app_guide import guide_reply, where_line
 from .close_reward import close_reward, reward_text
 from .contracts import StreamEvent
 from .coordinator import MerchantContext, propose_products
+from .demo_coach_words import HI_PRICE_CUE, HINDI, bare, speaks_hindi
+from .demo_coach_words import PRICE_CUE as OWNER_PRICE_CUE
+from .demo_item_names import hindi_item
 from .discover import open_now
+from .money import to_minor
+from .owner_order_words import order_asked
 from .region import shop_currency, shop_zone
 from .rescue import local_now
+from .sourcing import money_text
 from .voice_tools import SCREENS, get_customer_messages, open_screen, set_open_today
 
 if TYPE_CHECKING:
@@ -30,8 +36,8 @@ if TYPE_CHECKING:
 
 Embedder = Callable[[str], list[float]]
 
-# Only plain-Latin messages take the instant path: the templates reply in English, and the
-# coach model handles every other language and script.
+# Plain-Latin messages take the whole instant path, as the templates reply in English. Hindi sold
+# outs and prices (OB-261, OB-262) are the one exception; the model handles everything else.
 LATIN = re.compile(r"^[\x00-\x7f₹$€£¥]*$")
 
 SCREEN_RULES: tuple[tuple[str, str], ...] = (
@@ -421,14 +427,36 @@ def _upkeep(ctx: MerchantContext, text: str) -> InstantResult | None:
     from .agent import upkeep_call
 
     call = upkeep_call(text, ctx)
-    if call is None or not call.function_call:
+    if call is None:
         return None
+    if not call.function_call:
+        # A price said in another currency: the one question, never a card.
+        return InstantResult("upkeep", call.text) if call.text else None
     items = (call.function_call.args or {})["items"]
-    if any("price" in item for item in items) and not PRICE_CUE.search(text):
+    words = bare(text)
+    if any("price" in item for item in items) and not (
+        PRICE_CUE.search(text) or OWNER_PRICE_CUE.search(words) or HI_PRICE_CUE.search(words)
+    ):
         return None
     result = propose_products(items)
     if result.get("status") != "needs_review":
         return None  # let the model repair or ask
+    if not result.get("changes"):
+        return None  # Nothing would change: "prepared: no change" helps nobody.
+    if speaks_hindi(text):
+        currency = shop_currency(ctx.store.context(ctx.uid, ctx.business_id)["business"])
+        lines = "; ".join(
+            f"{hindi_item(item['name'])} {money_text(to_minor(item['price'], currency), currency)}"
+            if "price" in item
+            else f"{hindi_item(item['name'])} "
+            + ("फिर से उपलब्ध" if item.get("available") else "आज के लिए ख़त्म")
+            for item in items
+        )
+        return InstantResult(
+            "upkeep",
+            f"मैंने यह आपके जाँचने के लिए तैयार किया है: {lines}। स्क्रीन पर पक्का करें।",
+            _proposal_events(ctx, result),
+        )
     changes = "; ".join(result["changes"]) or "no change"
     reply = f"I've prepared this for you to check: {changes}. Confirm it on screen."
     if result.get("warnings"):
@@ -467,7 +495,11 @@ async def route(
     if made:
         return made
     if not LATIN.match(message):
-        return None
+        from .agent import ui_language
+
+        # Devanagari is Hindi only when the app is not set to Marathi or another language.
+        hindi = HINDI.search(message) and ui_language.get().split("-")[0] in {"en", "hi"}
+        return _upkeep(ctx, message) if hindi else None
     lowered = message.casefold().rstrip(" .!")
     if CLOSED_TODAY.search(lowered) or OPEN_TODAY.search(lowered):
         result = set_open_today(open_today=bool(OPEN_TODAY.search(lowered)))
@@ -506,6 +538,8 @@ async def route(
     guide = guide_reply(message)
     if guide:
         return InstantResult("app_guide", guide)
+    if order_asked(message):
+        return None  # "Reorder milk" drafts the order: never a guess at a screen (OB-268).
     if index is not None and "?" not in message[:-1]:
         try:
             matched = await index.match(message)
