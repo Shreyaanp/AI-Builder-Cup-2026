@@ -1,5 +1,5 @@
 import { useLocale } from '../../state/hooks'
-import { parseCloseDayNumber } from '../closeday/parseNumber'
+import { parseNumber } from '../v1/readNumber'
 
 /** The units an amount can be said in: kilos and grams convert, packs stay packs. */
 export function unitChoices(unit: string): string[] {
@@ -12,7 +12,7 @@ export function unitChoices(unit: string): string[] {
 export function useReadAmount() {
   const locale = useLocale()
   return (text: string) => {
-    const value = parseCloseDayNumber(text, locale, 'USD')
+    const value = parseNumber(text, locale, 'USD', 'quantity')
     return value && value > 0 ? value : null
   }
 }
