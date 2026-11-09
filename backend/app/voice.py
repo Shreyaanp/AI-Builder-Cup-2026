@@ -14,14 +14,7 @@ from google.genai import types
 from pydantic import ValidationError
 
 from . import voice_resume
-from .agent import (
-    LiveClose,
-    asks_to_end,
-    background_tools,
-    live_close,
-    turn_facts,
-    ui_language,
-)
+from .agent import LiveClose, asks_to_end, background_tools, live_close, ui_language
 from .auth import Principal
 from .contracts import NewShopVoiceContext, StreamEvent, VoiceControl
 from .coordinator import current
@@ -33,7 +26,7 @@ from .new_shop_tools import end_conversation, go_live
 from .reply_language import ReplyLanguage, reply_language
 from .settings import Settings
 from .streaming import CoachRuntime, public_events
-from .voice_resume import digest
+from .voice_usage import add_usage
 
 log = structlog.get_logger()
 
@@ -152,23 +145,7 @@ class VoiceStats:
         return time.monotonic() - self.active
 
     def usage(self, usage: types.GenerateContentResponseUsageMetadata) -> None:
-        """Add one Live usage report (the provider sends one per model turn)."""
-
-        def add(key: str, count: int | None) -> None:
-            if count:
-                self.tokens[key] = self.tokens.get(key, 0) + count
-
-        add("prompt", usage.prompt_token_count)
-        add("response", usage.candidates_token_count)
-        add("cached", usage.cached_content_token_count)
-        add("total", usage.total_token_count)
-        for side, details in (
-            ("in", usage.prompt_tokens_details),
-            ("out", usage.candidates_tokens_details),
-        ):
-            for detail in details or []:
-                modality = (detail.modality.value if detail.modality else "other").lower()
-                add(f"{side}_{modality}", detail.token_count)
+        add_usage(self.tokens, usage)
 
     def fields(self) -> dict[str, Any]:
         return {
@@ -220,15 +197,6 @@ async def publish_if_ready(websocket: WebSocket) -> None:
                 kind="draft", data=merchant.new_shop_draft.model_dump(mode="json")
             ).payload()
         )
-
-
-async def known_facts() -> str:
-    """Digest of the shop facts the coach instruction is built from, read now (OB-181): a
-    resumed Live session is only used while they are what its last connection ended with."""
-    try:
-        return digest(await anyio.to_thread.run_sync(turn_facts))
-    except Exception:  # noqa: BLE001 - unreadable facts: never resume on them
-        return f"unread-{time.monotonic()}"
 
 
 # Owners often pause mid-sentence ("Lakshmi Tea Stall… Indiranagar metro ke paas"): the model
@@ -467,10 +435,6 @@ async def gemini_voice(
         link.queue.send_content(types.Content(role="user", parts=[types.Part(text=carried)]))
         log.info("voice_spoken_turn_carried_over", length=len(carried))
 
-    def draft_now() -> object:
-        merchant = current.get()
-        return merchant.new_shop_draft if merchant else None
-
     async def upstream() -> None:
         nonlocal text_turns, stop_asked
         while True:
@@ -487,10 +451,10 @@ async def gemini_voice(
             raw = frame.get("text", "")
             if len(raw) > 5000:
                 raise ValueError("Frame too large")
-            before = draft_now()
+            before = merchant.new_shop_draft if merchant else None
             if refresh_new_shop_draft(raw):
                 stats.touch()
-                if draft_now() != before:
+                if merchant and merchant.new_shop_draft != before:
                     # A photo or pin the provider never saw: no resuming past it.
                     handles.changed(uid, sid)
                 await publish_if_ready(websocket)
@@ -525,7 +489,7 @@ async def gemini_voice(
         # A model that refused the tuned setup gets plain blocking tools too.
         background_tools.set(extras)
         since = handles.version(uid, sid)
-        handle = handles.get(uid, sid, language.locale, await known_facts())
+        handle = handles.get(uid, sid, language.locale, await voice_resume.known_facts())
         latest: str | None = None
         resuming = bool(handle)
         stats.connections += 1
@@ -641,7 +605,7 @@ async def gemini_voice(
                 # Saved with the facts as they are now (the coach's own saves included); a typed
                 # turn or app draft since this connection began keeps it from being saved.
                 with anyio.CancelScope(shield=True):
-                    facts = await known_facts()
+                    facts = await voice_resume.known_facts()
                 handles.put(uid, sid, language.locale, latest, facts, since)
 
     async def downstream() -> None:

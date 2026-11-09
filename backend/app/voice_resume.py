@@ -13,6 +13,10 @@ import time
 from dataclasses import dataclass
 from typing import Any
 
+import anyio
+
+from .agent import turn_facts
+
 # A handle is used while this fresh; past it the conversation starts a fresh session.
 RESUME_HANDLE_SECONDS = 600
 RESUME_HANDLES_KEPT = 2_000
@@ -20,6 +24,15 @@ RESUME_HANDLES_KEPT = 2_000
 
 def digest(text: str) -> str:
     return hashlib.sha256(text.encode()).hexdigest()
+
+
+async def known_facts() -> str:
+    """Digest of the shop facts the coach instruction is built from, read now: a resumed Live
+    session is only used while they are what its last connection ended with."""
+    try:
+        return digest(await anyio.to_thread.run_sync(turn_facts))
+    except Exception:  # noqa: BLE001 - unreadable facts: never resume on them
+        return f"unread-{time.monotonic()}"
 
 
 @dataclass
