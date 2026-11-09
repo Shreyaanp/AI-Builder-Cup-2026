@@ -347,6 +347,8 @@ def open_now(
 
 # More places owners type during offline onboarding (OB-168: a typed place is pinned). Only
 # typed places look these up; a GPS point's "Near …" label stays with the catalogue's areas.
+# An area-only pin keeps two decimals of latitude and longitude: about a kilometre.
+AREA_DECIMALS = 2
 TYPED_AREAS = {
     "MG Road": (12.9756, 77.6066),
     "Lajpat Nagar": (28.5677, 77.2433),
@@ -665,6 +667,38 @@ async def prepare_pin(
     body.business.demo = bool(old.get("demo"))
     if body.owner_location is not None:
         point = body.owner_location
+        if point.source == "area":
+            # Area only (a home business): the point is kept to about a kilometre and named by
+            # its neighbourhood, so neither the pin nor the label shows the owner's door.
+            lat, lng = round(point.lat, AREA_DECIMALS), round(point.lng, AREA_DECIMALS)
+            found = await maps.reverse(lat, lng)
+            area = str(
+                found.get("locality")
+                # A street address (it has a place id) would show the door: never used here.
+                or (
+                    ""
+                    if found.get("place_id")
+                    else re.sub(r"^Near\s+", "", str(found["pin_label"]))
+                )
+                or body.business.location
+            )[:300]
+            if area.casefold() == "your current location":
+                area = body.business.location
+            body.business = type(body.business).model_validate(
+                {
+                    **body.business.model_dump(),
+                    "lat": lat,
+                    "lng": lng,
+                    "place_id": None,
+                    "pin_label": area or None,
+                    "pin_source": "area",
+                    "pin_accuracy_m": None,
+                    "pin_demo": False,
+                    "location": area,
+                }
+            )
+            correct_first_pin_region()
+            return
         pin = pin_fields(await maps.reverse(point.lat, point.lng))
         body.business = type(body.business).model_validate(
             {

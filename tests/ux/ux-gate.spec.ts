@@ -67,15 +67,30 @@ for (const theme of THEMES) {
           for (const d of m.overlap) found.push({ rule: 'overlap', detail: d })
           for (const d of m.primary) found.push({ rule: 'primary', detail: d })
           if (phone) {
-            await page.evaluate(() => {
-              // The page, <main>, and any scroll area inside it (the Coach thread scrolls on its own).
-              const areas = Array.from(document.querySelectorAll('main, main *')).filter((el) => {
-                const o = getComputedStyle(el).overflowY
-                return (o === 'auto' || o === 'scroll') && el.scrollHeight > el.clientHeight
+            // Scroll to the end until every area is at its end and stays there. A fixed 200 ms
+            // after one scrollTo measured a page that was still growing or scrolling (8 Nov,
+            // demo-shop-page 412 light: last content at 1406px on a 915px screen).
+            const atEnd = () =>
+              page.evaluate(() => {
+                // The page, <main>, and any scroll area inside it (the Coach thread scrolls on its own).
+                const areas = Array.from(document.querySelectorAll('main, main *')).filter((el) => {
+                  const o = getComputedStyle(el).overflowY
+                  return (o === 'auto' || o === 'scroll') && el.scrollHeight > el.clientHeight
+                })
+                const all = [document.scrollingElement, ...areas].filter(
+                  (el): el is Element => el !== null,
+                )
+                const done = all.every(
+                  (el) => el.scrollTop + el.clientHeight >= el.scrollHeight - 2,
+                )
+                for (const el of all) el.scrollTo({ top: 1e6, behavior: 'instant' })
+                return done
               })
-              for (const el of [document.scrollingElement, ...areas]) el?.scrollTo(0, 1e6)
-            })
-            await page.waitForTimeout(200)
+            // Two reads in a row at the end, 100 ms apart (at most 3 s; then it measures anyway).
+            for (let settled = 0, tries = 0; settled < 2 && tries < 30; tries++) {
+              settled = (await atEnd()) ? settled + 1 : 0
+              await page.waitForTimeout(100)
+            }
             for (const d of await page.evaluate(lastContentClears))
               found.push({ rule: 'overlap', detail: d })
           }

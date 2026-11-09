@@ -40,13 +40,24 @@ function adoptLegacy(legacy: string, name: string) {
 type SavedPreferences = Partial<Preferences> & { appearanceChosen?: boolean }
 
 /**
- * OB-195: everyone starts in light, even on a phone set to dark. Dark, or System (follow the
- * phone), only when the person picked it. Older builds saved "system" as the silent default, so
- * "system" counts only with the marker written when it is picked.
+ * OB-195: the landing, the customer side and the explainer pages start in light, even on a phone
+ * set to dark; dark, or System, only when the person picked it. Older builds saved "system" as
+ * the silent default, so "system" counts only with the marker written when it is picked.
+ * The owner app's first run follows the phone (Priya, 8 Nov: a dark phone opened a light app):
+ * with nothing saved yet it starts on System.
  */
 function savedAppearance(saved: SavedPreferences): Preferences['appearance'] {
   if (saved?.appearance === 'dark' || saved?.appearance === 'light') return saved.appearance
-  return saved?.appearance === 'system' && saved.appearanceChosen === true ? 'system' : 'light'
+  if (saved?.appearance === 'system' && saved.appearanceChosen === true) return 'system'
+  return saved?.appearance === undefined && ownerApp() ? 'system' : 'light'
+}
+
+function ownerApp() {
+  try {
+    return resolveApp(new URL(location.href)) === 'business'
+  } catch {
+    return false
+  }
 }
 
 /**
@@ -160,7 +171,8 @@ function Providers({
       const display = JSON.stringify({
         language: preferences.language,
         appearance: preferences.appearance,
-        // Light is the default, so "system" in state was always picked (see savedAppearance).
+        // "system" in state was picked, or is the owner app's first-run default (see
+        // savedAppearance); either way it is kept.
         ...(preferences.appearance === 'system' ? { appearanceChosen: true } : {}),
       })
       localStorage.setItem(preferencesKey(), display)

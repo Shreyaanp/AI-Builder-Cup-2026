@@ -326,7 +326,7 @@ test('B6: Today fits the phone without scrolling, items leave when done, and fin
   await page.getByRole('button', { name: 'Shop', exact: true }).tap()
   await page.getByRole('button', { name: /^Your shop page/ }).tap()
   // The new-shop flow put the shop live by itself (name + kind + place): already shared.
-  await expect(page.getByRole('switch', { name: 'Share customer page' })).toBeChecked()
+  await expect(page.getByRole('switch', { name: 'Customers can see my shop' })).toBeChecked()
   await page.keyboard.press('Escape')
   await page.getByRole('button', { name: 'Coach', exact: true }).tap()
   await expect(page.getByTestId('today-progress')).toHaveCount(0)

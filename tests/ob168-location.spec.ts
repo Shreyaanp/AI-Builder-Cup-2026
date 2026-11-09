@@ -41,7 +41,9 @@ async function checkSavedShopPin(page: Page, width: number, appearance: 'light' 
   await page.getByRole('button', { name: /^Your shop page/ }).click()
   const sheet = page.getByRole('dialog', { name: 'Your shop page', exact: true })
   await expect(sheet).toContainText('Add your location so customers can find you.')
-  await expect(sheet.getByRole('switch')).toHaveCount(0)
+  // Priya, 8 Nov: one labelled switch, off until the place is confirmed.
+  const live = sheet.getByRole('switch', { name: 'Customers can see my shop' })
+  await expect(live).not.toBeChecked()
   expect(
     (
       await new AxeBuilder({ page })
@@ -53,12 +55,11 @@ async function checkSavedShopPin(page: Page, width: number, appearance: 'light' 
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
   await page.screenshot({ path: `output/ob168/saved-shop-${width}-${appearance}.png` })
   await sheet.getByRole('button', { name: 'This is my shop', exact: true }).click()
-  const review = page.getByRole('dialog', { name: 'Check before saving', exact: true })
-  await expect(review).toBeVisible()
-  await review.getByRole('button', { name: 'Confirm and save', exact: true }).click()
-  await expect(review).toHaveCount(0)
-  await page.getByRole('button', { name: /^Your shop page/ }).click()
-  await expect(sheet.getByRole('switch', { name: 'Share customer page' })).toBeVisible()
+  // Confirming the place saves it and shows the shop in one go: no second review, no second
+  // switch (Priya, 8 Nov: "Confirm and save" left the shop hidden).
+  await expect(page.getByRole('dialog', { name: 'Check before saving' })).toHaveCount(0)
+  await expect(live).toBeChecked()
+  await expect(sheet.getByRole('link', { name: 'Open page' })).toBeVisible()
 }
 
 for (const [width, height] of [

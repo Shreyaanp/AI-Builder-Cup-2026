@@ -11,6 +11,7 @@ The offline fixture follows no fixed script.
 import asyncio
 import json
 import re
+import threading
 import time
 from pathlib import Path
 from types import SimpleNamespace
@@ -239,18 +240,27 @@ def test_onboarding_never_uses_the_type_question_plan(tmp_path: Path) -> None:
 
 
 class FakeModels:
-    def __init__(self, reply: str, delay: float = 0) -> None:
+    def __init__(self, reply: str, delay: float = 0, gate: threading.Event | None = None) -> None:
         self.reply = reply
         self.delay = delay
+        # A test-held gate: the reply waits for it instead of racing the wall clock.
+        self.gate = gate
+        self.answered = threading.Event()
         self.calls = 0
 
     async def generate_content(self, **_: Any) -> Any:
         self.calls += 1
         await asyncio.sleep(self.delay)
+        if self.gate is not None:
+            # The test thread opens it; the app's loop keeps running meanwhile.
+            await asyncio.to_thread(self.gate.wait, 30)
+        self.answered.set()
         return SimpleNamespace(parsed=None, text=self.reply)
 
 
-def gemini_reader(reply: dict[str, Any], delay: float = 0) -> tuple[BusinessUnderstander, Any]:
+def gemini_reader(
+    reply: dict[str, Any], delay: float = 0, gate: threading.Event | None = None
+) -> tuple[BusinessUnderstander, Any]:
     reader = BusinessUnderstander(
         Settings(  # type: ignore[call-arg]
             _env_file=None,
@@ -260,7 +270,7 @@ def gemini_reader(reply: dict[str, Any], delay: float = 0) -> tuple[BusinessUnde
             google_cloud_project="test",
         )
     )
-    models = FakeModels(json.dumps(reply), delay)
+    models = FakeModels(json.dumps(reply), delay, gate)
     reader._client = SimpleNamespace(aio=SimpleNamespace(models=models, aclose=None))
     return reader, models
 
@@ -422,7 +432,10 @@ def test_ob319_a_profile_ready_by_bas_joins_the_draft(
 def test_the_phone_gets_a_profile_that_arrives_during_bas(tmp_path: Path) -> None:
     """Live eval (vague store): the profile joined the draft after the turn's last draft event,
     and "bas" came next; the stream sends the draft again before the turn completes."""
-    reader, _ = gemini_reader({"kind": "product", "confidence": 0.9}, delay=2.7)
+    # The profile is held until the first turn is over (a gate, not a 2.7 s race that a slow
+    # runner lost), then lands before "bas".
+    gate = threading.Event()
+    reader, models = gemini_reader({"kind": "product", "confidence": 0.9}, gate=gate)
     previous = business_understanding.understander
     try:
         app = create_app(settings(tmp_path), InMemorySessionService())
@@ -443,7 +456,9 @@ def test_the_phone_gets_a_profile_that_arrives_during_bas(tmp_path: Path) -> Non
                     for e in first
                     if e["kind"] == "draft"
                 )
-                time.sleep(1)  # the profile finishes meanwhile
+                gate.set()  # the profile finishes meanwhile
+                assert models.answered.wait(10)
+                time.sleep(0.2)
                 ended = events_of(
                     client.post(
                         "/api/v1/coach/stream",

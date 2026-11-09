@@ -11,6 +11,13 @@ import { growTool, openBuyStock } from './support/grow.js'
 // morning is the browser clock plus the server's own record for that morning (read back with
 // GET /promise?day=), never an invented promise. Local only, offline coach.
 test.skip(({ isMobile }) => !isMobile, 'phone story')
+// morningOf's /today handler reads the server's promise with page.request. Today polls, so a
+// handler can still be running when a test ends; the closing context then disposes its response
+// and the handler's "Response has been disposed" failed a test that had passed (8 Nov, both
+// promise tests at once). Stop the handlers before the context closes.
+test.afterEach(async ({ page }) => {
+  await page.unrouteAll({ behavior: 'ignoreErrors' })
+})
 
 const shopDay = (back: number) =>
   new Date(Date.now() + 5.5 * 3600e3 - back * 86400e3).toISOString().slice(0, 10)

@@ -20,7 +20,7 @@ import { ArrowRight, CheckCircle2, Sparkles, Upload } from 'lucide-react'
 import { shape } from '../../design/theme'
 import { formatLocale } from '../../i18n/locales'
 import { useLocale } from '../../state/hooks'
-import type { Proposal } from '../v1/api'
+import { ApiError, type Proposal } from '../v1/api'
 import { SalesImportSheet } from '../v1/ImportMenu'
 import type { SalesImport } from '../v1/useImport'
 import { Sheet } from '../v1/Sheet'
@@ -317,6 +317,32 @@ export function ConnectSheet({
     }
   }
 
+  /** Why a sync failed, in words: the rows the server could not read (Ahmed, 8 Nov: "Could not
+   * complete sync" for Indian dates, and retrying could never work). */
+  function syncProblem(cause: unknown) {
+    const code = cause instanceof ApiError ? cause.code : ''
+    const found = /^INVALID_SALES_ROWS:(\d+):(.*)$/s.exec(code)
+    if (!found) return ui.syncFailed
+    let rows: { field?: string; item?: string; value?: string }[] = []
+    try {
+      rows = JSON.parse(found[2] ?? '[]') as typeof rows
+    } catch {
+      rows = []
+    }
+    const fill = (text: string, row: { item?: string; value?: string }) =>
+      text.replace('{value}', row.value ?? '').replace('{item}', row.item || '—')
+    const lines = rows.map((row) =>
+      row.field === 'date'
+        ? fill(ui.badDate, row)
+        : row.field === 'item'
+          ? ui.badItem
+          : row.field === 'quantity'
+            ? fill(ui.badQuantity, row)
+            : fill(ui.badTotal, row),
+    )
+    return [ui.badRows.replace('{count}', found[1] ?? ''), ...lines.map((l) => `• ${l}`)].join('\n')
+  }
+
   async function handleConfirmAndSync() {
     if (!shop || !currentMapping) return
     setBusy(true)
@@ -379,8 +405,8 @@ export function ConnectSheet({
       }
 
       openReview(syncResult)
-    } catch {
-      setError(ui.syncFailed)
+    } catch (cause) {
+      setError(syncProblem(cause))
     } finally {
       setBusy(false)
     }
@@ -429,7 +455,10 @@ export function ConnectSheet({
           </Typography>
 
           {error && (
-            <Alert severity="error" sx={{ mb: 3 }}>
+            <Alert
+              severity="error"
+              sx={{ mb: 3, whiteSpace: 'pre-line', overflowWrap: 'anywhere' }}
+            >
               {error}
             </Alert>
           )}

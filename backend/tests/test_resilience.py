@@ -124,6 +124,8 @@ async def test_sse_disconnect_finishes_owned_turn_preserves_sqlite_and_allows_ne
         incoming.put_nowait({"type": "http.request", "body": body, "more_body": False})
         disconnected = False
 
+        gone = asyncio.Event()
+
         async def send(message: dict) -> None:
             nonlocal disconnected
             if ('"kind": "' + phase + '"').encode() in message.get(
@@ -131,6 +133,7 @@ async def test_sse_disconnect_finishes_owned_turn_preserves_sqlite_and_allows_ne
             ) and not disconnected:
                 disconnected = True
                 incoming.put_nowait({"type": "http.disconnect"})
+                gone.set()
 
         scope = {
             "type": "http",
@@ -149,11 +152,18 @@ async def test_sse_disconnect_finishes_owned_turn_preserves_sqlite_and_allows_ne
             "server": ("127.0.0.1", 3300),
             "client": ("127.0.0.1", 12345),
         }
-        await asyncio.wait_for(app(scope, incoming.get, send), timeout=3)
+        # OB-241: one 3 s limit used to cover the whole request, including the turn's cold start
+        # (session, recall, first model words) before the disconnect, and timed out on slower CI
+        # runners. The start now has a hang guard only; the limit is on what this test is about:
+        # once the phone drops, the response ends at once (under 1 ms locally; limit 5 s) and the
+        # owned turn still finishes (0.5-1.1 s locally; limit 10 s, a wide slow-runner margin).
+        request = asyncio.ensure_future(app(scope, incoming.get, send))
+        await asyncio.wait_for(gone.wait(), timeout=60)
+        await asyncio.wait_for(request, timeout=5)
         assert disconnected
         turn = services.replay.turns[(principal.uid, sid)]
         assert turn.task is not None
-        await asyncio.wait_for(turn.task, timeout=3)
+        await asyncio.wait_for(turn.task, timeout=10)
         assert not services.registry.active
         assert await services.runtime.session(principal, sid) == sid
         events = [

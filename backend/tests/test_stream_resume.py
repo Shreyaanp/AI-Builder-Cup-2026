@@ -1,4 +1,5 @@
 import asyncio
+import gc
 import json
 from time import monotonic
 
@@ -68,6 +69,9 @@ async def test_disconnect_resumes_owned_turn_without_second_model_call(monkeypat
             "server": ("127.0.0.1", 3300),
             "client": ("127.0.0.1", 12345),
         }
+        # Earlier tests' apps are garbage by now: collect them here, so a full collection never
+        # lands inside the 3 s window below on a slow runner.
+        gc.collect()
         await asyncio.wait_for(app(scope, incoming.get, send), timeout=3)
         assert cursor
         assert services.registry.active  # Producer is owned by the turn, not its subscriber.

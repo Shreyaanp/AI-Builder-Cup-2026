@@ -4,15 +4,18 @@ import {
   Alert,
   Box,
   Button,
+  Checkbox,
   CircularProgress,
   Dialog,
+  FormControlLabel,
   IconButton,
   Stack,
+  TextField,
   Tooltip,
   Typography,
   useTheme,
 } from '@mui/material'
-import { Check, LocateFixed, MapPin, Maximize2, X } from 'lucide-react'
+import { Check, LocateFixed, MapPin, Maximize2, Search, X } from 'lucide-react'
 import { enterRise, shape } from '../../design/theme'
 import { useLocale } from '../../state/hooks'
 import { useBackClose } from './backStack'
@@ -23,12 +26,19 @@ import { PinMap, type Point } from './PinMap'
 import { useCopy } from './strings'
 import { useWorkspace } from './workspaceContext'
 import { discoverCopy } from '../discover/strings'
+import { phoneArea } from '../../region/region'
 
-/** What the owner confirmed: the measured point, or a pin they placed by hand. */
-export type PinChoice = Point & { accuracy_m: number; source: 'device' | 'pin' }
+/** What the owner confirmed: the measured point, a pin they placed by hand, or (a home
+ * business) only the area. */
+export type PinChoice = Point & { accuracy_m: number; source: 'device' | 'pin' | 'area' }
 
-/** Where the map opens when there is no fix yet (the demo market). */
-const FALLBACK: Point = { lat: 1.2847, lng: 103.832 }
+/** Where the map opens when there is no fix yet: the shop's or the phone's own country (an
+ * Indian phone opens on India), never another country's demo market (Ahmed, 8 Nov). */
+function startPoint(near: Point | null | undefined): Point {
+  if (near) return near
+  const area = phoneArea()
+  return { lat: area.lat, lng: area.lng }
+}
 
 function metres(a: Point, b: Point) {
   const rad = Math.PI / 180
@@ -76,6 +86,9 @@ export function MapCard({
   direct = false,
   onConfirm,
   onActive,
+  near,
+  areaOption = false,
+  areaSearch = true,
 }: {
   initial: Point | null
   placeName?: string
@@ -91,6 +104,12 @@ export function MapCard({
   onConfirm: (choice: PinChoice, address: string | null) => Promise<void>
   /** The owner is placing the pin (the coach waits instead of nudging). */
   onActive?: () => void
+  /** Where the map starts without a pin (the shop's region); the phone's region otherwise. */
+  near?: Point | null
+  /** Offer "Show only my area" (going live: a home business keeps its door private). */
+  areaOption?: boolean
+  /** The "Type your area" box (off where the form has its own address field). */
+  areaSearch?: boolean
 }) {
   const t = useCopy()
   const { api } = useWorkspace()
@@ -103,6 +122,10 @@ export function MapCard({
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [resolvedPlace, setResolvedPlace] = useState('')
+  const [area, setArea] = useState('')
+  const [searching, setSearching] = useState(false)
+  const [areaOnly, setAreaOnly] = useState(false)
+  const fallback = startPoint(near)
   const finding = Boolean(!initial && placeName.trim() && !done && resolvedPlace !== placeName)
   const touched = useRef(false)
   useEffect(() => {
@@ -126,6 +149,24 @@ export function MapCard({
     if (direct) await save({ ...point, source: 'device' }, null)
   })
   const asked = useRef(false)
+  /** A typed area or address: the map moves there; the owner still confirms the pin. */
+  async function findArea() {
+    const q = area.trim()
+    if (q.length < 2 || searching) return
+    touched.current = true
+    onActive?.()
+    setSearching(true)
+    setError('')
+    try {
+      const point = await api<Point>(`/places/pin?q=${encodeURIComponent(q)}`)
+      setFix(null)
+      setPin({ lat: point.lat, lng: point.lng })
+    } catch {
+      setError(pinCopy.pinError)
+    } finally {
+      setSearching(false)
+    }
+  }
   async function locate() {
     touched.current = true
     onActive?.()
@@ -133,8 +174,8 @@ export function MapCard({
     const failed = await location.locate()
     if (failed) {
       setError(failed)
-      // The owner can still place the pin by hand.
-      setPin((current) => current ?? FALLBACK)
+      // The owner can still type the area or place the pin by hand.
+      setPin((current) => current ?? fallback)
     }
   }
   useEffect(() => {
@@ -162,9 +203,11 @@ export function MapCard({
   function confirm() {
     if (!pin || saving) return
     void save(
-      moved
-        ? { ...pin, accuracy_m: 0, source: 'pin' }
-        : { lat: fix!.lat, lng: fix!.lng, accuracy_m: fix!.m, source: 'device' },
+      areaOnly
+        ? { ...pin, accuracy_m: 0, source: 'area' }
+        : moved
+          ? { ...pin, accuracy_m: 0, source: 'pin' }
+          : { lat: fix!.lat, lng: fix!.lng, accuracy_m: fix!.m, source: 'device' },
       address,
     )
   }
@@ -190,7 +233,8 @@ export function MapCard({
       pin={pin}
       address={address}
       accuracy={!moved && fix ? fix.m : null}
-      busy={location.busy || finding}
+      areaOnly={areaOnly}
+      busy={location.busy || finding || searching}
       saving={saving}
       error={error}
       onLocate={() => void locate()}
@@ -219,7 +263,7 @@ export function MapCard({
           startIcon={<Maximize2 size={16} />}
           onClick={() => {
             touched.current = true
-            setPin((current) => current ?? FALLBACK)
+            setPin((current) => current ?? fallback)
             onActive?.()
             setBig(true)
           }}
@@ -232,6 +276,38 @@ export function MapCard({
         <Typography variant="bodyMedium" color="text.secondary" sx={{ mb: 1, textWrap: 'balance' }}>
           {c.pinRequired}
         </Typography>
+      )}
+      {areaSearch && (
+        <Stack
+          component="form"
+          direction="row"
+          sx={{ gap: 1, mb: 2, alignItems: 'flex-start' }}
+          onSubmit={(event) => {
+            event.preventDefault()
+            void findArea()
+          }}
+        >
+          <TextField
+            size="small"
+            fullWidth
+            label={c.areaLabel}
+            value={area}
+            onChange={(event) => setArea(event.target.value)}
+            slotProps={{
+              htmlInput: { maxLength: 300, enterKeyHint: 'search', 'data-testid': 'map-area' },
+            }}
+            sx={{ '& .MuiInputBase-root': { minHeight: 48 } }}
+          />
+          <Button
+            type="submit"
+            variant="outlined"
+            disabled={area.trim().length < 2 || searching}
+            startIcon={searching ? <CircularProgress size={16} /> : <Search size={16} />}
+            sx={{ minHeight: 48, flexShrink: 0 }}
+          >
+            {c.areaFind}
+          </Button>
+        </Stack>
       )}
       {pin ? (
         <PinMap
@@ -248,6 +324,20 @@ export function MapCard({
         <Typography variant="bodyMedium" color="text.secondary">
           {t.locationReason}
         </Typography>
+      )}
+      {areaOption && pin && (
+        <Box sx={{ mt: 1 }}>
+          <FormControlLabel
+            control={
+              <Checkbox checked={areaOnly} onChange={(_, checked) => setAreaOnly(checked)} />
+            }
+            label={c.areaOnly}
+            sx={{ minHeight: 48, mr: 0 }}
+          />
+          <Typography variant="bodySmall" color="text.secondary" sx={{ display: 'block', ml: 4 }}>
+            {c.areaOnlyHint}
+          </Typography>
+        </Box>
       )}
       {details}
       {big && pin && (
@@ -267,6 +357,7 @@ function PinDetails({
   pin,
   address,
   accuracy,
+  areaOnly = false,
   busy,
   saving,
   error,
@@ -276,6 +367,8 @@ function PinDetails({
   pin: Point | null
   address: string | null
   accuracy: number | null
+  /** Only the area is shown: no "put the pin on your door" hint. */
+  areaOnly?: boolean
   busy: boolean
   saving: boolean
   error: string
@@ -304,13 +397,15 @@ function PinDetails({
             {readable}
           </Typography>
           <Typography variant="bodySmall" color="text.secondary">
-            {accuracy !== null
-              ? t.locationAccuracy(
-                  new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(
-                    Math.ceil(accuracy),
-                  ),
-                )
-              : c.mapHint}
+            {areaOnly
+              ? null
+              : accuracy !== null
+                ? t.locationAccuracy(
+                    new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(
+                      Math.ceil(accuracy),
+                    ),
+                  )
+                : c.mapHint}
           </Typography>
         </Box>
       )}

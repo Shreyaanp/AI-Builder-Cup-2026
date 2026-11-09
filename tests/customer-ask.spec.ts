@@ -399,16 +399,42 @@ test('OB-76 speed: first answer text appears quickly with the offline fixture', 
   for (let i = 0; i < 5; i++) {
     await composer(page).fill('kopi')
 
-    const t0 = Date.now()
+    // Timed in the page, from the Send tap to the new card in the DOM. Timing it from the test
+    // (Date.now() around click() and expect().toBeVisible()) added Playwright round trips and the
+    // expect retry backoff (100, 250, 500 ms) to every run: 706-769 ms readings failed the 700 ms
+    // target on CI, readings that included that test overhead, not only the page (OB-233).
+    await page.evaluate((selector) => {
+      const before = document.querySelectorAll(selector).length
+      const marks = { tap: 0, card: 0, name: 0 }
+      ;(window as unknown as { __askMarks: typeof marks }).__askMarks = marks
+      document.addEventListener('click', () => (marks.tap ||= performance.now()), {
+        capture: true,
+        once: true,
+      })
+      const check = () => {
+        const cards = document.querySelectorAll(selector)
+        if (!marks.tap || cards.length <= before) return
+        marks.card ||= performance.now()
+        if (cards[cards.length - 1]!.textContent?.includes('Fast Kopi')) {
+          marks.name ||= performance.now()
+          observer.disconnect()
+        }
+      }
+      const observer = new MutationObserver(check)
+      observer.observe(document.body, { childList: true, subtree: true, characterData: true })
+    }, 'a[href="/explore/s/demo-fixture-kopi"]')
     await page.getByRole('button', { name: 'Send', exact: true }).click()
     const card = page.locator('a[href="/explore/s/demo-fixture-kopi"]').last()
     await expect(card).toBeVisible({ timeout: 15_000 })
-    const tFirstWord = Date.now() - t0
-    firstWordRuns.push(tFirstWord)
-
     await expect(card).toContainText('Fast Kopi')
-    const tComplete = Date.now() - t0
-    completeRuns.push(tComplete)
+    const marks = await page.evaluate(
+      () =>
+        (window as unknown as { __askMarks: { tap: number; card: number; name: number } })
+          .__askMarks,
+    )
+    expect(marks.tap).toBeGreaterThan(0)
+    firstWordRuns.push(Math.round(marks.card - marks.tap))
+    completeRuns.push(Math.round(marks.name - marks.tap))
 
     const tTap = Date.now()
     await card.hover()
