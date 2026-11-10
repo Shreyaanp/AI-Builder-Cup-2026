@@ -238,7 +238,8 @@ test('busy-hours sweep asks about top items; Sold out uses the owner switch', as
     await page.request.post('/api/v1/proposals', {
       data: {
         kind: 'business',
-        business: { name: 'Sweep Kopitiam' },
+        // Busy hours run on the shop's own clock; a shop made through the API has no phone zone.
+        business: { name: 'Sweep Kopitiam', timezone: 'Asia/Singapore' },
         products: [
           { name: 'Kopi', unit: 'cup', price: 180 },
           { name: 'Teh', unit: 'cup', price: 170 },

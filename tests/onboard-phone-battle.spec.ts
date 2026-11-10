@@ -196,7 +196,9 @@ for (const { viewport, language, appearance, persona } of journeys)
         .getByTestId('map-card')
         .getByRole('button', { name: guided.confirmPin, exact: true })
         .click()
-    await expect(page.getByTestId('shop-live')).toBeVisible()
+    // The badge waits on the coach's reply to the address; on a loaded runner that is more than
+    // the default 5 s (it is not the time of day: the journey passes at 06:00 and 14:00 IST).
+    await expect(page.getByTestId('shop-live')).toBeVisible({ timeout: 15_000 })
     await reload()
     await expect(page.getByTestId('shop-so-far')).toContainText(name!)
     await expect(page.locator('[data-testid="map-card"][data-state="open"]')).toHaveCount(0)

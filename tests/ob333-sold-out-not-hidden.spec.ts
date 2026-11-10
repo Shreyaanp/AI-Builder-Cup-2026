@@ -1,12 +1,17 @@
 import { expect, test, type Page } from '@playwright/test'
+import { atShopTime } from './shopClock.js'
 
 // OB-333: in 4 of 4 agent runs "mark it sold out" switched the item off the menu. On the item sheet
 // "Sold out today" comes first and saves at once; "Hide from menu" is a separate, plainly labelled
 // switch further down. Phone widths, en + hi.
 test.setTimeout(120_000)
-test.beforeEach(async ({ context }, info) => {
+test.beforeEach(async ({ context, page }, info) => {
   test.skip(info.project.name !== 'phone', 'Phone layout')
   await context.setExtraHTTPHeaders({ 'x-forwarded-for': `ob333-${info.testId}-${Math.random()}` })
+  // The demo chai stall (Bengaluru, open 06:30–21:00, busy 07:30–09:30) mid-afternoon: open and
+  // not busy, whatever hour the runner starts (main went red at 06:15 IST, 08:45 in the browser's
+  // Singapore zone). The busy and before-opening hours have their own test below.
+  await atShopTime(page, '14:00')
 })
 test.afterEach(({ page }) => page.unrouteAll({ behavior: 'ignoreErrors' }))
 
@@ -28,6 +33,14 @@ async function openItem(page: Page, width: number, language: 'en' | 'hi' = 'en')
     .getByRole('button', { name: language === 'hi' ? /^मेन्यू/ : /^Menu/ })
     .click()
   await page.locator('[data-menu-item="Ginger chai"]').click()
+}
+
+async function markSoldOut(page: Page) {
+  const form = page.getByRole('dialog', { name: 'Edit Ginger chai' })
+  await form.getByRole('button', { name: 'Sold out today' }).click()
+  await expect(form.getByRole('button', { name: 'Put back on sale' })).toBeVisible()
+  await form.getByRole('button', { name: 'Cancel' }).click()
+  await expect(form).toHaveCount(0)
 }
 
 const inViewport = async (page: Page, name: string) => {
@@ -132,3 +145,22 @@ test('OB-333: Hindi item sheet has both answers in Hindi', async ({ page }) => {
   await expect(form.getByRole('button', { name: 'वापस बिक्री पर रखें' })).toBeVisible()
   await expect(form).not.toContainText(/Sold out|back on sale/)
 })
+
+// An owner who opens the app at 6 am, before the stall opens, or in the 07:30 rush still sees
+// what is sold out on the Sold out row. The busy-hours question ("Still have …?") comes after the
+// list, never instead of it, and only while the shop is open, by the shop's own clock.
+for (const [time, question] of [
+  ['06:00', false],
+  ['08:00', true],
+] as const)
+  test(`OB-333: the Sold out row lists Ginger chai at ${time} in Bengaluru`, async ({ page }) => {
+    await atShopTime(page, time)
+    await openItem(page, 390)
+    await markSoldOut(page)
+    const row = page.getByTestId('shop-tiles').getByRole('button', { name: /^Sold out/ })
+    await expect(row).toContainText('Ginger chai')
+    // The seeded Ragi biscuit is sold out too; the question comes last, after the list.
+    if (question)
+      await expect(row).toHaveText(/^Sold out.*Ginger chai.* · Still have Masala chai\?$/)
+    else await expect(row).not.toContainText('Still have')
+  })

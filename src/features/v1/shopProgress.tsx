@@ -266,10 +266,29 @@ const DEFAULT_BUSY: [number, number][] = [
   [17 * 60, 20 * 60],
 ]
 
-/** The busy window the shop is in right now ("start-end" key), or null outside busy hours. */
-export function busyWindow(busyHours: string | undefined, now = new Date()): string | null {
+/**
+ * The busy window the shop is in right now ("start-end" key), or null outside busy hours. With a
+ * timezone the clock is the shop's own (as openNow), not the phone's: a Bengaluru stall's 07:30
+ * rush is 07:30 in Bengaluru, whatever zone the device is set to.
+ */
+export function busyWindow(
+  busyHours: string | undefined,
+  now = new Date(),
+  timezone?: string,
+): string | null {
   const parsed = timeRanges(busyHours ?? '')
-  const current = now.getHours() * 60 + now.getMinutes()
+  const parts = timezone
+    ? new Intl.DateTimeFormat('en-US', {
+        timeZone: timezone,
+        hour: '2-digit',
+        minute: '2-digit',
+        hourCycle: 'h23',
+      }).formatToParts(now)
+    : null
+  const part = (key: string) => Number(parts?.find((p) => p.type === key)?.value ?? 0)
+  const current = parts
+    ? part('hour') * 60 + part('minute')
+    : now.getHours() * 60 + now.getMinutes()
   const window = (parsed.length ? parsed : DEFAULT_BUSY).find(
     ([start, end]) => current >= start && current < end,
   )

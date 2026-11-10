@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import { enter, localOnly, seedShop } from '../stories/support.js'
 import { stockTile } from '../support/grow.js'
+import { atShopTime } from '../shopClock.js'
 
 test.use({
   viewport: { width: 390, height: 844 },
@@ -90,6 +91,9 @@ const tab = (page: Page, name: string) =>
 // OB-74: the tour's Today step uses a Hindi name for seeded tea stock.
 test('Hindi phone sweep: supply, reminders, onboarding, tour and demo', async ({ page }) => {
   test.setTimeout(150_000)
+  // In the seeded Singapore shop's lunch rush, so Shop's Sold out row always asks "Kopi अभी है?"
+  // (it used to depend on the hour the runner started).
+  await atShopTime(page, '12:30', '+08:00')
   await localOnly(page)
   await enter(page)
   await seedShop(page)
