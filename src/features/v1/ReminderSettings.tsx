@@ -5,25 +5,11 @@ import { useCopy } from './strings'
 import { useWorkspace } from './workspaceContext'
 import type { components } from '../../api/generated'
 import { useDemoCopy } from '../frontdoors/strings'
+import { pushSupported, subscriptionId } from './reminderPush'
 
 type Status = components['schemas']['ReminderStatus'] & { demo?: boolean }
 
-async function subscriptionId(subscription: PushSubscription): Promise<string> {
-  const digest = await crypto.subtle.digest(
-    'SHA-256',
-    new TextEncoder().encode(subscription.endpoint),
-  )
-  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('')
-}
-
-function supported() {
-  return (
-    window.isSecureContext &&
-    'Notification' in window &&
-    'PushManager' in window &&
-    'serviceWorker' in navigator
-  )
-}
+const supported = pushSupported
 
 export function ReminderSettings() {
   const t = useCopy()

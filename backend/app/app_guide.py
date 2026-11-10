@@ -327,8 +327,8 @@ FEATURES: tuple[Feature, ...] = (
         "reply_language",
         "owner",
         "Your language",
-        "Choose the language the app and the coach use with you; replies to customers still "
-        "follow the customer's own language.",
+        "Choose the language the app and the coach use with you; reminders and the replies you "
+        "send customers use it too.",
         '"Reply in Hindi" or "English mein bolo".',
         # In You, not beside a customer's conversation (OB-303).
         ("You", "Language"),
@@ -336,7 +336,8 @@ FEATURES: tuple[Feature, ...] = (
         "Reply in Hindi",
         "हिंदी में जवाब दो",
         "you",
-        what_hi="ऐप और कोच आपसे किस भाषा में बात करें, यह चुनें; ग्राहकों को जवाब उनकी अपनी भाषा में जाते हैं।",
+        what_hi="ऐप और कोच आपसे किस भाषा में बात करें, यह चुनें; सूचनाएँ और ग्राहकों को आपके जवाब भी "
+        "इसी भाषा में जाते हैं।",
     ),
     Feature(
         "close_day",

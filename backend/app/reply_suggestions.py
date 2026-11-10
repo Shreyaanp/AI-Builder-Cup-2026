@@ -1,4 +1,4 @@
-"""One-tap reply drafts for the owner, in the customer's language (OB-303).
+"""One-tap reply drafts for the owner, in the owner's chosen app language (OB-303).
 
 Under a customer's question the owner sees two or three short replies. A tap only fills the
 reply box; the owner edits and sends. Every fact in a draft comes from the shop's own data: an
@@ -48,7 +48,7 @@ from .shop_time import shop_timezone
 
 class ReplySuggestions(BaseModel):
     language: str
-    """App locale of the customer's message (src/i18n/locales.ts)."""
+    """App locale the drafts are in: the owner's (src/i18n/locales.ts)."""
     replies: list[str] = Field(default_factory=list, max_length=3)
     mode: Literal["template"] = "template"
 
@@ -339,9 +339,14 @@ def template_replies(
     return unique[:3]
 
 
-def templates(shop: dict[str, Any], question: str, now: datetime | None = None) -> ReplySuggestions:
-    """The fixed-sentence drafts, in the customer's language: the only drafts the owner sees."""
-    language = customer_language(question)
+def templates(
+    shop: dict[str, Any], question: str, now: datetime | None = None, owner: str | None = None
+) -> ReplySuggestions:
+    """The fixed-sentence drafts: the only drafts the owner sees. They are in the owner's chosen
+    app language (`owner`), so a Hindi shop sends Hindi and an English shop never gets Hindi
+    because a customer wrote in it. Without it (an app from before the owner's language was
+    sent) they are in the customer's language."""
+    language = owner if owner in LANGUAGES else customer_language(question)
     if language not in LANGUAGES:
         language = "en"
     return ReplySuggestions(

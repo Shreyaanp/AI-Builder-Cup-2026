@@ -242,8 +242,11 @@ def test_OB_59_public_demo_coach_answers_Hindi_in_Hindi(app):  # noqa: N802, F81
         app.state.rate_limiter.counters.clear()
         session = open_demo(client).json()["session_id"]
         for message, expected in prompts:
+            # A Hindi question comes from an app in Hindi: the reply follows the app's language.
+            hindi = any("ऀ" <= ch <= "ॿ" for ch in message)
             response = client.post(
-                f"/api/v1/demo/sessions/{session}/coach", json={"message": message}
+                f"/api/v1/demo/sessions/{session}/coach",
+                json={"message": message, "language": "hi" if hindi else "en"},
             )
             assert response.status_code == 200, (message, response.text)
             events = [

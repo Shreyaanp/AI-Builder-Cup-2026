@@ -9,13 +9,45 @@ from datetime import date
 from typing import Any, cast
 
 from .app_guide import next_line_hi
+from .demo_coach_en import item_in
 from .demo_coach_words import FALLBACK_HI
-from .demo_item_names import HINDI_UNITS, hindi_item, item_named_in
+from .demo_item_names import HINDI_ITEMS, HINDI_UNITS, hindi_item, item_named_in
 
 # "मेरा दूध कम हो रहा है", "मेरी चीनी कम हो रही है" or the tour's "मेरा आटा ख़त्म हो रहा है": the
 # words between are the item.
 LOW_HI = re.compile(r"मेर[ाी]\s+(?P<item>[^।?]{1,40}?)\s+(?:कम|ख़?त्म)\s+हो\s+रह[ाी]")
 HINDI_BEST_SELLERS = re.compile(r"सबसे\s+\S*यादा\s+(?:\S+\s+)?बिक|बेस्ट\s*सेलर|टॉप\s*सेलर")
+
+
+# A Hindi shop asking in English or Hinglish ("what sold today?", "kal kya banau?") still gets
+# its answer in Hindi: the words below add the Hindi cue that hindi_reply reads.
+ENGLISH_CUES = (
+    (r"\b(?:today|sales?|sold|earn\w*|revenue|takings|aaj|bikri|bika|kamai)\b", "आज बिक्री"),
+    (r"\b(?:stock|left|remaining|available|bacha|bachi|khatam|khatm)\b", "स्टॉक"),
+    (r"\b(?:price|cost|rate|daam|dam|keemat|kimat|bhav)\b", "कीमत"),
+    (r"\b(?:order|reorder|supplier\w*|buy|mangao|mangana|kharid\w*)\b", "ऑर्डर"),
+    (r"\b(?:tomorrow|prep|kal|banau|banaun|banana)\b", "कल"),
+    (r"\b(?:hours?|open|opening|close[ds]?|timing|samay|khula|band)\b", "समय"),
+    (r"\b(?:customers?|messages?|questions?|inquir\w*|grahak\w*|sawal)\b", "ग्राहक"),
+    (
+        r"\b(?:best ?sellers?|top ?sellers?|most sold|(?:sells?|sold) (?:the )?most|sabse "
+        r"(?:zyada|jyada|jada|ziada))\b",
+        "बेस्ट सेलर",
+    ),
+    (r"^(?:hello|hi|hey|namaste|namaskar)\b", "नमस्ते"),
+)
+
+
+def in_hindi(question: str) -> str:
+    """The question with the Hindi cues of its English or Hinglish words added, item names
+    too ("milk" → दूध), so the answer names the same item."""
+    words = question.casefold()
+    cues = [cue for pattern, cue in ENGLISH_CUES if re.search(pattern, words)]
+    # The item by its English or Hinglish name ("milk", "doodh" → दूध).
+    item = item_in(question)
+    if item and item in HINDI_ITEMS:
+        cues.append(HINDI_ITEMS[item])
+    return " ".join([question, *cues])
 
 
 def _stock_hi(item: dict[str, Any]) -> str:

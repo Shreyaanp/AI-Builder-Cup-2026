@@ -8,7 +8,8 @@ from typing import Any, cast
 
 from .app_guide import Feature, by_ask, next_line, next_line_hi
 from .contracts import StreamEvent
-from .demo_coach_hi import HINDI_UNITS, LOW_HI, hindi_reply
+from .demo_coach_en import in_english, item_in
+from .demo_coach_hi import HINDI_UNITS, LOW_HI, hindi_reply, in_hindi
 from .demo_coach_words import (
     FALLBACK_HI,
     app_language,
@@ -18,6 +19,7 @@ from .demo_coach_words import (
     menu_item,
     owner_changes,
     sales_today,
+    speaks_hindi,
     tomorrow_note,
     unsure,
 )
@@ -142,7 +144,7 @@ BEST_SELLERS = re.compile(
     r"(?:(?:what\s+(?:are|were|is)|what's|show(?:\s+me)?|which\s+are)\s+)?(?:my\s+|the\s+)?"
     r"(?:best[\s-]*sell(?:ers?|ing\s+items?)|top[\s-]*sell(?:ers?|ing\s+items?)"
     r"|most\s+popular\s+items?|top\s+items?)(?:\s+(?:this|last)\s+week)?"
-    r"|what\s+sells\s+(?:the\s+)?(?:best|most)(?:\s+(?:this|last)\s+week)?",
+    r"|what\s+(?:sells|sold)\s+(?:the\s+)?(?:best|most)(?:\s+(?:this|last)\s+week)?",
     re.I,
 )
 # Shop visits and page views, not the owner's own trips ("visit the wholesaler").
@@ -422,6 +424,11 @@ def _hindi(ctx: Any, feature: Feature) -> list[StreamEvent]:
     return [*_opened(ctx, feature), StreamEvent(kind="reply", text=text)]
 
 
+def _prepared_hi(feature_id: str) -> StreamEvent:
+    reply = "मैंने यह आपके जाँचने के लिए तैयार किया है; स्क्रीन पर पक्का करें।"
+    return StreamEvent(kind="reply", text=f"{reply} {DEMO_NOTE_HI} {next_line_hi(feature_id)}")
+
+
 def _unclear_change(question: str, text: str) -> bool:
     """A change request that is not exactly one the demo can prepare ("don't close at 10pm",
     "close at 2pm for lunch"): it gets the examples, never a guessed card."""
@@ -579,19 +586,13 @@ async def _order_from(ctx: Any, question: str) -> list[StreamEvent] | None:
     chosen = suppliers[rank - 1]
     unit = chosen["item"]["unit"]
     quantity = _said_quantity(wanted, unit, bare=True)
-    from .agent import ui_language
-
-    token = ui_language.set("hi" if hindi else ui_language.get())
-    try:
-        drafted = prepare_order(
-            chosen["id"],
-            [OrderItem(name=chosen["item"]["name"], quantity=quantity, unit=unit)],
-        )
-    finally:
-        ui_language.reset(token)
+    drafted = prepare_order(
+        chosen["id"],
+        [OrderItem(name=chosen["item"]["name"], quantity=quantity, unit=unit)],
+    )
     if drafted.get("status") != "needs_owner_tap":
         return None
-    if hindi:
+    if speaks_hindi():
         text = (
             f"{chosen['name']} से {quantity:g} {HINDI_UNITS.get(unit, unit)} "
             f"{hindi_item(chosen['item']['name'])} का ऑर्डर नीचे तैयार है। आपके भेजे बिना कुछ नहीं "
@@ -715,9 +716,19 @@ async def public_demo_turn(ctx: Any, question: str) -> list[StreamEvent] | None:
         events = await _order_from(ctx, question) or await _find_suppliers(ctx, question)
         if events:
             return events
+    # The reply is in the shop's chosen language; Devanagari only says how to read the words.
+    hindi = speaks_hindi()
     feature = by_ask(question)
+    devanagari = bool(HINDI.search(question))
+    # An English shop asking in Hindi or Hinglish: the same question, answered in English. A
+    # screen's own Hinglish phrase keeps its guide answer.
+    english = None if hindi or (feature and not devanagari) else in_english(question)
+    if english:
+        return await public_demo_turn(ctx, english)
+    if feature and devanagari and not hindi and feature.id != "google":
+        return _guided(ctx, feature)
     # In the demo, Get on Google is the practice run, not the real guide's "finish on Google".
-    if feature and HINDI.search(question) and feature.id != "google":
+    if feature and hindi and feature.id != "google":
         return _hindi(ctx, feature)
     if not HINDI.search(question):
         asked = "?" in question or ASKED.match(text)
@@ -726,8 +737,13 @@ async def public_demo_turn(ctx: Any, question: str) -> list[StreamEvent] | None:
                 events = intent(ctx, text)
                 if events:
                     taught = TAUGHT.get(intent.__name__, "sold_out")
-                    return _teach(events, "price_change" if NEW_PRICE.fullmatch(text) else taught)
-    if not HINDI.search(question):
+                    taught = "price_change" if NEW_PRICE.fullmatch(text) else taught
+                    if not hindi:
+                        return _teach(events, taught)
+                    # A Hindi shop typing in English still hears back in Hindi.
+                    if events[0].kind == "proposal":
+                        return [events[0], _prepared_hi(taught)]
+    if not hindi and not HINDI.search(question):
         # The phrase a screen shows ("Or just ask: …") ends with its own feature's screen path:
         # the demo's records answer when it is about that feature (it names the same path),
         # else what the feature does.
@@ -786,14 +802,18 @@ def public_demo_reply(ctx: Any, question: str) -> str | None:
     # Saved prices are minor units (paise); the reply shows rupees.
     price = to_major(cast(int, product.get("price", 0)), shop_currency(business))
     quantity = sum(row["quantity"] for row in history if row["item"] == name)
-    if re.search(r"[\u0900-\u097f]", question):
+    # The shop's chosen language decides the reply, never the script of one message.
+    if speaks_hindi():
         return hindi_reply(
-            ctx, question, business, inventory, history, inquiries, today, named, product
+            ctx, in_hindi(question), business, inventory, history, inquiries, today, named, product
         )
     # Only a short hello is a greeting; "Hi, reorder milk" is an order.
     greeting = (
         re.search(r"\b(?:hello|hi|hey)\b", words) or "\u0928\u092e\u0938\u094d\u0924\u0947" in words
     )
+    if HINDI.search(question) and not (greeting and len(words.split()) <= 3):
+        # An English shop's message in Hindi: asked again in English, never answered in Hindi.
+        return FALLBACK
     if greeting and len(words.split()) <= 3:
         shop = str(fields.get("name") or "This demo shop")
         return (
@@ -887,7 +907,13 @@ def public_demo_reply(ctx: Any, question: str) -> str | None:
             "\u0916\u0924\u094d\u092e",
             "\u0938\u094d\u091f\u0949\u0915",
         )
-    ):
+    ) or re.search(r"\bhow\s+much\b.*\b(?:left|remaining)\b", words):
+        said = item_in(question)
+        if said and not named:
+            # "How much milk is left?" where the menu has no milk: never another item's count.
+            return f"The demo shop has no stock count saved for {said.lower()}. " + next_line(
+                "sold_out"
+            )
         if product.get("available") is False:
             count = "sold out"
         elif product.get("stock") is None:
@@ -901,6 +927,9 @@ def public_demo_reply(ctx: Any, question: str) -> str | None:
     if any(
         term in words for term in ("price", "\u0915\u0940\u092e\u0924", "\u0926\u093e\u092e")
     ) or re.search(r"\b(?:is|now)\s+\d+|\b\d+\s+now\b", words):
+        said = item_in(question)
+        if said and not named:
+            return f"{said} is not on the demo shop's menu. " + next_line("price_change")
         return (
             f"The demo price for {name} is ₹{price:g}. "
             "In your real shop, a price change waits for review. " + next_line("price_change")

@@ -177,6 +177,48 @@ async def subscribe(body: ReminderInput, request: Request) -> ReminderResult:
     return ReminderResult()
 
 
+class ReminderLocale(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    locale: str
+
+    @field_validator("locale")
+    @classmethod
+    def supported_locale(cls, value: str) -> str:
+        if value not in LANGUAGES:
+            raise ValueError("Unsupported locale")
+        return value
+
+
+def relabel(docs: Documents, uid: str, sid: str, locale: str) -> bool:
+    """The owner changed the app language: this phone's reminders are worded in it from now.
+    Only an existing reminder changes; its shop and deliveries stay."""
+    found = False
+
+    def change(current: dict[str, Any] | None) -> tuple[float, dict[str, Any]] | None:
+        nonlocal found
+        entries = dict((current or {}).get("entries", {}))
+        if sid not in entries:
+            return None
+        found = True
+        if entries[sid].get("locale") == locale:
+            return None
+        entries[sid] = {**entries[sid], "locale": locale}
+        return time.time(), {"entries": entries}
+
+    docs.update(KIND, uid, uid, change)
+    return found
+
+
+@router.put("/reminders/{sid}/locale", response_model=ReminderResult)
+async def change_locale(sid: str, body: ReminderLocale, request: Request) -> ReminderResult:
+    uid = await consented_owner(request)
+    await enforce_limits(request, [("owner:write", uid)])
+    found = await anyio.to_thread.run_sync(
+        relabel, store(request).feature_docs, uid, sid, body.locale
+    )
+    return ReminderResult(ok=found)
+
+
 @router.delete("/reminders/{sid}", response_model=ReminderResult)
 async def unsubscribe(sid: str, request: Request) -> ReminderResult:
     uid = await owner(request)

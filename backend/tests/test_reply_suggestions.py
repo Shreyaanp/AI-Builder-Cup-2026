@@ -1,4 +1,4 @@
-"""OB-303: one-tap reply drafts come from the shop's own data, in the customer's language.
+"""OB-303: one-tap reply drafts come from the shop's own data, in the owner's chosen language.
 
 They are the fixed templates only, for every shop: no model text can reach a suggestion (OB-326).
 """
@@ -341,3 +341,41 @@ def test_OB_326_no_adversarial_draft_can_be_a_suggestion(monkeypatch) -> None:  
                     if "ragi" in plain or "रागी" in plain or "ராகி" in plain:
                         assert reply in sold_out, (question, reply)
     assert seen > 1000
+
+
+@pytest.mark.parametrize(
+    ("owner_language", "customer_says", "script"),
+    [
+        # An English shop: a Hindi customer still gets English drafts (owner rule, 9 Nov).
+        ("en", "क्या दुकान अभी खुली है?", r"^[^ऀ-ॿ]+$"),
+        # A Hindi shop: an English customer gets Hindi drafts, the preview of what will be sent.
+        ("hi", "Are you open now?", r"[ऀ-ॿ]"),
+    ],
+)
+def test_drafts_are_in_the_owners_chosen_language(
+    app,  # noqa: F811
+    monkeypatch,
+    owner_language: str,
+    customer_says: str,
+    script: str,
+) -> None:
+    from google import genai
+
+    monkeypatch.setattr(genai, "Client", lambda **_: pytest.fail("Offline drafts called Gemini"))
+    with TestClient(app) as owner_client:
+        customer = TestClient(app)
+        customer.post("/api/v1/customer/session", json={"name": "Asha"})
+        bid = owned_shop(owner_client)
+        receipt = customer.post(
+            f"/api/v1/public/shops/{bid}/inquiries",
+            json={"contact": "customer@example.test", "message": customer_says},
+        ).json()
+        path = f"/api/v1/businesses/{bid}/inquiries/{receipt['id']}/replies"
+        drafts = owner_client.get(path, headers={"X-App-Language": owner_language}).json()
+        assert drafts["language"] == owner_language
+        assert 2 <= len(drafts["replies"]) <= 3
+        assert all(re.search(script, r) for r in drafts["replies"]), drafts["replies"]
+        # Switching the app language re-words the same drafts at once.
+        other = "hi" if owner_language == "en" else "en"
+        again = owner_client.get(path, headers={"X-App-Language": other}).json()
+        assert again["language"] == other and again["replies"] != drafts["replies"]

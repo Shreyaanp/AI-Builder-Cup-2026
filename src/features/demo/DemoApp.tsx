@@ -3,6 +3,7 @@ import {
   Suspense,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -19,6 +20,7 @@ import { AppShell } from '../v1/AppShell'
 import { BackHistory } from '../v1/backStack'
 import { ApiError, type Api } from '../v1/api'
 import { setCoachEndpoint } from '../../api/stream'
+import { useLocale } from '../../state/hooks'
 import { nameSampleShops } from '../../i18n/productNames'
 import { DemoWelcome } from './DemoWelcome'
 import { DemoBrowse } from '../customer/DemoBrowse'
@@ -52,6 +54,14 @@ const demoMe = { legal_version: '', consent: null, consent_current: true }
 
 export default function DemoApp() {
   const t = useDemoCopy()
+  // The owner's chosen language rides on every owner call, as in the real app (reply drafts).
+  // Read from a ref: a language change must not rebuild the api (that resets the conversation).
+  const locale = useLocale()
+  const localeRef = useRef(locale)
+  // A layout effect runs before every screen's own effects, so a refetch reads the new language.
+  useLayoutEffect(() => {
+    localeRef.current = locale
+  }, [locale])
   const bannerRef = useRef<HTMLElement>(null)
   useEffect(() => {
     const banner = bannerRef.current
@@ -164,6 +174,7 @@ export default function DemoApp() {
           signal: init.signal ?? AbortSignal.timeout(25_000),
           headers: {
             ...(typeof init.body === 'string' ? { 'Content-Type': 'application/json' } : {}),
+            'X-App-Language': localeRef.current,
             ...init.headers,
           },
         })

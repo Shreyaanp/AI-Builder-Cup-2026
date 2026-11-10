@@ -1,7 +1,8 @@
 import { expect, test, type Page } from '@playwright/test'
 
-// OB-303 "a customer is waiting": one-tap replies in the customer's language, ✓ Sent, human
-// times, "See translation" only for another language and "You:" on the shop's own last line.
+// OB-303 "a customer is waiting": one-tap replies in the owner's chosen language (owner rule,
+// 9 Nov), ✓ Sent, human times, "See translation" only for another language and "You:" on the
+// shop's own last line.
 test.setTimeout(120_000)
 
 test.beforeEach(async ({ context }, info) => {
@@ -83,7 +84,7 @@ test('OB-303 the demo drafts three replies; a tap fills the box and Send shows �
   expect(paid).toEqual([])
 })
 
-test('OB-303 in Hindi: drafts follow the customer, translation only for another language, 360 px', async ({
+test('OB-303 in Hindi: drafts are in the shop language, translation only for another language, 360 px', async ({
   page,
 }, info) => {
   test.skip(info.project.name !== 'phone', 'Phone width')
@@ -92,10 +93,11 @@ test('OB-303 in Hindi: drafts follow the customer, translation only for another 
   await expect(sheet.getByRole('button', { name: 'बातचीत खोलें: Wei' })).toContainText('आप: ')
   await sheet.getByRole('button', { name: 'बातचीत खोलें: Priya' }).click()
   const log = sheet.getByRole('log', { name: 'बातचीत' })
-  // Priya wrote in English: the drafts are in English, her language, not the owner's.
+  // Priya wrote in English; the shop chose Hindi, so what it will send reads in Hindi.
   const chips = sheet.getByRole('group', { name: 'सुझाए गए जवाब' }).getByRole('button')
   await expect(chips).toHaveCount(3)
-  await expect(chips.first()).toContainText('Yes, Masala chai is available today')
+  await expect(chips.first()).toContainText('जी हाँ, मसाला चाय आज मिल रहा है: ₹20 प्रति कप')
+  for (const chip of await chips.all()) await expect(chip).not.toContainText(/\b(?:Yes|today)\b/)
   // Her English words in a Hindi app can be translated; the time is Hindi too.
   await expect(log.getByRole('button', { name: 'अनुवाद देखें' })).toHaveCount(1)
   await expect(log).toContainText(/आज, /)

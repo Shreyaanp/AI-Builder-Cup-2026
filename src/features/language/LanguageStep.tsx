@@ -63,9 +63,10 @@ type Place = {
 
 /**
  * "Choose your language", right after sign-in (owner and customer). The best guess comes first
- * and is selected: the phone's language when the region speaks it, else the area's language
- * (Bengaluru → Kannada), else the region's (India → Hindi, Singapore → English). One tap on
- * Continue confirms it; the choice is the app's single language preference (voice reads it too).
+ * and is selected (languageChoices): for an owner the phone's own language, else English, never
+ * the region's (an India shop is not Hindi unless the owner picks it). One tap on Continue
+ * confirms it; the choice is the app's single language preference: for an owner the coach, voice,
+ * reminders and customer reply drafts all use it.
  */
 export function LanguageStep({
   place,
@@ -79,7 +80,7 @@ export function LanguageStep({
 }) {
   const dispatch = usePreferencesDispatch()
   const region = shop ? shopRegion(place) : regionAt(place?.lat, place?.lng)
-  const { suggested, offered } = languageChoices(region, place)
+  const { suggested, offered } = languageChoices(region, place, undefined, shop === true)
   const [selected, setSelected] = useState<Locale>(suggested)
   const [more, setMore] = useState(false)
   const heading = useRef<HTMLHeadingElement>(null)

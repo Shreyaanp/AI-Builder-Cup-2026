@@ -200,7 +200,8 @@ async def unblock_conversation(business_id: str, inquiry_id: str, request: Reque
 async def reply_suggestions(
     business_id: str, inquiry_id: str, request: Request
 ) -> ReplySuggestions:
-    """One-tap reply drafts for the customer's latest words (OB-303); never sent from here."""
+    """One-tap reply drafts for the customer's latest words (OB-303); never sent from here.
+    They are in the owner's app language, which the owner app sends with every call."""
     uid = await owner(request)
     record = await anyio.to_thread.run_sync(
         store(request).thread_action, uid, business_id, inquiry_id, "", "get"
@@ -222,7 +223,8 @@ async def reply_suggestions(
     for product, item in zip(shop["products"], inventory, strict=True):
         product["source"] = source_of(item, category)
     # The fixed templates for every shop: no model text can reach a suggestion (OB-326).
-    drafts = templates(shop, humans[-1].text)
+    owner_language = (request.headers.get("x-app-language") or "").strip()[:35] or None
+    drafts = templates(shop, humans[-1].text, owner=owner_language)
     # When they understood nothing, a real shop's model may choose among the same fixed
     # sentences (#695). Demo shops and the public demo never call a paid model.
     answers = request.app.state.customer_answers

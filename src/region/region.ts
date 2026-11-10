@@ -195,14 +195,17 @@ export function moneyLocale(currency: string, locale?: string): string | undefin
 
 /**
  * The languages offered after sign-in, best guess first: the phone's first language when the
- * region speaks it (English included: an English phone in India gets English), else the area's
- * regional language (Bengaluru → Kannada), else the region's first (India → Hindi, Singapore →
- * English). English is always offered.
+ * region speaks it (English included: an English phone in India gets English), else a later
+ * phone language the region speaks. With none, a customer gets the area's language (Bengaluru →
+ * Kannada), else the region's first (India → Hindi); an owner (`owner`) gets the phone's own
+ * first language, else English: an owner's app is never Hindi unless they pick it. The area's and
+ * region's languages are offered next; English is always offered.
  */
 export function languageChoices(
   region: RegionProfile,
   point?: { lat?: number | null; lng?: number | null } | null,
   phone: readonly string[] = navigator.languages ?? [],
+  owner = false,
 ): { suggested: Locale; offered: Locale[] } {
   const spoken = phone
     .map((tag) => {
@@ -219,10 +222,13 @@ export function languageChoices(
       ? first
       : spoken.find((code) => code !== 'en' && region.languages.includes(code))
   const fallback = region.languages[0] ?? 'en'
-  const suggested: Locale =
-    own ??
-    (regional && region.languages.includes(regional) ? regional : null) ??
-    (region.country ? fallback : (spoken[0] ?? 'en'))
+  // Owner rule, 9 Nov: an owner's app is Hindi only when they pick it, never a guess from the
+  // place.
+  const suggested: Locale = owner
+    ? (own ?? spoken[0] ?? 'en')
+    : (own ??
+      (regional && region.languages.includes(regional) ? regional : null) ??
+      (region.country ? fallback : (spoken[0] ?? 'en')))
   const offered = [
     ...new Set<Locale>([
       suggested,

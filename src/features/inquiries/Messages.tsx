@@ -680,7 +680,8 @@ export function Messages({ businessId }: { businessId: string }) {
     }
   }, [api, path, load])
   const thread = items.find((item) => item.id === selected)
-  // One-tap drafts for the customer's latest words, fetched once per question (OB-303).
+  // One-tap drafts for the customer's latest words (OB-303), in the owner's chosen language (the
+  // api sends it): what will be sent reads in it, and a language change re-words them at once.
   const question = thread?.messages?.filter((m) => m.kind !== 'ai').at(-1)
   const asking = question?.author === 'customer' ? question.id : null
   const [drafts, setDrafts] = useState<{ id: string; replies: string[] } | null>(null)
@@ -699,7 +700,7 @@ export function Messages({ businessId }: { businessId: string }) {
       () => undefined,
     )
     return () => abort.abort()
-  }, [api, path, selected, asking])
+  }, [api, path, selected, asking, locale])
   const update = async (id: string, action: string, text?: string) => {
     const result = await api<Inquiry>(`${path}/${encodeURIComponent(id)}/${action}`, {
       method: 'POST',
