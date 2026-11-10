@@ -360,7 +360,8 @@ for (const [language, preview, pointer, shopTile, tile, menu, draft] of [
     await page.locator('[data-tour="nav-grow"]').click()
     await (await stockTile(page)).click()
     const sheet = page.getByRole('dialog')
-    await sheet.getByRole('button', { name: draft }).click()
+    // The sheet's own Order more, not the runs-out row whose name also ends in it.
+    await sheet.getByRole('button', { name: draft, exact: true }).click()
     await expect(sheet.getByRole('status')).toContainText(`${shopTile} › ${tile}`)
     await expect(sheet.getByRole('status')).not.toContainText(menu)
   })

@@ -45,11 +45,15 @@ test('public demo walks the whole owner lifecycle at 390 px', async ({ page }, i
   await welcome.getByRole('button', { name: 'Skip' }).click()
   await expect(page.getByRole('dialog')).toHaveCount(0)
 
-  // OB-248: Find suppliers does the work: the demo suppliers and a draft order, no pointer.
+  // OB-248: Find suppliers does the work: the demo suppliers, no pointer. OB-265: the owner
+  // picks one with Order, and only then is the order drafted.
   const coach = page.getByRole('textbox', { name: 'Message', exact: true })
   await coach.fill('My masala chai is running low. Find suppliers.')
   await page.getByRole('button', { name: 'Send', exact: true }).click()
-  await expect(page.getByRole('log')).toContainText('I drafted 10', { timeout: 30_000 })
+  const log = page.getByRole('log')
+  await expect(log).toContainText('Tap Order on the one you want', { timeout: 30_000 })
+  await log.getByRole('button', { name: 'Order', exact: true }).first().click()
+  await expect(log).toContainText('I drafted 10', { timeout: 30_000 })
   await expect(page.getByRole('log')).not.toContainText('Supplies')
 
   // OB-129: demo message cards show a name and plain question, with a shared button edge.
