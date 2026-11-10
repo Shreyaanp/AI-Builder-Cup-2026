@@ -389,19 +389,18 @@ export function ShopTiles({
   useEffect(() => clearOpen('stock'), [])
   const shop = ws.active
   if (!shop) return null
-  const open = openNow(
-    shop.fields.hours,
-    new Date(),
-    shop.fields.weekly_hours,
-    shopZone(shop.fields),
-  )
-  // In the busy hours the row asks about the top items, one at a time (the old sweep card).
-  // Customers buy from the menu; the things the shop buys have their own row (OB-310).
+  const now = new Date()
+  const zone = shopZone(shop.fields)
+  const open = openNow(shop.fields.hours, now, shop.fields.weekly_hours, zone)
+  // In the shop's busy hours (its own clock, and only while it is open) the row also asks about
+  // the top items, one at a time (the old sweep card). Customers buy from the menu; the things
+  // the shop buys have their own row (OB-310).
   const menu = ws.products.filter(onMenu)
   const bought = ws.products.length - menu.length
-  const sweep = busyWindow(shop.fields.busy_hours)
-    ? menu.slice(0, SWEEP_ITEMS).find((product) => product.available !== false)
-    : undefined
+  const sweep =
+    open !== false && busyWindow(shop.fields.busy_hours, now, zone)
+      ? menu.slice(0, SWEEP_ITEMS).find((product) => product.available !== false)
+      : undefined
   const soldOutNames = menu
     .filter((product) => product.available === false)
     .map((product) => productName(product.name, locale))
@@ -423,12 +422,13 @@ export function ShopTiles({
         <ShopRow
           icon={<ZapOff size={20} />}
           label={t.soldOut}
+          // What is sold out always shows, at any hour; the busy-hours question comes after it
+          // (it used to replace the list, so the row hid Ginger chai during the rush).
           value={
-            sweep
-              ? t.sweepQuestion(productName(sweep.name, locale))
-              : soldOutNames.length
-                ? soldOutNames.join(' · ')
-                : t.soldOutCount(0)
+            [
+              ...soldOutNames,
+              ...(sweep ? [t.sweepQuestion(productName(sweep.name, locale))] : []),
+            ].join(' · ') || t.soldOutCount(0)
           }
           onClick={() => onSheet('soldOut')}
         />
