@@ -168,7 +168,7 @@ test('delete all my data erases shops and asks for consent again', async ({ page
   await expect(page.getByRole('heading', { name: 'Before we start' })).toBeVisible()
 })
 
-test('customer facts: the card starts the chat, the owner confirms, customers see a chip', async ({
+test('customer facts: one tap on the screen, the owner confirms, customers see a chip', async ({
   page,
 }) => {
   // Outside busy hours, so the facts card (not the sold-out sweep) is the pending item.
@@ -201,15 +201,11 @@ test('customer facts: the card starts the chat, the owner confirms, customers se
   // setup first). Simplify batch 3 folded Shop's banner into that sheet.
   await page.getByRole('button', { name: 'Shop', exact: true }).click()
   await page.getByRole('button', { name: /^Shop details/ }).click()
-  await page
-    .getByRole('dialog', { name: 'Halal Corner' })
-    .getByRole('button', { name: /^Customers ask: halal\?/ })
-    .click()
-  const message = page.getByLabel('Message', { exact: true })
-  await expect(message).toHaveValue('Halal: ')
-  await expect(message).toBeFocused()
-  await message.pressSequentially('yes')
-  await page.getByRole('button', { name: 'Send', exact: true }).click()
+  // A yes / no fact is answered with one tap on the screen, no chat (manual-chat parity, 9 Nov);
+  // the chat's "halal yes" prepares the same review (backend test_offline_coach_halal_answer…).
+  const sheet = page.getByRole('dialog', { name: 'Halal Corner' })
+  await expect(sheet.getByText('Customers ask: halal?', { exact: true })).toBeVisible()
+  await sheet.getByRole('button', { name: 'Yes', exact: true }).click()
   const review = page.getByRole('dialog', { name: 'Check before saving' })
   await expect(review.getByRole('region', { name: 'What customers ask' })).toContainText('Halal')
   await review.getByRole('button', { name: 'Confirm and save' }).click()

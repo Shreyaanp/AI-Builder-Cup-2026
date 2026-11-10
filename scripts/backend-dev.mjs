@@ -63,6 +63,8 @@ const child = spawn(uv, ['run', '--locked', 'python', 'run.py'], {
     MAPS_GROUNDING: process.env.MAPS_GROUNDING ?? 'demo',
     // The dev web server's own origin (per-worktree WEB_PORT, default 3200).
     // Share links and QR codes point at this checkout's own web port.
+    // Deferred in production; its stories still run here (tests/stories/s12-trust).
+    FEATURE_FACE_CHECK: 'true',
     CUSTOMER_ORIGIN: `http://127.0.0.1:${process.env.WEB_PORT ?? 3200}`,
     ALLOWED_ORIGINS: JSON.stringify([
       `http://127.0.0.1:${process.env.WEB_PORT ?? 3200}`,

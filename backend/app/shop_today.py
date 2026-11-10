@@ -20,6 +20,7 @@ from pydantic import BaseModel
 from . import brief
 from .close_reward import CloseReward, close_reward
 from .day_total import with_day_totals
+from .expenses import spent_on
 from .limits import enforce_limits
 from .merchant import MerchantRepository
 from .merchant_routes import owner, store
@@ -126,6 +127,9 @@ class Today(BaseModel):
     promise: Promise | None = None
     # No forecast yet: what the latest closed day sold, so Home says what to make (OB-329).
     last_day: brief.LastDay | None = None
+    # Expenses noted for yesterday and today (minor units; 0 with none), for "spent · left".
+    spent_yesterday: int = 0
+    spent_today: int = 0
 
 
 def _day(fields: dict[str, Any], at: float | None = None) -> str:
@@ -368,6 +372,10 @@ async def today_page(business_id: str, request: Request) -> Today:
         last_day=brief.last_day(
             sales, today, context["inventory"], str(fields.get("category") or ""), forecast
         ),
+        spent_yesterday=await anyio.to_thread.run_sync(
+            spent_on, service, business_id, today - timedelta(days=1)
+        ),
+        spent_today=await anyio.to_thread.run_sync(spent_on, service, business_id, today),
     )
 
 

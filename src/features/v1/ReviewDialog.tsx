@@ -41,7 +41,7 @@ export function ReviewDialog({
   const locale = useLocale()
   const pinCopy = discoverCopy(locale)
   const next = useNextStepsCopy()
-  const { api, businesses, review, reload, openEditor, readOnlyMessage } = useWorkspace()
+  const { api, businesses, review, reload, openEditor, readOnlyMessage, demo } = useWorkspace()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const snapshot = proposal?.snapshot
@@ -108,13 +108,15 @@ export function ReviewDialog({
     }
   }
 
+  // The demo never reads a visitor's file (OB-155), so every read it shows is a sample.
+  const sample = Boolean(demo)
   const body: ReactNode = snapshot && (
     <Stack spacing={3}>
       {Boolean(proposal?.photo_notes?.length) && (
         <Alert severity="info">
-          <AlertTitle>{t.photoReviewNotes}</AlertTitle>
+          <AlertTitle>{sample ? t.sampleReviewTitle : t.photoReviewNotes}</AlertTitle>
           <Box component="ul" sx={{ m: 0, pl: 2 }}>
-            {proposal?.photo_notes?.map((note) => (
+            {(sample ? [t.sampleReviewNote] : proposal?.photo_notes)?.map((note) => (
               <li key={note}>{note}</li>
             ))}
           </Box>

@@ -985,6 +985,58 @@
         }
       }
     },
+    "/api/v1/businesses/{business_id}/notes": {
+      "post": {
+        "summary": "Create Note",
+        "description": "Owner types something for the coach to remember (no AI involved): the same rule as\n\"remember this\" said in chat, so both lists are one.",
+        "operationId": "create_note_api_v1_businesses__business_id__notes_post",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NoteRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Create Note Api V1 Businesses  Business Id  Notes Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/businesses/{business_id}/notes/{note_id}": {
       "delete": {
         "summary": "Delete Note",
@@ -5641,6 +5693,45 @@
         }
       }
     },
+    "/api/v1/customer/guest/merge": {
+      "post": {
+        "summary": "Guest Merge",
+        "description": "OB-56: join this phone's guest account from before #335 into this one. Off by default.",
+        "operationId": "guest_merge_api_v1_customer_guest_merge_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GuestMergeInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GuestMergeResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/customer/passport/merge": {
       "post": {
         "summary": "Merge",
@@ -7026,6 +7117,483 @@
         }
       }
     },
+    "/api/v1/businesses/{business_id}/money/week": {
+      "get": {
+        "tags": [
+          "money"
+        ],
+        "summary": "Read Week",
+        "operationId": "read_week_api_v1_businesses__business_id__money_week_get",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "End"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MoneyWeek"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/businesses/{business_id}/money": {
+      "get": {
+        "tags": [
+          "money"
+        ],
+        "summary": "Read Day",
+        "description": "One day's expenses, sales, what is left and the cash in hand (today by default).",
+        "operationId": "read_day_api_v1_businesses__business_id__money_get",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          },
+          {
+            "name": "day",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Day"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MoneyDay"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/businesses/{business_id}/expenses/order/{order_id}": {
+      "get": {
+        "tags": [
+          "money"
+        ],
+        "summary": "Read Order Expense",
+        "description": "Whether a received order is already noted, so its card says so after a reload.",
+        "operationId": "read_order_expense_api_v1_businesses__business_id__expenses_order__order_id__get",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          },
+          {
+            "name": "order_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Order Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderExpense"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/businesses/{business_id}/expenses": {
+      "post": {
+        "tags": [
+          "money"
+        ],
+        "summary": "New Expense",
+        "operationId": "new_expense_api_v1_businesses__business_id__expenses_post",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExpenseInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MoneyDay"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/businesses/{business_id}/expenses/{day}/{expense_id}": {
+      "patch": {
+        "tags": [
+          "money"
+        ],
+        "summary": "Edit Expense",
+        "operationId": "edit_expense_api_v1_businesses__business_id__expenses__day___expense_id__patch",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          },
+          {
+            "name": "day",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "title": "Day"
+            }
+          },
+          {
+            "name": "expense_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Expense Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExpenseEdit"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MoneyDay"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "money"
+        ],
+        "summary": "Delete Expense",
+        "description": "Marked deleted, not dropped: Undo restores it exactly.",
+        "operationId": "delete_expense_api_v1_businesses__business_id__expenses__day___expense_id__delete",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          },
+          {
+            "name": "day",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "title": "Day"
+            }
+          },
+          {
+            "name": "expense_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Expense Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MoneyDay"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/businesses/{business_id}/expenses/{day}/{expense_id}/restore": {
+      "post": {
+        "tags": [
+          "money"
+        ],
+        "summary": "Restore Expense",
+        "operationId": "restore_expense_api_v1_businesses__business_id__expenses__day___expense_id__restore_post",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          },
+          {
+            "name": "day",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "title": "Day"
+            }
+          },
+          {
+            "name": "expense_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Expense Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MoneyDay"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/businesses/{business_id}/money/{day}/cash": {
+      "put": {
+        "tags": [
+          "money"
+        ],
+        "summary": "Put Cash",
+        "operationId": "put_cash_api_v1_businesses__business_id__money__day__cash_put",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          },
+          {
+            "name": "day",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "title": "Day"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CashInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MoneyDay"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/businesses/{business_id}/day/total": {
       "post": {
         "summary": "Save Day Total",
@@ -7492,6 +8060,16 @@
               "type": "string",
               "title": "Business Id"
             }
+          },
+          {
+            "name": "drafts",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Drafts"
+            }
           }
         ],
         "responses": {
@@ -7737,6 +8315,67 @@
                   "type": "object",
                   "additionalProperties": true,
                   "title": "Response Cancel Order Api V1 Businesses  Business Id  Orders  Order Id  Cancel Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/businesses/{business_id}/orders/{order_id}/edit": {
+      "post": {
+        "summary": "Edit Order",
+        "description": "New amounts on a draft that has not been sent; the supplier is not told anything.",
+        "operationId": "edit_order_api_v1_businesses__business_id__orders__order_id__edit_post",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          },
+          {
+            "name": "order_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Order Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DraftEdit"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Edit Order Api V1 Businesses  Business Id  Orders  Order Id  Edit Post"
                 }
               }
             }
@@ -8246,6 +8885,58 @@
                   "type": "object",
                   "additionalProperties": true,
                   "title": "Response Reorder Api V1 Businesses  Business Id  Supply Reorder Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/businesses/{business_id}/supply/order-text": {
+      "post": {
+        "summary": "Order Text",
+        "description": "The Buy stock box: \"butter, 2 kg\" in the owner's words, even when nothing looks low. Each\nitem with an amount is drafted; one without asks how much. A \"don't\" drafts nothing.",
+        "operationId": "order_text_api_v1_businesses__business_id__supply_order_text_post",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrderText"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Order Text Api V1 Businesses  Business Id  Supply Order Text Post"
                 }
               }
             }
@@ -11939,6 +12630,158 @@
         "title": "BusinessUnderstanding",
         "description": "What the coach understood about the business, from the owner's own words."
       },
+      "Cash": {
+        "properties": {
+          "opening": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Opening"
+          },
+          "opening_from": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "today",
+                  "yesterday",
+                  "usual"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Opening From"
+          },
+          "cash_sales": {
+            "type": "integer",
+            "title": "Cash Sales"
+          },
+          "upi_sales": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Upi Sales"
+          },
+          "upi_from": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "total",
+                  "drawer"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Upi From"
+          },
+          "cash_spent": {
+            "type": "integer",
+            "title": "Cash Spent"
+          },
+          "expected": {
+            "type": "integer",
+            "title": "Expected"
+          },
+          "counted": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Counted"
+          },
+          "difference": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Difference"
+          }
+        },
+        "type": "object",
+        "required": [
+          "opening",
+          "opening_from",
+          "cash_sales",
+          "upi_sales",
+          "cash_spent",
+          "expected",
+          "counted",
+          "difference"
+        ],
+        "title": "Cash"
+      },
+      "CashInput": {
+        "properties": {
+          "opening": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Opening"
+          },
+          "counted": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Counted"
+          },
+          "upi_sales": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Upi Sales"
+          }
+        },
+        "type": "object",
+        "title": "CashInput",
+        "description": "Only the fields sent change; an empty value clears one."
+      },
       "ChallengeRequest": {
         "properties": {
           "business_id": {
@@ -13251,6 +14094,60 @@
         ],
         "title": "DiscoveryResponse"
       },
+      "DraftEdit": {
+        "properties": {
+          "version": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Version"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/DraftLine"
+            },
+            "type": "array",
+            "maxItems": 50,
+            "minItems": 1,
+            "title": "Lines"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "version",
+          "lines"
+        ],
+        "title": "DraftEdit"
+      },
+      "DraftLine": {
+        "properties": {
+          "line": {
+            "type": "integer",
+            "maximum": 50.0,
+            "minimum": 0.0,
+            "title": "Line"
+          },
+          "quantity": {
+            "type": "number",
+            "maximum": 1000000.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Quantity"
+          },
+          "unit": {
+            "type": "string",
+            "maxLength": 20,
+            "title": "Unit",
+            "default": ""
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "line",
+          "quantity"
+        ],
+        "title": "DraftLine"
+      },
       "EventInput": {
         "properties": {
           "kind": {
@@ -13341,6 +14238,215 @@
           "enabled"
         ],
         "title": "EventReceipt"
+      },
+      "Expense": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "amount": {
+            "type": "integer",
+            "title": "Amount"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "stock",
+              "rent",
+              "wages",
+              "transport",
+              "bills",
+              "other"
+            ],
+            "title": "Category"
+          },
+          "note": {
+            "type": "string",
+            "title": "Note",
+            "default": ""
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "cash",
+              "upi"
+            ],
+            "title": "Method",
+            "default": "cash"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "manual",
+              "chat",
+              "order"
+            ],
+            "title": "Source",
+            "default": "manual"
+          },
+          "order_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Order Id"
+          },
+          "created": {
+            "type": "number",
+            "title": "Created",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "amount",
+          "category"
+        ],
+        "title": "Expense"
+      },
+      "ExpenseEdit": {
+        "properties": {
+          "amount": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "stock",
+                  "rent",
+                  "wages",
+                  "transport",
+                  "bills",
+                  "other"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "method": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "cash",
+                  "upi"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Method"
+          }
+        },
+        "type": "object",
+        "title": "ExpenseEdit"
+      },
+      "ExpenseInput": {
+        "properties": {
+          "amount": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "title": "Amount"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "stock",
+              "rent",
+              "wages",
+              "transport",
+              "bills",
+              "other"
+            ],
+            "title": "Category",
+            "default": "other"
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 200,
+            "title": "Note",
+            "default": ""
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "cash",
+              "upi"
+            ],
+            "title": "Method",
+            "default": "cash"
+          },
+          "date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date"
+          },
+          "order_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 80
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Order Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "amount"
+        ],
+        "title": "ExpenseInput"
       },
       "ExtraQuestion": {
         "properties": {
@@ -13685,6 +14791,12 @@
               }
             ],
             "title": "Value"
+          },
+          "unit": {
+            "type": "string",
+            "maxLength": 20,
+            "title": "Unit",
+            "default": ""
           }
         },
         "additionalProperties": false,
@@ -14051,6 +15163,44 @@
           "places"
         ],
         "title": "Group"
+      },
+      "GuestMergeInput": {
+        "properties": {
+          "token": {
+            "type": "string",
+            "maxLength": 8192,
+            "minLength": 1,
+            "title": "Token"
+          }
+        },
+        "type": "object",
+        "required": [
+          "token"
+        ],
+        "title": "GuestMergeInput"
+      },
+      "GuestMergeResult": {
+        "properties": {
+          "merged": {
+            "type": "boolean",
+            "title": "Merged"
+          },
+          "follows": {
+            "type": "integer",
+            "title": "Follows"
+          },
+          "stamps": {
+            "type": "integer",
+            "title": "Stamps"
+          }
+        },
+        "type": "object",
+        "required": [
+          "merged",
+          "follows",
+          "stamps"
+        ],
+        "title": "GuestMergeResult"
       },
       "HTTPValidationError": {
         "properties": {
@@ -14945,6 +16095,114 @@
         ],
         "title": "Metric"
       },
+      "MoneyDay": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date",
+            "title": "Date"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency"
+          },
+          "expenses": {
+            "items": {
+              "$ref": "#/components/schemas/Expense"
+            },
+            "type": "array",
+            "title": "Expenses"
+          },
+          "spent": {
+            "type": "integer",
+            "title": "Spent"
+          },
+          "sales": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sales"
+          },
+          "left": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Left"
+          },
+          "cash": {
+            "$ref": "#/components/schemas/Cash"
+          }
+        },
+        "type": "object",
+        "required": [
+          "date",
+          "currency",
+          "expenses",
+          "spent",
+          "sales",
+          "left",
+          "cash"
+        ],
+        "title": "MoneyDay"
+      },
+      "MoneyWeek": {
+        "properties": {
+          "start": {
+            "type": "string",
+            "format": "date",
+            "title": "Start"
+          },
+          "end": {
+            "type": "string",
+            "format": "date",
+            "title": "End"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency"
+          },
+          "days": {
+            "items": {
+              "$ref": "#/components/schemas/WeekDay"
+            },
+            "type": "array",
+            "title": "Days"
+          },
+          "sales": {
+            "type": "integer",
+            "title": "Sales"
+          },
+          "spent": {
+            "type": "integer",
+            "title": "Spent"
+          },
+          "left": {
+            "type": "integer",
+            "title": "Left"
+          }
+        },
+        "type": "object",
+        "required": [
+          "start",
+          "end",
+          "currency",
+          "days",
+          "sales",
+          "spent",
+          "left"
+        ],
+        "title": "MoneyWeek"
+      },
       "NewDayTotal": {
         "properties": {
           "date": {
@@ -15168,6 +16426,22 @@
         "title": "NextReward",
         "description": "The single next named reward (\"2 more stamps → free bun maska\")."
       },
+      "NoteRequest": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Text"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "NoteRequest"
+      },
       "Observation": {
         "properties": {
           "date": {
@@ -15334,6 +16608,30 @@
         ],
         "title": "OrderChange"
       },
+      "OrderExpense": {
+        "properties": {
+          "noted": {
+            "type": "boolean",
+            "title": "Noted"
+          },
+          "amount": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount"
+          }
+        },
+        "type": "object",
+        "required": [
+          "noted"
+        ],
+        "title": "OrderExpense"
+      },
       "OrderMessage": {
         "properties": {
           "text": {
@@ -15349,6 +16647,22 @@
           "text"
         ],
         "title": "OrderMessage"
+      },
+      "OrderText": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Text"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "OrderText"
       },
       "OrderVersion": {
         "properties": {
@@ -17378,6 +18692,17 @@
             ],
             "title": "Source",
             "default": ""
+          },
+          "unit": {
+            "type": "string",
+            "maxLength": 20,
+            "title": "Unit",
+            "default": ""
+          },
+          "direct": {
+            "type": "boolean",
+            "title": "Direct",
+            "default": false
           }
         },
         "additionalProperties": false,
@@ -19808,6 +21133,16 @@
                 "type": "null"
               }
             ]
+          },
+          "spent_yesterday": {
+            "type": "integer",
+            "title": "Spent Yesterday",
+            "default": 0
+          },
+          "spent_today": {
+            "type": "integer",
+            "title": "Spent Today",
+            "default": 0
           }
         },
         "type": "object",
@@ -20523,6 +21858,37 @@
         ],
         "title": "Weather"
       },
+      "WeekDay": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date",
+            "title": "Date"
+          },
+          "sales": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sales"
+          },
+          "spent": {
+            "type": "integer",
+            "title": "Spent"
+          }
+        },
+        "type": "object",
+        "required": [
+          "date",
+          "sales",
+          "spent"
+        ],
+        "title": "WeekDay"
+      },
       "WonPerk": {
         "properties": {
           "id": {
@@ -20911,6 +22277,16 @@
           "guest_customer": {
             "default": false,
             "title": "Guest Customer",
+            "type": "boolean"
+          },
+          "face_check": {
+            "default": false,
+            "title": "Face Check",
+            "type": "boolean"
+          },
+          "guest_merge": {
+            "default": false,
+            "title": "Guest Merge",
             "type": "boolean"
           }
         },

@@ -25,9 +25,13 @@ import { groupProducts } from './groupProducts'
 import { categoryLabel, useShopCopy } from './strings'
 import { unitLabel } from './units'
 import { onMenu, useUsualSales } from './stock'
+import { listWord, useTabsCopy } from '../v1/tabsCopy'
 import { productName } from '../../i18n/productNames'
 import { useLocale } from '../../state/hooks'
 import { StockLine } from './stockLine'
+import { openBuyStock } from '../supply/supplyEvents'
+import { useSupply } from '../supply/supplyData'
+import { useOrderChangeCopy } from '../supply/orderChangeCopy'
 import { StockNote } from './StockNote'
 import { useStockCopy } from './stockCopy'
 import { moneyLocale } from '../../region/region'
@@ -54,6 +58,8 @@ export function MenuSheet({
   onThingsIBuy?: () => void
 }) {
   const t = useCopy()
+  const tabs = useTabsCopy()
+  const locale = useLocale()
   const copy = useShopCopy()
   const stock = useStockCopy()
   const roles = useTheme().material
@@ -63,6 +69,8 @@ export function MenuSheet({
   const [sorting, setSorting] = useState(false)
   const importer = useImport({ onBeforeReview: onClose, onSales: setSales })
   const usual = useUsualSales(open)
+  const order = useOrderChangeCopy()
+  const asks = new Set((useSupply(open).data?.to_order ?? []).map((ask) => ask.item))
   // Editors are their own dialogs and open once this sheet has gone: one mounted while it is still
   // sliding away came up hidden from screen readers (MUI's modal order), one time in four.
   const afterClose = useRef<(() => void) | null>(null)
@@ -104,7 +112,7 @@ export function MenuSheet({
         onClose={onClose}
         titleId="menu-sheet-title"
         ask="add_menu"
-        title={t.menu}
+        title={listWord(shop?.fields.category, t.menu, tabs)}
         onExited={() => {
           const next = afterClose.current
           afterClose.current = null
@@ -179,7 +187,7 @@ export function MenuSheet({
                   variant="titleSmall"
                   sx={{ mb: 2, color: 'text.secondary', overflowWrap: 'anywhere' }}
                 >
-                  {categoryLabel(group.category, copy)}
+                  {productName(categoryLabel(group.category, copy), locale)}
                 </Typography>
                 <Box
                   component="ul"
@@ -196,6 +204,17 @@ export function MenuSheet({
                 >
                   {group.items.map((product) => (
                     <ItemCard
+                      orderMore={
+                        asks.has(product.name)
+                          ? {
+                              label: order.orderMore,
+                              run: () => {
+                                onClose()
+                                openBuyStock(product.name)
+                              },
+                            }
+                          : undefined
+                      }
                       key={product.id ?? `${product.name}-${product.unit}`}
                       product={product}
                       usual={usual?.items[product.name]}
@@ -298,10 +317,13 @@ export function ItemCard({
   usual,
   onEdit,
   priced = true,
+  orderMore,
 }: {
   product: Product
   usual?: number
   onEdit: () => void
+  /** Sold out or low stock the shop buys: "Order more", right on the item. */
+  orderMore?: { label: string; run: () => void }
   /** "Things I buy" have no customer price to change in place. */
   priced?: boolean
 }) {
@@ -366,6 +388,16 @@ export function ItemCard({
       <Box sx={{ pl: 1 }}>
         <StockLine product={product} usual={usual} />
       </Box>
+      {orderMore && (
+        <Button
+          variant="outlined"
+          aria-label={`${orderMore.label} ${name}`}
+          onClick={orderMore.run}
+          sx={{ alignSelf: 'flex-start', minHeight: 48 }}
+        >
+          {orderMore.label}
+        </Button>
+      )}
     </Box>
   )
 }

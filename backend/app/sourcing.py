@@ -311,8 +311,23 @@ def money_text(minor: int, currency: str) -> str:
     major = to_major(minor, currency)
     whole = float(major).is_integer()
     number = f"{major:,.0f}" if whole else f"{major:,.{digits}f}"
+    if currency.upper() == "INR":
+        number = lakh_grouping(number)
     symbol = SYMBOLS.get(currency)
     return f"{symbol}{number}" if symbol else f"{number} {currency}"
+
+
+def lakh_grouping(number: str) -> str:
+    """ "101,000.50" → "1,01,000.50": rupees group as the app's screens do (en-IN), so the chat
+    never says ₹101,000 beside a sheet that says ₹1,01,000 (OB-290)."""
+    sign, rest = ("-", number[1:]) if number.startswith("-") else ("", number)
+    whole, dot, fraction = rest.partition(".")
+    digits = whole.replace(",", "")
+    if len(digits) <= 3:
+        return number
+    head, tail = digits[:-3], digits[-3:]
+    pairs = [head[max(0, end - 2) : end] for end in range(len(head), 0, -2)][::-1]
+    return f"{sign}{','.join(pairs)},{tail}{dot}{fraction}"
 
 
 def nice_price(major: float) -> float:
@@ -1339,6 +1354,36 @@ def discard(store: MerchantRepository, uid: str, bid: str, oid: str, version: in
         order["pending"] = None
     else:
         raise HTTPException(409, "Nothing is waiting to be sent.")
+    return public_order(save(store, uid, bid, order, now))
+
+
+def edit_draft(
+    store: MerchantRepository,
+    uid: str,
+    bid: str,
+    oid: str,
+    version: int,
+    changes: dict[int, tuple[float, str]],
+) -> dict[str, Any]:
+    """The owner changes the amount on the card before sending (Ramesh, 8 Nov): the same draft, so
+    there is only ever one to send. A unit that converts is saved in the supplier's own."""
+    now = time.time()
+    order = get_order(store, uid, bid, oid, now)
+    if order["version"] != version:
+        raise HTTPException(409, "This order changed. Review it again.")
+    if order["status"] != "draft":
+        raise HTTPException(409, "Only a draft can be changed here.")
+    for index, (quantity, unit) in changes.items():
+        if not 0 <= index < len(order["lines"]):
+            raise HTTPException(422, "Pick a line of this order.")
+        line = order["lines"][index]
+        amount = convert(quantity, unit or line["unit"], line["unit"])
+        if not amount:
+            raise HTTPException(422, "UNITS")
+        line["quantity"] = round(amount, 3)
+        if line["price"] is not None:
+            line["total"] = round(line["price"] * line["quantity"])
+    order["total"] = sum(line["total"] or 0 for line in order["lines"])
     return public_order(save(store, uid, bid, order, now))
 
 

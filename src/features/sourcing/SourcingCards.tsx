@@ -27,10 +27,12 @@ import { enterRise, fieldFade, motion, shape } from '../../design/theme'
 import { formatShopPrice, toMinor } from '../v1/format'
 import { formatMoneyText } from '../inquiries/formatMoneyText'
 import { useGrowCopy } from '../v1/growCopy'
+import { ChangeAmount } from '../supply/ChangeAmount'
 import { useWorkspace } from '../v1/workspaceContext'
 import { useSourcingCopy } from './copy'
 import { sampleWord } from './sampleWord'
 import { deliveryLabel } from './orderData'
+import { supplyChanged } from '../supply/supplyEvents'
 import type { Order, OrderStatus, SupplierCard, SupplierResult } from './types'
 
 const easeOut = motion.easing.emphasizedDecelerate
@@ -364,16 +366,20 @@ export function OrderCard({
   onDiscard,
   onOpen,
   onReceived,
+  onChanged,
 }: {
   order: Order
   onSend: (order: Order) => Promise<boolean>
   onDiscard: (order: Order) => Promise<void>
   onOpen: (order: Order) => void
   onReceived: (order: Order) => void
+  /** The owner changed the amount on the card: the same draft, updated. */
+  onChanged: (order: Order) => void
 }) {
   const roles = useTheme().material
   const s = useSourcingCopy()
   const locale = useLocale()
+  const ws = useWorkspace()
   const [busy, setBusy] = useState(false)
   // Plays the flight once, when this card's own Send succeeds.
   const [flying, setFlying] = useState(false)
@@ -513,6 +519,43 @@ export function OrderCard({
             <Typography variant="bodyLarge" sx={{ overflowWrap: 'anywhere' }}>
               “{order.pending.text}”
             </Typography>
+          </Box>
+        )}
+        {order.status === 'draft' && (
+          <Box sx={{ mt: 2 }}>
+            <ChangeAmount
+              key={order.version}
+              disabled={busy}
+              rows={order.lines.flatMap((line, index) =>
+                line.price == null
+                  ? []
+                  : [{ key: index, label: line.name, quantity: line.quantity, unit: line.unit }],
+              )}
+              onSave={async (changes) => {
+                try {
+                  const next = await ws.api<Order>(
+                    `/businesses/${encodeURIComponent(ws.activeId ?? '')}/orders/${encodeURIComponent(order.id)}/edit`,
+                    {
+                      method: 'POST',
+                      body: JSON.stringify({
+                        version: order.version,
+                        lines: changes.map((row) => ({
+                          line: row.key,
+                          quantity: row.quantity,
+                          unit: row.unit,
+                        })),
+                      }),
+                    },
+                  )
+                  onChanged(next)
+                  supplyChanged()
+                  return true
+                } catch {
+                  ws.notify(s.sendFailed)
+                  return false
+                }
+              }}
+            />
           </Box>
         )}
         {actionable ? (

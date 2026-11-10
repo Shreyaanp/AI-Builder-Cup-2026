@@ -609,6 +609,76 @@ async def _order_from(ctx: Any, question: str) -> list[StreamEvent] | None:
     ]
 
 
+async def _order_said(ctx: Any, question: str) -> list[StreamEvent] | None:
+    """ "5 लीटर दूध चाहिए", "no, only 5 litres milk", "butter 2 kg": the order card for each item
+    named with an amount, to the demo supplier already waiting for it or the nearest one. A new
+    amount replaces the waiting draft (prepare_order). A "don't" never gets here."""
+    from . import sourcing
+    from .agent import ui_language
+    from .coordinator import find_suppliers, prepare_order
+    from .order_words import read_order, resolve_item
+    from .sourcing import OrderItem
+
+    said = read_order(question)
+    wanted = [line for line in said.lines if line.quantity and line.unit]
+    if said.refused or not said.asked or not wanted or FIND_SUPPLIERS.search(question):
+        return None
+    inventory = ctx.store.inventory(ctx.uid, ctx.business_id)
+    hindi = bool(HINDI.search(question))
+    events: list[StreamEvent] = []
+    token = ui_language.set("hi" if hindi else ui_language.get())
+    try:
+        for line in wanted[:5]:
+            item = resolve_item(line.item, inventory)
+            drafts = [
+                order
+                for order in sourcing.orders(ctx.store, ctx.uid, ctx.business_id)
+                if order["status"] == "draft"
+                and any(sourcing.matches(x["name"], item) for x in order["lines"])
+            ]
+            if drafts:
+                supplier_id, name = drafts[0]["supplier"]["id"], drafts[0]["lines"][0]["name"]
+            else:
+                found = await find_suppliers(item)
+                if found.get("status") != "found":
+                    continue
+                first = found["suppliers"][0]
+                supplier_id, name = first["id"], first["item"]["name"]
+            drafted = prepare_order(
+                supplier_id,
+                [OrderItem(name=name, quantity=float(line.quantity or 0), unit=line.unit)],
+            )
+            if drafted.get("status") == "needs_owner_tap":
+                events.append(StreamEvent(kind="order", data=ctx.cards[drafted["card_id"]][1]))
+    finally:
+        ui_language.reset(token)
+    if not events:
+        return None
+    return [
+        *events,
+        StreamEvent(
+            kind="reply",
+            text=(
+                "ऑर्डर तैयार है, कार्ड पर देख लें। मात्रा वहीं बदल सकते हैं। भेजें दबाने तक कुछ नहीं "
+                "जाता, और यह सिर्फ़ डेमो है।"
+                if hindi
+                else "Your order is ready on the card. You can change the amount there. Nothing "
+                "goes until you tap Send, and only in the demo."
+            ),
+        ),
+    ]
+
+
+def expense_said(ctx: Any, question: str) -> list[StreamEvent] | None:
+    """ "doodh 300 ka kharcha": noted the way the real coach notes it (instant.save_expense)."""
+    from .expenses import expense_words
+    from .instant import save_expense
+
+    words = expense_words(" ".join(question.split()))
+    result = save_expense(ctx, words) if words else None
+    return [*result.events, StreamEvent(kind="reply", text=result.reply)] if result else None
+
+
 async def public_demo_turn(ctx: Any, question: str) -> list[StreamEvent] | None:
     """A whole offline demo turn: the proposal and chart cards the real coach would show, then
     the reply. Deterministic and model-free, so the public demo never calls a paid model."""
@@ -627,6 +697,7 @@ async def public_demo_turn(ctx: Any, question: str) -> list[StreamEvent] | None:
         app_language(question)
         or customer_reply(ctx, question)
         or tomorrow_note(ctx, question)
+        or expense_said(ctx, question)
         or await first_jobs(ctx, question)
         or sales_today(ctx, question)
         or close_day(ctx, question)
@@ -637,6 +708,9 @@ async def public_demo_turn(ctx: Any, question: str) -> list[StreamEvent] | None:
     )
     if found:
         return found
+    said = await _order_said(ctx, question)
+    if said:
+        return said
     if not NEGATION.search(text):
         events = await _order_from(ctx, question) or await _find_suppliers(ctx, question)
         if events:

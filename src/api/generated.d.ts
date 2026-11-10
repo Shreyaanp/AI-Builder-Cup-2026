@@ -390,6 +390,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/businesses/{business_id}/notes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Note
+         * @description Owner types something for the coach to remember (no AI involved): the same rule as
+         *     "remember this" said in chat, so both lists are one.
+         */
+        post: operations["create_note_api_v1_businesses__business_id__notes_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/businesses/{business_id}/notes/{note_id}": {
         parameters: {
             query?: never;
@@ -1962,6 +1983,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/customer/guest/merge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Guest Merge
+         * @description OB-56: join this phone's guest account from before #335 into this one. Off by default.
+         */
+        post: operations["guest_merge_api_v1_customer_guest_merge_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/customer/passport/merge": {
         parameters: {
             query?: never;
@@ -2349,6 +2390,135 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/businesses/{business_id}/money/week": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read Week */
+        get: operations["read_week_api_v1_businesses__business_id__money_week_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/businesses/{business_id}/money": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Day
+         * @description One day's expenses, sales, what is left and the cash in hand (today by default).
+         */
+        get: operations["read_day_api_v1_businesses__business_id__money_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/businesses/{business_id}/expenses/order/{order_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Order Expense
+         * @description Whether a received order is already noted, so its card says so after a reload.
+         */
+        get: operations["read_order_expense_api_v1_businesses__business_id__expenses_order__order_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/businesses/{business_id}/expenses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** New Expense */
+        post: operations["new_expense_api_v1_businesses__business_id__expenses_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/businesses/{business_id}/expenses/{day}/{expense_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Expense
+         * @description Marked deleted, not dropped: Undo restores it exactly.
+         */
+        delete: operations["delete_expense_api_v1_businesses__business_id__expenses__day___expense_id__delete"];
+        options?: never;
+        head?: never;
+        /** Edit Expense */
+        patch: operations["edit_expense_api_v1_businesses__business_id__expenses__day___expense_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/businesses/{business_id}/expenses/{day}/{expense_id}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Restore Expense */
+        post: operations["restore_expense_api_v1_businesses__business_id__expenses__day___expense_id__restore_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/businesses/{business_id}/money/{day}/cash": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Put Cash */
+        put: operations["put_cash_api_v1_businesses__business_id__money__day__cash_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/businesses/{business_id}/day/total": {
         parameters: {
             query?: never;
@@ -2570,6 +2740,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/businesses/{business_id}/orders/{order_id}/edit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Edit Order
+         * @description New amounts on a draft that has not been sent; the supplier is not told anything.
+         */
+        post: operations["edit_order_api_v1_businesses__business_id__orders__order_id__edit_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/businesses/{business_id}/orders/{order_id}/change": {
         parameters: {
             query?: never;
@@ -2746,6 +2936,27 @@ export interface paths {
         put?: never;
         /** Reorder */
         post: operations["reorder_api_v1_businesses__business_id__supply_reorder_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/businesses/{business_id}/supply/order-text": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Order Text
+         * @description The Buy stock box: "butter, 2 kg" in the owner's words, even when nothing looks low. Each
+         *     item with an amount is drafted; one without asks how much. A "don't" drafts nothing.
+         */
+        post: operations["order_text_api_v1_businesses__business_id__supply_order_text_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4164,6 +4375,39 @@ export interface components {
              */
             owner_kind: boolean;
         };
+        /** Cash */
+        Cash: {
+            /** Opening */
+            opening: number | null;
+            /** Opening From */
+            opening_from: ("today" | "yesterday" | "usual") | null;
+            /** Cash Sales */
+            cash_sales: number;
+            /** Upi Sales */
+            upi_sales: number | null;
+            /** Upi From */
+            upi_from?: ("total" | "drawer") | null;
+            /** Cash Spent */
+            cash_spent: number;
+            /** Expected */
+            expected: number;
+            /** Counted */
+            counted: number | null;
+            /** Difference */
+            difference: number | null;
+        };
+        /**
+         * CashInput
+         * @description Only the fields sent change; an empty value clears one.
+         */
+        CashInput: {
+            /** Opening */
+            opening?: string | number | null;
+            /** Counted */
+            counted?: string | number | null;
+            /** Upi Sales */
+            upi_sales?: string | number | null;
+        };
         /** ChallengeRequest */
         ChallengeRequest: {
             /** Business Id */
@@ -4631,6 +4875,25 @@ export interface components {
             /** Places */
             places: components["schemas"]["DiscoveryPlace"][];
         };
+        /** DraftEdit */
+        DraftEdit: {
+            /** Version */
+            version: number;
+            /** Lines */
+            lines: components["schemas"]["DraftLine"][];
+        };
+        /** DraftLine */
+        DraftLine: {
+            /** Line */
+            line: number;
+            /** Quantity */
+            quantity: number;
+            /**
+             * Unit
+             * @default
+             */
+            unit: string;
+        };
         /** EventInput */
         EventInput: {
             /**
@@ -4665,6 +4928,79 @@ export interface components {
             accepted: boolean;
             /** Enabled */
             enabled: boolean;
+        };
+        /** Expense */
+        Expense: {
+            /** Id */
+            id: string;
+            /** Amount */
+            amount: number;
+            /**
+             * Category
+             * @enum {string}
+             */
+            category: "stock" | "rent" | "wages" | "transport" | "bills" | "other";
+            /**
+             * Note
+             * @default
+             */
+            note: string;
+            /**
+             * Method
+             * @default cash
+             * @enum {string}
+             */
+            method: "cash" | "upi";
+            /**
+             * Source
+             * @default manual
+             * @enum {string}
+             */
+            source: "manual" | "chat" | "order";
+            /** Order Id */
+            order_id?: string | null;
+            /**
+             * Created
+             * @default 0
+             */
+            created: number;
+        };
+        /** ExpenseEdit */
+        ExpenseEdit: {
+            /** Amount */
+            amount?: string | number | null;
+            /** Category */
+            category?: ("stock" | "rent" | "wages" | "transport" | "bills" | "other") | null;
+            /** Note */
+            note?: string | null;
+            /** Method */
+            method?: ("cash" | "upi") | null;
+        };
+        /** ExpenseInput */
+        ExpenseInput: {
+            /** Amount */
+            amount: string | number;
+            /**
+             * Category
+             * @default other
+             * @enum {string}
+             */
+            category: "stock" | "rent" | "wages" | "transport" | "bills" | "other";
+            /**
+             * Note
+             * @default
+             */
+            note: string;
+            /**
+             * Method
+             * @default cash
+             * @enum {string}
+             */
+            method: "cash" | "upi";
+            /** Date */
+            date?: string | null;
+            /** Order Id */
+            order_id?: string | null;
         };
         /** ExtraQuestion */
         ExtraQuestion: {
@@ -4808,6 +5144,11 @@ export interface components {
             line?: number | null;
             /** Value */
             value?: number | null;
+            /**
+             * Unit
+             * @default
+             */
+            unit: string;
         };
         /** FixBody */
         FixBody: {
@@ -4942,6 +5283,20 @@ export interface components {
             id: "for_you" | "best" | "open" | "more";
             /** Places */
             places: components["schemas"]["Pick"][];
+        };
+        /** GuestMergeInput */
+        GuestMergeInput: {
+            /** Token */
+            token: string;
+        };
+        /** GuestMergeResult */
+        GuestMergeResult: {
+            /** Merged */
+            merged: boolean;
+            /** Follows */
+            follows: number;
+            /** Stamps */
+            stamps: number;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -5334,6 +5689,48 @@ export interface components {
              */
             metric: "items_sold" | "sales" | "busy_hours" | "orders_due" | "fittings" | "bookings" | "questions" | "views" | "stamps" | "returning" | "low_stock" | "leftovers";
         };
+        /** MoneyDay */
+        MoneyDay: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Currency */
+            currency: string;
+            /** Expenses */
+            expenses: components["schemas"]["Expense"][];
+            /** Spent */
+            spent: number;
+            /** Sales */
+            sales: number | null;
+            /** Left */
+            left: number | null;
+            cash: components["schemas"]["Cash"];
+        };
+        /** MoneyWeek */
+        MoneyWeek: {
+            /**
+             * Start
+             * Format: date
+             */
+            start: string;
+            /**
+             * End
+             * Format: date
+             */
+            end: string;
+            /** Currency */
+            currency: string;
+            /** Days */
+            days: components["schemas"]["WeekDay"][];
+            /** Sales */
+            sales: number;
+            /** Spent */
+            spent: number;
+            /** Left */
+            left: number;
+        };
         /** NewDayTotal */
         NewDayTotal: {
             /**
@@ -5419,6 +5816,11 @@ export interface components {
              */
             shop_name: string;
         };
+        /** NoteRequest */
+        NoteRequest: {
+            /** Text */
+            text: string;
+        };
         /** Observation */
         Observation: {
             /**
@@ -5479,8 +5881,20 @@ export interface components {
             /** Lines */
             lines: components["schemas"]["app__sourcing_routes__LineQuantity"][];
         };
+        /** OrderExpense */
+        OrderExpense: {
+            /** Noted */
+            noted: boolean;
+            /** Amount */
+            amount?: number | null;
+        };
         /** OrderMessage */
         OrderMessage: {
+            /** Text */
+            text: string;
+        };
+        /** OrderText */
+        OrderText: {
             /** Text */
             text: string;
         };
@@ -6273,6 +6687,16 @@ export interface components {
              * @enum {string}
              */
             source: "" | "made" | "bought";
+            /**
+             * Unit
+             * @default
+             */
+            unit: string;
+            /**
+             * Direct
+             * @default false
+             */
+            direct: boolean;
         };
         /** ReplySuggestions */
         ReplySuggestions: {
@@ -7305,6 +7729,16 @@ export interface components {
             has_customer_stamp?: boolean | null;
             promise?: components["schemas"]["Promise"] | null;
             last_day?: components["schemas"]["LastDay"] | null;
+            /**
+             * Spent Yesterday
+             * @default 0
+             */
+            spent_yesterday: number;
+            /**
+             * Spent Today
+             * @default 0
+             */
+            spent_today: number;
         };
         /** TodayArea */
         TodayArea: {
@@ -7580,6 +8014,18 @@ export interface components {
             /** Sales Effect */
             sales_effect?: string | null;
         };
+        /** WeekDay */
+        WeekDay: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Sales */
+            sales: number | null;
+            /** Spent */
+            spent: number;
+        };
         /** WonPerk */
         WonPerk: {
             /** Id */
@@ -7756,6 +8202,16 @@ export interface components {
              * @default false
              */
             guest_customer: boolean;
+            /**
+             * Face Check
+             * @default false
+             */
+            face_check: boolean;
+            /**
+             * Guest Merge
+             * @default false
+             */
+            guest_merge: boolean;
         };
     };
     responses: never;
@@ -8449,6 +8905,43 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_note_api_v1_businesses__business_id__notes_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NoteRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
             /** @description Validation Error */
@@ -11615,6 +12108,39 @@ export interface operations {
             };
         };
     };
+    guest_merge_api_v1_customer_guest_merge_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GuestMergeInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GuestMergeResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     merge_api_v1_customer_passport_merge_post: {
         parameters: {
             query?: {
@@ -12406,6 +12932,278 @@ export interface operations {
             };
         };
     };
+    read_week_api_v1_businesses__business_id__money_week_get: {
+        parameters: {
+            query?: {
+                end?: string | null;
+            };
+            header?: never;
+            path: {
+                business_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MoneyWeek"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_day_api_v1_businesses__business_id__money_get: {
+        parameters: {
+            query?: {
+                day?: string | null;
+            };
+            header?: never;
+            path: {
+                business_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MoneyDay"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_order_expense_api_v1_businesses__business_id__expenses_order__order_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+                order_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderExpense"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    new_expense_api_v1_businesses__business_id__expenses_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExpenseInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MoneyDay"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_expense_api_v1_businesses__business_id__expenses__day___expense_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+                day: string;
+                expense_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MoneyDay"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    edit_expense_api_v1_businesses__business_id__expenses__day___expense_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+                day: string;
+                expense_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExpenseEdit"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MoneyDay"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    restore_expense_api_v1_businesses__business_id__expenses__day___expense_id__restore_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+                day: string;
+                expense_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MoneyDay"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    put_cash_api_v1_businesses__business_id__money__day__cash_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+                day: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CashInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MoneyDay"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     save_day_total_api_v1_businesses__business_id__day_total_post: {
         parameters: {
             query?: never;
@@ -12709,7 +13507,9 @@ export interface operations {
     };
     list_orders_api_v1_businesses__business_id__orders_get: {
         parameters: {
-            query?: never;
+            query?: {
+                drafts?: boolean;
+            };
             header?: never;
             path: {
                 business_id: string;
@@ -12863,6 +13663,44 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["OrderVersion"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    edit_order_api_v1_businesses__business_id__orders__order_id__edit_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+                order_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DraftEdit"];
             };
         };
         responses: {
@@ -13212,6 +14050,43 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["ReorderBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    order_text_api_v1_businesses__business_id__supply_order_text_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OrderText"];
             };
         };
         responses: {

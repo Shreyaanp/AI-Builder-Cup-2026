@@ -295,8 +295,9 @@ def test_OB_261_out_of_a_supply_is_one_question_not_an_order(  # noqa: N802
 @pytest.mark.parametrize(
     ("message", "language", "path"),
     [
-        ("Reorder tea dust", "en", "Next, open Grow → Buy stock → To do."),
-        ("चायपत्ती फिर से मँगाओ", "hi", "अब बढ़ाएँ →"),
+        # Buy stock lives on Shop, and its own phrase is "Order more" (OB-339).
+        ("Order more tea dust", "en", "Next, open Shop → Buy stock → To do."),
+        ("चायपत्ती फिर से मँगाओ", "hi", "अब दुकान → माल मँगाएँ →"),
     ],
 )
 def test_OB_268_a_screens_own_phrase_drafts_and_still_names_the_screen(  # noqa: N802
@@ -593,7 +594,9 @@ def test_the_hindi_reply_uses_the_shops_own_currency(sgd_shop):
 
 def test_the_demos_replies_use_the_shops_own_currency():
     assert _money(1000.5, "INR") == "₹1,000.50"
-    assert _money(100000, "INR") == "₹100,000"
+    # Rupees group in lakhs, as the screens show them (OB-290).
+    assert _money(100000, "INR") == "₹1,00,000"
+    assert _money(10100000.5, "INR") == "₹1,01,00,000.50"
     assert _money(12.5, "SGD") == "S$12.50"
 
 

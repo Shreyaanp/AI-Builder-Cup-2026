@@ -6,10 +6,14 @@ import { Globe, Stamp, Sunrise, Wallet } from 'lucide-react'
 import { useIdentity } from '../../../auth/useIdentity'
 import { CloseDayTile } from '../../closeday/CloseDay'
 import { MySalesRow } from '../../sales/MySales'
-import type { StockTab } from '../../supply/BuyStock'
 import { openOwnerFeature } from '../../owner-tools/entry'
 import { useToolCopy } from '../../owner-tools/copy'
-import { growOrderOf } from '../playbook/growOrder'
+import {
+  GROW_ORDER_WAIT_MS,
+  growOrderOf,
+  rememberedGrowOrder,
+  rememberGrowOrder,
+} from '../playbook/growOrder'
 import { usePlaybook } from '../playbook/usePlaybook'
 import { readiness } from '../shopProgress'
 import { ShopSheets, Tile, type ShopSheetKind } from '../ShopTiles'
@@ -28,16 +32,12 @@ import { RescueTile } from '../../owner/RescueTile'
 
 /**
  * Grow: a short list of rows, then the weekly tools as a More tools grid (simplify batch 4a).
- * How much to make, Buy stock and My sales each open one sheet that holds what were separate
+ * How much to make and My sales each open one sheet that holds what were separate
  * tools (batch 4b), every one still under a visible name. The shop playbook decides which row
  * leads.
  */
-// How much to make and Buy stock pull in the forecast and purchase orders; load them after first
-// paint.
+// How much to make pulls in the forecast; load it after first paint.
 const MakeRow = lazy(() => import('../../forecast/PrepPlan').then((m) => ({ default: m.MakeRow })))
-const BuyStockRow = lazy(() =>
-  import('../../supply/BuyStock').then((m) => ({ default: m.BuyStockRow })),
-)
 
 export function GrowScreen() {
   const tabs = useTabsCopy()
@@ -84,20 +84,28 @@ function GrowTiles() {
   const { features } = useIdentity()
   const ws = useWorkspace()
   const { state: playbook } = usePlaybook()
+  // One row order per visit (see rememberedGrowOrder): the shop's last known order, else the
+  // playbook's if it answers within a second, else the usual order. Undecided rows stay hidden.
+  const [order, setOrder] = useState(() => rememberedGrowOrder(ws.activeId) ?? null)
+  if (order === null && playbook.kind !== 'loading') setOrder(growOrderOf(playbook))
+  useEffect(() => rememberGrowOrder(ws.activeId, playbook), [ws.activeId, playbook])
+  useEffect(() => {
+    if (order) return
+    const timer = window.setTimeout(() => setOrder((known) => known ?? []), GROW_ORDER_WAIT_MS)
+    return () => window.clearTimeout(timer)
+  }, [order])
   const [sheet, setSheet] = useState<ShopSheetKind | null>(null)
   // The coach's "open" for a Grow screen opens it here: Asked nearby, How much to make with the
-  // numbers open ("plan tomorrow"), Buy stock ("purchase orders").
+  // numbers open ("plan tomorrow").
   const [radarOpen, setRadarOpen] = useState(() => wantsOpen('radar'))
   const [make, setMake] = useState<'list' | 'numbers' | null>(() =>
     wantsOpen('plan') ? 'numbers' : wantsOpen('make') ? 'list' : null,
   )
-  const [stock, setStock] = useState<StockTab | null>(() => (wantsOpen('stock') ? 'todo' : null))
   const [sales, setSales] = useState(false)
   useEffect(() => {
     clearOpen('radar')
     clearOpen('plan')
     clearOpen('make')
-    clearOpen('stock')
   }, [])
   const shop = ws.active
   if (!shop) return null
@@ -113,14 +121,8 @@ function GrowTiles() {
   ]
   const close: [string[], ReactNode] = [['close_day'], <CloseDayTile key="close" />]
   // The shop's playbook decides which row comes first; without one, the usual order.
-  const rows = byGrowOrder(growOrderOf(playbook), [
+  const rows = byGrowOrder(order ?? [], [
     ...(evening ? [close, makeRow] : [makeRow, close]),
-    [
-      ['orders', 'supply', 'supply_io'],
-      <Suspense key="stock" fallback={null}>
-        <BuyStockRow tab={stock} onTab={setStock} />
-      </Suspense>,
-    ],
     [['week', 'recap'], <MySalesRow key="sales" open={sales} onOpen={setSales} />],
     ...(features.google_guide
       ? [
@@ -140,25 +142,31 @@ function GrowTiles() {
   ])
   return (
     <Stack spacing={6}>
-      <GrowRows>
-        {/* The brief keeps its own row: Coach Today shows only part of it (one forecast, the
+      <Box
+        aria-busy={order ? undefined : true}
+        sx={order ? undefined : { visibility: 'hidden' }}
+        data-testid="grow-rows"
+      >
+        <GrowRows>
+          {/* The brief keeps its own row: Coach Today shows only part of it (one forecast, the
             rain line, low stock), not the whole prep list, the weather or the best action. */}
-        <GrowGroup
-          icon={<Sunrise size={20} />}
-          label={owner.brief}
-          hint={[owner.prep, owner.lowStock].join(' · ')}
-          items={[
-            <MorningBrief
-              key={shop.id}
-              embedded
-              onSheet={setSheet}
-              onRadar={() => setRadarOpen(true)}
-              onPlan={() => setMake('numbers')}
-            />,
-          ]}
-        />
-        {rows}
-      </GrowRows>
+          <GrowGroup
+            icon={<Sunrise size={20} />}
+            label={owner.brief}
+            hint={[owner.prep, owner.lowStock].join(' · ')}
+            items={[
+              <MorningBrief
+                key={shop.id}
+                embedded
+                onSheet={setSheet}
+                onRadar={() => setRadarOpen(true)}
+                onPlan={() => setMake('numbers')}
+              />,
+            ]}
+          />
+          {rows}
+        </GrowRows>
+      </Box>
       <MoreTools title={grow.moreTools}>
         <RescueTile />
         <RadarTile />

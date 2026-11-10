@@ -42,13 +42,14 @@ import { dismissFreshness } from '../sales/freshnessDismissal'
 import { closeDayCopy, closeDayCount } from './strings'
 import { closingMinutes, shopNow } from '../owner/time'
 import { moneyLocale, shopZone } from '../../region/region'
-import { useDaySales } from './useDaySales'
+import { DAY_CLOSED, useDaySales } from './useDaySales'
 import { DayTotalForm } from './DayTotal'
 import { NO_TOTAL, readDayTotal, type DayTotalText } from './dayTotalReading'
 import { dayTotalCopy } from './totalCopy'
 import { comparisonKind } from './compare'
 import { AskHint } from '../v1/AskHint'
 import { TomorrowPromise } from './TomorrowPromise'
+import { MoneyToday } from '../expenses/MoneyToday'
 import { countClosed } from '../v1/today/habitCount'
 import { bestByMoney, soldParts } from './summary'
 import { useOrderUnit } from '../supply/supplyData'
@@ -101,9 +102,11 @@ export function CloseDayTile() {
   const locale = useLocale()
   const ws = useWorkspace()
   const [open, setOpen] = useState(false)
-  const evening = new Date().getHours() >= 17
+  const now = shopNow(shopZone(ws.active?.fields))
+  // The shop's evening, not the phone's (a phone set to another time zone).
+  const evening = now.minutes >= 17 * 60
   const currency = shopCurrency(ws.active)
-  const checked = useDaySales(shopNow(shopZone(ws.active?.fields)).date)
+  const checked = useDaySales(now.date)
   const closedRows = checked.rows?.length ? checked.rows : null
   return (
     <>
@@ -376,6 +379,7 @@ export function CloseDay({
       countClosed(ws)
       dismissFreshness(`chalkboard.closeday.${scope}.${shop.id}`, progress.current.date || day)
       setPhase('done')
+      window.dispatchEvent(new Event(DAY_CLOSED))
     } catch {
       const status = (value: string) =>
         value === 'saved' ? t.savedState : value === 'unknown' ? t.unknownState : t.notSavedState
@@ -514,6 +518,7 @@ export function CloseDay({
             )}
           </Typography>
         )}
+        {phase === 'closed' && <MoneyToday day={today} currency={currency} />}
         {phase === 'capture' && (
           <>
             <CloseDaySupply />
@@ -691,6 +696,7 @@ export function CloseDay({
                 onBlocked={setTypedBlocked}
               />
             )}
+            <MoneyToday day={today} currency={currency} />
             <AskHint id="close_day" />
           </>
         )}
@@ -869,6 +875,7 @@ export function CloseDay({
                 .filter(Boolean)
                 .join(' ')}
             </Typography>
+            <MoneyToday day={today} currency={currency} />
             <TomorrowPromise />
           </Stack>
         )}
@@ -1008,7 +1015,16 @@ export function CloseDay({
               <Typography color="text.secondary">{t.earlyWhy}</Typography>
             </DialogContent>
           )}
-          <DialogActions sx={{ px: 3, pb: 2 }}>
+          {/* Long labels (ta, fil, vi) wrap onto a second line instead of squeezing. */}
+          <DialogActions
+            sx={{
+              px: 3,
+              pb: 2,
+              flexWrap: 'wrap',
+              gap: 1,
+              '& > :not(style) ~ :not(style)': { ml: 0 },
+            }}
+          >
             <Button onClick={() => setPhase('review')} sx={{ minHeight: 48 }}>
               {t.close}
             </Button>

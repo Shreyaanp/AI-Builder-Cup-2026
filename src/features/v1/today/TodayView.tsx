@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from 'react'
+import { Suspense, lazy, useEffect, useId, useState } from 'react'
 import type { ReactNode } from 'react'
 import {
   Box,
@@ -43,6 +43,7 @@ import { useSourceCopy } from './sourceCopy'
 import { MakeNow } from './MakeNow'
 import { shopZone } from '../../../region/region'
 import { useTodayCopy, type Festival } from './todayCopy'
+import { moneyCopyFor } from '../../expenses/copy'
 import { promiseCopyFor } from './promiseCopy'
 import type { CoachLine, Need, StepId, TodayPlan } from './todayPlan'
 import { useTodayPlan } from './useTodayPlan'
@@ -52,6 +53,13 @@ import { countAction, countShown } from './habitCount'
 import { useLocalDay } from './useLocalDay'
 import { FirstCustomers } from '../FirstCustomers'
 import { TodaySupplyNeeds } from '../../supply/SupplyEntry'
+import { useOrderChangeCopy } from '../../supply/orderChangeCopy'
+import { useSupply, type OrderAsk } from '../../supply/supplyData'
+
+// Loaded on the first "Order more": the first screen stays inside its budget.
+const OrderMoreSheet = lazy(() =>
+  import('../../supply/OrderMore').then((m) => ({ default: m.OrderMoreSheet })),
+)
 
 /** What the Coach screen lets Today do: talk to the coach, open sheets, start the mic. */
 export interface TodayActions {
@@ -554,6 +562,11 @@ function NeedRow({
   const roles = useTheme().material
   const [busy, setBusy] = useState(false)
   const [making, setMaking] = useState(false)
+  const [asking, setAsking] = useState<OrderAsk | null>(null)
+  const [askedOnce, setAskedOnce] = useState(false)
+  if (asking && !askedOnce) setAskedOnce(true)
+  const order = useOrderChangeCopy()
+  const toOrder = useSupply(need.kind === 'low').data?.to_order ?? []
   const step = useStepAction(need.kind === 'step' ? need.step : 'items')
   const promiseSettle = usePromiseSettle(
     need.kind === 'promise' ? need.promise : null,
@@ -732,11 +745,35 @@ function NeedRow({
         <Button
           variant={primary}
           sx={{ minHeight: 48 }}
-          onClick={() => actions.ask(tt.orderDraft(need.item))}
+          onClick={() =>
+            setAsking(
+              toOrder.find((ask) => ask.item === need.item) ?? {
+                item: need.item,
+                unit: '',
+                left: need.left,
+                sold_out: need.left === 0,
+                suggested: null,
+              },
+            )
+          }
         >
-          {tt.order}
+          {order.orderMore}
         </Button>
       )
+      const shelf = need.left === 0 ? ws.products.find((p) => p.name === need.item) : undefined
+      if (shelf)
+        buttons = (
+          <>
+            {buttons}
+            <Button
+              disabled={busy}
+              sx={{ minHeight: 48 }}
+              onClick={() => void run(() => ws.setAvailability(shelf, true))}
+            >
+              {tt.backInStock}
+            </Button>
+          </>
+        )
     }
   } else if (need.kind === 'soldOut') {
     icon = <ZapOff size={20} />
@@ -833,6 +870,11 @@ function NeedRow({
         </Stack>
       )}
       {panel}
+      {askedOnce && (
+        <Suspense fallback={null}>
+          <OrderMoreSheet ask={asking} onClose={() => setAsking(null)} />
+        </Suspense>
+      )}
     </Box>
   )
 }
@@ -861,6 +903,7 @@ function PulseCard({ plan, actions }: { plan: TodayPlan; actions: TodayActions }
   const lastDay = useLastDayWords()
   // Once the day is closed the pulse is today's, and so is the question it asks (HABIT change 3).
   const ask = plan.pulse?.when === 'today' ? tt.howToday : tt.howYesterday
+  const m = moneyCopyFor(locale)
   // In the evening the card below owns the screen: the weather line would push Reply out of view.
   const quiet = plan.part === 'evening'
   // Rain only changes how much to make, and the forecast row already says that: with a forecast it
@@ -883,8 +926,18 @@ function PulseCard({ plan, actions }: { plan: TodayPlan; actions: TodayActions }
       if (metric === 'stamps') return tt.stamps(n)
       return tt.regulars(n)
     })
+    // With expenses noted, the row says what was spent and what is left instead (sales stay first).
+    const sales = plan.pulse.values.find((v) => v.metric === 'sales')?.value
+    const spent = plan.pulse.spent
+    const shown = spent
+      ? [
+          ...(sales != null ? [formatShopPrice(sales, currency, locale)] : []),
+          m.homeSpent(formatShopPrice(spent, currency, locale)),
+          ...(sales != null ? [m.homeLeft(formatShopPrice(sales - spent, currency, locale))] : []),
+        ]
+      : values
     lines.push(
-      `${plan.pulse.when === 'yesterday' ? tt.yesterday : tt.todaySoFar}: ${values.join(' · ')}`,
+      `${plan.pulse.when === 'yesterday' ? tt.yesterday : tt.todaySoFar}: ${shown.join(' · ')}`,
     )
   }
   // In the evening the "How much to make?" chip below answers this, so the card keeps to one line.
@@ -1019,7 +1072,8 @@ function busyHours(locale: string, busy: [number, number], start: Date, end: Dat
   }
   const part = (d: Date) => {
     const h = d.getUTCHours()
-    return h < 12 ? 'सुबह' : h < 16 ? 'दोपहर' : h < 20 ? 'शाम' : 'रात'
+    // Midnight to 4 is still night: "रात 12–2", never "सुबह 12".
+    return h < 4 ? 'रात' : h < 12 ? 'सुबह' : h < 16 ? 'दोपहर' : h < 20 ? 'शाम' : 'रात'
   }
   const clock = (d: Date) => {
     const m = d.getUTCMinutes()

@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
-import { growTool, showInGrow } from './support/grow.js'
+import { showInGrow, stockTile } from './support/grow.js'
 
 // Owner app polish from the live walk-through (O-6..O-15), in the public demo at 390x844.
 // OB-212 (#569): a touch phone in both projects, so the desktop run can tap() as well.
@@ -74,8 +74,8 @@ test('O-10 and O-11: approving a reorder says it is sent; whole rupees have no .
   ).toBeVisible()
   await expect(page.getByText(/₹[\d,]+\.00/)).toHaveCount(0)
   // Purchase orders are Buy stock → To do.
-  await (await growTool(page, /^Buy stock/)).tap()
-  await page.getByRole('button', { name: 'Draft a reorder' }).tap()
+  await (await stockTile(page)).tap()
+  await page.getByRole('button', { name: 'Order more', exact: true }).tap()
   const order = page.getByRole('dialog').getByRole('article').first()
   await expect(order.getByText(/₹[\d,]+\.00/)).toHaveCount(0)
   await page.getByRole('button', { name: 'Approve and send' }).tap()

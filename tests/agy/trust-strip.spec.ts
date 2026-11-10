@@ -58,7 +58,7 @@ test.describe('Trust strip on phone (390px)', () => {
       await expect(sheet).toBeVisible()
 
       if (i === 2) {
-        await expect(sheet).toContainText('encrypted')
+        await expect(sheet).toContainText('Delete your data anytime')
       }
       if (i === 3) {
         await expect(sheet.getByRole('link')).toHaveAttribute('href', supportUrl)

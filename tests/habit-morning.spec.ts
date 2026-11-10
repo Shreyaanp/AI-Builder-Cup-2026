@@ -1,7 +1,7 @@
 import { saveCloseDay } from './closeDaySupport.js'
 import { expect, test, type Page, type Request } from '@playwright/test'
 import { enter, localOnly } from './stories/support.js'
-import { growTool, openBuyStock } from './support/grow.js'
+import { openBuyStock, stockTile } from './support/grow.js'
 
 // HABIT slice 2, the morning loop on a phone. At 08:00 Coach opens with one lead action (one
 // filled button) and one stock surface (the supply row with its run-out day, low items and supply
@@ -179,9 +179,7 @@ test('08:00: one lead action, one stock surface, one run-out day on Today, brief
   await expect(low).toContainText(`Runs out ${day}`)
   // The Buy stock row says the weekday (OB-254); its runs-out card, under To do (simplify batch
   // 4b), names the same day in the same words, once.
-  await expect(await growTool(page, /^Buy stock/)).toContainText(
-    `Milk runs out ${day.split(',')[0]}`,
-  )
+  await expect(await stockTile(page)).toContainText(`Milk runs out ${day.split(',')[0]}`)
   const sheet = await openBuyStock(page)
   await expect(sheet.getByText(`Milk runs out ${day}`).filter({ visible: true })).toHaveCount(1)
 })
@@ -498,7 +496,7 @@ for (const lang of ['en', 'hi'] as const) {
     }
     // The question is the supply row's own: "Not now" puts the Order more button back.
     await supplyRow.getByRole('button', { name: 'Not now' }).click()
-    await expect(supplyRow.getByRole('button', { name: 'Order more' })).toBeVisible()
+    await expect(supplyRow.getByRole('button', { name: 'Order more', exact: true })).toBeVisible()
     expect(await promiseFor(page, id, tomorrow)).toBeNull()
   })
 }
@@ -525,7 +523,7 @@ test('en: Reorder on the promise row opens the purchase order sheet, then the pr
   await open(page, name)
   const row = page.getByTestId('today').locator('[data-need="promise"]')
   await expect(row).toContainText('Last night you said: order Milk')
-  await row.getByRole('button', { name: 'Reorder' }).click()
+  await row.getByRole('button', { name: 'Order more', exact: true }).click()
   // Nothing on order: the draft opens in the purchase order sheet, exactly like the supply row.
   await expect(page.getByRole('dialog')).toBeVisible({ timeout: 15_000 })
   await expect.poll(() => promiseFor(page, id, tomorrow)).toBeNull()

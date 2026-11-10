@@ -48,18 +48,18 @@
     },
     {
       "id": "supply",
-      "title": "Purchase orders",
-      "path": ["Grow", "Buy stock", "To do"],
-      "path_hi": ["बढ़ाएँ", "माल मँगाएँ", "करना है"],
-      "ask": "Reorder tea dust",
+      "title": "Buy stock",
+      "path": ["Shop", "Buy stock", "To do"],
+      "path_hi": ["दुकान", "माल मँगाएँ", "करना है"],
+      "ask": "Order more tea dust",
       "ask_hi": "चायपत्ती फिर से मँगाओ",
       "screen": "supply"
     },
     {
       "id": "deliveries",
       "title": "Deliveries on the way",
-      "path": ["Grow", "Buy stock", "On the way"],
-      "path_hi": ["बढ़ाएँ", "माल मँगाएँ", "रास्ते में"],
+      "path": ["Shop", "Buy stock", "On the way"],
+      "path_hi": ["दुकान", "माल मँगाएँ", "रास्ते में"],
       "ask": "What's coming today?",
       "ask_hi": "आज क्या आने वाला है?",
       "screen": "supply"
@@ -211,11 +211,11 @@
     {
       "id": "suppliers",
       "title": "Order supplies",
-      "path": ["Grow", "Buy stock", "Find a supplier"],
-      "path_hi": ["बढ़ाएँ", "माल मँगाएँ", "सप्लायर ढूँढें"],
+      "path": ["Shop", "Buy stock", "Find a supplier"],
+      "path_hi": ["दुकान", "माल मँगाएँ", "सप्लायर ढूँढें"],
       "ask": "My milk is running low",
       "ask_hi": "दूध ख़त्म होने वाला है",
-      "screen": "grow"
+      "screen": "supply"
     },
     {
       "id": "import_sales",
@@ -297,15 +297,6 @@
       "ask": "Delete my data",
       "ask_hi": "मेरा डेटा मिटाओ",
       "screen": "privacy"
-    },
-    {
-      "id": "face_check",
-      "title": "Optional face check",
-      "path": ["You", "Privacy & your data", "Verify it’s you"],
-      "path_hi": ["आप", "गोपनीयता और आपका डेटा", "पुष्टि करें कि यह आप हैं"],
-      "ask": "Verify me",
-      "ask_hi": "मेरा चेहरा जाँचो",
-      "screen": "trust"
     },
     {
       "id": "help",

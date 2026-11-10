@@ -37,9 +37,21 @@ export async function openGrowTool(page: Page, name: RegExp | string) {
 
 export type StockTab = 'To do' | 'On the way' | 'My suppliers' | 'Find a supplier'
 
-/** Grow → Buy stock, on `tab` (To do first). Returns the sheet. */
+/** The Buy stock row, which lives on Shop (OB-339). */
+export async function stockTile(page: Page) {
+  await page.locator('[data-tour="nav-shop"]').click()
+  const tile = page.locator('[data-tour="supply"]').first()
+  await expect(tile).toBeVisible({ timeout: 30_000 })
+  return tile
+}
+
+/** Shop → Buy stock, on `tab` (To do first). Returns the sheet. */
 export async function openBuyStock(page: Page, tab: StockTab = 'To do') {
-  await openGrowTool(page, /^Buy stock/)
+  await page.locator('[data-tour="nav-shop"]').click()
+  await page
+    .getByRole('button', { name: /^Buy stock/ })
+    .first()
+    .click({ timeout: 30_000 })
   const sheet = page.getByRole('dialog', { name: /^Buy stock/ })
   await expect(sheet).toBeVisible()
   // The tabs lead the sheet (a form below may have a button of the same name).

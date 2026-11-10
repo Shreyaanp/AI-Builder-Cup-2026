@@ -9,7 +9,7 @@
 export type BootstrapConfig = {
   auth_mode?: string
   firebase?: Record<string, string>
-  features?: { guest_customer?: boolean; google_guide?: boolean }
+  features?: { guest_customer?: boolean; google_guide?: boolean; guest_merge?: boolean }
   ga_measurement_id?: string
   maps_browser_key?: string
   maps_mode?: string

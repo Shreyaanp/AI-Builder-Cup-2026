@@ -36,6 +36,9 @@ export type CoachAction = {
   text?: string
   /** Offered after "I can't do that yet" (OB-172): shown as a chip, never opened by itself. */
   offer?: boolean
+  /** The coach saved something on this screen ("I'll remember that"): the app reloads the shop
+   * so the screen shows it at once, and the chip links there. */
+  changed?: boolean
 }
 
 const TARGETS = new Set<CoachAction['target']>([

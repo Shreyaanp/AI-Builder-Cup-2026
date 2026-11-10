@@ -1,4 +1,4 @@
-import { useContext, useState } from 'react'
+import { lazy, Suspense, useContext, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import {
   Alert,
@@ -32,11 +32,13 @@ import {
   ShoppingBasket,
   Stamp,
   Store,
-  Trash2,
   UtensilsCrossed,
   ZapOff,
 } from 'lucide-react'
 import { FactList } from './FactList'
+import { CoachNotes } from './CoachNotes'
+import { FactYesNo } from './FactYesNo'
+import { isYesNoFact } from './factAnswers'
 import { MenuSheet } from '../shop/MenuSheet'
 import { ThingsIBuySheet } from '../shop/ThingsIBuySheet'
 import { PriceSheet } from '../shop/PriceSheet'
@@ -44,14 +46,13 @@ import { onMenu } from '../shop/stock'
 import { useStockCopy } from '../shop/stockCopy'
 import { ConnectRow } from '../connect/ConnectTile'
 import { Sheet } from './Sheet'
-import { AskHint } from './AskHint'
 import { ClosedTodaySwitch } from './TwoPaths'
 import { ShopQr } from './ShopQr'
 import { OwnerPerks } from '../passport/games/OwnerPerks'
 import { useUnread } from './useUnread'
-import { busyWindow, openNow, readiness } from './shopProgress'
+import { busyWindow, missingFacts, openNow, readiness } from './shopProgress'
 import { useCopy } from './strings'
-import { isServiceShop, useTabsCopy } from './tabsCopy'
+import { listWord, useTabsCopy } from './tabsCopy'
 import { RowGroup, ShopRow } from './ShopRow'
 import { ShopLocation } from './CurrentLocation'
 import { useWorkspace } from './workspaceContext'
@@ -71,10 +72,17 @@ import { productName } from '../../i18n/productNames'
 import { MapCard } from './MapCard'
 import { ListTile } from './GrowList'
 import { TileLayoutContext } from './growLayout'
+import { clearOpen, wantsOpen } from './openRequest'
+import type { StockTab } from '../supply/BuyStock'
 import type { Proposal } from './api'
 
 /** How many menu items the busy-hours question goes through (menu order). */
 const SWEEP_ITEMS = 3
+
+// Buy stock pulls in the purchase orders; load it after first paint.
+const BuyStockRow = lazy(() =>
+  import('../supply/BuyStock').then((m) => ({ default: m.BuyStockRow })),
+)
 
 export type ShopSheetKind =
   | 'details'
@@ -209,7 +217,7 @@ export function Supporting({ children }: { children: ReactNode }) {
  * beside the coach. What needs the owner (waiting customers, the daily menu question) lives on
  * Coach Today, not here.
  */
-export function ShopOverview({ narrow = false }: { narrow?: boolean }) {
+export function ShopOverview() {
   const [sheet, setSheet] = useState<ShopSheetKind | null>(null)
   const { unread, refresh } = useUnread()
   return (
@@ -217,7 +225,6 @@ export function ShopOverview({ narrow = false }: { narrow?: boolean }) {
       <YourPage onSheet={setSheet} />
       <ShopTiles unread={unread} onSheet={setSheet} />
       <PageAction onSheet={setSheet} />
-      {!narrow && <AskHint id="sold_out" />}
       <ShopSheets
         kind={sheet}
         onClose={() => {
@@ -375,6 +382,11 @@ export function ShopTiles({
   const stock = useStockCopy()
   const ws = useWorkspace()
   const [more, setMore] = useState(false)
+  // Buy stock lives here, where a shopkeeper looks for it (OB-267); the coach and Home open it.
+  const [stockTab, setStockTab] = useState<StockTab | null>(() =>
+    wantsOpen('stock') ? 'todo' : null,
+  )
+  useEffect(() => clearOpen('stock'), [])
   const shop = ws.active
   if (!shop) return null
   const open = openNow(
@@ -404,7 +416,7 @@ export function ShopTiles({
         <ShopRow
           tour="menu"
           icon={<UtensilsCrossed size={20} />}
-          label={isServiceShop(shop.fields.category) ? tabs.services : t.menu}
+          label={listWord(shop.fields.category, t.menu, tabs)}
           value={menu.length ? t.itemCount(menu.length) : t.noItems}
           onClick={() => onSheet('menu')}
         />
@@ -420,6 +432,11 @@ export function ShopTiles({
           }
           onClick={() => onSheet('soldOut')}
         />
+        <TileLayoutContext.Provider value="row">
+          <Suspense fallback={null}>
+            <BuyStockRow tab={stockTab} onTab={setStockTab} />
+          </Suspense>
+        </TileLayoutContext.Provider>
         <ShopRow
           icon={
             <Badge badgeContent={unread ?? 0} color="primary" aria-hidden="true">
@@ -617,48 +634,25 @@ function OneSheet({
             <HoursList hours={shop.fields.weekly_hours} />
             <FactList
               fields={shop.fields}
-              onAnswer={(fact) => then(() => ws.startCoachDraft(`${t.factNames[fact]}: `))()}
+              onAnswer={
+                // Yes / no facts are answered with a tap below; payment and delivery open their
+                // step of Edit details. Only busy hours are typed, in chat (no form step yet).
+                isYesNoFact(missingFacts(shop.fields)[0])
+                  ? undefined
+                  : (fact) =>
+                      then(() =>
+                        fact === 'payment_methods' || fact === 'delivery'
+                          ? ws.openEditor({
+                              kind: 'business',
+                              fields: shop.fields,
+                              step: fact === 'delivery' ? 'delivery' : 'payment',
+                            })
+                          : ws.startCoachDraft(`${t.factNames[fact]}: `),
+                      )()
+              }
             />
-            {(shop.coach_notes ?? []).length > 0 && (
-              <Box component="section" aria-labelledby="coach-memory-title" sx={{ mt: 4 }}>
-                <Typography
-                  id="coach-memory-title"
-                  component="h3"
-                  variant="titleSmall"
-                  color="text.secondary"
-                >
-                  {t.coachMemory}
-                </Typography>
-                <List disablePadding>
-                  {(shop.coach_notes ?? []).map((note) => (
-                    <ListItem
-                      key={note.id}
-                      disableGutters
-                      divider
-                      secondaryAction={
-                        <IconButton
-                          edge="end"
-                          aria-label={`${t.forgetNote}: ${note.text}`}
-                          onClick={() =>
-                            void ws
-                              .api(
-                                `/businesses/${encodeURIComponent(shop.id)}/notes/${encodeURIComponent(note.id)}`,
-                                { method: 'DELETE' },
-                              )
-                              .then(() => ws.reload())
-                              .catch(() => ws.notify(t.actionFailed))
-                          }
-                        >
-                          <Trash2 size={18} />
-                        </IconButton>
-                      }
-                    >
-                      <ListItemText primary={note.text} sx={{ pr: 6 }} />
-                    </ListItem>
-                  ))}
-                </List>
-              </Box>
-            )}
+            <FactYesNo shop={shop} onReview={onClose} />
+            <CoachNotes shop={shop} />
           </Box>
         </Sheet>
       )

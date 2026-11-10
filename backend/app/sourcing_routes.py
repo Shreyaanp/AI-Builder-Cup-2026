@@ -30,17 +30,29 @@ class OrderChange(BaseModel):
     lines: list[LineQuantity] = Field(min_length=1, max_length=50)
 
 
+class DraftLine(LineQuantity):
+    unit: str = Field(default="", max_length=20)
+
+
+class DraftEdit(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    version: int = Field(ge=1)
+    lines: list[DraftLine] = Field(min_length=1, max_length=50)
+
+
 class OrderMessage(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
     text: str = Field(min_length=1, max_length=500)
 
 
 @router.get("/businesses/{business_id}/orders")
-async def list_orders(business_id: str, request: Request) -> list[dict[str, Any]]:
+async def list_orders(
+    business_id: str, request: Request, drafts: bool = False
+) -> list[dict[str, Any]]:
     uid = await owner(request)
     found = await anyio.to_thread.run_sync(sourcing.orders, store(request), uid, business_id)
-    # Drafts live in the chat card until sent; the Orders tile lists what reached a supplier.
-    return [sourcing.public_order(order) for order in found if order["status"] != "draft"]
+    # The Orders tile lists what reached a supplier; Buy stock's To do also shows unsent drafts.
+    return [sourcing.public_order(order) for order in found if drafts or order["status"] != "draft"]
 
 
 @router.get("/businesses/{business_id}/orders/{order_id}")
@@ -82,6 +94,18 @@ async def cancel_order(
     await enforce_limits(request, [("coach", uid)])
     return await anyio.to_thread.run_sync(
         sourcing.cancel_sent, store(request), uid, business_id, order_id, body.version
+    )
+
+
+@router.post("/businesses/{business_id}/orders/{order_id}/edit")
+async def edit_order(
+    business_id: str, order_id: str, body: DraftEdit, request: Request
+) -> dict[str, Any]:
+    """New amounts on a draft that has not been sent; the supplier is not told anything."""
+    uid = await consented_owner(request)
+    changes = {row.line: (row.quantity, row.unit) for row in body.lines}
+    return await anyio.to_thread.run_sync(
+        sourcing.edit_draft, store(request), uid, business_id, order_id, body.version, changes
     )
 
 

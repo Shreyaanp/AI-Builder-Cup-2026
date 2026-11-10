@@ -106,6 +106,7 @@ import { useReceiveOrder } from '../../sourcing/orderData'
 import type { Order, SupplierResult } from '../../sourcing/types'
 import type { SupplyCardData } from '../../supply/SupplyEntry'
 import type { PurchaseOrder, Relationship } from '../../supply/types'
+import { supplyChanged } from '../../supply/supplyEvents'
 import { speak, canSpeak, stopSpeech, utter } from '../phoneVoice'
 import { useLanguageSwitch } from '../languageSwitch'
 import { ActionChip, MenuLinkChip, ReplyCard, ReplyLineAction } from '../CoachActions'
@@ -114,7 +115,7 @@ import { sendPrepared, useCardFold, type ReplyState } from '../chatCards'
 import { cardSummary, summaryCopy, type SummaryInput } from '../cardSummary'
 import { useNextStepsCopy } from '../nextStepsCopy'
 import { asCoachAction, NEEDS_TAP, type CoachAction } from '../coachAction'
-import { requestOpen } from '../openRequest'
+import { clearOpen, requestOpen, wantsOpen } from '../openRequest'
 import type { Destination } from '../workspaceContext'
 import { TodayChips } from '../../owner-tools/CoachGuide'
 import { useSimpleCopy } from '../today/simpleCopy'
@@ -200,13 +201,13 @@ const DESTINATIONS: Partial<Record<CoachAction['target'], Destination>> = {
   you: 'you',
   trust: 'you',
   games: 'grow',
-  close_day: 'grow',
+  // close_day is not a tab: the chat opens the Close the day sheet itself (OB-290).
   google: 'google',
   privacy: 'privacy',
-  // How much to make (numbers open) and Buy stock open over Grow (simplify batch 4b).
+  // How much to make (numbers open) opens over Grow (simplify batch 4b), Buy stock over Shop.
   plan: 'grow',
   make: 'grow',
-  supply: 'grow',
+  supply: 'shop',
   // The playbook sheet lives under Your data.
   playbook: 'privacy',
   // Payments & rides opens over Grow, so Back returns there.
@@ -365,7 +366,7 @@ function CoachScreen({
   }
   const speaking = useRef<HTMLAudioElement | null>(null)
   const end = useRef<HTMLDivElement>(null)
-  const { api, activeId, review, setFaceOpen, go, speakReplies } = ws
+  const { api, activeId, review, setFaceOpen, go, speakReplies, reload } = ws
   // One "+" sheet (opened from the top bar) holds every coach action: add shop/product, new
   // chat, earlier chats.
   const actionsOpen = ws.coachActions && visible
@@ -430,15 +431,23 @@ function CoachScreen({
           [...items, { role: 'chart' as const, chart, key: crypto.randomUUID() }].slice(-40),
         )
       }
+      // A chat order, purchase order or supply change: every stock screen loads again (Today,
+      // Grow, Purchase orders), exactly as after the same tap on those screens.
+      if (event.kind === 'order' || event.kind === 'purchase_order' || event.kind === 'supply')
+        supplyChanged()
       if (event.kind === 'order') {
         const order = event.data as unknown as Order
         setOrders((known) => {
           const old = order.replaces ? known[order.replaces] : undefined
           // The edited draft replaces the old one on the server (OB-222): its card stops offering Send.
-          const replaced =
-            old?.status === 'draft'
-              ? { [old.id]: { ...old, status: 'replaced' as const, replaced_by: order.id } }
-              : {}
+          const replaced = Object.fromEntries(
+            [old, ...(order.retired ?? []).map((id) => known[id])]
+              .filter((was) => was?.status === 'draft')
+              .map((was) => [
+                was!.id,
+                { ...was!, status: 'replaced' as const, replaced_by: order.id },
+              ]),
+          )
           return { ...known, ...replaced, [order.id]: order }
         })
         // One card per order, moved to the end when the coach updates it.
@@ -451,6 +460,8 @@ function CoachScreen({
       }
       if (event.kind === 'action') {
         const action = asCoachAction(event.data)
+        // Saved by the coach ("I'll remember that"): the screen it lives on shows it at once.
+        if (action?.changed) void reload().catch(() => undefined)
         if (action) {
           const chip = { role: 'action' as const, action, key: crypto.randomUUID() }
           // An offered button belongs under the answer it comes with ("what first?", OB-264), so
@@ -463,6 +474,7 @@ function CoachScreen({
             const sheet = SHEETS[action.target]
             if (action.target === 'games') go('shop')
             if (action.target === 'connect') setConnectOpen(true)
+            if (action.target === 'close_day') setCloseDayOpen(true)
             if (sheet) setShopSheet(sheet)
             else if (DESTINATIONS[action.target]) go(DESTINATIONS[action.target]!)
             openInside(action.target)
@@ -497,7 +509,7 @@ function CoachScreen({
         setFaceOpen(true)
       }
     },
-    [review, go, setFaceOpen, t.conversationRolledOver, switchLanguage],
+    [review, go, setFaceOpen, reload, t.conversationRolledOver, switchLanguage],
   )
   const restored = useRef<Promise<unknown>>(Promise.resolve())
   /** The coach's reply text (if any), then the menu links its proposals earned so far. */
@@ -805,6 +817,8 @@ function CoachScreen({
     setShowToday(action.target === 'today')
     if (action.target === 'games') go('shop')
     if (action.target === 'connect') setConnectOpen(true)
+    // The same sheet as Grow's card, right here: never a trip to Grow and a second tap (OB-290).
+    if (action.target === 'close_day') setCloseDayOpen(true)
     if (action.target === 'photo') pick('library')
     else if (action.target === 'import') pick('document')
     else if (action.target === 'reply') return
@@ -1195,6 +1209,17 @@ function CoachScreen({
       }),
     openCloseDay: () => setCloseDayOpen(true),
   }
+  // Buy stock's mic: the coach listens, with the same order tools as typing.
+  useEffect(() => {
+    if (!visible || !wantsOpen('talk')) return
+    clearOpen('talk')
+    void restored.current.then(() => {
+      track('voice_used')
+      return voice.start(session.current)
+    })
+    // Only when the tab opens; voice changes every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible])
   const lastIsReply =
     messages.at(-1)?.role === 'assistant' && !liveReply && !reveal.active() && busy === 'idle'
   const canSend = Boolean(note.trim()) && busy === 'idle' && voice.state === 'idle'
@@ -1614,6 +1639,9 @@ function CoachScreen({
                           onSend={sendOrder}
                           onDiscard={discardOrder}
                           onOpen={(order) => setThread(order.id)}
+                          onChanged={(order) =>
+                            setOrders((known) => ({ ...known, [order.id]: order }))
+                          }
                           onReceived={(order) =>
                             void receiveOrder(order).then((received) => {
                               if (received)

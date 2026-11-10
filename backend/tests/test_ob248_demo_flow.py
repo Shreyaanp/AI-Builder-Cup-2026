@@ -500,7 +500,7 @@ def test_OB_248_the_screens_own_phrase_does_the_work(
     message: str,
     words: str,
 ) -> None:
-    """Grow → Buy stock → Find a supplier sends this phrase, in English or Hindi (the app's
+    """Shop → Buy stock → Find a supplier sends this phrase, in English or Hindi (the app's
     language: the reply is in it)."""
     client, _app, session, _bid = live_parent_demo
     language = "hi" if HINDI_SCRIPT.search(message) else "en"
@@ -511,8 +511,8 @@ def test_OB_248_the_screens_own_phrase_does_the_work(
     assert events["order"]["data"]["lines"][0]["name"] == "Milk"
     assert words in events["reply"]["text"]
     # The path in the asker's language: no English screen names in a Hindi reply (OB-261).
-    where = "Grow → Buy stock → Find a supplier"
-    hindi = "बढ़ाएँ → माल मँगाएँ → सप्लायर ढूँढें"
+    where = "Shop → Buy stock → Find a supplier"
+    hindi = "दुकान → माल मँगाएँ → सप्लायर ढूँढें"
     assert (hindi if HINDI_SCRIPT.search(message) else where) in events["reply"]["text"]
 
 
@@ -573,7 +573,7 @@ def test_OB_248_supply_question_names_a_tile_that_exists_with_the_unit(
         f"/api/v1/demo/sessions/{session}/coach", json={"message": "how do I order tea dust?"}
     )
     assert "Tea dust has 6 kg in stock" in response.text
-    assert "Grow → Buy stock → To do" in response.text
+    assert "Shop → Buy stock → To do" in response.text
     assert "Supplies" not in response.text
 
 
@@ -714,7 +714,22 @@ def test_OB_248_backend_hindi_names_match_the_apps_table() -> None:
         (quoted or bare): hindi
         for quoted, bare, hindi in re.findall(r"^\s+(?:'([^']+)'|(\w+)): \['([^']+)'", table, re.M)
     }
-    for category in ("Tea stall", "Minimart"):
+    for category in (
+        "Tea stall",
+        "Minimart",
+        "Bakes",
+        "Beverages",
+        "Breads",
+        "Breakfast",
+        "Cakes",
+        "Dairy",
+        "Fresh",
+        "Household",
+        "Packaged",
+        "Personal care",
+        "Snacks",
+        "Staples",
+    ):
         shown.pop(category)  # categories live in the app only, not as coach items
     assert shown and demo_item_names.HINDI_ITEMS == shown
 

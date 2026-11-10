@@ -103,6 +103,7 @@ ALLOWED: tuple[tuple[str, re.Pattern[str]], ...] = tuple(
         ("POST", rf"{_BIZ}/import/{_ID}/approve"),
         ("POST", rf"{_BIZ}/day/(?:read|prepare|total)"),
         ("POST", rf"{_BIZ}/supply/reorder"),
+        ("POST", rf"{_BIZ}/supply/order-text"),
         ("POST", rf"{_BIZ}/supply/demo/next"),
         ("POST", rf"{_BIZ}/supply/(?:inbound|send-all)"),
         ("POST", rf"{_BIZ}/supply/inbox/{_ID}/dismiss"),
@@ -114,7 +115,10 @@ ALLOWED: tuple[tuple[str, re.Pattern[str]], ...] = tuple(
         ("POST", rf"{_BIZ}/supply/orders/{_ID}/flags/{_ID}"),
         ("POST", rf"{_BIZ}/supply/suppliers/{_ID}/rules/confirm"),
         ("PUT", rf"{_BIZ}/supply/suppliers/{_ID}/rules"),
-        ("POST", rf"{_BIZ}/orders/{_ID}/(?:read|received|discard|send|cancel|change|messages)"),
+        (
+            "POST",
+            rf"{_BIZ}/orders/{_ID}/(?:read|received|discard|send|edit|cancel|change|messages)",
+        ),
         ("POST", rf"{_BIZ}/inquiries/{_ID}/(?:read|messages|done|complete|block|unblock)"),
         ("POST", rf"{_BIZ}/inquiries/{_ID}/messages/{_ID}/translation"),
         ("POST", rf"{_BIZ}/rescue(?:/{_ID}/approve)?"),
@@ -227,6 +231,14 @@ def sandbox(zone: str) -> tuple[DemoSession, date]:
             store.seed_demo_shop(CHAIN_OWNER, chain.id, chain.fields, chain.products)
             store.attach_demo_owner(CHAIN_OWNER, chain.id, uid)
             seed_chain_supply(store, CHAIN_OWNER, chain.id)
+        # A bakery to switch to, so a baker sees their own kind of shop (OB-271).
+        bakery = next(
+            shop
+            for shop in TOUR_SHOPS
+            if shop.city == "bengaluru" and shop.fields.category == "Bakery"
+        )
+        store.seed_demo_shop(CHAIN_OWNER, bakery.id, bakery.fields, bakery.products)
+        store.attach_demo_owner(CHAIN_OWNER, bakery.id, uid)
         store.record_consent(uid, LEGAL_VERSION)
         business = store.context(uid, bid)["business"]
         # One "(Demo)" label, never "(Demo) (Demo)" or "(Demo) (Tour)".

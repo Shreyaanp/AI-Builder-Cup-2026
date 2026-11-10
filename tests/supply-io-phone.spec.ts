@@ -105,6 +105,7 @@ test('Supply on a phone: forecast in → order → change → goods arrive → r
   await expect(hub).toHaveCount(0)
 
   // Close the day: the unsent shipping notice is the reminder, sent in one tap.
+  await page.getByRole('button', { name: 'Grow', exact: true }).click()
   await page.getByRole('button', { name: /^Close the day/ }).click()
   const closing = page.getByRole('dialog', { name: 'Close the day' })
   const before = closing.getByRole('region', { name: 'Before you close' })

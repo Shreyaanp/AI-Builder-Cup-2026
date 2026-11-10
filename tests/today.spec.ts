@@ -2,7 +2,7 @@ import { mkdir } from 'node:fs/promises'
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
 import { enter, image, localOnly } from './stories/support.js'
-import { showInGrow } from './support/grow.js'
+import { stockTile } from './support/grow.js'
 
 // The Coach tab's first view ("Today"): day one, items that need the owner, all set, and the
 // pill it shrinks to while chatting. Server facts are the real endpoint unless a test needs
@@ -293,7 +293,7 @@ for (const [language, preview, more, hide, rowNames] of [
       }
       if (language === 'en') {
         await expect(card.getByRole('button', { name: 'Yes', exact: true })).toBeVisible()
-        await expect(card.getByRole('button', { name: 'Order', exact: true })).toBeVisible()
+        await expect(card.getByRole('button', { name: 'Order more', exact: true })).toBeVisible()
         await expect(card.getByRole('button', { name: 'Make more', exact: true })).toBeVisible()
         await expect(card.getByRole('button', { name: 'Back in stock' })).toBeVisible()
       }
@@ -323,7 +323,7 @@ for (const [language, preview, pointer, shopTile, tile, menu, draft] of [
     'Shop',
     'Services',
     'Menu',
-    'Draft a reorder',
+    'Order more',
   ],
   [
     'hi',
@@ -332,7 +332,7 @@ for (const [language, preview, pointer, shopTile, tile, menu, draft] of [
     'दुकान',
     'सेवाएँ',
     'मेन्यू',
-    'फिर से सामान मँगाएँ',
+    'और मँगाएँ',
   ],
 ] as const) {
   test(`OB-243: a salon is pointed to its real tile, 390 px ${language}`, async ({ page }) => {
@@ -358,7 +358,7 @@ for (const [language, preview, pointer, shopTile, tile, menu, draft] of [
       route.fulfill({ json: { status: 'ask_source', item: 'Shampoo' } }),
     )
     await page.locator('[data-tour="nav-grow"]').click()
-    await (await showInGrow(page, page.locator('[data-tour="supply"]'))).click()
+    await (await stockTile(page)).click()
     const sheet = page.getByRole('dialog')
     await sheet.getByRole('button', { name: draft }).click()
     await expect(sheet.getByRole('status')).toContainText(`${shopTile} › ${tile}`)
@@ -367,7 +367,7 @@ for (const [language, preview, pointer, shopTile, tile, menu, draft] of [
 }
 
 // Low stock keeps "Order" and asks to order more.
-test('low stock: a kirana keeps Order and asks to order more', async ({ page }) => {
+test('low stock: a kirana has Order more and is asked how much', async ({ page }) => {
   await facts(page, {
     low_stock: [{ name: 'Toothpaste', stock: 4, runs_out: null, source: 'bought' }],
   })
@@ -378,10 +378,13 @@ test('low stock: a kirana keeps Order and asks to order more', async ({ page }) 
     .getByTestId('today-needs')
     .getByRole('listitem')
     .filter({ hasText: 'Toothpaste: only 4 left' })
-  await expect(row.getByRole('button', { name: 'Order', exact: true })).toBeVisible()
+  await expect(row.getByRole('button', { name: 'Order more', exact: true })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Make more' })).toHaveCount(0)
-  await row.getByRole('button', { name: 'Order', exact: true }).click()
-  await expect(page.getByRole('log')).toContainText('Order more Toothpaste')
+  await row.getByRole('button', { name: 'Order more', exact: true }).click()
+  // How much first, without the coach (OB-339).
+  await expect(page.getByRole('dialog').getByTestId('how-much')).toContainText(
+    'How much Toothpaste?',
+  )
 })
 
 test('all set: nothing pending means no card, one calm line and the pulse', async ({ page }) => {

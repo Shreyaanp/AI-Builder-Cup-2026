@@ -27,20 +27,20 @@ TAB_LABELS: dict[str, frozenset[str]] = {
             "Menu",
             "Services",
             "Sold out",
+            "Buy stock",
             "Messages",
             "Photos",
             "Shop details",
             "More",
         }
     ),
-    # Grow (simplify batch 4a): rows, then the More tools grid. How much to make, Buy stock and
+    # Grow (simplify batch 4a): rows, then the More tools grid. How much to make and
     # My sales each open one sheet that holds what were separate tools (batch 4b, INNER_LABELS).
     "Grow": frozenset(
         {
             "Morning brief",
             "How much to make",
             "Close the day",
-            "Buy stock",
             "My sales",
             "Get on Google",
             "Rescue deals",
@@ -68,10 +68,9 @@ INNER_LABELS: dict[tuple[str, str], frozenset[str]] = {
     # The More row opens on the Shop screen itself: the stamp card and the billing app.
     ("Shop", "More"): frozenset({"Stamp card", "Link your billing app"}),
     ("Grow", "How much to make"): frozenset({"Change the numbers"}),
-    ("Grow", "Buy stock"): frozenset({"To do", "On the way", "My suppliers", "Find a supplier"}),
+    ("Shop", "Buy stock"): frozenset({"To do", "On the way", "My suppliers", "Find a supplier"}),
     ("Grow", "My sales"): frozenset({"Week summary"}),
     ("Grow", "Payments & rides"): frozenset({"Send a rider"}),
-    ("You", "Privacy & your data"): frozenset({"Verify it’s you"}),
 }
 
 
@@ -170,13 +169,13 @@ FEATURES: tuple[Feature, ...] = (
     Feature(
         "supply",
         "owner",
-        "Purchase orders",
-        "Draft a reorder from the forecast and keep supplier rules; each order is sent only "
+        "Buy stock",
+        "Order more of what is sold out or low, or type what you need; each order is sent only "
         "after you confirm it.",
         '"Reorder milk for tomorrow" or "Show purchase orders".',
-        ("Grow", "Buy stock", "To do"),
+        ("Shop", "Buy stock", "To do"),
         ("purchase", "order", "reorder", "restock"),
-        "Reorder tea dust",
+        "Order more tea dust",
         "चायपत्ती फिर से मँगाओ",
         "supply",
         what_hi="अनुमान से दोबारा मँगाने का ऑर्डर बनता है; आपके पक्का करने पर ही सप्लायर को जाता है।",
@@ -187,7 +186,7 @@ FEATURES: tuple[Feature, ...] = (
         "Deliveries on the way",
         "What your suppliers confirmed, what is on the way and what you received.",
         '"What\'s coming today?".',
-        ("Grow", "Buy stock", "On the way"),
+        ("Shop", "Buy stock", "On the way"),
         ("coming", "deliveries", "delivered", "received", "arriving", "on the way"),
         "What's coming today?",
         "आज क्या आने वाला है?",
@@ -426,11 +425,11 @@ FEATURES: tuple[Feature, ...] = (
         "Order supplies",
         "Find suppliers near you, prepare an order request and tap Send.",
         '"My flour is running low" or "I need 20 kg flour by tomorrow".',
-        ("Grow", "Buy stock", "Find a supplier"),
+        ("Shop", "Buy stock", "Find a supplier"),
         ("supplier", "suppliers", "flour", "running low", "buy"),
         "My milk is running low",
         "दूध ख़त्म होने वाला है",
-        "grow",
+        "supply",
         what_hi="कोई चीज़ कम हो तो पास के सप्लायर ढूँढें, ऑर्डर तैयार करें और भेजें दबाएँ।",
     ),
     Feature(
@@ -551,19 +550,6 @@ FEATURES: tuple[Feature, ...] = (
         "मेरा डेटा मिटाओ",
         "privacy",
         what_hi="क्या सहेजा है देखें, डाउनलोड करें या अपना डेटा मिटाएँ; हर बार पहले पूछा जाता है।",
-    ),
-    Feature(
-        "face_check",
-        "owner",
-        "Optional face check",
-        "An optional duplicate-owner check; it never proves identity or ownership.",
-        '"Register me" or "Verify me".',
-        ("You", "Privacy & your data", "Verify it’s you"),
-        ("face", "verify", "register", "registration", "selfie"),
-        "Verify me",
-        "मेरा चेहरा जाँचो",
-        "trust",
-        what_hi="चेहरे की जाँच वैकल्पिक है; यह पहचान या मालिकाना हक़ साबित नहीं करती।",
     ),
     Feature(
         "help",
@@ -714,7 +700,6 @@ HINDI_LABELS = {
     "Sold out": "खत्म",
     "Stamp card": "स्टैम्प कार्ड",
     "To do": "करना है",
-    "Verify it’s you": "पुष्टि करें कि यह आप हैं",
     "What can I ask?": "मैं क्या पूछूँ?",
     "What the coach knows": "कोच क्या जानता है",
     "Your shop page": "आपकी दुकान का पेज",

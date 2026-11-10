@@ -44,6 +44,7 @@ from .discover import MapsService
 from .discover import router as discover_router
 from .discover_ask import router as discover_ask_router
 from .document_ai import DocumentAIReader
+from .expenses import router as expenses_router
 from .features import FeatureFlags
 from .firestore_memory import FirestoreRunRegistry, FirestoreSessionService
 from .forecast import ForecastService
@@ -324,6 +325,7 @@ def create_app(
     app.include_router(shop_today_router)
     app.include_router(owner_habit_router)
     app.include_router(owner_promise_router)
+    app.include_router(expenses_router)
     app.include_router(day_total_router)
     app.include_router(analytics_router)
     app.include_router(playbook_router)
@@ -384,7 +386,10 @@ def create_app(
             **get_services(request).identity.bootstrap(request, response),
             "v1_enabled": settings.v1_enabled,
             "features": FeatureFlags(
-                google_guide=settings.feature_google_guide, guest_customer=settings.guest_customer
+                google_guide=settings.feature_google_guide,
+                guest_customer=settings.guest_customer,
+                face_check=settings.feature_face_check,
+                guest_merge=settings.guest_merge,
             ).model_dump(),
             "trust_strip": {
                 "enabled": settings.feature_trust_strip,

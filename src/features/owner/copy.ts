@@ -72,7 +72,6 @@ export const ownerStrings = {
   go_order: 'Ask the coach',
   go_radar: 'See ideas',
   go_confirm_menu: 'Open menu',
-  orderDraft: 'Find a supplier for {item}',
   // Unmet-demand radar
   radar: 'Asked nearby',
   ideas: 'Ideas: {n}',

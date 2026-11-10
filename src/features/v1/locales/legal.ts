@@ -63,7 +63,7 @@ export const legalTranslations: Record<Exclude<Locale, 'en'>, LegalCopy> = {
         heading: 'आपके अधिकार',
         body: [
           'डेटा देखें, सुधारें और मिटाएँ, कभी भी सहमति वापस लें (पहले हो चुकी प्रक्रिया पर असर नहीं), और गोपनीयता के सवाल हमसे पूछें।',
-          'गोपनीयता संपर्क: सार्वजनिक लॉन्च से पहले दिया जाएगा',
+          'यह सब आप ख़ुद ऐप के निजता टैब से कर सकते हैं।',
         ],
       },
     ],
@@ -129,7 +129,7 @@ export const legalTranslations: Record<Exclude<Locale, 'en'>, LegalCopy> = {
         heading: 'আপনার অধিকার',
         body: [
           'তথ্য দেখুন, ঠিক করুন ও মুছুন, যেকোনো সময় সম্মতি ফেরান (আগের প্রক্রিয়ায় প্রভাব নেই), গোপনীয়তা নিয়ে যোগাযোগ করুন।',
-          'গোপনীয়তার যোগাযোগ: প্রকাশ্যে চালুর আগে জানানো হবে',
+          'এসব আপনি নিজেই অ্যাপের গোপনীয়তা ট্যাব থেকে করতে পারেন।',
         ],
       },
     ],
@@ -195,7 +195,7 @@ export const legalTranslations: Record<Exclude<Locale, 'en'>, LegalCopy> = {
         heading: 'మీ హక్కులు',
         body: [
           'డేటా చూడవచ్చు, సరిచేయవచ్చు, తొలగించవచ్చు, ఎప్పుడైనా అంగీకారం వెనక్కి తీసుకోవచ్చు (ఇప్పటికే జరిగిన ప్రాసెసింగ్ మారదు), గోప్యత విషయాల్లో మమ్మల్ని సంప్రదించవచ్చు.',
-          'గోప్యత సంప్రదింపు: పబ్లిక్ ప్రారంభానికి ముందు తెలియజేస్తాం',
+          'ఇవన్నీ మీరే యాప్‌లోని గోప్యత ట్యాబ్ నుంచి చేయవచ్చు.',
         ],
       },
     ],
@@ -261,7 +261,7 @@ export const legalTranslations: Record<Exclude<Locale, 'en'>, LegalCopy> = {
         heading: 'तुमचे हक्क',
         body: [
           'डेटा पाहू, दुरुस्त व मिटवू शकता, कधीही संमती मागे घेऊ शकता (आधी झालेल्या प्रक्रियेवर परिणाम नाही), आणि गोपनीयतेबद्दल संपर्क करू शकता.',
-          'गोपनीयता संपर्क: सार्वजनिक सुरुवातीपूर्वी दिला जाईल',
+          'हे सर्व तुम्ही स्वतः ॲपमधील गोपनीयता टॅबमधून करू शकता.',
         ],
       },
     ],
@@ -327,7 +327,7 @@ export const legalTranslations: Record<Exclude<Locale, 'en'>, LegalCopy> = {
         heading: 'ನಿಮ್ಮ ಹಕ್ಕುಗಳು',
         body: [
           'ಡೇಟಾ ನೋಡಬಹುದು, ತಿದ್ದಬಹುದು, ಅಳಿಸಬಹುದು, ಯಾವಾಗ ಬೇಕಾದರೂ ಒಪ್ಪಿಗೆ ಹಿಂಪಡೆಯಬಹುದು (ಈಗಾಗಲೇ ಮಾಡಿದ ಪ್ರಕ್ರಿಯೆಗೆ ಪರಿಣಾಮವಿಲ್ಲ), ಗೌಪ್ಯತೆ ಪ್ರಶ್ನೆಗಳಿಗೆ ಸಂಪರ್ಕಿಸಬಹುದು.',
-          'ಗೌಪ್ಯತೆ ಸಂಪರ್ಕ: ಸಾರ್ವಜನಿಕ ಬಿಡುಗಡೆಗೆ ಮೊದಲು ತಿಳಿಸಲಾಗುತ್ತದೆ',
+          'ಇವೆಲ್ಲವನ್ನೂ ನೀವೇ ಆ್ಯಪ್‌ನ ಗೌಪ್ಯತೆ ಟ್ಯಾಬ್‌ನಿಂದ ಮಾಡಬಹುದು.',
         ],
       },
     ],
@@ -394,7 +394,7 @@ export const legalTranslations: Record<Exclude<Locale, 'en'>, LegalCopy> = {
         heading: '您的权利',
         body: [
           '您可查看、更正和删除数据，随时撤回同意（不影响已完成的处理），并就隐私问题联系我们。',
-          '隐私联系人：将在公开推出前公布',
+          '这些操作您都可以在应用的隐私页中自行完成。',
         ],
       },
     ],
@@ -460,7 +460,7 @@ export const legalTranslations: Record<Exclude<Locale, 'en'>, LegalCopy> = {
         heading: 'Hak anda',
         body: [
           'Anda boleh akses, betulkan dan padam data, tarik balik persetujuan bila-bila masa (tidak menjejaskan pemprosesan terdahulu), dan hubungi kami tentang privasi.',
-          'Hubungan privasi: akan diterbitkan sebelum pelancaran awam',
+          'Anda boleh melakukan semua ini sendiri dari tab Privasi.',
         ],
       },
     ],
@@ -526,7 +526,7 @@ export const legalTranslations: Record<Exclude<Locale, 'en'>, LegalCopy> = {
         heading: 'உங்கள் உரிமைகள்',
         body: [
           'தகவலை அணுகலாம், திருத்தலாம், நீக்கலாம்; எப்போது வேண்டுமானாலும் ஒப்புதலைத் திரும்பப் பெறலாம் (ஏற்கெனவே செய்த செயலாக்கம் பாதிக்கப்படாது); தனியுரிமைக் கவலைகளுக்கு எங்களைத் தொடர்புகொள்ளலாம்.',
-          'தனியுரிமைத் தொடர்பு: பொதுவெளியீட்டுக்கு முன் அறிவிக்கப்படும்',
+          'இவை அனைத்தையும் தனியுரிமைத் தாவலில் நீங்களே செய்யலாம்.',
         ],
       },
     ],
@@ -592,7 +592,7 @@ export const legalTranslations: Record<Exclude<Locale, 'en'>, LegalCopy> = {
         heading: 'あなたの権利',
         body: [
           'データの確認、修正、削除、いつでも同意の撤回ができます（既に行った処理には影響しません）。プライバシーの懸念についてお問い合わせいただけます。',
-          'プライバシー窓口：一般公開前に掲載予定です',
+          'これらはすべてアプリのプライバシータブからご自身で行えます。',
         ],
       },
     ],
@@ -658,7 +658,7 @@ export const legalTranslations: Record<Exclude<Locale, 'en'>, LegalCopy> = {
         heading: '사용자의 권리',
         body: [
           '데이터에 접근하고 수정·삭제하며 언제든 동의를 철회할 수 있어요. 이미 완료된 처리에는 영향이 없어요. 개인정보 관련 우려는 저희에게 문의할 수 있어요.',
-          '개인정보 문의처는 정식 공개 전에 안내해요',
+          '이 모든 것은 앱의 개인정보 탭에서 직접 할 수 있어요.',
         ],
       },
     ],
@@ -724,7 +724,7 @@ export const legalTranslations: Record<Exclude<Locale, 'en'>, LegalCopy> = {
         heading: 'Hak Anda',
         body: [
           'Anda dapat mengakses, memperbaiki, menghapus data, menarik persetujuan kapan saja tanpa memengaruhi pemrosesan yang sudah dilakukan, serta menghubungi kami tentang privasi.',
-          'Kontak privasi: akan diumumkan sebelum peluncuran publik',
+          'Anda dapat melakukan semua ini sendiri dari tab Privasi.',
         ],
       },
     ],
@@ -790,7 +790,7 @@ export const legalTranslations: Record<Exclude<Locale, 'en'>, LegalCopy> = {
         heading: 'สิทธิ์ของคุณ',
         body: [
           'คุณเข้าถึง แก้ไข ลบข้อมูล ถอนความยินยอมได้ทุกเมื่อโดยไม่กระทบการประมวลผลที่ทำแล้ว และติดต่อเราเรื่องความเป็นส่วนตัวได้',
-          'ช่องทางติดต่อความเป็นส่วนตัว: จะประกาศก่อนเปิดสาธารณะ',
+          'คุณทำทั้งหมดนี้ได้เองจากแท็บความเป็นส่วนตัวในแอป',
         ],
       },
     ],
@@ -856,7 +856,7 @@ export const legalTranslations: Record<Exclude<Locale, 'en'>, LegalCopy> = {
         heading: 'Quyền của bạn',
         body: [
           'Bạn có thể truy cập, sửa, xóa dữ liệu, rút đồng ý bất cứ lúc nào (không ảnh hưởng xử lý đã thực hiện), và liên hệ về vấn đề riêng tư.',
-          'Liên hệ quyền riêng tư: công bố trước khi ra mắt công khai',
+          'Bạn có thể tự làm tất cả những việc này trong thẻ Quyền riêng tư.',
         ],
       },
     ],
@@ -922,7 +922,7 @@ export const legalTranslations: Record<Exclude<Locale, 'en'>, LegalCopy> = {
         heading: 'Mga karapatan mo',
         body: [
           'Puwede mong tingnan, itama at burahin ang data, bawiin ang pahintulot anumang oras (hindi maaapektuhan ang natapos na pagproseso), at kontakin kami tungkol sa privacy.',
-          'Contact sa privacy: ilalathala bago ang pampublikong paglulunsad',
+          'Magagawa mo ang lahat ng ito mismo sa tab na Privacy.',
         ],
       },
     ],

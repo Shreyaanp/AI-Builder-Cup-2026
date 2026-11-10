@@ -10,6 +10,8 @@ from . import coordinator, demo_supplier, supply_chain, supply_coming, supply_io
 from .forecast import ForecastService
 from .limits import enforce_limits
 from .merchant_routes import consented_owner, owner, store
+from .order_words import read_order as read_said
+from .order_words import resolve_item
 from .supply_rules import RuleSet
 
 router = APIRouter(prefix="/api/v1")
@@ -41,6 +43,15 @@ class ReorderBody(BaseModel):
     anyway: bool = False
     # The owner's answer to "Do you make it or buy it?", saved on the item (OB-239).
     source: Literal["", "made", "bought"] = ""
+    # The unit of `quantity` when the owner said one ("2 kg").
+    unit: str = Field(default="", max_length=20)
+    # The owner asked for this item themselves (Order more): no make-or-buy question first.
+    direct: bool = False
+
+
+class OrderText(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    text: str = Field(min_length=1, max_length=200)
 
 
 class Fix(BaseModel):
@@ -48,6 +59,8 @@ class Fix(BaseModel):
     kind: Literal["quantity", "cash"]
     line: int | None = Field(default=None, ge=1)
     value: float | None = Field(default=None, gt=0, le=1_000_000)
+    # The unit of `value`, when the owner changed it on the card (500 g on a line sold by the kg).
+    unit: str = Field(default="", max_length=20)
 
 
 class FixBody(BaseModel):
@@ -128,12 +141,8 @@ async def overview(business_id: str, request: Request) -> dict[str, Any]:
 
     # What is already on its way, so Today does not ask for the same milk twice (OB-226); the
     # orders are read once for every need.
-    known = (
-        await anyio.to_thread.run_sync(
-            supply_coming.coming_orders, store(request), uid, business_id
-        )
-        if needs
-        else ([], [])
+    known = await anyio.to_thread.run_sync(
+        supply_coming.coming_orders, store(request), uid, business_id
     )
     for need in needs:
         need["supplied"] = await anyio.to_thread.run_sync(supplied, need["item"])
@@ -160,7 +169,19 @@ async def overview(business_id: str, request: Request) -> dict[str, Any]:
         need["covered"] = need["cover"] in {"full", "units"}
     # Then what a linked supplier can bring first: chai runs out because tea dust does.
     needs.sort(key=lambda need: (need["covered"], not need["supplied"], need["runs_out"] or "9999"))
-    return {"suppliers": rows, "orders": orders, "needs": needs}
+    # Sold out or low, with nothing on its way: each gets its own "Order more".
+    to_order = await anyio.to_thread.run_sync(
+        supply_coming.to_order,
+        store(request),
+        uid,
+        business_id,
+        context["inventory"],
+        predicted,
+        today,
+        category,
+        known,
+    )
+    return {"suppliers": rows, "orders": orders, "needs": needs, "to_order": to_order}
 
 
 @router.post("/supply/demo")
@@ -232,7 +253,48 @@ async def reorder(business_id: str, body: ReorderBody, request: Request) -> dict
         body.supplier_id,
         body.anyway,
         body.source,
+        body.unit,
+        body.direct,
     )
+
+
+@router.post("/businesses/{business_id}/supply/order-text")
+async def order_text(business_id: str, body: OrderText, request: Request) -> dict[str, Any]:
+    """The Buy stock box: "butter, 2 kg" in the owner's words, even when nothing looks low. Each
+    item with an amount is drafted; one without asks how much. A "don't" drafts nothing."""
+    uid = await consented_owner(request)
+    await enforce_limits(request, [("coach", uid)])
+    said = read_said(body.text)
+    if said.refused:
+        return {"status": "refused", "results": []}
+    if not said.lines:
+        return {"status": "not_understood", "results": []}
+    context = await anyio.to_thread.run_sync(supply_chain._owned, store(request), uid, business_id)
+    results = []
+    for line in said.lines[:5]:
+        item = resolve_item(line.item, context["inventory"])
+        if line.quantity is None:
+            results.append(
+                await supply_chain.ask_amount(
+                    store(request), uid, business_id, item, forecaster(request)
+                )
+            )
+            continue
+        results.append(
+            await supply_chain.draft_reorder(
+                store(request),
+                uid,
+                business_id,
+                item,
+                line.quantity,
+                forecaster(request),
+                coordinator._generator(),
+                coordinator.DEMO_OWNER_UID,
+                unit_said=line.unit,
+                direct=True,
+            )
+        )
+    return {"status": "done", "results": results}
 
 
 async def _flagged(request: Request, uid: str, bid: str, po: dict[str, Any]) -> dict[str, Any]:

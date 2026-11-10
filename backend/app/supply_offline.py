@@ -281,6 +281,51 @@ def supply_call(
     return None
 
 
+def order_call(question: str, ctx: Any) -> list[types.Part] | None:
+    """ "Butter 2 kg", "2 किलो मक्खन चाहिए", "नहीं, सिर्फ़ 5 लीटर दूध चाहिए": what the live model does
+    with draft_reorder (order_words.py). An amount for an item already waiting as a chat draft
+    goes to that draft's supplier; prepare_order replaces it."""
+    from . import sourcing
+    from .order_words import read_order, resolve_item
+
+    said = read_order(question)
+    if said.refused or not said.asked or not said.lines:
+        return None
+    inventory = ctx.store.inventory(ctx.uid, ctx.business_id)
+    drafts = [
+        order
+        for order in sourcing.orders(ctx.store, ctx.uid, ctx.business_id)
+        if order["status"] == "draft"
+    ]
+    calls = []
+    for line in said.lines[:5]:
+        if line.quantity and not line.unit:
+            continue  # "Order for 20": 20 of what is not said, so nothing is drafted.
+        item = resolve_item(line.item, inventory)
+        waiting = next(
+            (o for o in drafts if any(sourcing.matches(x["name"], item) for x in o["lines"])), None
+        )
+        if waiting and line.quantity:
+            supplied = next(x for x in waiting["lines"] if sourcing.matches(x["name"], item))
+            calls.append(
+                call(
+                    "prepare_order",
+                    {
+                        "supplier_id": waiting["supplier"]["id"],
+                        "items": [
+                            {"name": supplied["name"], "quantity": line.quantity, "unit": line.unit}
+                        ],
+                    },
+                )
+            )
+            continue
+        args: dict[str, Any] = {"item": item}
+        if line.quantity:
+            args.update(quantity=line.quantity, unit=line.unit)
+        calls.append(call("draft_reorder", args))
+    return calls or None
+
+
 def _sells(ctx: Any, item: str) -> bool:
     """On this shop's own menu (and, for "chahiye", so never read as an order for it)."""
     from .demo_coach_words import menu_item
@@ -389,6 +434,14 @@ def supply_reply(name: str, result: dict[str, Any], language: str = "en") -> str
     if io is not None:
         return io
     if name == "draft_reorder":
+        if result.get("status") == "needs_quantity":
+            left = "is sold out" if result.get("sold_out") else "is low"
+            hint = (
+                f" About {result['suggested']:g} {result['unit']} would do."
+                if result.get("suggested")
+                else ""
+            )
+            return f"Offline coach: {result['item']} {left}. How much should I order?{hint}"
         if result.get("status") == "already_on_order":
             arrives = f", arriving {human_date(result['arrives'])}" if result.get("arrives") else ""
             return (
@@ -444,7 +497,10 @@ def supply_reply(name: str, result: dict[str, Any], language: str = "en") -> str
                 "what you use, so I drafted nothing. Tell me how much you want."
             )
         if result.get("status") not in {"needs_owner_tap", "sent_automatically"}:
-            return "Offline coach: tell me which item to reorder and I'll draft the order."
+            return (
+                'Offline coach: nothing looks low. Tell me the item and how much, like "butter '
+                "2 kg\", and I'll draft the order."
+            )
         currency = result.get("currency", "SGD")
         line = result["lines"][0]
         reason = result.get("reason") or {}

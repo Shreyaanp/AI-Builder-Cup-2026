@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
-import { openBuyStock, showInGrow, type StockTab } from './support/grow.js'
+import { openBuyStock, showInGrow, stockTile, type StockTab } from './support/grow.js'
 
 // OB-248 (#635): one full supplier order in the public demo, and nothing blocked for a visitor.
 test.setTimeout(120_000)
@@ -59,7 +59,7 @@ test('OB-248 a supplier order goes draft, reply, on the way, delivered, stock up
   await openDemo(page)
   const before = await teaDustStock(page)
   const sheet = await openOrders(page, 'To do')
-  await sheet.getByRole('button', { name: 'Draft a reorder' }).click()
+  await sheet.getByRole('button', { name: 'Order more', exact: true }).click()
   const card = sheet.locator('article')
   // The amount follows the shop's own sales; never below the wholesaler's 5 kg minimum.
   await expect(card).toContainText(/\d+ kg/)
@@ -94,8 +94,8 @@ test('OB-248 the supplier talks in the owner language', async ({ page }) => {
   await page.locator('[data-tour="nav-grow"]').click()
   // माल मँगाएँ says the tea dust is on its way, in Hindi. (The Morning brief no longer lists it
   // as running low: the order on its way counts, OB-263.)
-  const tile = await showInGrow(page, page.locator('[data-tour="supply"]'))
-  await expect(tile).toContainText('चाय पत्ती रास्ते में')
+  const tile = await stockTile(page)
+  await expect(tile).toContainText('1 रास्ते में')
   await expect(tile).not.toContainText(/\bkg\b/)
   // माल मँगाएँ → रास्ते में (Buy stock → On the way, simplify batch 4b).
   await tile.click()
@@ -103,6 +103,8 @@ test('OB-248 the supplier talks in the owner language', async ({ page }) => {
   await sheet.getByRole('button', { name: /^रास्ते में/ }).click()
   const orders = sheet.getByTestId('po-list')
   await expect(orders.getByText(/Sri Lakshmi/).first()).toBeVisible({ timeout: 15_000 })
+  // The row only counts them now; the list says which item is on its way.
+  await expect(orders).toContainText('चाय पत्ती')
   await orders
     .getByText(/Sri Lakshmi/)
     .first()
@@ -143,7 +145,7 @@ test('OB-248 no owner tab or sheet shows a demo block', async ({ page }) => {
   await page.keyboard.press('Escape')
 
   const sheet = await openOrders(page, 'To do')
-  await sheet.getByRole('button', { name: 'Draft a reorder' }).click()
+  await sheet.getByRole('button', { name: 'Order more', exact: true }).click()
   await expect(sheet.locator('article')).toBeVisible({ timeout: 15_000 })
   await noBlock()
   const dead = sheet.locator('article button[disabled]')
@@ -158,13 +160,6 @@ test('OB-248 what touches the real world says it is pretend, plainly', async ({ 
   await openDemo(page)
   await expect(page.getByTestId('demo-banner')).toContainText('Demo shop · sample data')
   await page.locator('[data-tour="nav-you"]').click()
-  await page
-    .getByRole('button', { name: /Verify it/ })
-    .first()
-    .click()
-  await expect(
-    page.locator('.MuiSnackbar-root', { hasText: 'In the demo this is pretend: nothing is sent' }),
-  ).toBeVisible()
   await expect(page.getByRole('button', { name: /Start my own shop/ })).toBeVisible()
   await page.getByRole('button', { name: /Privacy & your data/ }).click()
   await expect(page.locator('body')).not.toContainText(BLOCKED)
@@ -226,10 +221,10 @@ test('OB-248 a failed orders read says so and tries again, never "–" as if emp
   await expect(page.getByTestId('today')).toBeVisible({ timeout: 30_000 })
   await page.locator('[data-tour="nav-grow"]').click()
   // Grow → Buy stock: its line says the read failed, then what needs buying (batch 4b).
-  const tile = await showInGrow(page, page.locator('[data-tour="supply"]'))
+  const tile = await stockTile(page)
   await expect(tile).toContainText('Couldn’t load orders. Trying again…', { timeout: 15_000 })
   await expect(tile).toContainText(
-    /runs out|arriving|to do|on the way|Reorder or find a supplier/,
+    /runs out|arriving|to do|on the way|Order more or find a supplier/,
     {
       timeout: 30_000,
     },
@@ -259,7 +254,7 @@ test('OB-248 three plain orders bring a yes, a short reply and a new price', asy
   }
 
   // 1: Draft a reorder, as the first walk-through does: a plain yes.
-  await sheet.getByRole('button', { name: 'Draft a reorder' }).click()
+  await sheet.getByRole('button', { name: 'Order more', exact: true }).click()
   await card.getByRole('button', { name: 'Approve and send', exact: true }).click()
   await expect(talk).toContainText('Yes, confirmed', { timeout: 20_000 })
   await delivered()
@@ -307,7 +302,7 @@ test('OB-248 Hindi: a short reply and a new price, each accepted, show the owner
   )
   await openDemo(page, 'छोड़ें')
   await page.locator('[data-tour="nav-grow"]').click()
-  await (await showInGrow(page, page.locator('[data-tour="supply"]'))).click()
+  await (await stockTile(page)).click()
   const sheet = page.getByRole('dialog')
   const card = sheet.locator('article')
   const talk = card.getByTestId('supplier-talk')
@@ -327,7 +322,7 @@ test('OB-248 Hindi: a short reply and a new price, each accepted, show the owner
     await expect(page.locator('.MuiSnackbar-root')).toHaveCount(0, { timeout: 15_000 })
   }
 
-  await sheet.getByRole('button', { name: 'फिर से सामान मँगाएँ' }).click()
+  await sheet.getByRole('button', { name: 'और मँगाएँ', exact: true }).click()
   await card.getByRole('button', { name: 'मंज़ूर करके भेजें', exact: true }).click()
   await expect(talk).toContainText('जी, पक्का है', { timeout: 20_000 })
   await expect(talk).not.toContainText(okay)
@@ -383,12 +378,9 @@ test('OB-248 Hindi: Coach, Purchase orders, order card and supplier chat name ev
   // Buy stock (simplify batch 4b): the row, To do, the orders on the way, then each order card
   // with its supplier chat.
   await page.locator('[data-tour="nav-grow"]').click()
-  await expect(await showInGrow(page, page.locator('[data-tour="supply"]'))).toContainText(
-    'चाय पत्ती',
-    { timeout: 15_000 },
-  )
+  await expect(await stockTile(page)).toContainText('1 रास्ते में', { timeout: 15_000 })
   await check('Buy stock row', await page.locator('[data-tour="supply"]').innerText())
-  await (await showInGrow(page, page.locator('[data-tour="supply"]'))).click()
+  await (await stockTile(page)).click()
   const sheet = page.getByRole('dialog')
   await check('To do', await sheet.innerText())
   await sheet.getByRole('button', { name: /^रास्ते में/ }).click()
@@ -406,7 +398,7 @@ test('OB-248 Hindi: Coach, Purchase orders, order card and supplier chat name ev
   // A new draft from the forecast: back, then To do.
   await sheet.getByRole('button').first().click()
   await sheet.getByRole('button', { name: /^करना है/ }).click()
-  await sheet.getByRole('button', { name: 'फिर से सामान मँगाएँ' }).click()
+  await sheet.getByRole('button', { name: 'और मँगाएँ', exact: true }).click()
   await expect(sheet.locator('article')).toBeVisible({ timeout: 15_000 })
   await check('Draft card', await sheet.locator('article').innerText())
   // Back on Coach once everything has loaded: rows that came later (sold out, prep plan) too.
@@ -482,9 +474,9 @@ test('OB-248 Hindi: morning brief, prep plan, the card after sending and chat an
   check('Prep plan', await prep.innerText())
   await prep.getByRole('button', { name: 'बंद करें', exact: true }).click()
   // An order card just after sending, its note included.
-  await (await showInGrow(page, page.locator('[data-tour="supply"]'))).click()
+  await (await stockTile(page)).click()
   const sheet = page.getByRole('dialog')
-  await sheet.getByRole('button', { name: 'फिर से सामान मँगाएँ' }).click()
+  await sheet.getByRole('button', { name: 'और मँगाएँ', exact: true }).click()
   const card = sheet.locator('article')
   await card.getByRole('button', { name: 'मंज़ूर करके भेजें', exact: true }).click()
   await expect(card.getByRole('status').first()).toContainText('असल में कुछ नहीं गया')
@@ -520,9 +512,9 @@ test('OB-248 Hindi: Goods arrived says what came and the stock now in Hindi, wit
   )
   await openDemo(page, 'छोड़ें')
   await page.locator('[data-tour="nav-grow"]').click()
-  await (await showInGrow(page, page.locator('[data-tour="supply"]'))).click()
+  await (await stockTile(page)).click()
   const sheet = page.getByRole('dialog')
-  await sheet.getByRole('button', { name: 'फिर से सामान मँगाएँ' }).click()
+  await sheet.getByRole('button', { name: 'और मँगाएँ', exact: true }).click()
   const card = sheet.locator('article')
   await card.getByRole('button', { name: 'मंज़ूर करके भेजें', exact: true }).click()
   await card.getByRole('button', { name: 'माल आ गया', exact: true }).click({ timeout: 30_000 })
@@ -586,7 +578,7 @@ test('OB-248 a visitor writes to the supplier on an open order and gets an answe
   const sheet = await openOrders(page, 'To do')
   const card = sheet.locator('article')
   const talk = card.getByTestId('supplier-talk')
-  await sheet.getByRole('button', { name: 'Draft a reorder' }).click()
+  await sheet.getByRole('button', { name: 'Order more', exact: true }).click()
   await expect(card.getByRole('textbox', { name: 'Write to the supplier' })).toHaveCount(0)
   await card.getByRole('button', { name: 'Approve and send', exact: true }).click()
   await expect(talk).toContainText('Yes, confirmed', { timeout: 20_000 })
@@ -627,9 +619,9 @@ test('OB-248 a failed orders read stops retrying once the view is gone', async (
     await new Promise((resolve) => setTimeout(resolve, 500))
     await route.abort()
   })
-  await page.locator('[data-tour="nav-grow"]').click()
+  await page.locator('[data-tour="nav-shop"]').click()
   await expect.poll(() => reads, { timeout: 15_000 }).toBeGreaterThan(0)
-  // Leaving Grow closes the tiles while their read is still failing.
+  // Leaving Shop closes the tiles while their read is still failing.
   await page.locator('[data-tour="nav-you"]').click()
   await page.waitForTimeout(1_000)
   const after = reads
