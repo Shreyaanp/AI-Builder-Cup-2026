@@ -467,7 +467,7 @@ def _coach_events(response) -> list[dict]:
     ]
 
 
-def test_OB_248_find_suppliers_lists_them_and_drafts_the_order_card(
+def test_OB_248_find_suppliers_lists_them_and_waits_for_a_pick(
     live_parent_demo,  # noqa: F811
 ) -> None:
     client, _app, session, bid = live_parent_demo
@@ -479,11 +479,11 @@ def test_OB_248_find_suppliers_lists_them_and_drafts_the_order_card(
     events = {event["kind"]: event for event in _coach_events(response)}
     suppliers = events["suppliers"]["data"]["suppliers"]
     assert suppliers and all(row["demo"] for row in suppliers)
-    order = events["order"]["data"]
-    assert order["status"] == "draft" and order["supplier"]["id"] == suppliers[0]["id"]
-    assert order["lines"][0]["quantity"] == 10 and order["lines"][0]["unit"]
+    # Nobody picked a supplier, so nothing is drafted (OB-265).
+    assert "order" not in events
     reply = events["reply"]["text"]
     assert "You make Masala chai yourself" in reply and "Tea dust" in reply
+    assert "Tap Order on the one you want" in reply
     assert "In your real shop" not in reply and "Supplies" not in reply
     assert suppliers[0]["name"] in reply
 
@@ -504,12 +504,12 @@ def test_OB_248_the_screens_own_phrase_does_the_work(
     client, _app, session, _bid = live_parent_demo
     response = client.post(f"/api/v1/demo/sessions/{session}/coach", json={"message": message})
     events = {event["kind"]: event for event in _coach_events(response)}
-    assert events["order"]["data"]["lines"][0]["name"] == "Milk"
+    assert events["suppliers"]["data"]["suppliers"][0]["item"]["name"] == "Milk"
+    assert "order" not in events
     assert words in events["reply"]["text"]
-    # The path in the asker's language: no English screen names in a Hindi reply (OB-261).
-    where = "Shop → Buy stock → Find a supplier"
-    hindi = "दुकान → माल मँगाएँ → सप्लायर ढूँढें"
-    assert (hindi if HINDI_SCRIPT.search(message) else where) in events["reply"]["text"]
+    # This form is where the owner just was: no directions back to it (S2-2, OB-265).
+    for where in ("Shop → Buy stock → Find a supplier", "दुकान → माल मँगाएँ → सप्लायर ढूँढें"):
+        assert where not in events["reply"]["text"]
 
 
 def test_simplify_4b_find_a_supplier_amount_then_order_from_the_vendor_list(
@@ -526,9 +526,9 @@ def test_simplify_4b_find_a_supplier_amount_then_order_from_the_vendor_list(
     events = {event["kind"]: event for event in _coach_events(asked)}
     suppliers = events["suppliers"]["data"]["suppliers"]
     assert len(suppliers) >= 2 and all(row["demo"] for row in suppliers)
-    first = events["order"]["data"]["lines"][0]
-    assert (first["name"], first["quantity"], first["unit"]) == ("Milk", 20, "litre")
-    assert "I drafted 20 litre" in events["reply"]["text"]
+    assert "order" not in events
+    assert events["suppliers"]["data"]["quantity"] == 20
+    assert events["suppliers"]["data"]["unit"] == "litre"
 
     # The vendor list's Order on each row (sourcing/copy.ts chooseDraft): that supplier, the
     # owner's 20 litre where it sells by volume, else its usual amount in its own unit.
@@ -543,7 +543,8 @@ def test_simplify_4b_find_a_supplier_amount_then_order_from_the_vendor_list(
         assert order["supplier"]["id"] == row["id"]
         line = order["lines"][0]
         assert line["unit"] == row["item"]["unit"]
-        assert line["quantity"] == (20 if row["item"]["unit"] == "litre" else 10)
+        # 20 litres is 40 half-litre packs from a shop that sells by the pack (OB-265).
+        assert line["quantity"] == (20 if row["item"]["unit"] == "litre" else 40)
         assert "only when you tap Send" in events["reply"]["text"]
         assert "suppliers" not in events
 
@@ -752,7 +753,7 @@ def test_OB_248_hindi_find_suppliers_does_the_real_work(
     line: str,
     words: str,
 ) -> None:
-    """The tile's own Hindi phrase, like English: the suppliers, then the drafted order card."""
+    """The tile's own Hindi phrase, like English: the suppliers, and no draft until a pick."""
     client, _app, session, _bid = live_parent_demo
     response = client.post(
         f"/api/v1/demo/sessions/{session}/coach", json={"message": message, "language": "hi"}
@@ -760,8 +761,8 @@ def test_OB_248_hindi_find_suppliers_does_the_real_work(
     events = {event["kind"]: event for event in _coach_events(response)}
     suppliers = events["suppliers"]["data"]["suppliers"]
     assert suppliers and all(row["demo"] for row in suppliers)
-    order = events["order"]["data"]
-    assert order["status"] == "draft" and order["lines"][0]["name"] == line
+    assert "order" not in events
+    assert suppliers[0]["item"]["name"] == line
     reply = events["reply"]["text"]
     assert words in reply and suppliers[0]["name"] in reply
     assert "असली दुकान" not in reply and not re.search(r"(?:Milk|Sugar|Tea dust|kg|litre)", reply)
@@ -792,7 +793,14 @@ def test_OB_248_hindi_find_suppliers_ends_in_a_hindi_supplier_reply(
     response = client.post(
         f"/api/v1/demo/sessions/{session}/coach", json={"message": message, "language": "hi"}
     )
-    order = {event["kind"]: event for event in _coach_events(response)}["order"]["data"]
+    listed = {event["kind"]: event for event in _coach_events(response)}["suppliers"]["data"]
+    first = listed["suppliers"][0]["item"]
+    # The owner picks with the row's own Order (sourcing/copy.ts chooseDraft).
+    picked = client.post(
+        f"/api/v1/demo/sessions/{session}/coach",
+        json={"message": f"नंबर 1 से ऑर्डर: 10 {first['unit']} {listed['item']}", "language": "hi"},
+    )
+    order = {event["kind"]: event for event in _coach_events(picked)}["order"]["data"]
     base = f"businesses/{bid}/orders/{order['id']}"
     sent = owner(client, session, f"{base}/send", "POST", json={"version": order["version"]})
     assert sent.status_code == 200, sent.text

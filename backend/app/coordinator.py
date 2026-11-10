@@ -1213,13 +1213,10 @@ def _card(ctx: MerchantContext, kind: str, data: dict[str, Any]) -> str:
 async def find_suppliers(
     item: str, quantity: float | None = None, unit: str = ""
 ) -> dict[str, Any]:
-    """Find suppliers near the shop for a supply that is running low (flour, sugar, milk,
-    packaging…), ranked by distance, price and availability. Call it when the owner says an
-    item is running low, needs restocking or asks where to buy it, or when a forecast shows a
-    shortage. item: one supply in plain words. quantity and unit (kg, g, litre, ml, pack, dozen)
-    only if the owner said them. The app shows the suppliers as cards; describe them briefly
-    (rank number, name, distance, price) and ask which one to order from. If
-    generated_demo_suppliers is true, say honestly that these are demo suppliers."""
+    """Find suppliers near the shop for a supply that is low or wanted, or a forecast shortage.
+    item: one supply in plain words. quantity and unit (kg, g, litre, ml, pack, dozen) only if
+    said. The app shows cards; say which is cheapest and nearest (cheapest_id, nearest_id) and
+    ask which to order from. If generated_demo_suppliers, say these are demo suppliers."""
     from . import sourcing
     from .demo_context import services
 
@@ -1245,7 +1242,30 @@ async def find_suppliers(
             "instruction": "Tell the owner no supplier near them stocks this item and ask if "
             "another name or a related item would work.",
         }
+    import anyio
+
+    from .supplier_book import remember_search
+
+    await anyio.to_thread.run_sync(remember_search, ctx.store, ctx.business_id, result)
     return {"status": "found", "card_id": _card(ctx, "suppliers", result), **result}
+
+
+def save_supplier(supplier_id: str, save: bool = True) -> dict[str, Any]:
+    """Add a find_suppliers supplier to My suppliers; save=false takes it off."""
+    from . import supplier_book
+
+    ctx = current.get()
+    if not ctx or not ctx.business_id:
+        return {"status": "needs_business"}
+    try:
+        if save:
+            supplier_book.save(ctx.store, ctx.uid, ctx.business_id, supplier_id)
+        else:
+            supplier_book.remove(ctx.store, ctx.uid, ctx.business_id, supplier_id)
+    except HTTPException as error:
+        return _invalid(error, ctx)
+    data = {"supplier_id": supplier_id, "saved": save}
+    return {"status": "saved" if save else "removed", "card_id": _card(ctx, "supplier_saved", data)}
 
 
 def prepare_order(

@@ -106,6 +106,7 @@ import { useReceiveOrder } from '../../sourcing/orderData'
 import type { Order, SupplierResult } from '../../sourcing/types'
 import type { SupplyCardData } from '../../supply/SupplyEntry'
 import type { PurchaseOrder, Relationship } from '../../supply/types'
+import { markSaved } from '../../sourcing/supplierData'
 import { supplyChanged } from '../../supply/supplyEvents'
 import { speak, canSpeak, stopSpeech, utter } from '../phoneVoice'
 import { useLanguageSwitch } from '../languageSwitch'
@@ -418,6 +419,9 @@ function CoachScreen({
         )
       }
       if (event.kind === 'sourcing') setSearching(String(event.data?.item ?? ''))
+      // Saved or removed by chat: My suppliers and every open card update now, like the tap.
+      if (event.kind === 'supplier_saved' && event.data)
+        markSaved(String(event.data.supplier_id), event.data.saved === true)
       if (event.kind === 'suppliers') {
         setSearching(null)
         const result = event.data as unknown as SupplierResult

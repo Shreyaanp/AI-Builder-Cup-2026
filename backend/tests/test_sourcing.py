@@ -417,7 +417,11 @@ def test_ob225_a_sent_order_can_be_cancelled_or_changed_over_http(settings, monk
         session = next(event["session_id"] for event in first if event["kind"] == "ready")
         second = stream(
             client,
-            {"message": "order 20 kg flour from them", "business_id": bid, "session_id": session},
+            {
+                "message": "order 20 kg flour from number 1",
+                "business_id": bid,
+                "session_id": session,
+            },
         )
         draft: dict = next(event["data"] for event in second if event["kind"] == "order")
         refused = client.post(f"{base}/{draft['id']}/cancel", json={"version": draft["version"]})

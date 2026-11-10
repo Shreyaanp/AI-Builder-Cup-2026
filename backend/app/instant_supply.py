@@ -15,7 +15,8 @@ from .contracts import StreamEvent
 from .coordinator import MerchantContext, find_suppliers, prepare_order
 from .numbers import read_number
 from .region import shop_currency
-from .sourcing import OrderItem, convert
+from .sourcing import OrderItem
+from .supplier_compare import in_supplier_unit
 
 if TYPE_CHECKING:
     from .instant import InstantResult
@@ -221,7 +222,7 @@ def saved_searches(history: Sequence[Event]) -> list[dict[str, Any]]:
 
 
 def _line_amount(
-    ctx: MerchantContext, wanted: str, search: dict[str, Any], unit: str
+    ctx: MerchantContext, wanted: str, search: dict[str, Any], card: dict[str, Any]
 ) -> tuple[float, str]:
     """The amount in the tap's words, in the supplier's unit, and a note for the supplier. An
     amount that can't be read or converted is never guessed: the draft is one of the supplier's
@@ -232,7 +233,11 @@ def _line_amount(
         return 1.0, ""
     said = SAID_AMOUNT.match(head)
     quantity = _quantity(ctx, said["qty"]) if said else None
-    converted = convert(quantity, _unit(said["unit"]), unit) if said and quantity else None
+    converted = (
+        in_supplier_unit(quantity, _unit(said["unit"]), card["item"], bool(card.get("demo")))
+        if said and quantity
+        else None
+    )
     if converted and round(converted, 3) and converted <= 100_000:
         return round(converted, 3), ""
     return 1.0, wanted
@@ -264,7 +269,7 @@ def order_from_list(
             return None
         chosen = suppliers[rank - 1]
         unit = str(chosen["item"]["unit"])
-        quantity, note = _line_amount(ctx, wanted, search, unit)
+        quantity, note = _line_amount(ctx, wanted, search, chosen)
         items = [OrderItem(name=chosen["item"]["name"], quantity=quantity, unit=unit)]
         drafted = prepare_order(chosen["id"], items, note)
         card = ctx.cards.get(str(drafted.get("card_id")))

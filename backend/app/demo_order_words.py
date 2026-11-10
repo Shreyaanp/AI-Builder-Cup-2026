@@ -35,6 +35,71 @@ def _supplies(ctx: Any) -> list[dict[str, Any]]:
     return [line for order in newest_first for line in order.get("lines") or []]
 
 
+def _row_price(row: dict[str, Any], currency: str) -> tuple[str, str]:
+    """A row's price and unit as the list shows them: the unit every row shares (OB-265)."""
+    from .money import to_minor
+    from .sourcing import money_text
+
+    shown = row.get("compare") or row["item"]
+    return money_text(to_minor(shown["price"], currency), currency), str(shown["unit"])
+
+
+def _names(found: dict[str, Any], hindi: bool) -> str:
+    rows = []
+    for rank, row in enumerate(found["suppliers"][:3], 1):
+        price, unit = _row_price(row, found["currency"])
+        rows.append(
+            f"{rank}. {row['name']}, {row['distance_km']:g} किमी, {price} प्रति "
+            f"{HINDI_UNITS.get(unit, unit)}"
+            if hindi
+            else f"{rank}. {row['name']}, {row['distance_km']:g} km, {price} a {unit}"
+        )
+    return "; ".join(rows)
+
+
+def _listed(found: dict[str, Any], item: str, made: str, hindi: bool) -> str:
+    """The list and one instruction: tap the one you want, never directions to a form."""
+    if hindi:
+        item_hi = hindi_item(item)
+        lead = f"{hindi_item(made)} आप ख़ुद बनाते हैं, इसलिए ये {item_hi} के लिए हैं। " if made else ""
+        return (
+            f"{lead}{item_hi} के लिए पास के डेमो सप्लायर: {_names(found, True)}। "
+            "जिससे लेना हो, उस पर ऑर्डर दबाएँ। भेजें दबाने तक कुछ नहीं जाता।"
+        )
+    lead = f"You make {made} yourself, so these are for {item}. " if made else ""
+    return (
+        f"{lead}Demo suppliers near you for {item}: {_names(found, False)}. "
+        "Tap Order on the one you want. Nothing goes until you tap Send."
+    )
+
+
+def usual_card(ctx: Any, item: str, cards: list[dict[str, Any]]) -> dict[str, Any] | None:
+    """The card the owner has already chosen: saved, a draft waiting, or an earlier order for
+    this item. None means nobody has picked yet, and the coach never picks for them (OB-265)."""
+    from . import sourcing
+
+    by_id = {card["id"]: card for card in cards}
+    saved = next((card for card in cards if card.get("saved")), None)
+    if saved:
+        return saved
+    for order in sourcing.orders(ctx.store, ctx.uid, ctx.business_id):
+        if order["status"] in {"replaced", "cancelled"}:
+            continue
+        if order["supplier"]["id"] in by_id and any(
+            sourcing.matches(line["name"], item) for line in order["lines"]
+        ):
+            return by_id[order["supplier"]["id"]]
+    return None
+
+
+def chosen_card(ctx: Any, item: str, found: dict[str, Any]) -> dict[str, Any]:
+    """Who an order the owner asked for goes to: their own supplier, else the cheapest. Rank 1
+    is only a place on a list, and never the reason (OB-265)."""
+    cards = found["suppliers"]
+    cheapest = next((card for card in cards if card["id"] == found.get("cheapest_id")), cards[0])
+    return usual_card(ctx, item, cards) or cheapest
+
+
 async def draft_order(
     ctx: Any,
     item: str,
@@ -43,14 +108,14 @@ async def draft_order(
     made: str = "",
     teach: str | None = "suppliers",
     as_last_time: bool = False,
+    ordered: bool = True,
 ) -> list[StreamEvent] | None:
-    """The suppliers for one item, then the order card to the nearest: the real coach's
-    find_suppliers and prepare_order, on the sandbox's demo suppliers. Nothing goes until the
-    visitor taps Send."""
+    """The suppliers for one item: the real coach's find_suppliers and prepare_order, on the
+    sandbox's demo suppliers. A search or "running low" (`ordered` false) only lists them. An
+    order the visitor asked for goes to their own supplier, else the cheapest (OB-265)."""
     from .agent import ui_language
     from .coordinator import find_suppliers, prepare_order
-    from .money import to_minor
-    from .sourcing import OrderItem, convert, money_text
+    from .sourcing import OrderItem, convert
 
     found = await (
         find_suppliers(item, amount[0], HINDI_AMOUNT_UNITS.get(amount[1], amount[1]))
@@ -60,7 +125,12 @@ async def draft_order(
     if found.get("status") != "found":
         return None
     suppliers = found["suppliers"]
-    first = suppliers[0]
+    first = chosen_card(ctx, item, found) if ordered else usual_card(ctx, item, suppliers)
+    if not first:
+        return [
+            StreamEvent(kind="suppliers", data=ctx.cards[found["card_id"]][1]),
+            StreamEvent(kind="reply", text=_listed(found, item, made, speaks_hindi(question))),
+        ]
     unit = first["item"]["unit"]
     quantity: float = DRAFT_QUANTITY
     if amount:
@@ -77,14 +147,8 @@ async def draft_order(
         ui_language.reset(token)
     if drafted.get("status") != "needs_owner_tap":
         return None
-    currency = found["currency"]
     if hindi:
-        names = "; ".join(
-            f"{rank}. {row['name']}, {row['distance_km']:g} किमी, "
-            f"{money_text(to_minor(row['item']['price'], currency), currency)} प्रति "
-            f"{HINDI_UNITS.get(row['item']['unit'], row['item']['unit'])}"
-            for rank, row in enumerate(suppliers[:3], 1)
-        )
+        names = _names(found, True)
         item_hi = hindi_item(item)
         lead = f"{hindi_item(made)} आप ख़ुद बनाते हैं, इसलिए ये {item_hi} के लिए हैं। " if made else ""
         lead += "मात्रा आपके पिछले ऑर्डर जितनी है। " if as_last_time else ""
@@ -95,12 +159,7 @@ async def draft_order(
         )
         text += f" {next_line_hi(teach)}" if teach else ""
     else:
-        names = "; ".join(
-            f"{rank}. {row['name']}, {row['distance_km']:g} km, "
-            f"{money_text(to_minor(row['item']['price'], currency), currency)} "
-            f"a {row['item']['unit']}"
-            for rank, row in enumerate(suppliers[:3], 1)
-        )
+        names = _names(found, False)
         lead = f"You make {made} yourself, so these are for {item}. " if made else ""
         lead += "The same amount as your last order. " if as_last_time else ""
         text = (

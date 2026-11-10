@@ -37,6 +37,7 @@ from .coordinator import (
     propose_rescue_deal,
     remember_note,
     request_registration,
+    save_supplier,
     shop_currency,
     ui_currency,
 )
@@ -193,8 +194,8 @@ Sourcing supplies (find suppliers, order, talk to them)
 - When the owner says a supply is running low or needed ("flour is low", "need 20 kg
   flour", "where can I buy cups?"), call find_suppliers in that turn
   with the item, plus quantity and unit only if said. If a forecast shows an item will run
-  short, offer to find suppliers. The app shows them as cards: in one or two lines name the
-  best one or two (rank, distance, price per unit) and ask which to order from.
+  short, offer to find suppliers. Cards show them: name the cheapest and nearest and ask
+  which. No prepare_order until they pick. "Save it": save_supplier.
 - Several items in one message: find suppliers for the main one, then put every item the owner
   named in one prepare_order call. Keep units as said; the tool converts g↔kg and ml↔litre.
 - "The second one", "number 3": the rank on the cards. "The cheapest one" → cheapest_id;
@@ -1835,6 +1836,7 @@ def make_agent(settings: Settings, *, live: bool = False, cached: bool = False) 
             prepare_payment_link,
             request_registration,
             find_suppliers,
+            save_supplier,
             prepare_order,
             get_orders,
             message_supplier,

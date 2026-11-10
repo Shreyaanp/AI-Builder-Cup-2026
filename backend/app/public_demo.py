@@ -115,6 +115,8 @@ ALLOWED: tuple[tuple[str, re.Pattern[str]], ...] = tuple(
         ("POST", rf"{_BIZ}/supply/orders/{_ID}/flags/{_ID}"),
         ("POST", rf"{_BIZ}/supply/suppliers/{_ID}/rules/confirm"),
         ("PUT", rf"{_BIZ}/supply/suppliers/{_ID}/rules"),
+        ("POST", rf"{_BIZ}/supply/suppliers/{_ID}/save"),
+        ("DELETE", rf"{_BIZ}/supply/suppliers/{_ID}/save"),
         (
             "POST",
             rf"{_BIZ}/orders/{_ID}/(?:read|received|discard|send|edit|cancel|change|messages)",

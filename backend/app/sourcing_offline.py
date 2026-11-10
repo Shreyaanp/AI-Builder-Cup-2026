@@ -13,6 +13,7 @@ from google.genai import types
 
 from .money import to_minor
 from .sourcing import money_text, unit_of
+from .supplier_compare import pick_supplier
 
 QUANTITY = re.compile(
     r"(\d+(?:\.\d+)?)\s*(kgs?|kilos?|g|gm|grams?|litres?|liters?|l|ml|packs?|packets?|"
@@ -30,19 +31,6 @@ LOW_AFTER = re.compile(
     r"(?:my|our|the)?\s*([^\W\d_]+)\s+(?:is|are)\s+(?:running\s+)?(?:low|out|finished|over)",
     re.I,
 )
-ORDINAL = {
-    "first": 1,
-    "1st": 1,
-    "second": 2,
-    "2nd": 2,
-    "third": 3,
-    "3rd": 3,
-    "fourth": 4,
-    "4th": 4,
-    "one": 1,
-    "two": 2,
-    "three": 3,
-}
 FILLER = {"by", "tomorrow", "today", "please", "now", "from", "them", "it"}
 
 
@@ -63,24 +51,6 @@ def items_in(text: str) -> list[dict[str, Any]]:
             continue
         found.append({"name": name, "quantity": float(quantity), "unit": unit_of(unit)})
     return found
-
-
-def pick_supplier(text: str, found: dict[str, Any]) -> str | None:
-    suppliers = found.get("suppliers") or []
-    if not suppliers:
-        return None
-    lowered = text.casefold()
-    if "cheap" in lowered:
-        return str(found.get("cheapest_id"))
-    if "near" in lowered or "closest" in lowered:
-        return str(found.get("nearest_id"))
-    for word, rank in ORDINAL.items():
-        if re.search(rf"\b{word}\b", lowered) and rank <= len(suppliers):
-            return str(suppliers[rank - 1]["id"])
-    number = re.search(r"\b(?:number|no\.?|#)\s*(\d)\b", lowered)
-    if number and 0 < int(number.group(1)) <= len(suppliers):
-        return str(suppliers[int(number.group(1)) - 1]["id"])
-    return str(suppliers[0]["id"])
 
 
 def latest_order(ctx: Any, *, draft: bool | None = None) -> dict[str, Any] | None:
@@ -163,6 +133,9 @@ def sourcing_call(question: str, contents: list[types.Content], ctx: Any) -> typ
         )
         if supplier and items:
             return call("prepare_order", {"supplier_id": supplier, "items": items})
+        if found.get("item") and not supplier:
+            # Nobody picked: the list again, and the coach asks which one (OB-265).
+            return call("find_suppliers", {"item": found["item"]})
     low = LOW.search(text)
     after = LOW_AFTER.search(text)
     if low or after:

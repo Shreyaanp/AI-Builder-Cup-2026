@@ -78,7 +78,10 @@ RULES = "supply_rules"
 ORDERS = "supply_po"
 SEQUENCE = "supply_seq"
 INBOX = "supply_inbox"  # partner documents (supply_io.py)
-assert (RULES, ORDERS, SEQUENCE, INBOX) == SUPPLY_KINDS  # erased with the shop (merchant.py)
+SEARCHES = "supplier_search"  # the last supplier list (supplier_book.py)
+TOUR_TOP_UP = "tour_top_up"  # the day a tour shop's sales were last topped up (tour_story.py)
+# Erased with the shop (merchant.py).
+assert (RULES, ORDERS, SEQUENCE, INBOX, SEARCHES, TOUR_TOP_UP) == SUPPLY_KINDS
 COVER_DAYS = 7
 # More than a month of the shop's own use in one draft is a mistake to check, not an order: a
 # supplier's minimum or a unit mix-up must never draft 614 cups (OB-239).
@@ -763,8 +766,10 @@ async def draft_reorder(
             o["total"] / max(o["quantity_in_unit"], 0.001),
         )
     )
-    # The owner's pick, else the supplier this item usually comes from for an amount they named.
-    chosen = supplier_id or (usual_supplier(target, unit, known) if quantity else "")
+    # The owner's pick, then the one they saved (OB-223), then this item's usual supplier for an
+    # amount they named.
+    preferred = next((c["row"]["supplier"]["id"] for c in candidates if c["row"].get("saved")), "")
+    chosen = supplier_id or preferred or (usual_supplier(target, unit, known) if quantity else "")
     best = next((o for o in options if o["supplier"]["id"] == chosen), options[0])
     faster = next((o for o in options if o["on_time"] and o is not best), None)
     line = best["line"]

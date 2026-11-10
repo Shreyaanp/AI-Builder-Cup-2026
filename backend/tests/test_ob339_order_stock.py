@@ -324,7 +324,8 @@ def demo_order(events: list[dict]) -> dict:
 def test_OB_339_demo_correction_replaces_the_card(live_parent_demo) -> None:  # noqa: F811
     client, _app, session, _bid = live_parent_demo
     url = f"/api/v1/demo/sessions/{session}/coach"
-    first = demo_order(events_of(client.post(url, json={"message": "दूध ख़त्म होने वाला है"})))
+    # Saying it is low only lists suppliers (OB-265); an explicit order makes the first card.
+    first = demo_order(events_of(client.post(url, json={"message": "10 लीटर दूध चाहिए"})))
     second = demo_order(events_of(client.post(url, json={"message": "नहीं, सिर्फ़ 5 लीटर दूध चाहिए"})))
     assert second["lines"][0]["quantity"] == 5
     assert second["retired"] == [first["id"]]

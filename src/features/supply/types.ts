@@ -222,6 +222,8 @@ export interface Relationship {
   currency: string
   rules: RuleSet
   suggested: boolean
+  /** The owner saved this supplier (OB-223). */
+  saved?: boolean
   pending: { rules: RuleSet; change: Record<string, unknown>; created: number } | null
   version: number
   open_balance?: number
