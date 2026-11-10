@@ -423,13 +423,12 @@ export function ShopTiles({
         <ShopRow
           icon={<ZapOff size={20} />}
           label={t.soldOut}
-          // What is sold out leads, so an item just marked sold out is never hidden behind the
-          // busy-hours question; the question about the next top item follows it.
           value={
-            [
-              ...soldOutNames,
-              ...(sweep ? [t.sweepQuestion(productName(sweep.name, locale))] : []),
-            ].join(' · ') || t.soldOutCount(0)
+            sweep
+              ? t.sweepQuestion(productName(sweep.name, locale))
+              : soldOutNames.length
+                ? soldOutNames.join(' · ')
+                : t.soldOutCount(0)
           }
           onClick={() => onSheet('soldOut')}
         />
