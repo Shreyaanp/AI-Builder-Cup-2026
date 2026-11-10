@@ -262,7 +262,8 @@ export function VendorListCard({
           )}
           {result.suppliers.length > 1 && (
             <Button
-              aria-expanded={comparing}
+              // A toggle, not a fold: the chat's folded-card lines are its [aria-expanded] buttons.
+              aria-pressed={comparing}
               onClick={() => setComparing((value) => !value)}
               sx={{ alignSelf: 'flex-start', minHeight: 48, ml: -2 }}
             >
