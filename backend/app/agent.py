@@ -18,6 +18,7 @@ from google.adk.tools import FunctionTool
 from google.genai import types
 from pydantic import ValidationError
 
+from .coach_plan import PLAN_STATE, plan_instruction, plan_steps, track_plan
 from .context_cache import CachedGemini, uses_gemini_context_cache
 from .contracts import BusinessProposal
 from .coordinator import (
@@ -52,6 +53,7 @@ from .new_shop_resume import (
 from .new_shop_tools import attach_ready_profile, end_conversation, show_step, update_shop
 from .numbers import read_number
 from .payments import prepare_payment_link
+from .plan_offline import plan_turn, with_next_step
 from .playbook import coach_summary, migrate_stored
 from .region import region_rule, shop_region
 from .region import shop_currency as shop_currency_of
@@ -62,6 +64,7 @@ from .sourcing_offline import sourcing_call, sourcing_reply
 from .supply_offline import order_call, supply_call, supply_reply
 from .supply_tools import SUPPLY_TOOLS
 from .text_model import SteadyGemini
+from .tool_areas import focus_tools, widen_before_unsupported
 from .vendor_profile import food_segment, profile_for, vocabulary
 from .voice_tools import (
     explain_app,
@@ -1099,6 +1102,19 @@ class OfflineCoachModel(BaseLlm):
         llm_request: LlmRequest,
         stream: bool = False,
     ) -> AsyncGenerator[LlmResponse]:
+        ctx = current.get()
+        if ctx is not None and ctx.business_id and not ctx.new_shop:
+            # A multi-step plan: its steps one by one, parked on a card (OB-174).
+            planned = await plan_turn(self._script, llm_request, ctx)
+            if planned is not None:
+                yield planned
+                return
+        async for response in self._script(llm_request, stream):
+            yield response if response.partial else with_next_step(response, llm_request)
+
+    async def _script(
+        self, llm_request: LlmRequest, stream: bool = False
+    ) -> AsyncGenerator[LlmResponse]:
         text = " ".join(
             part.text or "" for content in llm_request.contents[-1:] for part in content.parts or []
         )
@@ -1626,16 +1642,20 @@ def turn_facts() -> str:
     return f"{rule}{coach_region()}{shop_snapshot()}{guided}"
 
 
-def turn_instruction(_: ReadonlyContext | None = None) -> str:
-    """The per-turn part of the instruction: the facts above and, for a new shop, where the
-    conversation stood."""
+def turn_instruction(context: ReadonlyContext | None = None) -> str:
+    """The per-turn part of the instruction: the facts above, for a new shop where the
+    conversation stood, and a multi-step plan that waits (OB-174)."""
     ctx = current.get()
     note = (
         progress_note(ctx.new_shop_draft, ctx.last_question, ctx.resumed)
         if ctx and ctx.new_shop
         else ""
     )
-    return turn_facts() + note
+    state = getattr(context, "state", None)
+    plan = state.get(PLAN_STATE) if state is not None else None
+    if ctx is not None and state is not None:
+        ctx.plan = plan
+    return turn_facts() + note + plan_instruction(plan)
 
 
 def instruction(context: ReadonlyContext) -> str:
@@ -1851,6 +1871,8 @@ def make_agent(settings: Settings, *, live: bool = False, cached: bool = False) 
             explain_app,
             suggest_starter_items,
             *SUPPLY_TOOLS,
+            # Voice has no resume turn after a card tap: plans are for typed turns (OB-174).
+            *([] if live else [plan_steps]),
         ]
         if settings.v1_enabled
         else [get_onboarding_requirements, prepare_business_draft]
@@ -1867,9 +1889,12 @@ def make_agent(settings: Settings, *, live: bool = False, cached: bool = False) 
             for tool in tools
         ],
         # Each recorded new-shop answer is saved in the conversation at once (resume = continue).
-        after_tool_callback=keep_draft,
+        # A finished step moves a multi-step plan on; an approval card parks it (OB-174).
+        after_tool_callback=[keep_draft, track_plan],
+        # A "can't do that" while the turn offers only some tool areas widens it first (OB-175).
+        before_tool_callback=widen_before_unsupported,
         after_model_callback=after_model,
-        before_model_callback=[lean_tools, end_on_request],
+        before_model_callback=[focus_tools, lean_tools, end_on_request],
         # Thinking shares the output budget: a small cap left some turns completely empty.
         # Low temperature keeps tool calls for reported changes consistent.
         # The Live (voice) model rejects a custom thinking level ("project is not allowlisted"),

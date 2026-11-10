@@ -4,7 +4,7 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager, suppress
 from dataclasses import dataclass
 from pathlib import Path
-from typing import cast
+from typing import Any, cast
 from uuid import UUID
 
 import anyio
@@ -28,6 +28,7 @@ from .boundary import RequestBoundary
 from .brief import BriefWriter, WeatherService
 from .business_profile import QuestionPlanner
 from .business_understanding import BusinessUnderstander
+from .coach_plan import NOTE_STATE, resume_plan
 from .community import community_service
 from .community_routes import router as community_router
 from .connector_routes import router as connector_router
@@ -113,6 +114,7 @@ from .streaming import CoachRuntime, history_card, same_card
 from .supply_docs import DocumentTranslator
 from .supply_routes import router as supply_router
 from .today import router as today_router
+from .today_cards import router as today_cards_router
 from .trust_routes import router as trust_router
 from .tts import Speech
 from .voice import serve_voice
@@ -323,6 +325,7 @@ def create_app(
     app.include_router(games_router)
     app.include_router(today_router)
     app.include_router(shop_today_router)
+    app.include_router(today_cards_router)
     app.include_router(owner_habit_router)
     app.include_router(owner_promise_router)
     app.include_router(expenses_router)
@@ -475,8 +478,12 @@ def create_app(
             try:
                 async with asyncio.timeout(settings.max_turn_seconds):
                     if app.state.merchant:
-                        recall = await anyio.to_thread.run_sync(
-                            app.state.recall.search, principal.uid, bid, body.message
+                        recall = (
+                            await anyio.to_thread.run_sync(
+                                app.state.recall.search, principal.uid, bid, body.message
+                            )
+                            if body.message
+                            else []
                         )
                         merchant = MerchantContext(
                             app.state.merchant,
@@ -504,19 +511,46 @@ def create_app(
                             data={"continues": True} if continues else None,
                         )
                     )
+                    said, saved = body.message, None
+                    if body.resume:
+                        # The card a multi-step plan waits for was tapped (OB-174).
+                        plan_events, note, saved = await resume_plan(
+                            services.runtime.sessions,
+                            "ogoogle_ai",
+                            principal.uid,
+                            sid,
+                            merchant,
+                            body.resume.card_id,
+                            body.resume.stop,
+                        )
+                        for shown in plan_events:
+                            turn.append(shown)
+                        if note is None:
+                            turn.append(StreamEvent(kind="turn_complete", session_id=sid))
+                            return
+                        said = note
                     resumed_draft = merchant.new_shop_draft if merchant else None
                     if body.new_shop and resumed_draft and resumed_draft != body.new_shop_draft:
                         # The saved draft knows more than the app (answers saved before a drop).
                         turn.append(
                             StreamEvent(kind="draft", data=resumed_draft.model_dump(mode="json"))
                         )
+                    resume_args: dict[str, Any] = (
+                        {"state_delta": saved, "note": True} if body.resume else {}
+                    )
                     async for event in services.runtime.text_events(
-                        principal, sid, body.message, body.language, body.currency
+                        principal,
+                        sid,
+                        said,
+                        body.language,
+                        body.currency,
+                        # Only a resume turn carries the plan's state and the note flag.
+                        **resume_args,
                     ):
                         turn.append(event)
                         if event.kind == "error":
                             return
-                    if app.state.recall:
+                    if app.state.recall and body.message:
                         await anyio.to_thread.run_sync(
                             app.state.recall.remember, principal.uid, bid, body.message
                         )
@@ -595,6 +629,9 @@ def create_app(
                 spoken = getattr(event, name, None)
                 if spoken and spoken.finished and (spoken.text or "").strip():
                     messages.append({"role": role, "text": spoken.text.strip()[:4000]})
+            if NOTE_STATE in (event.actions.state_delta if event.actions else {}):
+                # The server's resume note for a plan (OB-174) is never the owner's words.
+                continue
             if event.content and event.content.role in {"model", "user"}:
                 text = "".join(
                     part.text or "" for part in event.content.parts or [] if not part.thought

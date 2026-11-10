@@ -39,6 +39,7 @@ const KNOWN: Record<CoachEvent['kind'], true> = {
   chart: true,
   action: true,
   payment_link: true,
+  plan: true,
 }
 const kinds = new Set(Object.keys(KNOWN))
 

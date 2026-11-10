@@ -210,12 +210,13 @@ test('needs you now: at most three, most urgent first, each leaves when done', a
   await expect(rows.nth(2)).toContainText('Share your page')
 })
 
-// SIMPLIFY Batch 5: one lead card plus "N more things" in it, so nothing drops off Coach.
+// SIMPLIFY Batch 5: one lead card plus "N more things" in it. OB-176 (#535): at most five cards
+// on Home; what is left (share, photo, face check) stays in Shop setup and comes back as rows clear.
 for (const [language, preview, more, hide, rowNames] of [
   [
     'en',
     'Continue local preview',
-    '5 more things',
+    '2 more things',
     'Hide',
     [
       /Still the same menu today?/,
@@ -223,18 +224,17 @@ for (const [language, preview, more, hide, rowNames] of [
       /Sugar: only 2 left/,
       /Kulhad chai/,
       /phone number/i,
-      /share your page/i,
     ],
   ],
   [
     'hi',
     'स्थानीय प्रीव्यू जारी रखें',
-    '5 और काम',
+    '2 और काम',
     'छिपाएँ',
-    [/मेन्यू/, /Masala chai/, /Sugar/, /Kulhad chai/, /फ़ोन/, /पेज/],
+    [/मेन्यू/, /Masala chai/, /Sugar/, /Kulhad chai/, /फ़ोन/],
   ],
 ] as const) {
-  test(`N more things: eight needs, every one reachable in the one card (${language})`, async ({
+  test(`N more things: eight needs, five cards, each reachable in the one card (${language})`, async ({
     page,
   }) => {
     await facts(page, {
@@ -275,14 +275,14 @@ for (const [language, preview, more, hide, rowNames] of [
       const hider = card.getByRole('button', { name: hide, exact: true })
       await expect(hider).toHaveAttribute('aria-expanded', 'true')
       const all = card.locator('[data-need]')
-      await expect(all).toHaveCount(8)
-      // Every need is in the card, each with a control found by role and name.
+      await expect(all).toHaveCount(5)
+      // Every card shown is in the one card, each with a control found by role and name.
       for (const name of rowNames) {
         const row = all.filter({ hasText: name })
         await expect(row, String(name)).toHaveCount(1)
         expect(await row.getByRole('button').count(), String(name)).toBeGreaterThan(0)
       }
-      // ...including the reminders past those (shop photo, face check).
+      // Every button has a name (the X on each row names its card).
       for (const row of await all.all()) {
         const buttons = await row.getByRole('button').all()
         expect(buttons.length).toBeGreaterThan(0)

@@ -4,6 +4,7 @@ import { dismissFreshness, readDismissal, subscribeDismissal } from '../../sales
 import { useTrust } from '../../trust/useTrust'
 import { useTodaySupplyLead } from '../../supply/supplyData'
 import { useWorkspace } from '../workspaceContext'
+import { factsReloaded, useCardChoices } from './cardChoices'
 import { todayPlan, type TodayPlan } from './todayPlan'
 import { useToday } from './useToday'
 
@@ -32,6 +33,12 @@ export function useTodayPlan(unread: number | null): {
   const closedKey = `chalkboard.closeday.${scope}.${ws.active?.id ?? ''}`
   const promiseKey = `chalkboard.promise.${scope}.${ws.active?.id ?? ''}`
   const supply = useTodaySupplyLead()
+  const shopId = ws.active?.id
+  const cards = useCardChoices(shopId, facts?.cards)
+  // Fresh facts hold every saved card choice: they lead again (OB-176).
+  useEffect(() => {
+    if (facts && shopId) factsReloaded(shopId)
+  }, [facts, shopId])
   const answered = useSyncExternalStore(
     subscribeDismissal,
     () => readDismissal(key),
@@ -79,6 +86,7 @@ export function useTodayPlan(unread: number | null): {
         }
       : null,
     promiseAnswered: Boolean(facts?.promise && promiseDay === facts.promise.day),
+    cards,
   })
   return {
     plan,

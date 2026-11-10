@@ -96,6 +96,12 @@ class MerchantContext:
     spoken: bool = False
     # The app's maps service (discover.MapsService): pins the place a new shop's owner typed.
     maps: Any = None
+    # The multi-step plan in this conversation's session state (coach_plan, OB-174), mirrored
+    # here for the turn instruction and the offline fixture.
+    plan: dict[str, Any] | None = None
+    # This turn offers only some tool areas (tool_areas, OB-175); all_tools once it widened.
+    narrowed: bool = False
+    all_tools: bool = False
 
 
 current: ContextVar[MerchantContext | None] = ContextVar("merchant_context", default=None)

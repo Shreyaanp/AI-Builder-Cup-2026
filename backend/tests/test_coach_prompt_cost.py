@@ -12,6 +12,7 @@ from app.agent import INSTRUCTION, NEW_SHOP_INSTRUCTION, lean_tools, make_agent,
 from app.context_cache import CachedGemini
 from app.settings import Settings
 from app.text_model import tries
+from app.tool_areas import allowed_tools
 
 
 def test_strip_titles_removes_generated_labels_but_keeps_a_property_called_title() -> None:
@@ -62,7 +63,15 @@ def test_the_coach_prompt_stays_inside_its_budget() -> None:
     tool_chars = len(json.dumps(declarations, ensure_ascii=False, separators=(",", ":")))
     assert len(INSTRUCTION) <= 17_200
     assert len(NEW_SHOP_INSTRUCTION) <= 8_500
-    assert tool_chars <= 35_500
+    # The whole set is the worst case (a message that names no area, OB-175): plan_steps
+    # (OB-174) took it from 35.5k to 35.8k. A turn that names its area sends about half.
+    assert tool_chars <= 36_000
+    sizes = dict(zip((tool.__name__ for tool in agent.tools), declarations, strict=True))  # type: ignore[union-attr]
+    for said in ("order 20 kg atta from the cheapest", "we close at 9 now", "reply to her"):
+        names = allowed_tools(said, [], None)
+        assert names is not None
+        sent = [sizes[name] for name in names]
+        assert len(json.dumps(sent, ensure_ascii=False, separators=(",", ":"))) <= 18_000, said
 
 
 def test_lite_model_is_used_only_when_set() -> None:

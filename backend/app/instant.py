@@ -559,6 +559,11 @@ async def route(
     message = " ".join(text.split())
     if not ctx or not ctx.business_id or ctx.new_shop or not message or len(message) > 200:
         return None
+    from .coach_plan import many_steps  # lazy: coach_plan imports the coordinator
+
+    if many_steps(message):
+        # "Find suppliers, then order, then ask them": the coach plans every step (OB-174).
+        return None
     # Tomorrow's promise in any script the router knows (the close screen's Hindi hint is
     # Devanagari). The owner's words keep their own case: they are shown back as written.
     promised = promise_words(message.rstrip(" .!।"))

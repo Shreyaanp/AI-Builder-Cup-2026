@@ -10,8 +10,17 @@ class StrictModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+class PlanResume(StrictModel):
+    """The owner tapped (or discarded) the card a multi-step plan waits for (OB-174)."""
+
+    card_id: str = Field(min_length=1, max_length=64, pattern=r"^[A-Za-z0-9_-]+$")
+    # The owner discarded the card or tapped Stop: the plan ends, nothing else runs.
+    stop: bool = False
+
+
 class CoachTurn(StrictModel):
-    message: str = Field(min_length=1, max_length=2000)
+    # Empty only for a resume turn: the server writes the coach's note itself.
+    message: str = Field(default="", max_length=2000)
     # BCP 47 tag of the owner's UI language (e.g. en, hi, es-MX, pt-BR). The coach still replies
     # in whatever language the owner actually writes in.
     language: str = Field(default="en", pattern=r"^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8}){0,3}$")
@@ -22,6 +31,8 @@ class CoachTurn(StrictModel):
     business_id: UUID | None = None
     new_shop: bool = False
     new_shop_draft: NewShopDraft | None = None
+    # Carry a multi-step plan on after its approval card (OB-174); needs the session and shop.
+    resume: PlanResume | None = None
 
     @model_validator(mode="after")
     def separate_new_shop(self) -> "CoachTurn":
@@ -29,15 +40,18 @@ class CoachTurn(StrictModel):
             raise ValueError("New shop mode cannot edit an existing business.")
         if self.new_shop_draft is not None and not self.new_shop:
             raise ValueError("A new shop draft needs new shop mode.")
+        if self.resume is not None and (
+            self.message or self.session_id is None or self.business_id is None
+        ):
+            raise ValueError("A resume turn has no message and needs the conversation and shop.")
+        if self.resume is None and not self.message:
+            raise ValueError("Add a message before sending.")
         return self
 
     @field_validator("message")
     @classmethod
     def require_content(cls, value: str) -> str:
-        cleaned = value.strip()
-        if not cleaned:
-            raise ValueError("Add a message before sending.")
-        return cleaned
+        return value.strip()
 
 
 class VoiceControl(StrictModel):
@@ -91,6 +105,8 @@ class StreamEvent(StrictModel):
         "action",
         # A UPI payment link card the owner shares; the app never handles money.
         "payment_link",
+        # A multi-step plan: its steps, how many are done, the card it waits for (OB-174).
+        "plan",
     ]
     session_id: str | None = None
     text: str | None = None
