@@ -14,6 +14,7 @@ from app.agent import ui_language
 from app.coordinator import MerchantContext, current, find_suppliers, save_supplier
 from app.merchant import MerchantStore
 from app.supplier_chat import answer
+from tests.test_manual_chat_parity import milk_list, owner_shop, supplier_tool_turn  # noqa: F401
 from tests.test_merchant_routes import settings  # noqa: F401 - shared fixture
 from tests.test_photos import app  # noqa: F401
 from tests.test_public_demo_no_paid_ai import live_parent_demo, no_paid_calls  # noqa: F401
@@ -142,7 +143,8 @@ def kinds(response) -> list[str]:
 def test_OB_265_demo_find_suppliers_lists_and_drafts_nothing(live_parent_demo) -> None:  # noqa: F811
     client, _app, session, _bid = live_parent_demo
     url = f"/api/v1/demo/sessions/{session}/coach"
-    events = events_of(client.post(url, json={"message": "Find suppliers for milk"}))
+    # Buy stock's own form sends this sentence.
+    events = events_of(client.post(url, json={"message": "I need 20 L milk. Find suppliers."}))
     assert "suppliers" in [event["kind"] for event in events]
     assert "order" not in [event["kind"] for event in events]
     reply = next(event["text"] for event in events if event["kind"] == "reply")
@@ -167,3 +169,15 @@ def test_OB_223_demo_compare_save_and_open_on_one_list(live_parent_demo) -> None
     assert [row["supplier"]["id"] for row in mine if row.get("saved")] == [cards[0]["id"]]
     assert client.delete(f"{base}/suppliers/{cards[0]['id']}/save").status_code == 200
     assert client.get(f"{base}/suppliers/{cards[0]['id']}").json()["saved"] is False
+
+
+def test_OB_265_a_hindi_tap_in_hindi_words_orders_the_listed_item(owner_shop) -> None:  # noqa: F811
+    """The Hindi vendor list's Order says the item and unit in Hindi; it still drafts that item."""
+    from app.instant import route
+
+    history = supplier_tool_turn(milk_list(owner_shop))
+    result = asyncio.run(route("नंबर 1 से ऑर्डर: 20 लीटर दूध", owner_shop, None, history))
+    assert result is not None
+    order = next(event.data for event in result.events if event.kind == "order")
+    line = order["lines"][0]
+    assert (line["name"], line["quantity"], line["unit"]) == ("Milk", 20, "litre")

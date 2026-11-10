@@ -50,6 +50,9 @@ const hi: typeof en = {
   failed: 'नहीं हो पाया। फिर से कोशिश करें।',
 }
 
+/** Units as a Hindi tap says them; the coach reads these words (instant_supply SPOKEN_UNITS). */
+export const HINDI_TAP_UNITS: Record<string, string> = { litre: 'लीटर', kg: 'किलो', g: 'ग्राम' }
+
 export function useSupplierCopy() {
   return useLocale() === 'hi' ? hi : en
 }

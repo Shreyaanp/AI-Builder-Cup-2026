@@ -221,13 +221,25 @@ def saved_searches(history: Sequence[Event]) -> list[dict[str, Any]]:
     return found
 
 
+def said_item(wanted: str, item: str) -> str:
+    """How the tap names the list's item: as listed, or in Hindi ("20 लीटर दूध"). Empty when
+    the tap is about another item."""
+    from .demo_item_names import hindi_item
+
+    for name in (item, hindi_item(item), hindi_item(item[:1].upper() + item[1:].casefold())):
+        if name and wanted.casefold().endswith(name.casefold()):
+            return name
+    return ""
+
+
 def _line_amount(
     ctx: MerchantContext, wanted: str, search: dict[str, Any], card: dict[str, Any]
 ) -> tuple[float, str]:
     """The amount in the tap's words, in the supplier's unit, and a note for the supplier. An
     amount that can't be read or converted is never guessed: the draft is one of the supplier's
     unit, which the card shows before Send, and the note carries the owner's own words."""
-    item = str(search.get("item") or "")
+    listed = str(search.get("item") or "")
+    item = said_item(wanted, listed) or listed
     head = wanted[: -len(item)].strip()
     if not head and not re.search(r"\d", item):
         return 1.0, ""
@@ -260,7 +272,7 @@ def order_from_list(
             (
                 found
                 for found in saved_searches(history)
-                if found.get("item") and wanted.casefold().endswith(str(found["item"]).casefold())
+                if found.get("item") and said_item(wanted, str(found["item"]))
             ),
             None,
         )

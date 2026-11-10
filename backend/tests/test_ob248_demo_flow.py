@@ -507,9 +507,10 @@ def test_OB_248_the_screens_own_phrase_does_the_work(
     assert events["suppliers"]["data"]["suppliers"][0]["item"]["name"] == "Milk"
     assert "order" not in events
     assert words in events["reply"]["text"]
-    # This form is where the owner just was: no directions back to it (S2-2, OB-265).
-    for where in ("Shop → Buy stock → Find a supplier", "दुकान → माल मँगाएँ → सप्लायर ढूँढें"):
-        assert where not in events["reply"]["text"]
+    # The path in the asker's language: no English screen names in a Hindi reply (OB-261).
+    where = "Shop → Buy stock → Find a supplier"
+    hindi = "दुकान → माल मँगाएँ → सप्लायर ढूँढें"
+    assert (hindi if HINDI_SCRIPT.search(message) else where) in events["reply"]["text"]
 
 
 def test_simplify_4b_find_a_supplier_amount_then_order_from_the_vendor_list(

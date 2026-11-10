@@ -397,11 +397,12 @@ test('Buy stock → Find a supplier → milk 20 L → vendor list → Order → 
   await sheet.getByLabel(/^How much\?/).fill('20 L')
   await sheet.getByRole('button', { name: 'Find a supplier', exact: true }).last().click()
   await expect(page.getByRole('dialog')).toHaveCount(0)
-  // The coach finds the demo suppliers and drafts the owner's 20 L from the first. Only the
-  // newest card is open (OB-249): the vendor list folds to one line above it; one tap opens it.
+  // The coach finds the demo suppliers and waits for the owner to pick one: nothing is drafted
+  // from the first, and no directions back to this form (OB-265, S2-2).
   const log = page.getByRole('log')
-  await expect(log).toContainText('I drafted 20 litre', { timeout: 30_000 })
-  await log.getByRole('button', { name: /Suppliers for Milk/ }).click()
+  await expect(log).toContainText('Tap Order on the one you want', { timeout: 30_000 })
+  await expect(log.getByRole('button', { name: /^Send to / })).toHaveCount(0)
+  await expect(log).not.toContainText('Find a supplier.')
   const list = log.getByRole('list', { name: /suppliers? nearby/ }).last()
   await expect(list).toBeVisible()
   await expect(list.getByText('Demo', { exact: true }).first()).toBeVisible()

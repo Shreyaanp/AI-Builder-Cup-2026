@@ -57,19 +57,29 @@ def _names(found: dict[str, Any], hindi: bool) -> str:
     return "; ".join(rows)
 
 
-def _listed(found: dict[str, Any], item: str, made: str, hindi: bool) -> str:
-    """The list and one instruction: tap the one you want, never directions to a form."""
+def _from_the_form(question: str) -> bool:
+    """Buy stock's Find a supplier sent this: the owner is already where directions would point."""
+    from .instant_supply import SEARCHES
+
+    return any(pattern.match(" ".join(question.split())) for pattern, _ in SEARCHES)
+
+
+def _listed(found: dict[str, Any], item: str, made: str, hindi: bool, teach: str | None) -> str:
+    """The list and one instruction: tap the one you want. A typed question also learns where
+    the screen is; the form's own sentence does not, so it never goes in a circle (S2-2)."""
     if hindi:
         item_hi = hindi_item(item)
         lead = f"{hindi_item(made)} आप ख़ुद बनाते हैं, इसलिए ये {item_hi} के लिए हैं। " if made else ""
         return (
             f"{lead}{item_hi} के लिए पास के डेमो सप्लायर: {_names(found, True)}। "
             "जिससे लेना हो, उस पर ऑर्डर दबाएँ। भेजें दबाने तक कुछ नहीं जाता।"
+            + (f" {next_line_hi(teach)}" if teach else "")
         )
     lead = f"You make {made} yourself, so these are for {item}. " if made else ""
     return (
         f"{lead}Demo suppliers near you for {item}: {_names(found, False)}. "
         "Tap Order on the one you want. Nothing goes until you tap Send."
+        + (f" {next_line(teach)}" if teach else "")
     )
 
 
@@ -129,7 +139,16 @@ async def draft_order(
     if not first:
         return [
             StreamEvent(kind="suppliers", data=ctx.cards[found["card_id"]][1]),
-            StreamEvent(kind="reply", text=_listed(found, item, made, speaks_hindi(question))),
+            StreamEvent(
+                kind="reply",
+                text=_listed(
+                    found,
+                    item,
+                    made,
+                    speaks_hindi(question),
+                    None if _from_the_form(question) else teach,
+                ),
+            ),
         ]
     unit = first["item"]["unit"]
     quantity: float = DRAFT_QUANTITY
