@@ -130,6 +130,10 @@ def test_live_close_the_day_in_hindi_opens_the_sheet(shop, monkeypatch):  # noqa
     assert result and result.intent == "screen:close_day", result
     assert result.events[0].data["target"] == "close_day"
     assert result.reply.startswith("चलिए आज का दिन बंद करते हैं।"), result.reply
+    # Hinglish typed in a Hindi app is answered in Hindi.
+    hinglish = run("hisaab karo", shop, "hi")
+    assert hinglish and hinglish.intent == "screen:close_day"
+    assert hinglish.reply.startswith("चलिए आज का दिन बंद करते हैं।"), hinglish.reply
     english = run("din band karna hai", shop)
     assert english and english.intent == "screen:close_day"
     assert english.reply.startswith("Let's close the day."), english.reply

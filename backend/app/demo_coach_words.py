@@ -764,7 +764,8 @@ def closed_today(ctx: Any, fields: dict[str, Any]) -> int | None:
     ]
     if not rows:
         return None
-    return sum(int(row.get("revenue", row.get("amount", 0)) or 0) for row in rows)
+    # A row saved without money (revenue None) still counts the day as closed, at ₹0 for it.
+    return sum(int(row.get("revenue") or row.get("amount") or 0) for row in rows)
 
 
 def asks_close_day(question: str) -> bool:
