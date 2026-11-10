@@ -140,6 +140,8 @@ import { stripOfflinePrefix } from '../offlinePrefix'
 
 // Charts, purchase orders and rules cards only appear mid-conversation; their code loads then.
 const CoachChart = lazy(() => import('../CoachChart').then((m) => ({ default: m.CoachChart })))
+// How long the chat keeps following a card that unfolds after new content arrives.
+const FOLLOW_MS = 1500
 // Only after a request with several steps (OB-174): never on the first screen.
 const PlanSteps = lazy(() => import('../PlanSteps').then((m) => ({ default: m.PlanSteps })))
 const PurchaseOrderCard = lazy(() =>
@@ -374,6 +376,8 @@ function CoachScreen({
   }
   const speaking = useRef<HTMLAudioElement | null>(null)
   const end = useRef<HTMLDivElement>(null)
+  // Until when the log follows its own growth to the end (new coach content just arrived).
+  const following = useRef(0)
   const { api, activeId, review, setFaceOpen, go, speakReplies, reload } = ws
   // One "+" sheet (opened from the top bar) holds every coach action: add shop/product, new
   // chat, earlier chats.
@@ -614,6 +618,7 @@ function CoachScreen({
     // Nothing to follow yet: scrolling to the end would park the greeting under the top bar.
     if (!messages.length && !reply && !reveal.shown) return
     end.current?.scrollIntoView({ block: 'end', behavior: reducedMotion ? 'instant' : 'smooth' })
+    following.current = Date.now() + FOLLOW_MS
     // A plan's steps list changing (a tap carried it on) is new content at the end too.
   }, [messages, reply, reveal.shown, reducedMotion, plan])
   const revealReply = useEffectEvent(() => {
@@ -626,7 +631,23 @@ function CoachScreen({
     if (!scroller) return
     const observer = new ResizeObserver(() => revealReply())
     observer.observe(scroller)
-    return () => observer.disconnect()
+    // A card that unfolds or a lazy card that loads just after new content grows the log below
+    // the fold: follow it for a moment, never when the owner opens an old card later.
+    const growth = new ResizeObserver(() => {
+      if (Date.now() < following.current) revealReply()
+    })
+    const watch = () => {
+      growth.disconnect()
+      for (const child of Array.from(scroller.children)) growth.observe(child)
+    }
+    watch()
+    const children = new MutationObserver(watch)
+    children.observe(scroller, { childList: true })
+    return () => {
+      observer.disconnect()
+      growth.disconnect()
+      children.disconnect()
+    }
   }, [])
   // The composer is one line until the text itself needs more. Sized from the text only: the
   // old autosize also measured the placeholder, so a long translated hint made an empty
