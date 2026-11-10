@@ -115,7 +115,7 @@ import { sendPrepared, useCardFold, type ReplyState } from '../chatCards'
 import { cardSummary, summaryCopy, type SummaryInput } from '../cardSummary'
 import { useNextStepsCopy } from '../nextStepsCopy'
 import { asCoachAction, NEEDS_TAP, type CoachAction } from '../coachAction'
-import { requestOpen } from '../openRequest'
+import { clearOpen, requestOpen, wantsOpen } from '../openRequest'
 import type { Destination } from '../workspaceContext'
 import { TodayChips } from '../../owner-tools/CoachGuide'
 import { useSimpleCopy } from '../today/simpleCopy'
@@ -204,10 +204,10 @@ const DESTINATIONS: Partial<Record<CoachAction['target'], Destination>> = {
   close_day: 'grow',
   google: 'google',
   privacy: 'privacy',
-  // How much to make (numbers open) and Buy stock open over Grow (simplify batch 4b).
+  // How much to make (numbers open) opens over Grow (simplify batch 4b), Buy stock over Shop.
   plan: 'grow',
   make: 'grow',
-  supply: 'grow',
+  supply: 'shop',
   // The playbook sheet lives under Your data.
   playbook: 'privacy',
   // Payments & rides opens over Grow, so Back returns there.
@@ -440,10 +440,14 @@ function CoachScreen({
         setOrders((known) => {
           const old = order.replaces ? known[order.replaces] : undefined
           // The edited draft replaces the old one on the server (OB-222): its card stops offering Send.
-          const replaced =
-            old?.status === 'draft'
-              ? { [old.id]: { ...old, status: 'replaced' as const, replaced_by: order.id } }
-              : {}
+          const replaced = Object.fromEntries(
+            [old, ...(order.retired ?? []).map((id) => known[id])]
+              .filter((was) => was?.status === 'draft')
+              .map((was) => [
+                was!.id,
+                { ...was!, status: 'replaced' as const, replaced_by: order.id },
+              ]),
+          )
           return { ...known, ...replaced, [order.id]: order }
         })
         // One card per order, moved to the end when the coach updates it.
@@ -1202,6 +1206,17 @@ function CoachScreen({
       }),
     openCloseDay: () => setCloseDayOpen(true),
   }
+  // Buy stock's mic: the coach listens, with the same order tools as typing.
+  useEffect(() => {
+    if (!visible || !wantsOpen('talk')) return
+    clearOpen('talk')
+    void restored.current.then(() => {
+      track('voice_used')
+      return voice.start(session.current)
+    })
+    // Only when the tab opens; voice changes every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible])
   const lastIsReply =
     messages.at(-1)?.role === 'assistant' && !liveReply && !reveal.active() && busy === 'idle'
   const canSend = Boolean(note.trim()) && busy === 'idle' && voice.state === 'idle'
@@ -1621,6 +1636,9 @@ function CoachScreen({
                           onSend={sendOrder}
                           onDiscard={discardOrder}
                           onOpen={(order) => setThread(order.id)}
+                          onChanged={(order) =>
+                            setOrders((known) => ({ ...known, [order.id]: order }))
+                          }
                           onReceived={(order) =>
                             void receiveOrder(order).then((received) => {
                               if (received)

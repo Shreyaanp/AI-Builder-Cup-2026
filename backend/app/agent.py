@@ -59,7 +59,7 @@ from .reply_language import language_rule, reply_language
 from .settings import Settings
 from .shop_details import DAYS, clock, report_unsupported_request, update_shop_details
 from .sourcing_offline import sourcing_call, sourcing_reply
-from .supply_offline import supply_call, supply_reply
+from .supply_offline import order_call, supply_call, supply_reply
 from .supply_tools import SUPPLY_TOOLS
 from .text_model import SteadyGemini
 from .vendor_profile import food_segment, profile_for, vocabulary
@@ -214,8 +214,8 @@ Sourcing supplies (find suppliers, order, talk to them)
 - When the owner asks whether a supplier replied, call get_orders and read the last message.
 
 Supply chain (purchase orders, supplier rules, documents)
-- "Reorder flour", "milk order karo", "दूध मँगाना है", "what should I order?", "plan my purchase
-  order", or a forecast showing an item running out: call draft_reorder (item only if named).
+- "Butter 2 kg", "Reorder flour", "milk order karo", "दूध मँगाना है", "what should I order?" or a
+  forecast run-out: call draft_reorder (item, quantity, unit if named), even if nothing is low.
   Never screen directions. Unknown amount: ask once. After "mat"/"नहीं": no call.
   It drafts a purchase order (PO)
   from the forecast, stock and the supplier rules. In one line say why: what is left, when it
@@ -1125,18 +1125,26 @@ class OfflineCoachModel(BaseLlm):
                 detail = next(
                     (r.response for r in responses if r.name == "update_shop_details"), None
                 )
-                sourced = next(
-                    (
-                        reply_text
-                        for r in responses
-                        if (
-                            reply_text := supply_reply(
-                                r.name or "", dict(r.response or {}), ui_language.get()
-                            )
-                            or sourcing_reply(r.name or "", dict(r.response or {}))
+                # "Butter 2 kg and milk 5 L" is one reply about every item.
+                sourced_all = [
+                    reply_text
+                    for r in responses
+                    if (
+                        reply_text := supply_reply(
+                            r.name or "", dict(r.response or {}), ui_language.get()
                         )
-                    ),
-                    None,
+                        or sourcing_reply(r.name or "", dict(r.response or {}))
+                    )
+                ]
+                sourced = (
+                    " ".join(
+                        [
+                            sourced_all[0],
+                            *(t.removeprefix("Offline coach: ") for t in sourced_all[1:]),
+                        ]
+                    )
+                    if sourced_all
+                    else None
                 )
                 if any(r.name == "remember_note" for r in responses):
                     reply = REMEMBERED
@@ -1303,6 +1311,10 @@ class OfflineCoachModel(BaseLlm):
                 upkeep = upkeep_call(question, ctx) if ctx and ctx.business_id else None
                 if upkeep is not None:
                     yield LlmResponse(content=types.Content(role="model", parts=[upkeep]))
+                    return
+                ordered = order_call(question, ctx) if ctx and ctx.business_id else None
+                if ordered:
+                    yield LlmResponse(content=types.Content(role="model", parts=ordered))
                     return
                 if ctx and ctx.business_id and re.search(r"\b(?:prep|forecast)\b", question, re.I):
                     yield LlmResponse(

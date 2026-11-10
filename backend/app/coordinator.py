@@ -1296,6 +1296,15 @@ def prepare_order(
                 old["status"] = "replaced"
                 old["replaced_by"] = order["id"]
                 sourcing.save(ctx.store, ctx.uid, ctx.business_id, old, now)
+    from .supply_coming import retire_drafts
+
+    # Never two live drafts for one item, however the second came about (Ramesh, 8 Nov).
+    retired = retire_drafts(
+        ctx.store, ctx.uid, ctx.business_id, [line["name"] for line in order["lines"]], order["id"]
+    )
+    if retired:
+        order["retired"] = retired
+        order.setdefault("replaces", retired[0])
     ctx.store.save_supplier_order(ctx.uid, ctx.business_id, order)
     missing = [line["name"] for line in order["lines"] if line["price"] is None]
     return {

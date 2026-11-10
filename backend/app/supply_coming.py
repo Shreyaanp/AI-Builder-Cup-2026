@@ -24,6 +24,7 @@ from .supply_chain import (
     recheck,
     relationship,
     rules_of,
+    waive_guess,
 )
 from .supply_io import direction_of
 from .supply_rules import item_rule, round_quantity
@@ -126,6 +127,189 @@ def on_order(
     }
 
 
+def _alike(name: str, item: str, shelf: set[str]) -> bool:
+    """The same stock: not when the name is another thing the shop keeps (Milk, Rose milk)."""
+    from . import sourcing
+
+    if name.casefold() == item.casefold():
+        return True
+    if name.casefold() in shelf:
+        return False
+    return sourcing.matches(name, item) or sourcing.matches(item, name)
+
+
+def retire_drafts(
+    store: MerchantRepository, uid: str, bid: str, items: list[str], keep: str
+) -> list[str]:
+    """One live draft per item (persona runs, 8 Nov): a new draft replaces any other draft for the
+    same stock, in both order systems, so the old amount can never be sent by mistake. An order
+    with other items too only loses this one. Returns the chat orders replaced outright."""
+    import time
+
+    from . import sourcing
+
+    names = [item for item in items if item.strip()]
+    shelf = {p["name"].casefold() for p in store.inventory(uid, bid)} - {
+        n.casefold() for n in names
+    }
+
+    def wanted(name: str) -> bool:
+        return any(_alike(name, item, shelf) for item in names)
+
+    retired: list[str] = []
+    now = time.time()
+    today: date | None = None
+    for order in sourcing.orders(store, uid, bid, now):
+        if order["id"] == keep or order["status"] != "draft":
+            continue
+        left = [line for line in order["lines"] if not wanted(line["name"])]
+        if len(left) == len(order["lines"]):
+            continue
+        if left:
+            order["lines"] = left
+            order["total"] = sum(line["total"] or 0 for line in left)
+        else:
+            order["status"] = "replaced"
+            order["replaced_by"] = keep
+            retired.append(order["id"])
+        sourcing.save(store, uid, bid, order, now)
+    for po in all_orders(store, bid):
+        if po["id"] == keep or po["status"] != "draft" or po.get("sent"):
+            continue
+        if direction_of(po) != "in":
+            continue
+        left = [line for line in po["lines"] if not wanted(line["item"])]
+        if len(left) == len(po["lines"]):
+            continue
+        if not left:
+            withdraw(store, bid, po, "replaced")
+            continue
+        # A draft with other items too (Order again: Sugar and Milk) keeps them; only the line
+        # for this item goes.
+        po["lines"] = left
+        if today is None:
+            from .supply_chain import _owned, shop_today
+
+            today = shop_today(_owned(store, uid, bid))
+        recheck(store, bid, po, today)
+        try:
+            _save(store, bid, po)
+        except HTTPException as error:
+            if error.status_code != 409:
+                raise  # changed at the same moment: the owner's own edit stands
+    return retired
+
+
+def _last_order(
+    item: str, unit: str, known: tuple[list[dict[str, Any]], list[dict[str, Any]]]
+) -> tuple[float | None, str]:
+    """How much of this item the shop last ordered, in its unit, and from which supplier."""
+    from . import sourcing
+
+    def same(name: str) -> bool:
+        return sourcing.matches(name, item) or sourcing.matches(item, name)
+
+    rows: list[tuple[float, float, str, str]] = []
+    for po in known[0]:
+        if po["status"] not in {"draft", "cancelled"}:
+            rows += [
+                (
+                    float(po.get("created") or 0),
+                    float(x["quantity"]),
+                    x["unit"],
+                    po["supplier"]["id"],
+                )
+                for x in po["lines"]
+                if same(x["item"])
+            ]
+    for order in known[1]:
+        if order["status"] in CHAT_ON_ITS_WAY | {"received"}:
+            rows += [
+                (float(order.get("created") or 0), float(x["quantity"]), x["unit"], "")
+                for x in order["lines"]
+                if same(x["name"])
+            ]
+    if not rows:
+        return None, ""
+    newest = max(rows)
+    return sourcing.convert(newest[1], newest[2], unit), next(
+        (row[3] for row in sorted(rows, reverse=True) if row[3]), ""
+    )
+
+
+def usual_supplier(
+    item: str, unit: str, known: tuple[list[dict[str, Any]], list[dict[str, Any]]]
+) -> str:
+    """The supplier this item last came from, so "Order more" goes to the usual one."""
+    return _last_order(item, unit, known)[1]
+
+
+def amount_ask(
+    product: dict[str, Any] | None,
+    item: str,
+    need: dict[str, Any],
+    known: tuple[list[dict[str, Any]], list[dict[str, Any]]],
+) -> dict[str, Any]:
+    """ "How much?" for one item, with an amount to suggest: what was last ordered, else about a
+    week and two days of its own use less the shelf, else nothing to go on."""
+    unit = (product or {}).get("unit") or ""
+    last, _ = _last_order(item, unit, known) if unit else (None, "")
+    use = still_wanted(need, 0.0) if need.get("daily") else 0.0
+    suggested = last if last else math.ceil(use) if use else None
+    sold_out = bool(product) and (
+        (product or {}).get("available") is False or (product or {}).get("stock") == 0
+    )
+    stock = (product or {}).get("stock")
+    return {
+        "status": "needs_quantity",
+        "item": (product or {}).get("name") or item,
+        "unit": unit,
+        "left": 0 if sold_out else stock,
+        "sold_out": sold_out,
+        "suggested": round(suggested, 2) if suggested else None,
+    }
+
+
+def to_order(
+    store: MerchantRepository,
+    uid: str,
+    bid: str,
+    inventory: list[dict[str, Any]],
+    forecast: dict[str, Any],
+    today: date,
+    category: str,
+    known: tuple[list[dict[str, Any]], list[dict[str, Any]]],
+) -> list[dict[str, Any]]:
+    """Stock the shop buys that is sold out or low (5 or fewer, the Today rule) with nothing on
+    its way and no draft waiting: each gets "Order more", so "nothing to reorder" is never said
+    beside a sold-out item (Ahmed, 8 Nov). Sold out comes first."""
+    from . import sourcing
+    from .supply_chain import bought
+
+    rows = []
+    for product in inventory:
+        stock = product.get("stock")
+        sold_out = product.get("available") is False or stock == 0
+        if not bought(product, category) or not (sold_out or (stock is not None and stock <= 5)):
+            continue
+        coming = on_order(store, uid, bid, product["name"], product.get("unit") or "kg", known)
+        drafted = any(
+            order["status"] == "draft"
+            and any(
+                sourcing.matches(line["name"], product["name"])
+                or sourcing.matches(product["name"], line["name"])
+                for line in order["lines"]
+            )
+            for order in known[1]
+        )
+        if coming["quantity"] or coming["other"] or coming["draft"] or drafted:
+            continue
+        need = need_from_forecast(product, forecast, product["name"], today)
+        rows.append(amount_ask(product, product["name"], need, known))
+    rows.sort(key=lambda row: (not row["sold_out"], row["left"] or 0, row["item"]))
+    return rows
+
+
 def arrivals_by_item(
     store: MerchantRepository, uid: str, bid: str, inventory: list[dict[str, Any]]
 ) -> dict[str, list[tuple[str, float]]]:
@@ -173,10 +357,17 @@ def cannot_meet(named: float, amount: float | None) -> bool:
 
 
 def sized_line(
-    store: MerchantRepository, bid: str, po: dict[str, Any], item: str, unit: str, wanted: float
+    store: MerchantRepository,
+    bid: str,
+    po: dict[str, Any],
+    item: str,
+    unit: str,
+    wanted: float,
+    waived: bool = False,
 ) -> tuple[dict[str, Any], float | None] | None:
     """The draft's line for this item and the quantity the supplier's rules (MOQ, pack size) make
-    of the wanted amount, as a fresh draft would be; None when the units do not convert."""
+    of the wanted amount, as a fresh draft would be; None when the units do not convert.
+    `waived`: the owner named the amount, so a minimum the app only guessed does not apply."""
     from .sourcing import convert, matches
 
     line = next(
@@ -190,7 +381,11 @@ def sized_line(
     if line is None:
         return None
     row = relationship(store, bid, po["supplier"]["id"])
-    rule = item_rule(rules_of(row), line["item"]) if row else None
+    rules = rules_of(row) if row else None
+    guessed = bool(row and row.get("suggested"))
+    if rules and guessed and (waived or (po.get("reason") or {}).get("guess_waived")):
+        rules = waive_guess(rules)
+    rule = item_rule(rules, line["item"]) if rules else None
     amount = convert(wanted, unit, line["unit"]) if wanted else 0.0
     if amount is None:
         return line, None
@@ -199,10 +394,16 @@ def sized_line(
 
 
 def resize(
-    store: MerchantRepository, bid: str, po: dict[str, Any], item: str, unit: str, wanted: float
+    store: MerchantRepository,
+    bid: str,
+    po: dict[str, Any],
+    item: str,
+    unit: str,
+    wanted: float,
+    waived: bool = False,
 ) -> None:
     """Set the draft's line for this item to the wanted quantity, by the supplier's rules."""
-    sized = sized_line(store, bid, po, item, unit, wanted)
+    sized = sized_line(store, bid, po, item, unit, wanted, waived)
     if sized and sized[1] is not None:
         sized[0]["quantity"] = sized[1]
 

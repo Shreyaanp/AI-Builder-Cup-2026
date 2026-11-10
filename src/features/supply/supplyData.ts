@@ -4,12 +4,23 @@ import { isServiceShop } from '../v1/tabsCopy'
 import { useWorkspace } from '../v1/workspaceContext'
 import { useLocale } from '../../state/hooks'
 import { productFeminine, productName } from '../../i18n/productNames'
-import { useShopCopy } from '../shop/strings'
-import { unitLabel } from '../shop/units'
 import { useSupplyCopy } from './copy'
 import { useOrderChangeCopy } from './orderChangeCopy'
+import { useOrderMoreCopy } from './orderMoreCopy'
 import { supplyBus, supplyChanged } from './supplyEvents'
 import type { PurchaseOrder, Relationship, RuleSet } from './types'
+import { useOrderUnit } from './unitLabel'
+
+export { useOrderUnit }
+
+/** "How much?" for one item: sold out or low, with an amount to suggest when there is one. */
+export interface OrderAsk {
+  item: string
+  unit: string
+  left: number | null
+  sold_out: boolean
+  suggested: number | null
+}
 
 /** One supply need from `GET /supply`: the backend is the only "runs out" and "on order" rule. */
 export interface SupplyNeed {
@@ -32,6 +43,8 @@ interface SupplyOverview {
   suppliers: Relationship[]
   orders: PurchaseOrder[]
   needs?: SupplyNeed[]
+  /** Sold out or low with nothing on its way: each gets its own Order more. */
+  to_order?: OrderAsk[]
 }
 
 /**
@@ -77,6 +90,8 @@ export function useTodaySupplyLead() {
      * topped up. The row never takes the card's one filled button. */
     waiting: Boolean(topped || onItsWay(need)),
     item: (topped ? toppedItem : need?.item) ?? null,
+    /** Sold out or low, bought, with nothing on its way: each has Order more on Today. */
+    toOrder: data?.to_order ?? [],
   }
 }
 
@@ -178,12 +193,14 @@ export function usePoActions(onChange: (order: PurchaseOrder) => void) {
   const { api, activeId, notify, review, confirm, products, reloadProducts } = useWorkspace()
   const s = useSupplyCopy()
   const change = useOrderChangeCopy()
+  const more = useOrderMoreCopy()
   const locale = useLocale()
   const unit = useOrderUnit()
   const base = `/businesses/${encodeURIComponent(activeId ?? '')}/supply`
   const explain = useCallback(
     (cause: unknown): string => {
       const detail = cause instanceof ApiError ? cause.code : ''
+      if (detail === 'UNITS') return more.noUnits
       if (detail === 'RULES_BROKEN') return s.rulesBroken
       if (detail === 'TOO_BIG') return change.tooBig
       if (detail === 'RESOLVE_FLAGS') return s.resolveFirst
@@ -194,7 +211,7 @@ export function usePoActions(onChange: (order: PurchaseOrder) => void) {
       if (detail === 'STALE') return s.stale
       return s.failed
     },
-    [s, change],
+    [s, change, more],
   )
   const run = useCallback(
     async (
@@ -335,6 +352,7 @@ interface ReorderResult {
     | 'check'
     | 'made'
     | 'ask_source'
+    | 'needs_quantity'
   order?: PurchaseOrder
   item?: string
   unit?: string
@@ -346,8 +364,12 @@ interface ReorderResult {
   days?: number | null
   /** `check`: why nothing was drafted (`no_history`: no use of its own on record). */
   reason?: string
+  supplier?: string
   supplier_quantity?: number
   supplier_unit?: string
+  left?: number | null
+  sold_out?: boolean
+  suggested?: number | null
   arrives?: string
   other?: { quantity: number; unit: string; arrives: string }[]
 }
@@ -358,40 +380,40 @@ interface ReorderResult {
  * Some on order in a unit that does not convert sets `ask` to the item: the caller offers
  * "Order more", which drafts again with `anyway` (#603).
  */
-/** An order's unit: as saved in English ("12 l"), in the owner's words otherwise ("12 लीटर"). */
-export function useOrderUnit(): (raw: string) => string {
-  const locale = useLocale()
-  const shopCopy = useShopCopy()
-  return useCallback(
-    (raw: string) => (locale.startsWith('en') ? raw : unitLabel(raw, shopCopy)),
-    [locale, shopCopy],
-  )
-}
-
-export function useDraftReorder() {
-  const { api, activeId, active } = useWorkspace()
+/** In words: why this reorder drafted nothing, and what to do next. */
+function useReorderNote() {
+  const { active } = useWorkspace()
   const services = isServiceShop(active?.fields.category)
-  const s = useSupplyCopy()
   const c = useOrderChangeCopy()
+  const more = useOrderMoreCopy()
   const locale = useLocale()
   const unit = useOrderUnit()
   return useCallback(
-    async (
-      item = '',
-      anyway = false,
-    ): Promise<{ order: PurchaseOrder | null; note: string; ask?: string }> => {
-      try {
-        const result = await api<ReorderResult>(
-          `/businesses/${encodeURIComponent(activeId ?? '')}/supply/reorder`,
-          { method: 'POST', body: JSON.stringify({ ...(item ? { item } : {}), anyway }) },
-        )
-        supplyChanged()
-        if (result.order) return { order: result.order, note: '' }
+    (result: ReorderResult, item = ''): { note: string; ask?: string; amount?: OrderAsk } => {
+      {
         const name = productName(result.item ?? item, locale)
         const quantity = new Intl.NumberFormat(locale, { maximumFractionDigits: 2 })
+        if (result.status === 'needs_quantity')
+          return {
+            note: '',
+            amount: {
+              item: result.item ?? item,
+              unit: result.unit ?? '',
+              left: result.left ?? null,
+              sold_out: Boolean(result.sold_out),
+              suggested: result.suggested ?? null,
+            },
+          }
+        if (result.status === 'check' && result.reason === 'named')
+          return {
+            note: more.cannotSell(
+              result.supplier ?? '',
+              name,
+              `${quantity.format(result.supplier_quantity ?? 0)} ${unit(result.supplier_unit ?? '')}`,
+            ),
+          }
         if (result.status === 'on_order_units')
           return {
-            order: null,
             ask: result.item ?? item,
             note: c.unitsAsk(
               (result.other ?? [])
@@ -403,7 +425,6 @@ export function useDraftReorder() {
           }
         if (result.status === 'check')
           return {
-            order: null,
             note:
               result.reason === 'no_history'
                 ? c.checkUse(name)
@@ -421,9 +442,8 @@ export function useDraftReorder() {
                       result.days,
                     ),
           }
-        if (result.status === 'made') return { order: null, note: c.madeHere(name) }
-        if (result.status === 'ask_source')
-          return { order: null, note: c.askSource(name, services) }
+        if (result.status === 'made') return { note: c.madeHere(name) }
+        if (result.status === 'ask_source') return { note: c.askSource(name, services) }
         const note =
           result.status === 'on_order'
             ? c.onOrder(
@@ -435,12 +455,73 @@ export function useDraftReorder() {
             : result.status === 'no_supplier'
               ? c.noSupplierFor(name)
               : c.nothingToReorder
-        return { order: null, note }
+        return { note }
+      }
+    },
+    [services, c, more, locale, unit],
+  )
+}
+
+export function useDraftReorder() {
+  const { api, activeId } = useWorkspace()
+  const s = useSupplyCopy()
+  const explain = useReorderNote()
+  return useCallback(
+    async (
+      item = '',
+      anyway = false,
+      said?: { quantity: number; unit: string; direct: boolean },
+    ): Promise<{ order: PurchaseOrder | null; note: string; ask?: string; amount?: OrderAsk }> => {
+      try {
+        const result = await api<ReorderResult>(
+          `/businesses/${encodeURIComponent(activeId ?? '')}/supply/reorder`,
+          { method: 'POST', body: JSON.stringify({ ...(item ? { item } : {}), anyway, ...said }) },
+        )
+        supplyChanged()
+        if (result.order) return { order: result.order, note: '' }
+        return { order: null, ...explain(result, item) }
       } catch {
         return { order: null, note: s.failed }
       }
     },
-    [api, activeId, services, s, c, locale, unit],
+    [api, activeId, s, explain],
+  )
+}
+
+/** The Buy stock box: what the owner typed or said, read on the server in any language. */
+export function useOrderText() {
+  const { api, activeId } = useWorkspace()
+  const s = useSupplyCopy()
+  const more = useOrderMoreCopy()
+  const explain = useReorderNote()
+  return useCallback(
+    async (
+      text: string,
+    ): Promise<{ order?: PurchaseOrder; ask?: OrderAsk; note: string; done?: boolean }> => {
+      try {
+        const answer = await api<{ status: string; results: ReorderResult[] }>(
+          `/businesses/${encodeURIComponent(activeId ?? '')}/supply/order-text`,
+          { method: 'POST', body: JSON.stringify({ text }) },
+        )
+        if (answer.status === 'refused') return { note: more.refused, done: true }
+        if (answer.status === 'not_understood') return { note: more.notUnderstood }
+        supplyChanged()
+        const orders = answer.results.flatMap((row) => (row.order ? [row.order] : []))
+        const others = answer.results.filter((row) => !row.order).map((row) => explain(row))
+        const ask = others.find((row) => row.amount)?.amount
+        const notes = others.flatMap((row) => (row.note ? [row.note] : []))
+        if (orders.length > 1) notes.unshift(more.draftsReady(orders.length))
+        return {
+          ...(orders.length === 1 ? { order: orders[0] } : {}),
+          ...(ask ? { ask } : {}),
+          note: notes.join(' '),
+          done: orders.length > 0,
+        }
+      } catch {
+        return { note: s.failed }
+      }
+    },
+    [api, activeId, s, more, explain],
   )
 }
 

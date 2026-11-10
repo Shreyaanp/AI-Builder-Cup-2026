@@ -728,10 +728,10 @@ def test_ob226_a_sent_chat_order_counts_as_on_order(shop) -> None:
     sourcing.confirm(store, "alice", bid, order["id"], order["version"])
     coming = supply_coming.on_order(store, "alice", bid, "Atta (wheat flour)", "kg")
     assert coming["quantity"] == 10 and coming["arrives"]
-    assert coming["draft"] is not None  # the PO drafted above, returned instead of a new one
+    assert coming["draft"] is None  # the chat order replaced the PO drafted above (OB-339)
     again = draft(store, bid)
-    # The same draft, sized again for the 10 kg now on its way (#603).
-    assert again["existing"] and again["order"]["id"] == coming["draft"]["id"]
+    # A new draft, sized for the 10 kg now on its way (#603).
+    assert again["status"] == "drafted"
     assert again["order"]["reason"]["wanted"] == round(wanted - 10, 2)
     assert again["order"]["reason"]["on_order"] == 10
 

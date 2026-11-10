@@ -1342,6 +1342,36 @@ def discard(store: MerchantRepository, uid: str, bid: str, oid: str, version: in
     return public_order(save(store, uid, bid, order, now))
 
 
+def edit_draft(
+    store: MerchantRepository,
+    uid: str,
+    bid: str,
+    oid: str,
+    version: int,
+    changes: dict[int, tuple[float, str]],
+) -> dict[str, Any]:
+    """The owner changes the amount on the card before sending (Ramesh, 8 Nov): the same draft, so
+    there is only ever one to send. A unit that converts is saved in the supplier's own."""
+    now = time.time()
+    order = get_order(store, uid, bid, oid, now)
+    if order["version"] != version:
+        raise HTTPException(409, "This order changed. Review it again.")
+    if order["status"] != "draft":
+        raise HTTPException(409, "Only a draft can be changed here.")
+    for index, (quantity, unit) in changes.items():
+        if not 0 <= index < len(order["lines"]):
+            raise HTTPException(422, "Pick a line of this order.")
+        line = order["lines"][index]
+        amount = convert(quantity, unit or line["unit"], line["unit"])
+        if not amount:
+            raise HTTPException(422, "UNITS")
+        line["quantity"] = round(amount, 3)
+        if line["price"] is not None:
+            line["total"] = round(line["price"] * line["quantity"])
+    order["total"] = sum(line["total"] or 0 for line in order["lines"])
+    return public_order(save(store, uid, bid, order, now))
+
+
 CANCEL_TEXT = "Sorry, please cancel this order."
 
 

@@ -295,8 +295,9 @@ def test_OB_261_out_of_a_supply_is_one_question_not_an_order(  # noqa: N802
 @pytest.mark.parametrize(
     ("message", "language", "path"),
     [
-        ("Reorder tea dust", "en", "Next, open Grow → Buy stock → To do."),
-        ("चायपत्ती फिर से मँगाओ", "hi", "अब बढ़ाएँ →"),
+        # Buy stock lives on Shop, and its own phrase is "Order more" (OB-339).
+        ("Order more tea dust", "en", "Next, open Shop → Buy stock → To do."),
+        ("चायपत्ती फिर से मँगाओ", "hi", "अब दुकान → माल मँगाएँ →"),
     ],
 )
 def test_OB_268_a_screens_own_phrase_drafts_and_still_names_the_screen(  # noqa: N802

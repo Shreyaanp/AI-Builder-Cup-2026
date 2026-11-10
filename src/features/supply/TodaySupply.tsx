@@ -6,7 +6,7 @@ import { useWorkspace } from '../v1/workspaceContext'
 import { Sheet } from '../v1/Sheet'
 import { PurchaseOrderCard } from './supplyDeferred'
 import { useShowcaseCopy } from './showcaseCopy'
-import { useSupplyCopy } from './copy'
+import { useGrowCopy } from '../v1/growCopy'
 import { useOrderChangeCopy } from './orderChangeCopy'
 import {
   dayLabel,
@@ -51,7 +51,7 @@ export function TodaySupply({
   const { refresh, need, more, topped, item } = useTodaySupplyLead()
   const draft = useDraftReorder()
   const s = useShowcaseCopy()
-  const copy = useSupplyCopy()
+  const grow = useGrowCopy()
   const c = useOrderChangeCopy()
   const locale = useLocale()
   const roles = useTheme().material
@@ -192,14 +192,14 @@ export function TodaySupply({
                   else notify(next.note)
                 }}
               >
-                {coming ? c.orderMore : s.reorder}
+                {c.orderMore}
               </Button>
             )}
             {promise?.extra}
           </Stack>
         )}
       </Box>
-      <Sheet open={order !== null} onClose={close} titleId="today-supply-title" title={copy.title}>
+      <Sheet open={order !== null} onClose={close} titleId="today-supply-title" title={grow.stock}>
         {order && (
           <Suspense fallback={null}>
             <PurchaseOrderCard order={order} onChange={setOrder} />

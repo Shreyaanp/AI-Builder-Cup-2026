@@ -90,6 +90,8 @@ export interface TodayInput {
    * out within 2 days, the brief's rule for "Order now" (brief.py best_action); `waiting` when
    * some is on its way already, or the stock just topped up: never the lead (OB-263). */
   supply?: { item: string; soon?: boolean; waiting?: boolean } | null
+  /** Sold-out stock the shop buys with nothing on its way: its own row, with Order more. */
+  orderable?: string[]
   /** This morning's promise was done or cleared here (before the server facts reload). */
   promiseAnswered?: boolean
 }
@@ -270,7 +272,12 @@ export function todayPlan(input: TodayInput): TodayPlan {
   if (supplyRow && input.supply?.soon) all.push(supplyRow)
   if (products.length && facts && shop.last_confirmed !== facts.date && !input.menuAnswered)
     all.push({ id: 'menu', kind: 'menu' })
-  const soldOut = products.filter((product) => product.available === false)
+  // Stock the shop buys gets its own row with Order more, never folded into "2 items are sold
+  // out" (Ahmed, 8 Nov); what it makes or sells stays in the one sold-out row.
+  const orderable = new Set(input.orderable ?? [])
+  const soldOutAll = products.filter((product) => product.available === false)
+  const boughtOut = soldOutAll.filter((product) => orderable.has(product.name))
+  const soldOut = soldOutAll.filter((product) => !orderable.has(product.name))
   if (supplyRow && !input.supply?.soon && !input.supply?.waiting) all.push(supplyRow)
   // The supply row (with its run-out day) or last night's promise already names this item:
   // never twice on Today.
@@ -285,6 +292,16 @@ export function todayPlan(input: TodayInput): TodayPlan {
       source: low.source ?? 'unknown',
       productId: low.product_id ?? null,
       usual: low.usual ?? null,
+    })
+  for (const product of boughtOut.filter((item) => !named.some((n) => same(n, item.name))))
+    all.push({
+      id: `low-${product.name}`,
+      kind: 'low',
+      item: product.name,
+      left: 0,
+      source: 'bought',
+      productId: product.id ?? null,
+      usual: null,
     })
   if (soldOut.length) all.push({ id: 'sold-out', kind: 'soldOut', items: soldOut })
   // On its way, or just topped up: news first, "Order more" at most. Never the lead.

@@ -176,7 +176,7 @@ def test_demo_answers_every_chat_phrase_on_topic_with_its_screen_path(app, featu
             "My milk 20 litres is running low. Find suppliers.",
             # The demo does the work now: it lists the suppliers and drafts the order (OB-248).
             r"Demo suppliers near you for Milk",
-            "Grow → Buy stock → Find a supplier",
+            "Shop → Buy stock → Find a supplier",
         ),
         # And in Hindi: the same work, in the same words the screens use (OB-248).
         (
@@ -184,7 +184,7 @@ def test_demo_answers_every_chat_phrase_on_topic_with_its_screen_path(app, featu
             r"दूध के लिए पास के डेमो सप्लायर: 1\. Sri Lakshmi Provisions \(Demo\), [\d.]+ किमी, ₹54 "
             r"प्रति लीटर; 2\. FreshMart \(Demo\), [\d.]+ किमी, ₹29 प्रति पैक। Sri Lakshmi Provisions "
             r"\(Demo\) से 20 लीटर दूध का ऑर्डर नीचे तैयार है। आपके भेजे बिना कुछ नहीं जाता, और यह "
-            r"सिर्फ़ डेमो है। अब बढ़ाएँ → माल मँगाएँ → सप्लायर ढूँढें खोलें।",
+            r"सिर्फ़ डेमो है। अब दुकान → माल मँगाएँ → सप्लायर ढूँढें खोलें।",
             None,
         ),
         # The PR's own "Owner looks at" phrases.

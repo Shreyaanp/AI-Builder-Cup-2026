@@ -1,9 +1,11 @@
 import { Box, Button, Chip, Stack, Typography } from '@mui/material'
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight, Truck } from 'lucide-react'
 import type { Business, Product } from '../v1/api'
 import type { ToolCopy } from './copy'
 import { useToolCopy } from './copy'
 import { openOwnerFeature } from './entry'
+import { useGrowCopy } from '../v1/growCopy'
+import { requestOpen } from '../v1/openRequest'
 import { useWorkspace } from '../v1/workspaceContext'
 import { SeeAgain } from '../first-run/FirstRun'
 import { useSimpleCopy } from '../v1/today/simpleCopy'
@@ -93,6 +95,7 @@ export function TodayChips({
   const t = useToolCopy()
   const s = useSimpleCopy()
   const tt = useTodayCopy()
+  const grow = useGrowCopy()
   const locale = useLocale()
   const ws = useWorkspace()
   const examples = guideExamples(t, ws.active, ws.products, locale)
@@ -130,6 +133,17 @@ export function TodayChips({
           sx={{ minHeight: 48, px: 1 }}
         >
           {s.whatCanIAsk}
+        </Button>
+        {/* Buy stock from Home, on this row so Today stays one screenful (OB-339). */}
+        <Button
+          startIcon={<Truck size={18} aria-hidden="true" />}
+          onClick={() => {
+            requestOpen('stock')
+            ws.go('shop')
+          }}
+          sx={{ minHeight: 48, px: 1 }}
+        >
+          {grow.stock}
         </Button>
       </Stack>
     </Box>

@@ -1,4 +1,4 @@
-import { useContext, useState } from 'react'
+import { lazy, Suspense, useContext, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import {
   Alert,
@@ -46,7 +46,6 @@ import { onMenu } from '../shop/stock'
 import { useStockCopy } from '../shop/stockCopy'
 import { ConnectRow } from '../connect/ConnectTile'
 import { Sheet } from './Sheet'
-import { AskHint } from './AskHint'
 import { ClosedTodaySwitch } from './TwoPaths'
 import { ShopQr } from './ShopQr'
 import { OwnerPerks } from '../passport/games/OwnerPerks'
@@ -73,10 +72,17 @@ import { productName } from '../../i18n/productNames'
 import { MapCard } from './MapCard'
 import { ListTile } from './GrowList'
 import { TileLayoutContext } from './growLayout'
+import { clearOpen, wantsOpen } from './openRequest'
+import type { StockTab } from '../supply/BuyStock'
 import type { Proposal } from './api'
 
 /** How many menu items the busy-hours question goes through (menu order). */
 const SWEEP_ITEMS = 3
+
+// Buy stock pulls in the purchase orders; load it after first paint.
+const BuyStockRow = lazy(() =>
+  import('../supply/BuyStock').then((m) => ({ default: m.BuyStockRow })),
+)
 
 export type ShopSheetKind =
   | 'details'
@@ -211,7 +217,7 @@ export function Supporting({ children }: { children: ReactNode }) {
  * beside the coach. What needs the owner (waiting customers, the daily menu question) lives on
  * Coach Today, not here.
  */
-export function ShopOverview({ narrow = false }: { narrow?: boolean }) {
+export function ShopOverview() {
   const [sheet, setSheet] = useState<ShopSheetKind | null>(null)
   const { unread, refresh } = useUnread()
   return (
@@ -219,7 +225,6 @@ export function ShopOverview({ narrow = false }: { narrow?: boolean }) {
       <YourPage onSheet={setSheet} />
       <ShopTiles unread={unread} onSheet={setSheet} />
       <PageAction onSheet={setSheet} />
-      {!narrow && <AskHint id="sold_out" />}
       <ShopSheets
         kind={sheet}
         onClose={() => {
@@ -377,6 +382,11 @@ export function ShopTiles({
   const stock = useStockCopy()
   const ws = useWorkspace()
   const [more, setMore] = useState(false)
+  // Buy stock lives here, where a shopkeeper looks for it (OB-267); the coach and Home open it.
+  const [stockTab, setStockTab] = useState<StockTab | null>(() =>
+    wantsOpen('stock') ? 'todo' : null,
+  )
+  useEffect(() => clearOpen('stock'), [])
   const shop = ws.active
   if (!shop) return null
   const open = openNow(
@@ -422,6 +432,11 @@ export function ShopTiles({
           }
           onClick={() => onSheet('soldOut')}
         />
+        <TileLayoutContext.Provider value="row">
+          <Suspense fallback={null}>
+            <BuyStockRow tab={stockTab} onTab={setStockTab} />
+          </Suspense>
+        </TileLayoutContext.Provider>
         <ShopRow
           icon={
             <Badge badgeContent={unread ?? 0} color="primary" aria-hidden="true">

@@ -133,8 +133,9 @@ def test_603_an_order_the_supplier_cannot_fill_is_not_on_its_way(dairy_shop) -> 
 
 
 def test_603_a_reused_draft_is_sized_again_for_what_is_coming(dairy_shop) -> None:
-    """#603: the open sugar draft shrinks when a chat order for some sugar is sent, and is
-    withdrawn when what is coming covers the whole need."""
+    """#603: a chat order for some sugar replaces the open sugar draft (OB-339: never two live
+    drafts), the next reorder is sized for what is coming, and it is withdrawn when what is
+    coming covers the whole need."""
     from app import sourcing
 
     store, bid = dairy_shop
@@ -143,8 +144,9 @@ def test_603_a_reused_draft_is_sized_again_for_what_is_coming(dairy_shop) -> Non
     assert wanted > 5
     small = chat_order(store, bid, "Sugar", 5, "kg")
     sourcing.confirm(store, "alice", bid, small["id"], small["version"])
+    assert supply_chain.get_po(store, "alice", bid, po["id"])["reason"]["withdrawn"] == "replaced"
     again = draft(store, bid, "sugar")
-    assert again["existing"] and again["order"]["id"] == po["id"]
+    assert again["status"] == "drafted" and again["order"]["id"] != po["id"]
     reason = again["order"]["reason"]
     assert reason["on_order"] == 5 and reason["wanted"] == round(wanted - 5, 2)
     assert again["order"]["lines"][0]["quantity"] < po["lines"][0]["quantity"]
@@ -152,9 +154,10 @@ def test_603_a_reused_draft_is_sized_again_for_what_is_coming(dairy_shop) -> Non
     sourcing.confirm(store, "alice", bid, big["id"], big["version"])
     covered = draft(store, bid, "sugar")
     assert covered["status"] == "on_order" and covered["quantity"] == 205
-    assert all(o["id"] != po["id"] for o in supply_chain.orders(store, "alice", bid))
-    gone = supply_chain.get_po(store, "alice", bid, po["id"])
-    assert gone["status"] == "cancelled" and gone["reason"]["withdrawn"] == "on_order"
+    assert all(o["id"] != again["order"]["id"] for o in supply_chain.orders(store, "alice", bid))
+    gone = supply_chain.get_po(store, "alice", bid, again["order"]["id"])
+    # The big chat order replaced the resized draft the moment it was drafted (OB-339).
+    assert gone["status"] == "cancelled" and gone["reason"]["withdrawn"] == "replaced"
 
 
 def test_603_a_named_quantity_changes_the_right_line(dairy_shop) -> None:
@@ -223,8 +226,8 @@ def test_603_the_overview_reads_the_orders_once(client, monkeypatch) -> None:  #
 
 
 def test_603_a_covered_item_that_reorder_skips_loses_its_open_draft(dairy_shop) -> None:
-    """#603: a milk draft must not stay approvable at 50 l after a 100 l chat order is sent; the
-    generic reorder that moves on to sugar withdraws it."""
+    """#603: a milk draft must not stay approvable at 50 l beside a 100 l chat order: the chat
+    draft replaces it (OB-339), and the generic reorder moves on to sugar."""
     from app import sourcing
 
     store, bid = dairy_shop
@@ -235,7 +238,7 @@ def test_603_a_covered_item_that_reorder_skips_loses_its_open_draft(dairy_shop) 
     second = draft(store, bid)
     assert second["status"] == "drafted" and second["order"]["reason"]["item"] == "Sugar"
     milk = supply_chain.get_po(store, "alice", bid, first["id"])
-    assert milk["status"] == "cancelled" and milk["reason"]["withdrawn"] == "on_order"
+    assert milk["status"] == "cancelled" and milk["reason"]["withdrawn"] == "replaced"
     assert [
         o["id"] for o in supply_chain.orders(store, "alice", bid) if o["status"] == "draft"
     ] == [second["order"]["id"]]

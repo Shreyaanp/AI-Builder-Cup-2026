@@ -2739,6 +2739,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/businesses/{business_id}/orders/{order_id}/edit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Edit Order
+         * @description New amounts on a draft that has not been sent; the supplier is not told anything.
+         */
+        post: operations["edit_order_api_v1_businesses__business_id__orders__order_id__edit_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/businesses/{business_id}/orders/{order_id}/change": {
         parameters: {
             query?: never;
@@ -2915,6 +2935,27 @@ export interface paths {
         put?: never;
         /** Reorder */
         post: operations["reorder_api_v1_businesses__business_id__supply_reorder_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/businesses/{business_id}/supply/order-text": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Order Text
+         * @description The Buy stock box: "butter, 2 kg" in the owner's words, even when nothing looks low. Each
+         *     item with an amount is drafted; one without asks how much. A "don't" drafts nothing.
+         */
+        post: operations["order_text_api_v1_businesses__business_id__supply_order_text_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4816,6 +4857,25 @@ export interface components {
             /** Places */
             places: components["schemas"]["DiscoveryPlace"][];
         };
+        /** DraftEdit */
+        DraftEdit: {
+            /** Version */
+            version: number;
+            /** Lines */
+            lines: components["schemas"]["DraftLine"][];
+        };
+        /** DraftLine */
+        DraftLine: {
+            /** Line */
+            line: number;
+            /** Quantity */
+            quantity: number;
+            /**
+             * Unit
+             * @default
+             */
+            unit: string;
+        };
         /** EventInput */
         EventInput: {
             /**
@@ -5066,6 +5126,11 @@ export interface components {
             line?: number | null;
             /** Value */
             value?: number | null;
+            /**
+             * Unit
+             * @default
+             */
+            unit: string;
         };
         /** FixBody */
         FixBody: {
@@ -5807,6 +5872,11 @@ export interface components {
         };
         /** OrderMessage */
         OrderMessage: {
+            /** Text */
+            text: string;
+        };
+        /** OrderText */
+        OrderText: {
             /** Text */
             text: string;
         };
@@ -6594,6 +6664,16 @@ export interface components {
              * @enum {string}
              */
             source: "" | "made" | "bought";
+            /**
+             * Unit
+             * @default
+             */
+            unit: string;
+            /**
+             * Direct
+             * @default false
+             */
+            direct: boolean;
         };
         /** ReplySuggestions */
         ReplySuggestions: {
@@ -13404,7 +13484,9 @@ export interface operations {
     };
     list_orders_api_v1_businesses__business_id__orders_get: {
         parameters: {
-            query?: never;
+            query?: {
+                drafts?: boolean;
+            };
             header?: never;
             path: {
                 business_id: string;
@@ -13558,6 +13640,44 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["OrderVersion"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    edit_order_api_v1_businesses__business_id__orders__order_id__edit_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+                order_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DraftEdit"];
             };
         };
         responses: {
@@ -13907,6 +14027,43 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["ReorderBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    order_text_api_v1_businesses__business_id__supply_order_text_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OrderText"];
             };
         };
         responses: {

@@ -140,14 +140,19 @@ def _forecaster() -> Any:
 
 
 async def draft_reorder(
-    item: str = "", quantity: float | None = None, anyway: bool = False, source: str = ""
+    item: str = "",
+    quantity: float | None = None,
+    anyway: bool = False,
+    source: str = "",
+    unit: str = "",
 ) -> dict[str, Any]:
     """Draft a purchase order from the forecast, stock and the supplier rules: how much to
     order (covering demand until delivery plus a week, rounded to the MOQ and packs), from the
     best supplier (price tier, arrives before the shop runs out, credit left). Use it for
-    "reorder flour", "what should I order?", "plan my purchase order" or when a forecast shows
-    an item running out. item: only if the owner named one (else the item that runs out
-    first); quantity only if they said it. Nothing is sent: the owner approves the card.
+    "reorder flour", "what should I order?", "plan my purchase order" or a forecast run-out.
+    item: only if the owner named one (else the item that runs out first); quantity and unit
+    only if said ("butter 2 kg"). Never for "don't order". Nothing is sent: the owner approves
+    the card.
     Explain the choice in one line from reason (stock, runs_out, supplier, price tier, arrival,
     credit) and name any broken rule. If the supplier is demo, say it is a simulated supplier.
     anyway: only after the owner said yes to ordering more of something already on order in
@@ -170,13 +175,23 @@ async def draft_reorder(
             DEMO_OWNER_UID,
             anyway=anyway,
             source=source if source in {"made", "bought"} else "",
+            unit_said=(unit or "").strip()[:20],
+            # "Butter 2 kg": the owner named the item and the amount, so it is ordered as said,
+            # never asked make-or-buy first (the same as the Buy stock box).
+            direct=bool((item or "").strip() and quantity and quantity > 0),
         )
     except HTTPException as error:
         return _invalid(error, ctx)
+    if result["status"] == "needs_quantity":
+        return {
+            **result,
+            "instruction": "Say this item is sold out or low and ask how much to order; offer "
+            "suggested if it is not null. Nothing was drafted yet.",
+        }
     if result["status"] == "needs_item":
         return {
             "status": "needs_item",
-            "instruction": "No stocked item is forecast to run out. Ask which item to reorder.",
+            "instruction": "Nothing looks low. Ask which item they want and how much.",
         }
     if result["status"] == "no_supplier":
         return {

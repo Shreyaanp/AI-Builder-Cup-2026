@@ -100,7 +100,7 @@ for (const width of [360, 390, 412])
       await expect(row.getByRole('button', { name: 'I make Samosa' })).toBeVisible()
       await expect(row.getByRole('button', { name: 'I buy Samosa' })).toBeVisible()
       // Never an Order button before the owner says they buy it.
-      await expect(row.getByRole('button', { name: 'Order', exact: true })).toHaveCount(0)
+      await expect(row.getByRole('button', { name: 'Order more', exact: true })).toHaveCount(0)
       await fitsThePhone(page, row)
       // Contrast: the question reads in both themes (text is not the background colour).
       const colours = await row.getByText('Do you make it or buy it?').evaluate((node) => {
@@ -113,13 +113,13 @@ for (const width of [360, 390, 412])
       if (width === 390) {
         // Buy: saved on the item; the row now orders, and the question is never asked again.
         await row.getByRole('button', { name: 'I buy Samosa' }).click()
-        await expect(row.getByRole('button', { name: 'Order', exact: true })).toBeVisible()
+        await expect(row.getByRole('button', { name: 'Order more', exact: true })).toBeVisible()
         await expect(row).not.toContainText('Do you make it or buy it?')
         await page.reload()
         await page.getByRole('button', { name: 'Continue local preview' }).click()
         await expect(
           page.locator('[data-need="low"]').filter({ hasText: 'Samosa' }).getByRole('button', {
-            name: 'Order',
+            name: 'Order more',
             exact: true,
           }),
         ).toBeVisible()
@@ -128,7 +128,7 @@ for (const width of [360, 390, 412])
         // Make: the prep plan's "Make more", never a supplier order.
         await row.getByRole('button', { name: 'I make Samosa' }).click()
         await expect(row.getByRole('button', { name: 'Make more' })).toBeVisible()
-        await expect(row.getByRole('button', { name: 'Order', exact: true })).toHaveCount(0)
+        await expect(row.getByRole('button', { name: 'Order more', exact: true })).toHaveCount(0)
         await fitsThePhone(page, row)
       }
     })
@@ -227,7 +227,7 @@ for (const width of [360, 390, 412, 1280])
       // The same answer on Today: the question is gone and the row orders.
       await form.getByRole('button', { name: 'Cancel' }).click()
       await page.getByRole('button', { name: 'Coach', exact: true }).click()
-      await expect(row.getByRole('button', { name: 'Order', exact: true })).toBeVisible()
+      await expect(row.getByRole('button', { name: 'Order more', exact: true })).toBeVisible()
       await expect(row).not.toContainText('Do you make it or buy it?')
 
       // It reads the saved answer back, and a mis-tap is fixed from the screen.
@@ -239,7 +239,7 @@ for (const width of [360, 390, 412, 1280])
       await form.getByRole('button', { name: 'Cancel' }).click()
       await page.getByRole('button', { name: 'Coach', exact: true }).click()
       await expect(row.getByRole('button', { name: 'Make more' })).toBeVisible()
-      await expect(row.getByRole('button', { name: 'Order', exact: true })).toHaveCount(0)
+      await expect(row.getByRole('button', { name: 'Order more', exact: true })).toHaveCount(0)
 
       // Changing it twice from the screen never started an order.
       expect(await saved.orders()).toEqual([])

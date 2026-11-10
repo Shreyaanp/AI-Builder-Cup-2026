@@ -105,7 +105,8 @@ for (const [hh, mm] of [
     } else expect(view.lead).not.toBe('closeDay')
     // Two chips that fit the hour, then every example one tap away.
     const chips = page.getByTestId('today-chips')
-    await expect(chips.getByRole('button')).toHaveCount(3)
+    await expect(chips.getByRole('button')).toHaveCount(4)
+    await expect(chips.getByRole('button', { name: 'Buy stock' })).toBeVisible()
     await expect(chips.getByRole('button', { name: 'How much to make?' })).toBeVisible()
     await expect(chips.getByRole('button', { name: 'What can I ask?' })).toBeVisible()
     await expect(page.getByRole('textbox', { name: 'Message', exact: true })).toHaveAttribute(

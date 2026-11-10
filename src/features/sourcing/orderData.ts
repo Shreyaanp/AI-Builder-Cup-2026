@@ -7,21 +7,23 @@ import { supplyChanged } from '../supply/supplyEvents'
 const POLL_MS = 2000
 
 /** Orders that reached a supplier, newest first; refreshes while `live`. */
-export function useOrders(live: boolean) {
+export function useOrders(live: boolean, drafts = false) {
   const { api, activeId } = useWorkspace()
   const [orders, setOrders] = useState<Order[] | null>(null)
   /** Resolves true once a fetch that started now has returned, false if it failed. */
   const refresh = useCallback(async (): Promise<boolean> => {
     if (!activeId) return false
     try {
-      const items = await api<Order[]>(`/businesses/${encodeURIComponent(activeId)}/orders`)
+      const items = await api<Order[]>(
+        `/businesses/${encodeURIComponent(activeId)}/orders${drafts ? '?drafts=true' : ''}`,
+      )
       setOrders(items)
       return true
     } catch {
       // Keep the last list; the tile shows it until the next refresh.
       return false
     }
-  }, [api, activeId])
+  }, [api, activeId, drafts])
   useEffect(() => {
     // Fetches are async: the list arrives after this effect, never synchronously inside it.
     const first = window.setTimeout(() => void refresh(), 0)

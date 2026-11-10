@@ -62,7 +62,7 @@ async function reorder(page: Page) {
   const sheet = await openBuyStock(page, 'To do')
   // Arriving news is not a to do: no ✓ row under To do.
   await expect(sheet).not.toContainText('arriving')
-  await sheet.getByRole('button', { name: 'Draft a reorder' }).click()
+  await sheet.getByRole('button', { name: 'Order more', exact: true }).click()
   const card = page.getByRole('dialog').locator('article')
   await card.getByRole('button', { name: 'Approve and send', exact: true }).click()
   await expect(card.getByTestId('supplier-talk')).toContainText('Your order is on the way', {

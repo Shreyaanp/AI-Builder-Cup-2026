@@ -6,7 +6,6 @@ import { Globe, Stamp, Sunrise, Wallet } from 'lucide-react'
 import { useIdentity } from '../../../auth/useIdentity'
 import { CloseDayTile } from '../../closeday/CloseDay'
 import { MySalesRow } from '../../sales/MySales'
-import type { StockTab } from '../../supply/BuyStock'
 import { openOwnerFeature } from '../../owner-tools/entry'
 import { useToolCopy } from '../../owner-tools/copy'
 import {
@@ -33,16 +32,12 @@ import { RescueTile } from '../../owner/RescueTile'
 
 /**
  * Grow: a short list of rows, then the weekly tools as a More tools grid (simplify batch 4a).
- * How much to make, Buy stock and My sales each open one sheet that holds what were separate
+ * How much to make and My sales each open one sheet that holds what were separate
  * tools (batch 4b), every one still under a visible name. The shop playbook decides which row
  * leads.
  */
-// How much to make and Buy stock pull in the forecast and purchase orders; load them after first
-// paint.
+// How much to make pulls in the forecast; load it after first paint.
 const MakeRow = lazy(() => import('../../forecast/PrepPlan').then((m) => ({ default: m.MakeRow })))
-const BuyStockRow = lazy(() =>
-  import('../../supply/BuyStock').then((m) => ({ default: m.BuyStockRow })),
-)
 
 export function GrowScreen() {
   const tabs = useTabsCopy()
@@ -101,18 +96,16 @@ function GrowTiles() {
   }, [order])
   const [sheet, setSheet] = useState<ShopSheetKind | null>(null)
   // The coach's "open" for a Grow screen opens it here: Asked nearby, How much to make with the
-  // numbers open ("plan tomorrow"), Buy stock ("purchase orders").
+  // numbers open ("plan tomorrow").
   const [radarOpen, setRadarOpen] = useState(() => wantsOpen('radar'))
   const [make, setMake] = useState<'list' | 'numbers' | null>(() =>
     wantsOpen('plan') ? 'numbers' : wantsOpen('make') ? 'list' : null,
   )
-  const [stock, setStock] = useState<StockTab | null>(() => (wantsOpen('stock') ? 'todo' : null))
   const [sales, setSales] = useState(false)
   useEffect(() => {
     clearOpen('radar')
     clearOpen('plan')
     clearOpen('make')
-    clearOpen('stock')
   }, [])
   const shop = ws.active
   if (!shop) return null
@@ -130,12 +123,6 @@ function GrowTiles() {
   // The shop's playbook decides which row comes first; without one, the usual order.
   const rows = byGrowOrder(order ?? [], [
     ...(evening ? [close, makeRow] : [makeRow, close]),
-    [
-      ['orders', 'supply', 'supply_io'],
-      <Suspense key="stock" fallback={null}>
-        <BuyStockRow tab={stock} onTab={setStock} />
-      </Suspense>,
-    ],
     [['week', 'recap'], <MySalesRow key="sales" open={sales} onOpen={setSales} />],
     ...(features.google_guide
       ? [

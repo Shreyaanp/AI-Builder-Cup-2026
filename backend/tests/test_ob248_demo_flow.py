@@ -500,15 +500,15 @@ def test_OB_248_the_screens_own_phrase_does_the_work(
     message: str,
     words: str,
 ) -> None:
-    """Grow → Buy stock → Find a supplier sends this phrase, in English or Hindi."""
+    """Shop → Buy stock → Find a supplier sends this phrase, in English or Hindi."""
     client, _app, session, _bid = live_parent_demo
     response = client.post(f"/api/v1/demo/sessions/{session}/coach", json={"message": message})
     events = {event["kind"]: event for event in _coach_events(response)}
     assert events["order"]["data"]["lines"][0]["name"] == "Milk"
     assert words in events["reply"]["text"]
     # The path in the asker's language: no English screen names in a Hindi reply (OB-261).
-    where = "Grow → Buy stock → Find a supplier"
-    hindi = "बढ़ाएँ → माल मँगाएँ → सप्लायर ढूँढें"
+    where = "Shop → Buy stock → Find a supplier"
+    hindi = "दुकान → माल मँगाएँ → सप्लायर ढूँढें"
     assert (hindi if HINDI_SCRIPT.search(message) else where) in events["reply"]["text"]
 
 
@@ -569,7 +569,7 @@ def test_OB_248_supply_question_names_a_tile_that_exists_with_the_unit(
         f"/api/v1/demo/sessions/{session}/coach", json={"message": "how do I order tea dust?"}
     )
     assert "Tea dust has 6 kg in stock" in response.text
-    assert "Grow → Buy stock → To do" in response.text
+    assert "Shop → Buy stock → To do" in response.text
     assert "Supplies" not in response.text
 
 
