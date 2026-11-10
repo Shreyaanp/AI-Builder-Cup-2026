@@ -266,8 +266,9 @@ def progress_note(draft: NewShopDraft | None, last_question: str, resumed: bool)
         )
     else:
         lines.append(
-            "- Everything is gathered. Say in one short sentence that the shop is set up (the app"
-            " shows the summary card) and wish them well. No more questions."
+            "- Everything is gathered. The app shows the summary card, titled that the shop is"
+            " set up: do not say that again; wish them well in one short sentence. No more"
+            " questions."
         )
     if draft and draft.live_id:
         lines.append(

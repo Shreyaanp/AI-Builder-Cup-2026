@@ -29,6 +29,7 @@ from app.agent import (
     NEW_SHOP_TOPICS,
     OFFLINE_HI,
     OPEN_QUESTION,
+    SET_UP,
     topic_order,
     turn_instruction,
 )
@@ -51,9 +52,6 @@ from tests.test_discover import settings
 from tests.test_photos import join
 
 ORIGIN = {"origin": "http://127.0.0.1:3200"}
-
-
-SET_UP = "Your shop is set up. "
 
 
 def context(tmp_path: Path, uid: str = "alice") -> MerchantContext:

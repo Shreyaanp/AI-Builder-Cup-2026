@@ -215,6 +215,31 @@ async function say(page: Page, copy: Copy, text: string) {
 }
 
 const DONT_KNOW: Record<string, string> = { en: 'pata nahi', hi: 'मुझे नहीं पता।' }
+// The offline coach's closing words once everything is gathered (backend/app/agent.py SET_UP).
+const CLOSING: Record<string, string> = {
+  en: 'All the best with your shop!',
+  hi: 'आपकी दुकान के लिए शुभकामनाएँ!',
+}
+
+/**
+ * A live model may still open its closing words with the card's title ("Your shop is set up.
+ * All the best!"): every coach reply from here on starts with it, as such a model would say it.
+ */
+async function closingRepeatsTitle(page: Page, title: string) {
+  await page.route('**/api/v1/coach/stream', async (route) => {
+    const response = await route.fetch()
+    const body = (await response.text()).replace(/^data: (.*)$/gm, (frame, json: string) => {
+      const event = JSON.parse(json) as { kind?: string; text?: unknown }
+      const closing = Object.values(CLOSING).find(
+        (words) => typeof event.text === 'string' && event.text.includes(words),
+      )
+      if (!closing || (event.kind !== 'reply' && event.kind !== 'delta')) return frame
+      const text = (event.text as string).replace(closing, `${title}. ${closing}`)
+      return `data: ${JSON.stringify({ ...event, text })}`
+    })
+    await route.fulfill({ response, body })
+  })
+}
 
 const businesses = async (page: Page) =>
   (await (await page.request.get('/api/v1/businesses')).json()) as {
@@ -249,6 +274,7 @@ for (const language of LANGUAGES) {
       const shops = await businesses(page)
       expect(shops).toHaveLength(1)
       expect(shops[0]!.public).toBe(true)
+      await closingRepeatsTitle(page, copy.summaryTitle!)
       // "pata nahi" skips the hours (never invented); the photo card has a Skip.
       while (next) {
         count = (await askedTopics(page)).length
@@ -279,12 +305,11 @@ for (const language of LANGUAGES) {
       // card scrolled "Go to my shop" up under the owner's finger and the tap missed (main CI,
       // 9 Nov). The summary stays the last item of the conversation.
       const turns = page.getByRole('log').locator('ol').first().locator(':scope > li')
-      // The summary card's own title reads the same words: count the coach's lines only.
-      await expect(
-        turns
-          .filter({ hasNot: page.getByTestId('shop-summary') })
-          .filter({ hasText: /Your shop is set up|आपकी दुकान तैयार है।/ }),
-      ).toHaveCount(1)
+      // The closing words are in (checked before them, the count passed by luck: main CI, 10 Nov),
+      // and "Your shop is set up" is read once, as the card's title, never again in the coach's
+      // words above it, even when the coach says it.
+      await expect(turns.filter({ hasText: CLOSING[language.code]! })).toHaveCount(1)
+      await expect(turns.filter({ hasText: copy.summaryTitle! })).toHaveCount(1)
       await expect(turns.last().getByTestId('shop-summary')).toBeVisible()
       await summary.getByRole('button', { name: copy.done!, exact: true }).click()
       await expect(page.getByRole('heading', { level: 1 })).toContainText('Clean Helmet Point')
