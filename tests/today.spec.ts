@@ -315,7 +315,7 @@ for (const [language, preview, more, hide, rowNames] of [
   })
 }
 
-for (const [language, preview, pointer, shopTile, tile, menu, draft] of [
+for (const [language, preview, pointer, shopTile, tile, menu, draft, low, find] of [
   [
     'en',
     'Continue local preview',
@@ -324,6 +324,8 @@ for (const [language, preview, pointer, shopTile, tile, menu, draft] of [
     'Services',
     'Menu',
     'Order more',
+    'Running low: Shampoo',
+    'Find suppliers',
   ],
   [
     'hi',
@@ -333,6 +335,8 @@ for (const [language, preview, pointer, shopTile, tile, menu, draft] of [
     'सेवाएँ',
     'मेन्यू',
     'और मँगाएँ',
+    'कम हो रहा है: Shampoo',
+    'सप्लायर खोजें',
   ],
 ] as const) {
   test(`OB-243: a salon is pointed to its real tile, 390 px ${language}`, async ({ page }) => {
@@ -360,6 +364,12 @@ for (const [language, preview, pointer, shopTile, tile, menu, draft] of [
     await page.locator('[data-tour="nav-grow"]').click()
     await (await stockTile(page)).click()
     const sheet = page.getByRole('dialog')
+    // One Order more for the owner, whenever the forecast lands: the "Running low" card asks the
+    // coach to find suppliers and says so, never a second Order more (main CI red after #719).
+    const lowCard = sheet.getByRole('button', { name: low })
+    await expect(lowCard).toContainText(find, { timeout: 15_000 })
+    await expect(lowCard).not.toContainText(draft)
+    await expect(sheet.getByRole('button', { name: draft })).toHaveCount(1)
     await sheet.getByRole('button', { name: draft }).click()
     await expect(sheet.getByRole('status')).toContainText(`${shopTile} › ${tile}`)
     await expect(sheet.getByRole('status')).not.toContainText(menu)

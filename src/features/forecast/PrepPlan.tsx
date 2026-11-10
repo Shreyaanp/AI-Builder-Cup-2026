@@ -13,6 +13,7 @@ import { useForecast, useRunsOut } from './forecastData'
 import { LastDayPlan } from './LastDayPlan'
 import { useLastDayWords } from './lastDayWords'
 import { useOrderChangeCopy } from '../supply/orderChangeCopy'
+import { useSourcingCopy } from '../sourcing/copy'
 
 /**
  * Grow's How much to make row (simplify batch 4b): tomorrow's numbers on the row; the sheet holds
@@ -151,6 +152,7 @@ export function MakeRow({
 /** Buy stock → To do: "Tea dust runs out Thu · Find suppliers", leading what needs buying now. */
 export function RunsOutCard({ onAct }: { onAct: () => void }) {
   const c = useOrderChangeCopy()
+  const s = useSourcingCopy()
   const runsOut = useRunsOut()
   if (!runsOut || runsOut.arriving) return null
   const { need, more, onOrder } = runsOut
@@ -159,7 +161,9 @@ export function RunsOutCard({ onAct }: { onAct: () => void }) {
       alert
       icon={<PackageSearch size={20} />}
       label={runsOut.label}
-      value={need?.covered ? onOrder : c.orderMore}
+      // Only running low (no run-out day): the tap asks the coach to find suppliers, and the sheet's
+      // own Order more is the one that orders it. One Order more per item (main CI red, #719).
+      value={need?.covered ? onOrder : need ? c.orderMore : s.findSuppliers}
       onClick={() => {
         onAct()
         runsOut.act()
