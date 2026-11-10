@@ -279,8 +279,11 @@ for (const language of LANGUAGES) {
       // card scrolled "Go to my shop" up under the owner's finger and the tap missed (main CI,
       // 9 Nov). The summary stays the last item of the conversation.
       const turns = page.getByRole('log').locator('ol').first().locator(':scope > li')
+      // The summary card's own title reads the same words: count the coach's lines only.
       await expect(
-        turns.filter({ hasText: /Your shop is set up|आपकी दुकान तैयार है।/ }),
+        turns
+          .filter({ hasNot: page.getByTestId('shop-summary') })
+          .filter({ hasText: /Your shop is set up|आपकी दुकान तैयार है।/ }),
       ).toHaveCount(1)
       await expect(turns.last().getByTestId('shop-summary')).toBeVisible()
       await summary.getByRole('button', { name: copy.done!, exact: true }).click()
