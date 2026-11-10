@@ -140,8 +140,9 @@ import { stripOfflinePrefix } from '../offlinePrefix'
 
 // Charts, purchase orders and rules cards only appear mid-conversation; their code loads then.
 const CoachChart = lazy(() => import('../CoachChart').then((m) => ({ default: m.CoachChart })))
-// How long the chat keeps following a card that unfolds after new content arrives.
-const FOLLOW_MS = 1500
+// How long the chat keeps following a card that unfolds after new content arrives (a slow
+// phone loads the order card and its steps list seconds later). The owner's own touch ends it.
+const FOLLOW_MS = 6000
 // Only after a request with several steps (OB-174): never on the first screen.
 const PlanSteps = lazy(() => import('../PlanSteps').then((m) => ({ default: m.PlanSteps })))
 const PurchaseOrderCard = lazy(() =>
@@ -644,10 +645,17 @@ function CoachScreen({
     watch()
     const children = new MutationObserver(watch)
     children.observe(scroller, { childList: true })
+    // The owner took over (scrolled, tapped a card): the chat stays where they put it.
+    const stop = () => {
+      following.current = 0
+    }
+    const input = ['pointerdown', 'wheel', 'touchstart', 'keydown'] as const
+    for (const name of input) scroller.addEventListener(name, stop, { passive: true })
     return () => {
       observer.disconnect()
       growth.disconnect()
       children.disconnect()
+      for (const name of input) scroller.removeEventListener(name, stop)
     }
   }, [])
   // The composer is one line until the text itself needs more. Sized from the text only: the

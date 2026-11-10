@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type Locator, type Page } from '@playwright/test'
 import { enter, localOnly } from './stories/support.js'
 
 // The coach that does the job (OB-171): a request with several steps goes on after its order card
@@ -59,6 +59,20 @@ async function start(page: Page) {
   await enter(page)
 }
 
+/** Each target sits fully on screen, above the composer (the chat scrolled them there). */
+async function aboveComposer(page: Page, targets: Locator[], width: number) {
+  // Polled: the smooth scroll to the end takes longer on a slow machine.
+  await expect(async () => {
+    const composer = (await page.locator('textarea[name="message"]').boundingBox())!
+    for (const target of targets) {
+      const box = (await target.boundingBox())!
+      expect(box.y + box.height).toBeLessThanOrEqual(composer.y)
+      expect(box.y).toBeGreaterThan(0)
+      expect(box.x + box.width).toBeLessThanOrEqual(width)
+    }
+  }).toPass({ timeout: 10_000 })
+}
+
 async function say(page: Page, text: string) {
   await page.locator('textarea[name="message"]').fill(text)
   await page.locator('button:has(svg.lucide-arrow-up)').first().click()
@@ -84,14 +98,7 @@ test('OB-174: find suppliers, order, then ask them: the chain waits for Send and
   await expect(page.getByText('Do you deliver on Sunday?')).toHaveCount(0)
   // 360 x 800: the card's Send and the steps' Stop are both above the composer, not under it.
   // Polled: the smooth scroll to the end takes longer on a slow machine.
-  await expect(async () => {
-    const composer = (await page.locator('textarea[name="message"]').boundingBox())!
-    for (const target of [send, steps.getByRole('button', { name: 'Stop here' })]) {
-      const box = (await target.boundingBox())!
-      expect(box.y + box.height).toBeLessThanOrEqual(composer.y)
-      expect(box.y).toBeGreaterThan(0)
-    }
-  }).toPass({ timeout: 10_000 })
+  await aboveComposer(page, [send, steps.getByRole('button', { name: 'Stop here' })], 360)
   await page.screenshot({ path: `${SHOTS}/ob174-waiting-en-light-360.png` })
 
   await send.click()
@@ -117,9 +124,9 @@ test('OB-174: Stop here ends the chain and leaves the order unsent', async ({ pa
 })
 
 for (const [language, appearance, width] of [
-  ['en', 'dark', 390],
+  ['en', 'dark', 360],
   ['hi', 'light', 360],
-  ['hi', 'dark', 390],
+  ['hi', 'dark', 360],
   ['en', 'light', 390],
 ] as const) {
   test(`OB-174 ${language} ${appearance} ${width}: the steps list reads in the app language`, async ({
@@ -138,10 +145,15 @@ for (const [language, appearance, width] of [
       await expect(steps.getByRole('button', { name: 'यहीं रोकें' })).toBeVisible()
     }
     // The Stop button and the card's Send both fit the phone: nothing under the composer.
-    const stop = steps.getByRole('button')
-    await stop.scrollIntoViewIfNeeded()
-    const box = await stop.boundingBox()
-    expect(box && box.x + box.width <= width).toBe(true)
+    // No scrolling by the test: the chat itself brings them above the composer.
+    await aboveComposer(
+      page,
+      [
+        page.getByRole('button', { name: language === 'hi' ? / को भेजें$/ : /^Send to / }).last(),
+        steps.getByRole('button'),
+      ],
+      width,
+    )
     await page.screenshot({
       path: `${SHOTS}/ob174-waiting-${language}-${appearance}-${width}.png`,
     })
@@ -237,13 +249,29 @@ test('OB-176: Today shows at most five cards', async ({ page }) => {
   await open(page)
   const needs = page.getByTestId('today-needs')
   await expect(needs.locator('> ul > li')).not.toHaveCount(0)
+  // Rows that just left stay a moment (aria-hidden, fading out) and the list fills in as the
+  // shop's data loads: count only live rows, and only once the count holds still.
+  const live = needs.locator(
+    'li[data-need]:not([aria-hidden="true"]), [data-testid="today-supply"]',
+  )
   const more = needs.getByRole('button', { name: /more thing/ })
-  if (await more.count()) await more.click()
-  const shown = await page.locator('[data-testid="today-needs"] li[data-need]').count()
-  const supply = await page
-    .locator('[data-testid="today-needs"] [data-testid="today-supply"]')
-    .count()
-  expect(shown + supply).toBeLessThanOrEqual(5)
+  const settle = async () => {
+    let last = -1
+    await expect(async () => {
+      await expect(needs.locator('li[data-need][aria-hidden="true"]')).toHaveCount(0)
+      const now = (await live.count()) + (await more.count())
+      const before = last
+      last = now
+      expect(now).toBe(before)
+    }).toPass({ intervals: [700], timeout: 15_000 })
+  }
+  await settle()
+  if (await more.count()) {
+    await more.click()
+    await expect(needs.getByTestId('today-more')).toBeVisible()
+    await settle()
+  }
+  expect(await live.count()).toBeLessThanOrEqual(5)
 })
 
 for (const [language, appearance, width] of [
