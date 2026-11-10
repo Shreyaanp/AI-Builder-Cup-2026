@@ -203,7 +203,7 @@ const DESTINATIONS: Partial<Record<CoachAction['target'], Destination>> = {
   you: 'you',
   trust: 'you',
   games: 'grow',
-  close_day: 'grow',
+  // close_day is not a tab: the chat opens the Close the day sheet itself (OB-290).
   google: 'google',
   privacy: 'privacy',
   // How much to make (numbers open) opens over Grow (simplify batch 4b), Buy stock over Shop.
@@ -479,6 +479,7 @@ function CoachScreen({
             const sheet = SHEETS[action.target]
             if (action.target === 'games') go('shop')
             if (action.target === 'connect') setConnectOpen(true)
+            if (action.target === 'close_day') setCloseDayOpen(true)
             if (sheet) setShopSheet(sheet)
             else if (DESTINATIONS[action.target]) go(DESTINATIONS[action.target]!)
             openInside(action.target)
@@ -821,6 +822,8 @@ function CoachScreen({
     setShowToday(action.target === 'today')
     if (action.target === 'games') go('shop')
     if (action.target === 'connect') setConnectOpen(true)
+    // The same sheet as Grow's card, right here: never a trip to Grow and a second tap (OB-290).
+    if (action.target === 'close_day') setCloseDayOpen(true)
     if (action.target === 'photo') pick('library')
     else if (action.target === 'import') pick('document')
     else if (action.target === 'reply') return

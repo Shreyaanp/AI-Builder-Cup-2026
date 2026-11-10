@@ -311,8 +311,23 @@ def money_text(minor: int, currency: str) -> str:
     major = to_major(minor, currency)
     whole = float(major).is_integer()
     number = f"{major:,.0f}" if whole else f"{major:,.{digits}f}"
+    if currency.upper() == "INR":
+        number = lakh_grouping(number)
     symbol = SYMBOLS.get(currency)
     return f"{symbol}{number}" if symbol else f"{number} {currency}"
+
+
+def lakh_grouping(number: str) -> str:
+    """ "101,000.50" → "1,01,000.50": rupees group as the app's screens do (en-IN), so the chat
+    never says ₹101,000 beside a sheet that says ₹1,01,000 (OB-290)."""
+    sign, rest = ("-", number[1:]) if number.startswith("-") else ("", number)
+    whole, dot, fraction = rest.partition(".")
+    digits = whole.replace(",", "")
+    if len(digits) <= 3:
+        return number
+    head, tail = digits[:-3], digits[-3:]
+    pairs = [head[max(0, end - 2) : end] for end in range(len(head), 0, -2)][::-1]
+    return f"{sign}{','.join(pairs)},{tail}{dot}{fraction}"
 
 
 def nice_price(major: float) -> float:

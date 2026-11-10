@@ -591,7 +591,9 @@ def test_the_hindi_reply_uses_the_shops_own_currency(sgd_shop):
 
 def test_the_demos_replies_use_the_shops_own_currency():
     assert _money(1000.5, "INR") == "₹1,000.50"
-    assert _money(100000, "INR") == "₹100,000"
+    # Rupees group in lakhs, as the screens show them (OB-290).
+    assert _money(100000, "INR") == "₹1,00,000"
+    assert _money(10100000.5, "INR") == "₹1,01,00,000.50"
     assert _money(12.5, "SGD") == "S$12.50"
 
 
