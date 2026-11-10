@@ -6896,6 +6896,110 @@
         }
       }
     },
+    "/api/v1/businesses/{business_id}/today/cards/dismiss": {
+      "post": {
+        "tags": [
+          "today"
+        ],
+        "summary": "Dismiss Card",
+        "operationId": "dismiss_card_api_v1_businesses__business_id__today_cards_dismiss_post",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Dismiss"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TodayCards"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/businesses/{business_id}/today/cards/frequency": {
+      "post": {
+        "tags": [
+          "today"
+        ],
+        "summary": "Card Frequency",
+        "operationId": "card_frequency_api_v1_businesses__business_id__today_cards_frequency_post",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Business Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CardFrequency"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TodayCards"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/businesses/{business_id}/habit": {
       "post": {
         "tags": [
@@ -12578,6 +12682,24 @@
         "title": "BusinessUnderstanding",
         "description": "What the coach understood about the business, from the owner's own words."
       },
+      "CardFrequency": {
+        "properties": {
+          "frequency": {
+            "type": "string",
+            "enum": [
+              "daily",
+              "important",
+              "off"
+            ],
+            "title": "Frequency"
+          }
+        },
+        "type": "object",
+        "required": [
+          "frequency"
+        ],
+        "title": "CardFrequency"
+      },
       "Cash": {
         "properties": {
           "opening": {
@@ -12949,8 +13071,8 @@
           "message": {
             "type": "string",
             "maxLength": 2000,
-            "minLength": 1,
-            "title": "Message"
+            "title": "Message",
+            "default": ""
           },
           "language": {
             "type": "string",
@@ -13020,13 +13142,20 @@
                 "type": "null"
               }
             ]
+          },
+          "resume": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PlanResume"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "additionalProperties": false,
         "type": "object",
-        "required": [
-          "message"
-        ],
         "title": "CoachTurn"
       },
       "Command": {
@@ -14041,6 +14170,29 @@
           "places"
         ],
         "title": "DiscoveryResponse"
+      },
+      "Dismiss": {
+        "properties": {
+          "card": {
+            "type": "string",
+            "pattern": "^[^<>\\\"\\\\\\x00-\\x1f]{1,80}$",
+            "title": "Card"
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "not_now",
+              "not_useful"
+            ],
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "card",
+          "reason"
+        ],
+        "title": "Dismiss"
       },
       "DraftEdit": {
         "properties": {
@@ -17355,6 +17507,29 @@
           "label"
         ],
         "title": "PlaceMatch"
+      },
+      "PlanResume": {
+        "properties": {
+          "card_id": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "title": "Card Id"
+          },
+          "stop": {
+            "type": "boolean",
+            "title": "Stop",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "card_id"
+        ],
+        "title": "PlanResume",
+        "description": "The owner tapped (or discarded) the card a multi-step plan waits for (OB-174)."
       },
       "PlanningInput": {
         "properties": {
@@ -20773,6 +20948,29 @@
         ],
         "title": "Suggestions"
       },
+      "SupplierReply": {
+        "properties": {
+          "order_id": {
+            "type": "string",
+            "title": "Order Id"
+          },
+          "supplier": {
+            "type": "string",
+            "title": "Supplier"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          }
+        },
+        "type": "object",
+        "required": [
+          "order_id",
+          "supplier",
+          "text"
+        ],
+        "title": "SupplierReply"
+      },
       "TailorAttributes": {
         "properties": {
           "services": {
@@ -21077,6 +21275,15 @@
             "type": "integer",
             "title": "Spent Today",
             "default": 0
+          },
+          "cards": {
+            "$ref": "#/components/schemas/TodayCards",
+            "default": {
+              "frequency": "daily",
+              "hidden": [],
+              "resting": [],
+              "supplier_replies": []
+            }
           }
         },
         "type": "object",
@@ -21114,6 +21321,47 @@
           "demo"
         ],
         "title": "TodayArea"
+      },
+      "TodayCards": {
+        "properties": {
+          "frequency": {
+            "type": "string",
+            "enum": [
+              "daily",
+              "important",
+              "off"
+            ],
+            "title": "Frequency",
+            "default": "daily"
+          },
+          "hidden": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Hidden",
+            "default": []
+          },
+          "resting": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Resting",
+            "default": []
+          },
+          "supplier_replies": {
+            "items": {
+              "$ref": "#/components/schemas/SupplierReply"
+            },
+            "type": "array",
+            "title": "Supplier Replies",
+            "default": []
+          }
+        },
+        "type": "object",
+        "title": "TodayCards",
+        "description": "What the owner chose about Today cards, as of now, plus supplier replies waiting."
       },
       "TodayFeed": {
         "properties": {
@@ -22083,7 +22331,8 @@
               "supply",
               "chart",
               "action",
-              "payment_link"
+              "payment_link",
+              "plan"
             ],
             "title": "Kind",
             "type": "string"

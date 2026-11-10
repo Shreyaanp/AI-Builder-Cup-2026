@@ -40,6 +40,7 @@ import { TourMenuButton } from '../../tour/TourEntry'
 import { Sheet } from '../Sheet'
 import { PlaybookSheet } from '../playbook/ShopPlaybook'
 import { ReminderSettings } from '../ReminderSettings'
+import { CardSettings } from '../today/CardSettings'
 import { useCopy } from '../strings'
 import { useTabsCopy } from '../tabsCopy'
 import { useWorkspace } from '../workspaceContext'
@@ -254,6 +255,7 @@ export function YouScreen() {
             </TextField>
           </Box>
           <ReminderSettings />
+          <CardSettings />
           <Stack direction="row" sx={{ alignItems: 'center', gap: 2, px: 3, py: 1 }}>
             <Box sx={{ flex: 1 }}>
               <Typography variant="labelLarge" sx={{ display: 'block' }}>

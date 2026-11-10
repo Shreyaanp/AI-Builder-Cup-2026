@@ -115,6 +115,7 @@ import { sendPrepared, useCardFold, type ReplyState } from '../chatCards'
 import { cardSummary, summaryCopy, type SummaryInput } from '../cardSummary'
 import { useNextStepsCopy } from '../nextStepsCopy'
 import { asCoachAction, NEEDS_TAP, type CoachAction } from '../coachAction'
+import { asPlan, planOver, tappedCard, type PlanState } from '../planState'
 import { clearOpen, requestOpen, wantsOpen } from '../openRequest'
 import type { Destination } from '../workspaceContext'
 import { TodayChips } from '../../owner-tools/CoachGuide'
@@ -139,6 +140,11 @@ import { stripOfflinePrefix } from '../offlinePrefix'
 
 // Charts, purchase orders and rules cards only appear mid-conversation; their code loads then.
 const CoachChart = lazy(() => import('../CoachChart').then((m) => ({ default: m.CoachChart })))
+// How long the chat keeps following a card that unfolds after new content arrives (a slow
+// phone loads the order card and its steps list seconds later). The owner's own touch ends it.
+const FOLLOW_MS = 6000
+// Only after a request with several steps (OB-174): never on the first screen.
+const PlanSteps = lazy(() => import('../PlanSteps').then((m) => ({ default: m.PlanSteps })))
 const PurchaseOrderCard = lazy(() =>
   import('../../supply/PurchaseOrderCard').then((m) => ({ default: m.PurchaseOrderCard })),
 )
@@ -294,6 +300,11 @@ function CoachScreen({
   // Prepared customer replies: sent or set aside (their folded line says which, OB-249).
   const [replies, setReplies] = useState<Record<string, ReplyState>>({})
   const [thread, setThread] = useState<string | null>(null)
+  // A request with several steps (OB-174): its steps list, the threads replied to from the chat,
+  // and the card whose tap already carried it on (never twice).
+  const [plan, setPlan] = useState<PlanState | null>(null)
+  const [replied, setReplied] = useState<string[]>([])
+  const resumed = useRef<string | null>(null)
   const watching = useRef(new Set<string>())
   const receiveOrder = useReceiveOrder()
   // My shop sheets opened from suggestion chips.
@@ -366,6 +377,8 @@ function CoachScreen({
   }
   const speaking = useRef<HTMLAudioElement | null>(null)
   const end = useRef<HTMLDivElement>(null)
+  // Until when the log follows its own growth to the end (new coach content just arrived).
+  const following = useRef(0)
   const { api, activeId, review, setFaceOpen, go, speakReplies, reload } = ws
   // One "+" sheet (opened from the top bar) holds every coach action: add shop/product, new
   // chat, earlier chats.
@@ -504,6 +517,7 @@ function CoachScreen({
         )
       }
       if (event.kind === 'turn_complete') setSearching(null)
+      if (event.kind === 'plan') setPlan(asPlan(event.data))
       if (event.kind === 'workflow' && event.data?.status === 'verification_required') {
         go('you')
         setFaceOpen(true)
@@ -606,7 +620,9 @@ function CoachScreen({
     // Nothing to follow yet: scrolling to the end would park the greeting under the top bar.
     if (!messages.length && !reply && !reveal.shown) return
     end.current?.scrollIntoView({ block: 'end', behavior: reducedMotion ? 'instant' : 'smooth' })
-  }, [messages, reply, reveal.shown, reducedMotion])
+    following.current = Date.now() + FOLLOW_MS
+    // A plan's steps list changing (a tap carried it on) is new content at the end too.
+  }, [messages, reply, reveal.shown, reducedMotion, plan])
   const revealReply = useEffectEvent(() => {
     // An open photo question (top of the chat) keeps the owner's attention; don't scroll past it.
     if (visible && !sorting && (messages.length || reply || reveal.shown))
@@ -617,7 +633,30 @@ function CoachScreen({
     if (!scroller) return
     const observer = new ResizeObserver(() => revealReply())
     observer.observe(scroller)
-    return () => observer.disconnect()
+    // A card that unfolds or a lazy card that loads just after new content grows the log below
+    // the fold: follow it for a moment, never when the owner opens an old card later.
+    const growth = new ResizeObserver(() => {
+      if (Date.now() < following.current) revealReply()
+    })
+    const watch = () => {
+      growth.disconnect()
+      for (const child of Array.from(scroller.children)) growth.observe(child)
+    }
+    watch()
+    const children = new MutationObserver(watch)
+    children.observe(scroller, { childList: true })
+    // The owner took over (scrolled, tapped a card): the chat stays where they put it.
+    const stop = () => {
+      following.current = 0
+    }
+    const input = ['pointerdown', 'wheel', 'touchstart', 'keydown'] as const
+    for (const name of input) scroller.addEventListener(name, stop, { passive: true })
+    return () => {
+      observer.disconnect()
+      growth.disconnect()
+      children.disconnect()
+      for (const name of input) scroller.removeEventListener(name, stop)
+    }
   }, [])
   // The composer is one line until the text itself needs more. Sized from the text only: the
   // old autosize also measured the placeholder, so a long translated hint made an empty
@@ -666,6 +705,17 @@ function CoachScreen({
     else messageInput.current?.focus()
   }, [coachDraft, coachDraftSend, consumeCoachDraft, visible, busy, voice.state])
 
+  // The owner tapped the card a plan waits for (here, or the same order elsewhere): go on.
+  const carryOn = useEffectEvent((card: string) => {
+    void send('', { card_id: card, stop: false })
+  })
+  const tapped = tappedCard(plan, orders, pos, ws.savedProposals, replied)
+  useEffect(() => {
+    if (!tapped || tapped === resumed.current || busy !== 'idle' || voice.state !== 'idle') return
+    resumed.current = tapped
+    carryOn(tapped)
+  }, [tapped, busy, voice.state])
+
   // A typed draft: Back asks "Discard changes?" before leaving, and so does closing the tab.
   useBackClose(
     visible && Boolean(note.trim()),
@@ -684,6 +734,7 @@ function CoachScreen({
     session.current = null
     setSearching(null)
     setMessages([])
+    setPlan(null)
     setReply('')
     setError('')
   }
@@ -715,24 +766,30 @@ function CoachScreen({
     if (canSpeak()) speak(utter(cleanText, language))
   }
 
-  async function send(text = note) {
+  /** One coach turn: the owner's message, or (resume) the tap that carries a plan on (OB-174). */
+  async function send(text = note, resume?: { card_id: string; stop: boolean }) {
     const message = text.trim()
-    if (!message || busy !== 'idle' || voice.state !== 'idle') return
+    if ((!message && !resume) || busy !== 'idle' || voice.state !== 'idle') return
     setShowToday(false)
     const abort = new AbortController()
     controller.current = abort
     setBusy('reply')
     setReply('')
     setError('')
-    setMessages((items) => [...items, { role: 'user' as const, text: message }].slice(-40))
-    setNote('')
+    if (!resume) {
+      setMessages((items) => [...items, { role: 'user' as const, text: message }].slice(-40))
+      setNote('')
+      // A finished or stopped plan's list makes way for the next request.
+      if (planOver(plan)) setPlan(null)
+    }
     setPrompts([])
     let finalReply = ''
     let proposed = false
     try {
       await streamCoach(
         {
-          message,
+          message: resume ? '' : message,
+          ...(resume && { resume }),
           language,
           currency: defaultCurrency(),
           session_id: session.current,
@@ -753,7 +810,8 @@ function CoachScreen({
       if (controller.current !== abort) return
       // The model occasionally returns an empty turn; treat it like a failed reply so the
       // owner sees why and can resend, instead of an empty bubble.
-      if (!finalReply.trim() && !proposed) throw new Error('EMPTY_REPLY')
+      // A resume that only ends the plan (Stop, a discarded card) has no reply, by design.
+      if (!finalReply.trim() && !proposed && !resume) throw new Error('EMPTY_REPLY')
       addReply(finalReply.trim() ? finalReply : '')
       setReply('')
       if (speakReplies && finalReply) void speakReply(finalReply)
@@ -769,9 +827,11 @@ function CoachScreen({
               ? t.rateLimited
               : t.replyFailed,
         )
-        // Keep the unsent message available for a retry.
-        setMessages((items) => items.slice(0, -1))
-        setNote(message)
+        // Keep the unsent message available for a retry (a resume has none: Stop stays offered).
+        if (!resume) {
+          setMessages((items) => items.slice(0, -1))
+          setNote(message)
+        } else resumed.current = null
       }
     } finally {
       if (controller.current === abort) {
@@ -834,6 +894,7 @@ function CoachScreen({
         body: JSON.stringify({ text: action.text }),
       })
       refreshUnread()
+      setReplied((threads) => [...threads, action.thread_id!])
       return true
     } catch {
       return false
@@ -1202,6 +1263,8 @@ function CoachScreen({
     },
     openMessages: () => setShopSheet('messages'),
     openSoldOut: () => setShopSheet('soldOut'),
+    openOrder: (id) => setThread(id),
+    openMenu: () => setShopSheet('menu'),
     talk: () =>
       void restored.current.then(() => {
         track('voice_used')
@@ -1660,6 +1723,17 @@ function CoachScreen({
                   ) : (
                     <Bubble key={index} message={message} you={t.you} coach={t.coach} />
                   ),
+                )}
+                {plan && (
+                  <Suspense fallback={null}>
+                    <PlanSteps
+                      plan={plan}
+                      busy={busy !== 'idle'}
+                      onStop={() => {
+                        if (plan.waiting) void send('', { card_id: plan.waiting.id, stop: true })
+                      }}
+                    />
+                  </Suspense>
                 )}
                 {searching !== null && (
                   <Suspense fallback={null}>

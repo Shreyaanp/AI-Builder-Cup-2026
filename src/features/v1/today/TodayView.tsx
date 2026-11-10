@@ -27,7 +27,12 @@ import {
   PencilLine,
   ZapOff,
   ShieldCheck,
+  Tag,
+  Truck,
 } from 'lucide-react'
+import { CardDismiss } from './CardDismiss'
+import { canDismiss } from './cardRules'
+import { useCardsCopy } from './cardsCopy'
 import { useIdentity } from '../../../auth/useIdentity'
 import { HAND_FONT, enterRise, motion, shape } from '../../../design/theme'
 import { productFeminine, productName } from '../../../i18n/productNames'
@@ -72,6 +77,10 @@ export interface TodayActions {
   openSoldOut: () => void
   talk: () => void
   openCloseDay?: () => void
+  /** A supplier's reply on Today opens that order's messages (OB-176). */
+  openOrder?: (id: string) => void
+  /** Items with no price open the menu. */
+  openMenu?: () => void
 }
 
 const LEAVE_MS = 320
@@ -439,6 +448,7 @@ export function NeedsCard({
         actions={actions}
         answerMenu={answerMenu}
         answerPromise={answerPromise}
+        cards={plan.cards}
       />
     )
   const list = {
@@ -543,6 +553,7 @@ function NeedRow({
   actions,
   answerMenu,
   answerPromise,
+  cards,
 }: {
   need: Need
   leaving: boolean
@@ -551,6 +562,7 @@ function NeedRow({
   actions: TodayActions
   answerMenu: () => void
   answerPromise: (day: string) => void
+  cards: TodayPlan['cards']
 }) {
   const t = useCopy()
   const tt = useTodayCopy()
@@ -572,6 +584,7 @@ function NeedRow({
     need.kind === 'promise' ? need.promise : null,
     answerPromise,
   )
+  const cc = useCardsCopy()
   const primary = first ? 'contained' : 'text'
   async function run(work: () => Promise<unknown>) {
     setBusy(true)
@@ -810,6 +823,26 @@ function NeedRow({
         )}
       </>
     )
+  } else if (need.kind === 'supplierReply') {
+    icon = <Truck size={20} />
+    text = cc.supplierReplied(need.supplier, need.text)
+    buttons = actions.openOrder && (
+      <Button
+        variant={primary}
+        sx={{ minHeight: 48 }}
+        onClick={() => actions.openOrder?.(need.orderId)}
+      >
+        {cc.read}
+      </Button>
+    )
+  } else if (need.kind === 'noPrice') {
+    icon = <Tag size={20} />
+    text = cc.noPrice(need.items.length, productName(need.items[0]!.name, locale))
+    buttons = actions.openMenu && (
+      <Button variant={primary} sx={{ minHeight: 48 }} onClick={actions.openMenu}>
+        {cc.addPrice}
+      </Button>
+    )
   } else if (need.kind === 'facts') {
     icon = <CircleHelp size={20} />
     const fact = need.facts[0]!
@@ -868,6 +901,9 @@ function NeedRow({
         <Stack direction="row" sx={{ gap: 1, flexShrink: 0, ml: 'auto' }}>
           {buttons}
         </Stack>
+      )}
+      {!leaving && canDismiss(need.kind) && (
+        <CardDismiss card={need.id} label={text} cards={cards} />
       )}
       {panel}
       {askedOnce && (
