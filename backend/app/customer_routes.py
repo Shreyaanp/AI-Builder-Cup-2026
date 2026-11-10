@@ -26,6 +26,7 @@ from .limits import client_ip, enforce_limits
 from .merchant import public_projection
 from .merchant_routes import consented_owner, owner, store
 from .product_source import for_sale, sold_for, source_of
+from .reply_picks import may_ask, model_choice
 from .reply_suggestions import ReplySuggestions, templates
 from .threads import thread_signals, token_hash
 
@@ -221,7 +222,20 @@ async def reply_suggestions(
     for product, item in zip(shop["products"], inventory, strict=True):
         product["source"] = source_of(item, category)
     # The fixed templates for every shop: no model text can reach a suggestion (OB-326).
-    return templates(shop, humans[-1].text)
+    drafts = templates(shop, humans[-1].text)
+    # When they understood nothing, a real shop's model may choose among the same fixed
+    # sentences (#695). Demo shops and the public demo never call a paid model.
+    answers = request.app.state.customer_answers
+    demo = bool(fields.get("demo")) or uid.startswith("public-demo-")
+    if demo or not may_ask(answers, shop, humans[-1].text):
+        return drafts
+    try:
+        await enforce_limits(request, [("thread:suggest", uid)])
+    except HTTPException:
+        # Over the limit (or the limiter is down) the owner still gets the fixed drafts; only
+        # the model waits.
+        return drafts
+    return await model_choice(answers, shop, humans[-1].text, drafts)
 
 
 async def translate_record(
