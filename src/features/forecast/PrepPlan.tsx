@@ -148,8 +148,16 @@ export function MakeRow({
   )
 }
 
-/** Buy stock → To do: "Tea dust runs out Thu · Find suppliers", leading what needs buying now. */
-export function RunsOutCard({ onAct }: { onAct: () => void }) {
+/** Buy stock → To do: "Tea dust runs out Thu · Order more", leading what needs buying now. An
+ * item with a forecast goes the way Today's Order more does (`onOrder`), so one tap never sends
+ * the owner to a second supplier search (OB-224). */
+export function RunsOutCard({
+  onAct,
+  onOrder: order,
+}: {
+  onAct: () => void
+  onOrder: (item: string) => void
+}) {
   const c = useOrderChangeCopy()
   const runsOut = useRunsOut()
   if (!runsOut || runsOut.arriving) return null
@@ -161,6 +169,10 @@ export function RunsOutCard({ onAct }: { onAct: () => void }) {
       label={runsOut.label}
       value={need?.covered ? onOrder : c.orderMore}
       onClick={() => {
+        if (need) {
+          order(need.item)
+          return
+        }
         onAct()
         runsOut.act()
       }}

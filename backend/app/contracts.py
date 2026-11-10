@@ -78,6 +78,8 @@ class StreamEvent(StrictModel):
         # Sourcing: the "Searching nearby suppliers…" state, supplier cards, an order card.
         "sourcing",
         "suppliers",
+        # A supplier went on or came off My suppliers: every screen updates at once.
+        "supplier_saved",
         "order",
         "rescue_proposal",
         # Supply chain: a purchase order drafted from the forecast, a supplier rule change.

@@ -12,6 +12,13 @@ export interface SupplierCard {
   item: { name: string; price: number; unit: string; available: boolean }
   estimate: number | null
   in_stock: string[]
+  /** The price per the unit every card shares; null when this one can't be compared. Cards
+   * saved in a conversation before these existed have none of the four fields below. */
+  compare?: { price: number; unit: string } | null
+  /** The pack it is really sold in, when `compare` was worked out from its size. */
+  pack?: { price: number; unit: string; size: string } | null
+  tags?: ('cheapest' | 'nearest')[]
+  saved?: boolean
 }
 
 export interface SupplierResult {

@@ -110,7 +110,19 @@ async def erase(request: Request) -> dict[str, Any]:
 @router.get("/businesses")
 async def businesses(request: Request) -> list[dict[str, Any]]:
     uid = await owner(request)
-    return await anyio.to_thread.run_sync(store(request).list_businesses, uid)
+    service = store(request)
+    listed = await anyio.to_thread.run_sync(service.list_businesses, uid)
+    if not any(b["fields"].get("demo") for b in listed):
+        return listed
+    from .tour_story import top_up_tour_sales  # lazy: the tour imports most of the app
+
+    try:
+        topped = await anyio.to_thread.run_sync(top_up_tour_sales, service, uid, None, listed)
+    except Exception as error:  # noqa: BLE001 - any failure here must not hide the shop list
+        # A sample shop's top-up never stands between an owner and their shops; tomorrow retries.
+        log.warning("tour_top_up_failed", uid=uid, error=type(error).__name__, exc_info=True)
+        return listed
+    return await anyio.to_thread.run_sync(service.list_businesses, uid) if topped else listed
 
 
 @router.get("/businesses/{business_id}/inventory")

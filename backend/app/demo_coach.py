@@ -29,6 +29,7 @@ from .demo_item_names import hindi_item, item_named_in
 from .demo_order_words import (
     DRAFT_QUANTITY,
     HINDI_AMOUNT_UNITS,
+    chosen_card,
     draft_order,
     low_on_made,
     out_of_supply,
@@ -481,6 +482,10 @@ def _visits(ctx: Any) -> list[StreamEvent]:
     ]
 
 
+# "Milk is low, order it" asks for an order; "find suppliers" and "milk is low" do not (OB-265).
+ORDER_ASKED = re.compile(r"\b(?:re)?order\b|mang|ऑर्डर|मँगा|मंगा", re.I)
+
+
 async def _find_suppliers(ctx: Any, question: str) -> list[StreamEvent] | None:
     """What the real coach does for "find suppliers": list them, then draft the order card to the
     first one, on the sandbox's demo suppliers. Nothing goes until the visitor sends it."""
@@ -538,18 +543,28 @@ async def _find_suppliers(ctx: Any, question: str) -> list[StreamEvent] | None:
     # The amount the owner said rides along, so the vendor list prices it and its Order asks
     # for the same amount.
     amount = next(((float(n), u) for n, u in AMOUNT.findall(asked) if u), None)
-    return await draft_order(ctx, item, question, amount, made)
+    return await draft_order(
+        ctx, item, question, amount, made, ordered=bool(ORDER_ASKED.search(question))
+    )
 
 
-def _said_quantity(text: str, unit: str, bare: bool = False) -> float:
+def _said_quantity(
+    text: str, unit: str, bare: bool = False, card: dict[str, Any] | None = None
+) -> float:
     """The amount the owner said, in the supplier's unit; the demo's usual 10 otherwise. A bare
     number counts only with `bare` (the vendor list's own "20 milk")."""
     from .sourcing import convert
+    from .supplier_compare import in_supplier_unit
 
     for number, said in AMOUNT.findall(text):
         if not said and not bare:
             continue
-        quantity = convert(float(number), HINDI_AMOUNT_UNITS.get(said, said), unit)
+        spoken = HINDI_AMOUNT_UNITS.get(said, said)
+        quantity = (
+            in_supplier_unit(float(number), spoken, card["item"], bool(card.get("demo")))
+            if card
+            else convert(float(number), spoken, unit)
+        )
         if quantity and 0 < quantity <= 10_000:
             return round(quantity, 2)
     return DRAFT_QUANTITY
@@ -578,7 +593,7 @@ async def _order_from(ctx: Any, question: str) -> list[StreamEvent] | None:
         return None
     chosen = suppliers[rank - 1]
     unit = chosen["item"]["unit"]
-    quantity = _said_quantity(wanted, unit, bare=True)
+    quantity = _said_quantity(wanted, unit, bare=True, card=chosen)
     from .agent import ui_language
 
     token = ui_language.set("hi" if hindi else ui_language.get())
@@ -639,11 +654,11 @@ async def _order_said(ctx: Any, question: str) -> list[StreamEvent] | None:
             if drafts:
                 supplier_id, name = drafts[0]["supplier"]["id"], drafts[0]["lines"][0]["name"]
             else:
-                found = await find_suppliers(item)
+                found = await find_suppliers(item, float(line.quantity or 0), line.unit)
                 if found.get("status") != "found":
                     continue
-                first = found["suppliers"][0]
-                supplier_id, name = first["id"], first["item"]["name"]
+                chosen = chosen_card(ctx, item, found)
+                supplier_id, name = chosen["id"], chosen["item"]["name"]
             drafted = prepare_order(
                 supplier_id,
                 [OrderItem(name=name, quantity=float(line.quantity or 0), unit=line.unit)],
@@ -687,7 +702,13 @@ async def public_demo_turn(ctx: Any, question: str) -> list[StreamEvent] | None:
     text = _plain(question)
     reply: str | None = None
     from .instant import make_list
+    from .supplier_chat import answer as supplier_answer
 
+    # Only words clearly about the last supplier list are answered here; every other message
+    # also ends its follow-up window, so it is asked before anything else (OB-265).
+    about_list = supplier_answer(ctx, question, ordering=True)
+    if about_list:
+        return [*about_list.events, StreamEvent(kind="reply", text=about_list.reply)]
     made = make_list(ctx, question)
     if made:
         return [*made.events, StreamEvent(kind="reply", text=made.reply)]

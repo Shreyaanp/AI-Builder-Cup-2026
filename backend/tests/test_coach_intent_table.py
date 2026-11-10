@@ -313,9 +313,11 @@ def test_OB_268_a_screens_own_phrase_drafts_and_still_names_the_screen(  # noqa:
 
 
 def test_OB_268_a_request_about_suppliers_still_finds_them(demo):  # noqa: N802, F811
-    """Asking for suppliers outright still gets what it asks for, made here or not."""
+    """Asking for suppliers outright still gets what it asks for, made here or not, and nothing
+    is drafted until one is picked (OB-265)."""
     events = demo("My masala chai is running low. Find suppliers.", "en")
-    assert {e["kind"] for e in events} >= {"suppliers", "order"}
+    kinds = {e["kind"] for e in events}
+    assert "suppliers" in kinds and "order" not in kinds
 
 
 @pytest.mark.parametrize(

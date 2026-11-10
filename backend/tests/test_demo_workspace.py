@@ -98,3 +98,21 @@ def test_refused_workspace_logs_the_reason(app, caplog) -> None:  # noqa: F811
             route.seed_workspace = original
         assert made.status_code == 404
         assert "Business not found." in caplog.text
+
+
+def test_a_failing_tour_top_up_never_hides_the_shop_list(app, monkeypatch) -> None:  # noqa: F811
+    """GET /businesses tops up the tour's sales; any error there still returns the shops."""
+    import app.tour_story as tour_story
+
+    def broken(*_args, **_kwargs):
+        raise RuntimeError("top-up broke")
+
+    with TestClient(app) as client:
+        join(client)
+        bid = client.post("/api/v1/demo/workspace", params={"zone": "Asia/Kolkata"}).json()[
+            "business_id"
+        ]
+        monkeypatch.setattr(tour_story, "top_up_tour_sales", broken)
+        listed = client.get("/api/v1/businesses")
+        assert listed.status_code == 200, listed.text
+        assert bid in [shop["id"] for shop in listed.json()]

@@ -575,6 +575,11 @@ async def route(
     supplied = await supplier_search(ctx, message) or order_from_list(ctx, message, history)
     if supplied:
         return supplied
+    from .supplier_chat import answer as supplier_answer
+
+    about_list = supplier_answer(ctx, message)
+    if about_list:
+        return InstantResult(about_list.intent, about_list.reply, about_list.events)
     made = make_list(ctx, message)
     if made:
         return made

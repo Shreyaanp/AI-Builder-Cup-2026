@@ -31,6 +31,7 @@ const KNOWN: Record<CoachEvent['kind'], true> = {
   workflow: true,
   sourcing: true,
   suppliers: true,
+  supplier_saved: true,
   order: true,
   rescue_proposal: true,
   purchase_order: true,

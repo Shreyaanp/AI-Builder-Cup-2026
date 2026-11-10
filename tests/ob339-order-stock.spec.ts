@@ -174,7 +174,8 @@ test('OB-339 Hindi: said in Hindi drafts; a "don\'t" orders nothing; no English'
 
 test('OB-339 a corrected amount replaces the card, and To do shows it', async ({ page }) => {
   await openDemo(page, 'hi')
-  await say(page, 'दूध ख़त्म होने वाला है')
+  // An explicit order makes the first card: "running low" alone only lists suppliers (OB-265).
+  await say(page, '10 लीटर दूध चाहिए')
   const send = page.getByRole('button', { name: /को भेजें|^Send to/ })
   await expect(send).toHaveCount(1, { timeout: 30_000 })
   await say(page, 'नहीं, सिर्फ़ 5 लीटर दूध चाहिए')
@@ -190,7 +191,7 @@ test('OB-339 a corrected amount replaces the card, and To do shows it', async ({
 
 test('OB-339 the amount changes on the chat order card', async ({ page }) => {
   await openDemo(page)
-  await say(page, 'My milk is running low. Find suppliers.')
+  await say(page, 'Order 10 litre milk')
   await page.getByRole('button', { name: 'Change amount' }).last().click({ timeout: 30_000 })
   await page.getByRole('textbox', { name: 'Amount' }).fill('7')
   await page.getByRole('button', { name: 'Change amount' }).last().click()

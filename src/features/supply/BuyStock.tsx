@@ -32,7 +32,7 @@ import { PO_TO_DO } from './orderFormat'
 import { PurchaseOrders, type Drill } from './Supply'
 import { SupplyBoard, ViewButton } from './SupplyHub'
 import { useSupplyCopy } from './copy'
-import { useSupply } from './supplyData'
+import { useDraftReorder, useSupply } from './supplyData'
 
 export type StockTab = 'todo' | 'coming' | 'suppliers' | 'find'
 const TABS: StockTab[] = ['todo', 'coming', 'suppliers', 'find']
@@ -179,6 +179,7 @@ function BuyStockSheet({
   const [drafted, setDrafted] = useState<PurchaseOrder | null>(null)
   const locale = useLocale()
   const s = useSupplyCopy()
+  const draftReorder = useDraftReorder()
   const close = () => {
     setDrill(null)
     setAsk(null)
@@ -287,7 +288,16 @@ function BuyStockSheet({
                   <OrderBox onOrder={showDraft} onAsk={setAsk} onLeave={close} />
                 ))}
               {!drill && <ToOrderRows asks={stock.toOrder} onAsk={setAsk} />}
-              {!drill && <RunsOutCard onAct={close} />}
+              {!drill && (
+                <RunsOutCard
+                  onAct={close}
+                  onOrder={async (item) => {
+                    const next = await draftReorder(item)
+                    if (next.order) showDraft(next.order)
+                    else ws.notify(next.note)
+                  }}
+                />
+              )}
               {!drill && bought > 0 && (
                 <Button
                   variant="outlined"

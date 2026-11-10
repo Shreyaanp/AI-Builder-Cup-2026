@@ -769,6 +769,8 @@ def rank(
     currency: str,
     item: str = "",
 ) -> list[dict[str, Any]]:
+    from .supplier_compare import in_supplier_unit
+
     if not found:
         return []
     for entry in found:
@@ -794,7 +796,8 @@ def rank(
     cards = []
     for position, entry in enumerate(found[:RESULTS], start=1):
         shop, product = entry["shop"], entry["product"]
-        amount = convert(quantity, unit or product["unit"], product["unit"]) if quantity else None
+        demo = bool(shop.get("demo"))
+        amount = in_supplier_unit(quantity, unit, product, demo) if quantity else None
         cards.append(
             {
                 "rank": position,
@@ -854,7 +857,9 @@ async def find(
     found = await search()
     generated = False
     source = ""
-    if not found:
+    # A demo or tour shop always has two to compare; a real shop never gets invented neighbours
+    # next to a real supplier (OB-265, "Tea dust · 1 found").
+    if not found or (len(found) < 2 and context["business"]["fields"].get("demo")):
         demo, source = await generator.generate(
             item, unit, pin.currency, pin.location, pin.category
         )
@@ -869,7 +874,15 @@ async def find(
                 log.warning("demo_supplier_seed_skipped", supplier=sid)
         found = await search()
         generated = True
+    from .supplier_compare import compare_cards
+    from .supply_chain import RULES
+
     cards = rank(found, unit_of(unit), quantity, pin.currency, item)
+    compared = compare_cards(cards)
+    rows = await anyio.to_thread.run_sync(store.feature_docs.scoped, RULES, bid, 50)
+    saved = {row["supplier"]["id"] for row in rows if row.get("saved")}
+    for card in cards:
+        card["saved"] = card["id"] in saved
     return {
         "item": item,
         "quantity": quantity,
@@ -879,8 +892,7 @@ async def find(
         "generated_demo_suppliers": generated,
         "generated_by": source or None,
         "approximate_location": pin.approximate,
-        "cheapest_id": min(cards, key=lambda c: c["item"]["price"])["id"] if cards else None,
-        "nearest_id": min(cards, key=lambda c: c["distance_km"])["id"] if cards else None,
+        **compared,
     }
 
 
@@ -1339,7 +1351,12 @@ def confirm(
             order["status"] = "sent"
     else:
         raise HTTPException(409, "Nothing is waiting to be sent.")
-    return public_order(save(store, uid, bid, order, now))
+    from .supplier_book import ordered
+
+    sent = public_order(save(store, uid, bid, order, now))
+    if order["status"] == "sent":
+        ordered(store, uid, bid, order["supplier"]["id"])
+    return sent
 
 
 def discard(store: MerchantRepository, uid: str, bid: str, oid: str, version: int) -> dict:

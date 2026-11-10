@@ -25,6 +25,8 @@ import { formatShopPrice, toMajor, toMinor } from '../v1/format'
 import { LineAction } from '../v1/CollapsibleCard'
 import { useWorkspace } from '../v1/workspaceContext'
 import { sampleWord } from '../sourcing/sampleWord'
+import { SupplierDetails } from '../sourcing/SupplierDetails'
+import { useSupplierCopy } from '../sourcing/supplierCopy'
 import { useShowcaseCopy } from './showcaseCopy'
 import { useSupplyCopy } from './copy'
 import { useIoCopy } from './ioCopy'
@@ -68,6 +70,7 @@ export function PurchaseOrders({
 }) {
   const s = useSupplyCopy()
   const io = useIoCopy()
+  const savedWord = useSupplierCopy().saved
   const demo = useShowcaseCopy()
   const ws = useWorkspace()
   const locale = useLocale()
@@ -122,14 +125,18 @@ export function PurchaseOrders({
     )
   if (view.kind === 'rules' && supplier)
     return (
-      <RulesEditor
-        key={`${supplier.supplier.id}-${supplier.version}`}
-        row={supplier}
-        onSaved={() => {
-          void refresh()
-          setView({ kind: 'list' })
-        }}
-      />
+      <Stack spacing={4}>
+        {/* Opened from My suppliers: who they are and what they sell, then their terms (OB-223). */}
+        <SupplierDetails id={supplier.supplier.id} name={supplier.supplier.name} />
+        <RulesEditor
+          key={`${supplier.supplier.id}-${supplier.version}`}
+          row={supplier}
+          onSaved={() => {
+            void refresh()
+            setView({ kind: 'list' })
+          }}
+        />
+      </Stack>
     )
   if (part === 'suppliers')
     return data && data.suppliers.length === 0 ? (
@@ -159,6 +166,7 @@ export function PurchaseOrders({
               <ListItemText
                 primary={row.supplier.name}
                 secondary={[
+                  row.saved ? savedWord : '',
                   termsLabel(s.terms, row.rules.terms_days),
                   s.system[row.rules.system_format],
                   row.supplier.demo ? (ws.demo ? s.simulation : sampleWord[locale]) : '',

@@ -171,20 +171,21 @@ def test_demo_answers_every_chat_phrase_on_topic_with_its_screen_path(app, featu
 @pytest.mark.parametrize(
     ("message", "topic", "where"),
     [
-        # Buy stock → Find a supplier sends the owner's item (sourcing/copy.ts lowMessage).
+        # Buy stock → Find a supplier sends the owner's item (sourcing/copy.ts lowMessage): the
+        # suppliers, one instruction and no draft until a pick. No directions back to the form the
+        # owner just used (S2-2, OB-265).
         (
             "My milk 20 litres is running low. Find suppliers.",
-            # The demo does the work now: it lists the suppliers and drafts the order (OB-248).
-            r"Demo suppliers near you for Milk",
-            "Shop → Buy stock → Find a supplier",
+            r"Demo suppliers near you for Milk.*Tap Order on the one you want\. Nothing goes until "
+            r"you tap Send\.$",
+            None,
         ),
         # And in Hindi: the same work, in the same words the screens use (OB-248).
         (
             "मेरा दूध 20 लीटर कम हो रहा है। सप्लायर खोजें।",
             r"दूध के लिए पास के डेमो सप्लायर: 1\. Sri Lakshmi Provisions \(Demo\), [\d.]+ किमी, ₹54 "
-            r"प्रति लीटर; 2\. FreshMart \(Demo\), [\d.]+ किमी, ₹29 प्रति पैक। Sri Lakshmi Provisions "
-            r"\(Demo\) से 20 लीटर दूध का ऑर्डर नीचे तैयार है। आपके भेजे बिना कुछ नहीं जाता, और यह "
-            r"सिर्फ़ डेमो है। अब दुकान → माल मँगाएँ → सप्लायर ढूँढें खोलें।",
+            r"प्रति लीटर; 2\. FreshMart \(Demo\), [\d.]+ किमी, ₹58 प्रति लीटर। जिससे लेना हो, उस पर "
+            r"ऑर्डर दबाएँ। भेजें दबाने तक कुछ नहीं जाता।$",
             None,
         ),
         # The PR's own "Owner looks at" phrases.

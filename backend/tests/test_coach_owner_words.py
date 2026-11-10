@@ -136,9 +136,10 @@ def test_OB_261_never_drafts_a_purchase_from_a_sold_out_statement(  # noqa: N802
 
 
 def test_OB_261_running_low_still_finds_suppliers(demo):  # noqa: N802
-    """ "About to run out" is not "sold out": the screen's own phrase still drafts the order."""
+    """ "About to run out" is not "sold out": the suppliers, and no draft until a pick (OB-265)."""
     events = demo("दूध ख़त्म होने वाला है", "hi")
-    assert {e["kind"] for e in events} >= {"suppliers", "order"}
+    kinds = {e["kind"] for e in events}
+    assert "suppliers" in kinds and "order" not in kinds
     assert cards(events) == []
 
 
@@ -475,7 +476,6 @@ def test_OB_262_live_instant_path_keeps_both_items_of_one_verb(shop):  # noqa: N
     "message",
     [
         "milk khatam ho raha hai, order karo",
-        "milk khatam hone wala hai",
         "doodh khatam hone wala hai, order karo",
         "दूध ख़त्म हो रहा है, ऑर्डर करो",
     ],
@@ -485,6 +485,11 @@ def test_OB_262_running_low_drafts_an_order_that_waits_for_send(demo, message): 
     kinds = {e["kind"] for e in events}
     assert {"suppliers", "order"} <= kinds and not cards(events), events
     assert "for karo" not in reply_of(events).casefold()
+
+
+def test_OB_265_running_low_with_no_order_word_only_lists(demo):  # noqa: N802
+    kinds = {e["kind"] for e in demo("milk khatam hone wala hai", "en")}
+    assert "suppliers" in kinds and "order" not in kinds
 
 
 def test_OB_262_demo_keeps_both_items_of_one_verb(demo):  # noqa: N802

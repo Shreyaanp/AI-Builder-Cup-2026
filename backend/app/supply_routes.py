@@ -6,7 +6,15 @@ import anyio
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, ConfigDict, Field
 
-from . import coordinator, demo_supplier, supply_chain, supply_coming, supply_io, supply_outbound
+from . import (
+    coordinator,
+    demo_supplier,
+    supplier_book,
+    supply_chain,
+    supply_coming,
+    supply_io,
+    supply_outbound,
+)
 from .forecast import ForecastService
 from .limits import enforce_limits
 from .merchant_routes import consented_owner, owner, store
@@ -203,6 +211,32 @@ async def sap_sandbox_orders(business_id: str, request: Request) -> dict[str, An
     if service is None:
         raise HTTPException(503, "The SAP sandbox is not available.")
     return await service.orders()
+
+
+@router.get("/businesses/{business_id}/supply/suppliers/{supplier_id}")
+async def read_supplier(business_id: str, supplier_id: str, request: Request) -> dict[str, Any]:
+    """A supplier opened from the list: what it sells, how far, and whether it is saved."""
+    uid = await owner(request)
+    return await anyio.to_thread.run_sync(
+        supplier_book.detail, store(request), uid, business_id, supplier_id
+    )
+
+
+@router.post("/businesses/{business_id}/supply/suppliers/{supplier_id}/save")
+async def save_supplier(business_id: str, supplier_id: str, request: Request) -> dict[str, Any]:
+    uid = await consented_owner(request)
+    row = await anyio.to_thread.run_sync(
+        supplier_book.save, store(request), uid, business_id, supplier_id
+    )
+    return {"supplier_id": supplier_id, "saved": bool(row.get("saved"))}
+
+
+@router.delete("/businesses/{business_id}/supply/suppliers/{supplier_id}/save")
+async def remove_supplier(business_id: str, supplier_id: str, request: Request) -> dict[str, Any]:
+    uid = await consented_owner(request)
+    return await anyio.to_thread.run_sync(
+        supplier_book.remove, store(request), uid, business_id, supplier_id
+    )
 
 
 @router.put("/businesses/{business_id}/supply/suppliers/{supplier_id}/rules")

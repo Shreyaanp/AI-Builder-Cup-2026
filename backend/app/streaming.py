@@ -31,7 +31,13 @@ log = structlog.get_logger()
 
 APP_NAME = "ogoogle_ai"
 # Tools whose results reach the chat as supplier or order cards.
-SOURCING_TOOLS = {"find_suppliers", "prepare_order", "message_supplier", "cancel_order"}
+SOURCING_TOOLS = {
+    "find_suppliers",
+    "prepare_order",
+    "message_supplier",
+    "cancel_order",
+    "save_supplier",
+}
 # Tools whose result is an app action card: open a screen, or a prepared customer reply.
 ACTION_TOOLS = {
     "open_screen",
@@ -148,7 +154,12 @@ def public_events(event: Event) -> list[StreamEvent]:
                 if card:
                     output.append(
                         StreamEvent(
-                            kind="suppliers" if card[0] == "suppliers" else "order", data=card[1]
+                            kind="suppliers"
+                            if card[0] == "suppliers"
+                            else "supplier_saved"
+                            if card[0] == "supplier_saved"
+                            else "order",
+                            data=card[1],
                         )
                     )
             if response and response.name in ACTION_TOOLS:

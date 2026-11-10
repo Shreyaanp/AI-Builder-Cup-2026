@@ -496,9 +496,14 @@ test('OB-248 Hindi: Find suppliers through Send gets a Hindi supplier reply', as
     .fill('मेरा पनीर कम हो रहा है। सप्लायर खोजें।')
   await page.getByRole('button', { name: 'भेजें', exact: true }).click()
   await expect(log).toContainText('पनीर के लिए पास के डेमो सप्लायर', { timeout: 30_000 })
-  await expect(log).toContainText('10 किलो पनीर')
-  await log.getByRole('button', { name: / को भेजें$/ }).click()
-  await expect(log).toContainText(/पुष्टि: 10 किलो पनीर, ₹[\d,.]+। .* बजे पहुँचेगा।/, {
+  // The owner picks the supplier (OB-265), then sends the card it drafts.
+  await log.getByRole('button', { name: 'ऑर्डर करें', exact: true }).first().click()
+  const send = log.getByRole('button', { name: / को भेजें$/ })
+  await expect(send).toHaveCount(1, { timeout: 30_000 })
+  await expect(log).toContainText(/\d+ किलो पनीर/)
+  await send.click()
+  // The amount is the tap's own (the owner did not name one); the reply is all Hindi.
+  await expect(log).toContainText(/पुष्टि: [\d.]+ किलो पनीर, ₹[\d,.]+। .* बजे पहुँचेगा।/, {
     timeout: 30_000,
   })
   await expect(log).not.toContainText(/Confirmed|Paneer|Delivering/)
@@ -595,7 +600,7 @@ test('OB-248 a visitor writes to the supplier on an open order and gets an answe
   await expect(talk).toContainText('Noted, thank you', { timeout: 20_000 })
 })
 
-test('OB-248 Find suppliers lists the demo suppliers and drafts the order to send', async ({
+test('OB-248 Find suppliers lists the demo suppliers and Order drafts the order to send', async ({
   page,
 }) => {
   await openDemo(page)
@@ -603,9 +608,13 @@ test('OB-248 Find suppliers lists the demo suppliers and drafts the order to sen
   await coach.fill('My tea dust is running low. Find suppliers.')
   await page.getByRole('button', { name: 'Send', exact: true }).click()
   const log = page.getByRole('log')
-  await expect(log).toContainText('I drafted 10', { timeout: 30_000 })
+  await expect(log).toContainText('Tap Order on the one you want', { timeout: 30_000 })
   await expect(log).toContainText('(Demo)')
   await expect(log).not.toContainText('In your real shop')
+  // Nothing is drafted until the owner picks (OB-265).
+  await expect(log.getByRole('button', { name: /^Send to / })).toHaveCount(0)
+  await log.getByRole('button', { name: 'Order', exact: true }).first().click()
+  await expect(log.getByRole('button', { name: /^Send to / })).toHaveCount(1, { timeout: 30_000 })
   // Sending works too, and the demo supplier answers: nothing reaches a real business.
   await log.getByRole('button', { name: /^Send/ }).first().click()
   await expect(log).toContainText('Automatic demo reply', { timeout: 20_000 })

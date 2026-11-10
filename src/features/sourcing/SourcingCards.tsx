@@ -2,6 +2,7 @@ import { useState } from 'react'
 import {
   Box,
   Button,
+  ButtonBase,
   Chip,
   CircularProgress,
   Divider,
@@ -31,6 +32,10 @@ import { ChangeAmount } from '../supply/ChangeAmount'
 import { useWorkspace } from '../v1/workspaceContext'
 import { useSourcingCopy } from './copy'
 import { sampleWord } from './sampleWord'
+import { CompareSuppliers } from './CompareSuppliers'
+import { SupplierSheet } from './SupplierSheet'
+import { useSupplierCopy } from './supplierCopy'
+import { useSaved } from './supplierData'
 import { deliveryLabel } from './orderData'
 import { supplyChanged } from '../supply/supplyEvents'
 import type { Order, OrderStatus, SupplierCard, SupplierResult } from './types'
@@ -171,11 +176,43 @@ export function SearchingSuppliers({ item }: { item: string }) {
 /** Rows shown before "Show N more" (PLAN-COACH-POC §2a). */
 const VENDORS_SHOWN = 3
 
+/** Cheapest, Nearest and Saved on a supplier's row. */
+function VendorTags({ card }: { card: SupplierCard }) {
+  const roles = useTheme().material
+  const s = useSupplierCopy()
+  const saved = useSaved(card.id, card.saved ?? false)
+  const labels = [
+    ...(card.tags ?? []).map((tag) => (tag === 'cheapest' ? s.cheapest : s.nearest)),
+    ...(saved ? [s.saved] : []),
+  ]
+  if (labels.length === 0) return null
+  return (
+    <Stack direction="row" sx={{ gridColumn: 2, flexWrap: 'wrap', gap: 1 }}>
+      {labels.map((label) => (
+        <Chip
+          key={label}
+          component="span"
+          size="small"
+          label={label}
+          sx={{
+            height: 22,
+            bgcolor: roles.primaryContainer,
+            color: roles.onPrimaryContainer,
+            fontWeight: 600,
+            '& .MuiChip-label': { px: 2 },
+          }}
+        />
+      ))}
+    </Stack>
+  )
+}
+
 /**
  * The vendor list (PLAN-COACH-POC slice 1, simplify batch 4b): suppliers for one item as rows,
- * best first, never wider than the phone. Each row says price per unit, the estimate for the
- * owner's amount, distance and delivery; Order sends "Order from number N" to the coach, which
- * prepares the order card with Send. The Buy stock sheet's Find a supplier lands here.
+ * best first, never wider than the phone. Each row says the price in the unit every row shares,
+ * the estimate for the owner's amount, distance and delivery; Order sends "Order from number N"
+ * to the coach, which prepares the order card with Send. Tapping a name opens the supplier, and
+ * Compare lines them up (OB-223, OB-265). The Buy stock sheet's Find a supplier lands here.
  */
 export function VendorListCard({
   result,
@@ -190,6 +227,9 @@ export function VendorListCard({
   const locale = useLocale()
   const unit = useOrderUnit()
   const [all, setAll] = useState(false)
+  const [comparing, setComparing] = useState(false)
+  const [opened, setOpened] = useState<SupplierCard | null>(null)
+  const supplier = useSupplierCopy()
   const km = new Intl.NumberFormat(locale, { maximumFractionDigits: 1 })
   const money = (major: number) =>
     formatShopPrice(toMinor(major, result.currency), result.currency, locale)
@@ -220,7 +260,18 @@ export function VendorListCard({
               {s.demoNote}
             </Typography>
           )}
+          {result.suppliers.length > 1 && (
+            <Button
+              // A toggle, not a fold: the chat's folded-card lines are its [aria-expanded] buttons.
+              aria-pressed={comparing}
+              onClick={() => setComparing((value) => !value)}
+              sx={{ alignSelf: 'flex-start', minHeight: 48, ml: -2 }}
+            >
+              {comparing ? supplier.hideCompare : supplier.compare}
+            </Button>
+          )}
         </Stack>
+        {comparing && <CompareSuppliers result={result} />}
         <Box
           component="ul"
           role="list"
@@ -266,17 +317,39 @@ export function VendorListCard({
                 {card.rank}
               </Box>
               <Stack direction="row" spacing={2} sx={{ alignItems: 'center', minWidth: 0 }}>
-                <Typography
-                  variant="bodyLarge"
-                  sx={{ flex: 1, minWidth: 0, fontWeight: 600, overflowWrap: 'anywhere' }}
+                <ButtonBase
+                  aria-label={supplier.open(card.name)}
+                  aria-haspopup="dialog"
+                  onClick={() => setOpened(card)}
+                  sx={{
+                    flex: 1,
+                    minWidth: 0,
+                    minHeight: 48,
+                    justifyContent: 'flex-start',
+                    textAlign: 'start',
+                    borderRadius: `${shape.sm}px`,
+                    '&:focus-visible': { outline: `3px solid ${roles.primary}` },
+                  }}
                 >
-                  <Box component="span" sx={visuallyHidden}>
-                    {card.rank}.{' '}
-                  </Box>
-                  {card.name}
-                </Typography>
+                  <Typography
+                    component="span"
+                    variant="bodyLarge"
+                    sx={{
+                      fontWeight: 600,
+                      overflowWrap: 'anywhere',
+                      textDecoration: 'underline',
+                      textUnderlineOffset: 3,
+                    }}
+                  >
+                    <Box component="span" sx={visuallyHidden}>
+                      {card.rank}.{' '}
+                    </Box>
+                    {card.name}
+                  </Typography>
+                </ButtonBase>
                 {card.demo && <DemoChip />}
               </Stack>
+              <VendorTags card={card} />
               <Stack
                 direction="row"
                 sx={{
@@ -288,8 +361,19 @@ export function VendorListCard({
                 }}
               >
                 <Typography variant="bodyLarge" sx={{ fontWeight: 600 }}>
-                  {s.perUnit(money(card.item.price), unit(card.item.unit))}
+                  {card.compare
+                    ? s.perUnit(money(card.compare.price), unit(card.compare.unit))
+                    : s.perUnit(money(card.item.price), unit(card.item.unit))}
                 </Typography>
+                {card.pack && (
+                  <Typography variant="bodySmall" color="text.secondary">
+                    {supplier.packNote(
+                      money(card.pack.price),
+                      unit(card.pack.unit),
+                      card.pack.size,
+                    )}
+                  </Typography>
+                )}
                 {card.estimate != null && (
                   <Typography variant="bodySmall" sx={{ color: roles.primary }}>
                     {s.about(money(card.estimate))}
@@ -352,6 +436,14 @@ export function VendorListCard({
           {s.approximate}
         </Typography>
       )}
+      <SupplierSheet
+        supplier={opened}
+        onClose={() => setOpened(null)}
+        onOrder={() => {
+          if (opened) onChoose(opened)
+          setOpened(null)
+        }}
+      />
     </Box>
   )
 }

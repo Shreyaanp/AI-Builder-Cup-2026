@@ -669,6 +669,37 @@ def tour_id(uid: str, city: str) -> str:
     return stable(f"workspace/{uid}/{city}")
 
 
+def top_up_tour_sales(
+    store: MerchantRepository,
+    uid: str,
+    today: date | None = None,
+    listed: list[dict[str, Any]] | None = None,
+) -> list[str]:
+    """Sales up to yesterday on this owner's private tour shops, so one opened weeks later still
+    has a forecast and still suggests a reorder (OB-214). Only days after the last recorded one
+    are added, at most once a day; the bundled demo world and real shops are never touched."""
+    owned = {b["id"]: b for b in (store.list_businesses(uid) if listed is None else listed)}
+    topped = []
+    for city in ("bengaluru", "singapore"):
+        bid = tour_id(uid, city)
+        shop = owned.get(bid)
+        if not shop or not shop["fields"].get("demo"):
+            continue
+        day = today or today_for(shop["fields"])
+        if (store.feature_docs.get(supply.TOUR_TOP_UP, bid) or {}).get("day") == day.isoformat():
+            continue
+        original = next(s for s in TOUR_SHOPS if s.city == city)
+        latest = max((r["date"] for r in store.sales_history(uid, bid)), default="")
+        demo = DemoShop(bid, original.fields, original.products, city)
+        rows = [row for row in history(demo, day) if row["date"] > latest]
+        if rows:
+            pending = store.prepare_sales(uid, bid, rows)
+            store.save_sales(uid, bid, pending["id"], pending["digest"])
+            topped.append(bid)
+        store.feature_docs.put(supply.TOUR_TOP_UP, bid, bid, time_now(), {"day": day.isoformat()})
+    return topped
+
+
 def seed_workspace(
     store: MerchantRepository,
     uid: str,

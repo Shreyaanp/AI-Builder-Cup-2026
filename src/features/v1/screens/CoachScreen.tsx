@@ -106,6 +106,8 @@ import { useReceiveOrder } from '../../sourcing/orderData'
 import type { Order, SupplierResult } from '../../sourcing/types'
 import type { SupplyCardData } from '../../supply/SupplyEntry'
 import type { PurchaseOrder, Relationship } from '../../supply/types'
+import { markSaved } from '../../sourcing/supplierData'
+import { HINDI_TAP_UNITS } from '../../sourcing/supplierCopy'
 import { supplyChanged } from '../../supply/supplyEvents'
 import { speak, canSpeak, stopSpeech, utter } from '../phoneVoice'
 import { useLanguageSwitch } from '../languageSwitch'
@@ -418,6 +420,9 @@ function CoachScreen({
         )
       }
       if (event.kind === 'sourcing') setSearching(String(event.data?.item ?? ''))
+      // Saved or removed by chat: My suppliers and every open card update now, like the tap.
+      if (event.kind === 'supplier_saved' && event.data)
+        markSaved(String(event.data.supplier_id), event.data.saved === true)
       if (event.kind === 'suppliers') {
         setSearching(null)
         const result = event.data as unknown as SupplierResult
@@ -1567,11 +1572,15 @@ function CoachScreen({
                         <VendorListCard
                           result={message.result}
                           onChoose={(card) => {
-                            const amount = message.result.quantity
-                              ? `${message.result.quantity} ${message.result.unit} `
-                              : ''
+                            // In Hindi the tap names the item and unit in Hindi too: the owner's
+                            // own bubble has no English in it.
+                            const hindi = language === 'hi'
+                            const { item: listed, quantity, unit: said } = message.result
+                            const unitWord = hindi ? (HINDI_TAP_UNITS[said] ?? said) : said
+                            const amount = quantity ? `${quantity} ${unitWord} ` : ''
+                            const item = hindi ? productName(listed, language) : listed
                             // Order goes as a turn: the coach prepares the card with Send.
-                            void send(s.chooseDraft(card.rank, `${amount}${message.result.item}`))
+                            void send(s.chooseDraft(card.rank, `${amount}${item}`))
                           }}
                         />
                       </Suspense>,
