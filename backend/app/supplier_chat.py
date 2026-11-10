@@ -142,15 +142,97 @@ def _about_this_list(text: str, search: dict[str, Any]) -> bool:
     return not named or any(matches(str(search.get("item") or ""), item) for item in named)
 
 
+# The words a message about the supplier list is made of, in English, Hinglish and Hindi. A
+# message with any other word ("samosa", "menu", "sales", "photo", "customer") is about something
+# else and goes to its own path, even right after a list (OB-265 review).
+LIST_WORDS = frozenset(
+    """
+    which one ones is are the a an of them these those it this that and or from with to me my
+    show tell who what whose cheapest cheaper cheap lowest price prices rate rates nearest closest
+    near compare both all best save remember add remove forget unsave delete order take go
+    please ok okay then now supplier suppliers vendor vendors wholesaler wholesalers wholesale
+    first second third fourth 1st 2nd 3rd 4th number no list on off as for be will
+    wala wale wali waala waale waali karo kar karna do kaun kaunsa konsa kon sa si se sabse
+    sasta sasti saste paas nazdeek najdeek hai hain ko mein me mere mera meri lo le lena chahiye
+    mangao mangwao manga bhejo hatao hata yaad rakho rakh rakhna tulna ka ki ke aur ya ab bata
+    batao dikhao wahi pehla pehle doosra dusra doosre dusre teesra teesre supplier ko
+    कौन सा सी से सबसे सस्ता सस्ती सस्ते पास नज़दीक नजदीक है हैं तुलना करो करें कीजिए कर
+    वाला वाले वाली सप्लायर सप्लायरों पहला पहले दूसरा दूसरे तीसरा तीसरे को सेव याद रखो रख
+    मेरा मेरे मेरी में हटाओ हटा हटाएँ दो ऑर्डर मंगाओ मँगाओ मंगवाओ लो किसका किसके किसकी दाम
+    कम का की के और या नंबर बताओ दिखाओ यह ये वो इसे उसे इन लिस्ट
+    """.split()
+)
+UNIT_WORDS = frozenset(
+    "l litre litres liter liters ltr kg kgs kilo kilos g gm gram grams packet packets pack "
+    "piece pieces pcs dozen box boxes लीटर किलो ग्राम पैकेट पीस दर्जन".split()
+)
+# Clearly the supplier list, with no earlier turn needed: "the cheapest supplier", "pehla wala".
+SUPPLIER_WORD = re.compile(
+    r"\b(?:suppliers?|vendors?|wholesalers?|wholesale|wa+la|wa+le|wa+li)\b|सप्लायर|वाला|वाले|वाली",
+    re.I,
+)
+TOKEN = re.compile(r"[^\s.,!?।:;\"'()/-]+")
+NUMERAL = re.compile(r"^\d+(?:\.\d+)?[a-z]*$")
+# A follow-up to the list just shown is a few words: "which is cheapest?", "save the second one".
+FOLLOW_UP_WORDS = 8
+
+
+def _names(search: dict[str, Any]) -> set[str]:
+    from .demo_item_names import hindi_item
+
+    words = set()
+    item = str(search.get("item") or "")
+    for name in (item, hindi_item(item), hindi_item(item[:1].upper() + item[1:].casefold())):
+        words.update(TOKEN.findall((name or "").casefold()))
+    for card in search["suppliers"]:
+        words.update(TOKEN.findall(str(card.get("name") or "").casefold()))
+        words.update(TOKEN.findall(str((card.get("item") or {}).get("name") or "").casefold()))
+    return words
+
+
+def _only_list_words(text: str, search: dict[str, Any]) -> list[str] | None:
+    """The message's words when every one belongs to a message about this list, else None."""
+    words = [word.removesuffix("'s").removesuffix("’s") for word in TOKEN.findall(text.casefold())]
+    known = LIST_WORDS | UNIT_WORDS | _names(search)
+    if all(word in known or NUMERAL.match(word) for word in words):
+        return words
+    return None
+
+
+def _named_supplier(text: str, search: dict[str, Any]) -> bool:
+    from .supplier_compare import _plain_name  # noqa: PLC2701 - the picker's own name match
+
+    lowered = text.casefold()
+    return any(_plain_name(str(card.get("name") or "")) in lowered for card in search["suppliers"])
+
+
 def answer(ctx: Any, message: str, ordering: bool = False) -> Answer | None:
     """What the owner asked about the last supplier list, or None if it is about something else.
-    `ordering`: also draft from a pick, for the demo, which has no coach model behind it."""
+    `ordering`: also draft from a pick, for the demo, which has no coach model behind it.
+
+    Only a message clearly about the list is answered: it names a supplier, or says supplier,
+    vendor, wholesaler or wala with a pick (first, cheapest, nearest) or "compare", or it is a
+    few words right after the list. Every word must belong to such a message, so "samosa sasta
+    karo", "compare sales" and "remove the first item from my menu" go to their own paths."""
     from .agent import ui_language
     from .instant_supply import ORDERS
 
     text = " ".join(message.split())
+    if not text or not ctx or not getattr(ctx, "business_id", None):
+        return None
+    store, bid = ctx.store, ctx.business_id
+    follow_up = supplier_book.list_was_last(store, bid)
+    said = _answer(ctx, text, ordering, follow_up, ui_language.get(), ORDERS)
+    if said is None and follow_up:
+        supplier_book.end_follow_up(store, bid)
+    return said
+
+
+def _answer(
+    ctx: Any, text: str, ordering: bool, follow_up: bool, ui: str, taps: Any
+) -> Answer | None:
     # The vendor list's Order tap has its own path, on the list it was tapped from.
-    if not text or NEGATION.search(text) or any(tap.match(text) for tap, _ in ORDERS):
+    if NEGATION.search(text) or any(tap.match(text) for tap, _ in taps):
         return None
     wants = {
         "remove": REMOVE.search(text),
@@ -160,14 +242,23 @@ def answer(ctx: Any, message: str, ordering: bool = False) -> Answer | None:
     }
     if not any(wants.values()):
         return None
-    language = ui_language.get().split("-")[0].casefold()
+    language = ui.split("-")[0].casefold()
     if language not in {"en", "hi"}:
         return None
     search = supplier_book.last_search(ctx.store, ctx.business_id)
     if not search or not search.get("suppliers") or not _about_this_list(text, search):
         return None
+    words = _only_list_words(text, search)
+    if words is None:
+        return None
+    picked = pick_supplier(text, search)
+    clear = _named_supplier(text, search) or bool(
+        SUPPLIER_WORD.search(text) and (picked or wants["compare"])
+    )
+    if not clear and not (follow_up and len(words) <= FOLLOW_UP_WORDS):
+        return None
     hindi = language == "hi"
-    card = _card(search, pick_supplier(text, search))
+    card = _card(search, picked)
     if card and wants["remove"]:
         return _removing(ctx, card, hindi)
     if card and wants["save"]:

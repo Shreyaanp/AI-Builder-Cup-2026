@@ -702,17 +702,18 @@ async def public_demo_turn(ctx: Any, question: str) -> list[StreamEvent] | None:
     text = _plain(question)
     reply: str | None = None
     from .instant import make_list
+    from .supplier_chat import answer as supplier_answer
 
+    # Only words clearly about the last supplier list are answered here; every other message
+    # also ends its follow-up window, so it is asked before anything else (OB-265).
+    about_list = supplier_answer(ctx, question, ordering=True)
+    if about_list:
+        return [*about_list.events, StreamEvent(kind="reply", text=about_list.reply)]
     made = make_list(ctx, question)
     if made:
         return [*made.events, StreamEvent(kind="reply", text=made.reply)]
     # The owner's own words first: Hindi, Hinglish and two-in-one changes, "what first?", today's
     # sales, closing the day, tomorrow's note and the app language (OB-261, 262, 264, S2-9).
-    from .supplier_chat import answer as supplier_answer
-
-    about_list = supplier_answer(ctx, question, ordering=True)
-    if about_list:
-        return [*about_list.events, StreamEvent(kind="reply", text=about_list.reply)]
     found = (
         app_language(question)
         or customer_reply(ctx, question)

@@ -136,8 +136,23 @@ def saved_ids(store: MerchantRepository, bid: str) -> set[str]:
 
 
 def remember_search(store: MerchantRepository, bid: str, result: dict[str, Any]) -> None:
+    """The list the owner was just shown; their next message may be a short follow-up to it."""
     now = time.time()
-    store.feature_docs.put(SEARCH, bid, bid, now, {**result, "at": now})
+    store.feature_docs.put(SEARCH, bid, bid, now, {**result, "at": now, "follow_up": True})
+
+
+def list_was_last(store: MerchantRepository, bid: str) -> bool:
+    """True when the shop's last turn showed (or answered about) the supplier list."""
+    found = store.feature_docs.get(SEARCH, bid)
+    return bool(found and found.get("follow_up")) and last_search(store, bid) is not None
+
+
+def end_follow_up(store: MerchantRepository, bid: str) -> None:
+    """Another message came in: from now on only words clearly about suppliers reach the list."""
+    found = store.feature_docs.get(SEARCH, bid)
+    if found and found.get("follow_up"):
+        at = float(found.get("at", 0))
+        store.feature_docs.put(SEARCH, bid, bid, at, {**found, "follow_up": False})
 
 
 def last_search(store: MerchantRepository, bid: str) -> dict[str, Any] | None:
@@ -147,6 +162,6 @@ def last_search(store: MerchantRepository, bid: str) -> dict[str, Any] | None:
         return None
     mine = saved_ids(store, bid)
     return {
-        **{key: value for key, value in found.items() if key != "at"},
+        **{key: value for key, value in found.items() if key not in {"at", "follow_up"}},
         "suppliers": [{**card, "saved": card["id"] in mine} for card in found["suppliers"]],
     }
