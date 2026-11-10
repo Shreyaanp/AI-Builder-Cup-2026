@@ -97,12 +97,20 @@ test('an English shop that writes Hindi is answered in English and stays English
   page,
 }) => {
   await openDemo(page, 'en')
-  // A whole Hindi question, and one Hindi word in an English sentence.
-  for (const message of ['आज कितनी बिक्री हुई?', 'I need दूध']) {
+  // Hindi questions are understood and answered in English (#714 review): never "Sorry".
+  for (const [message, answer] of [
+    ['आज कितनी बिक्री हुई?', "Today's demo sales"],
+    ['दूध कितना बचा है?', 'no stock count saved for milk'],
+    ['मसाला चाय का दाम क्या है?', 'The demo price for Masala chai is ₹20'],
+    ['सबसे ज़्यादा क्या बिका?', 'best sellers: Masala chai'],
+  ]) {
     const reply = (await say(page, 'en', message)).replace(message, '')
     expect(reply, message).not.toMatch(DEVANAGARI)
-    expect(reply, message).toContain('I reply in English, the language you chose')
+    expect(reply, message).toContain(answer)
+    expect(reply, message).not.toContain("Sorry, I didn't catch that")
   }
+  // One Hindi word in an English sentence: still English.
+  expect((await say(page, 'en', 'I need दूध')).replace('I need दूध', '')).not.toMatch(DEVANAGARI)
   // What it understood in Hindi is still done, in English.
   await page.getByRole('textbox', { name: 'Message', exact: true }).fill('समोसा ख़त्म हो गया')
   await page.getByRole('button', { name: 'Send', exact: true }).click()
@@ -120,7 +128,7 @@ test('an English shop that writes Hindi is answered in English and stays English
 
 test('a Hindi shop that types English is answered in Hindi, drafts in Hindi', async ({ page }) => {
   await openDemo(page, 'hi')
-  for (const message of ['what sold today?', 'kal kya banau?', 'hello']) {
+  for (const message of ['what sold today?', 'kal kya banau?', 'sabse zyada kya bika?', 'hello']) {
     const reply = (await say(page, 'hi', message)).replace(message, '')
     expect(reply, message).toMatch(DEVANAGARI)
     expect(reply, message).not.toMatch(/Sorry|Next, open|Today’s demo sales|menu items/)

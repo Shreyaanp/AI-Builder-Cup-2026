@@ -8,6 +8,7 @@ from typing import Any, cast
 
 from .app_guide import Feature, by_ask, next_line, next_line_hi
 from .contracts import StreamEvent
+from .demo_coach_en import in_english, item_in
 from .demo_coach_hi import HINDI_UNITS, LOW_HI, hindi_reply, in_hindi
 from .demo_coach_words import (
     FALLBACK_HI,
@@ -143,7 +144,7 @@ BEST_SELLERS = re.compile(
     r"(?:(?:what\s+(?:are|were|is)|what's|show(?:\s+me)?|which\s+are)\s+)?(?:my\s+|the\s+)?"
     r"(?:best[\s-]*sell(?:ers?|ing\s+items?)|top[\s-]*sell(?:ers?|ing\s+items?)"
     r"|most\s+popular\s+items?|top\s+items?)(?:\s+(?:this|last)\s+week)?"
-    r"|what\s+sells\s+(?:the\s+)?(?:best|most)(?:\s+(?:this|last)\s+week)?",
+    r"|what\s+(?:sells|sold)\s+(?:the\s+)?(?:best|most)(?:\s+(?:this|last)\s+week)?",
     re.I,
 )
 # Shop visits and page views, not the owner's own trips ("visit the wholesaler").
@@ -715,9 +716,17 @@ async def public_demo_turn(ctx: Any, question: str) -> list[StreamEvent] | None:
         events = await _order_from(ctx, question) or await _find_suppliers(ctx, question)
         if events:
             return events
-    feature = by_ask(question)
     # The reply is in the shop's chosen language; Devanagari only says how to read the words.
     hindi = speaks_hindi()
+    feature = by_ask(question)
+    devanagari = bool(HINDI.search(question))
+    # An English shop asking in Hindi or Hinglish: the same question, answered in English. A
+    # screen's own Hinglish phrase keeps its guide answer.
+    english = None if hindi or (feature and not devanagari) else in_english(question)
+    if english:
+        return await public_demo_turn(ctx, english)
+    if feature and devanagari and not hindi and feature.id != "google":
+        return _guided(ctx, feature)
     # In the demo, Get on Google is the practice run, not the real guide's "finish on Google".
     if feature and hindi and feature.id != "google":
         return _hindi(ctx, feature)
@@ -898,7 +907,13 @@ def public_demo_reply(ctx: Any, question: str) -> str | None:
             "\u0916\u0924\u094d\u092e",
             "\u0938\u094d\u091f\u0949\u0915",
         )
-    ):
+    ) or re.search(r"\bhow\s+much\b.*\b(?:left|remaining)\b", words):
+        said = item_in(question)
+        if said and not named:
+            # "How much milk is left?" where the menu has no milk: never another item's count.
+            return f"The demo shop has no stock count saved for {said.lower()}. " + next_line(
+                "sold_out"
+            )
         if product.get("available") is False:
             count = "sold out"
         elif product.get("stock") is None:
@@ -912,6 +927,9 @@ def public_demo_reply(ctx: Any, question: str) -> str | None:
     if any(
         term in words for term in ("price", "\u0915\u0940\u092e\u0924", "\u0926\u093e\u092e")
     ) or re.search(r"\b(?:is|now)\s+\d+|\b\d+\s+now\b", words):
+        said = item_in(question)
+        if said and not named:
+            return f"{said} is not on the demo shop's menu. " + next_line("price_change")
         return (
             f"The demo price for {name} is ₹{price:g}. "
             "In your real shop, a price change waits for review. " + next_line("price_change")

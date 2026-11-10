@@ -9,6 +9,7 @@ from datetime import date
 from typing import Any, cast
 
 from .app_guide import next_line_hi
+from .demo_coach_en import item_in
 from .demo_coach_words import FALLBACK_HI
 from .demo_item_names import HINDI_ITEMS, HINDI_UNITS, hindi_item, item_named_in
 
@@ -27,8 +28,12 @@ ENGLISH_CUES = (
     (r"\b(?:order|reorder|supplier\w*|buy|mangao|mangana|kharid\w*)\b", "ऑर्डर"),
     (r"\b(?:tomorrow|prep|kal|banau|banaun|banana)\b", "कल"),
     (r"\b(?:hours?|open|opening|close[ds]?|timing|samay|khula|band)\b", "समय"),
-    (r"\b(?:customers?|messages?|questions?|inquir\w*|grahak|sawal)\b", "ग्राहक"),
-    (r"\b(?:best ?sellers?|top ?sellers?|most sold|sells? (?:the )?most)\b", "बेस्ट सेलर"),
+    (r"\b(?:customers?|messages?|questions?|inquir\w*|grahak\w*|sawal)\b", "ग्राहक"),
+    (
+        r"\b(?:best ?sellers?|top ?sellers?|most sold|(?:sells?|sold) (?:the )?most|sabse "
+        r"(?:zyada|jyada|jada|ziada))\b",
+        "बेस्ट सेलर",
+    ),
     (r"^(?:hello|hi|hey|namaste|namaskar)\b", "नमस्ते"),
 )
 
@@ -38,11 +43,10 @@ def in_hindi(question: str) -> str:
     too ("milk" → दूध), so the answer names the same item."""
     words = question.casefold()
     cues = [cue for pattern, cue in ENGLISH_CUES if re.search(pattern, words)]
-    cues += [
-        HINDI_ITEMS[name]
-        for name in sorted(HINDI_ITEMS, key=len, reverse=True)
-        if re.search(rf"(?<!\w){re.escape(name.casefold())}(?!\w)", words)
-    ][:1]
+    # The item by its English or Hinglish name ("milk", "doodh" → दूध).
+    item = item_in(question)
+    if item and item in HINDI_ITEMS:
+        cues.append(HINDI_ITEMS[item])
     return " ".join([question, *cues])
 
 

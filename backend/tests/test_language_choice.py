@@ -63,9 +63,14 @@ def test_english_shop_still_gets_the_change_it_asked_for_in_hindi(demo):  # noqa
 
 
 def test_english_shop_not_understood_in_hindi_is_told_how_to_switch(demo):  # noqa: F811
-    reply = reply_of(demo("मेरा फ़ोन नंबर बदलो", "en"))
+    reply = reply_of(demo("मुझे एक गाना सुनाओ", "en"))
     assert "I reply in English, the language you chose" in reply
     assert "Change language to Hindi" in reply and not DEVANAGARI.search(reply)
+
+
+def test_english_shop_asking_for_a_screen_in_hindi_gets_its_guide_in_english(demo):  # noqa: F811
+    reply = reply_of(demo("मेरा फ़ोन नंबर बदलो", "en"))
+    assert "Shop name, kind and phone" in reply and not DEVANAGARI.search(reply)
 
 
 @pytest.mark.parametrize(
@@ -127,6 +132,119 @@ def test_supplier_order_message_is_in_the_shops_language(demo):  # noqa: F811
 
 
 # --- Reminders ------------------------------------------------------------------------------------
+
+
+# --- Understood in any script, answered in the chosen language (#714 review) --------------------
+
+# The review's table: each question in Hindi script, Hinglish and English, with what the
+# English shop's answer and the Hindi shop's answer must say (a real answer, never the fallback).
+ASKED = {
+    "sales": (
+        ("आज कितनी बिक्री हुई?", "aaj kitni bikri hui?", "How much did I sell today?"),
+        "Today's demo sales",
+        "बिक्री",
+    ),
+    "stock": (
+        ("दूध कितना बचा है?", "doodh kitna bacha hai?", "How much milk is left?"),
+        "no stock count saved for milk",
+        "दूध का स्टॉक",
+    ),
+    "price": (
+        (
+            "मसाला चाय का दाम क्या है?",
+            "masala chai ka daam kya hai?",
+            "What is the price of masala chai?",
+        ),
+        "The demo price for Masala chai is ₹20",
+        "मसाला चाय की कीमत ₹20",
+    ),
+    "best_sellers": (
+        ("सबसे ज़्यादा क्या बिका?", "sabse zyada kya bika?", "What sold the most?"),
+        "best sellers: Masala chai",
+        "सबसे ज़्यादा बिकने वाले आइटम: मसाला चाय",
+    ),
+    "tomorrow": (
+        ("कल क्या बनाऊँ?", "kal kya banau?", "What should I make tomorrow?"),
+        "forecast for Masala chai tomorrow",
+        "कल की तैयारी",
+    ),
+    "customers": (
+        ("ग्राहकों ने क्या पूछा?", "grahakon ne kya pucha?", "What did customers ask?"),
+        "demo customer questions",
+        "ग्राहक",
+    ),
+}
+FALLBACKS = ("Sorry, I didn't catch that", "माफ़ कीजिए, मैं ठीक से समझ नहीं पाई")
+
+
+@pytest.mark.parametrize(
+    ("message", "language", "expected"),
+    [
+        (message, language, english if language == "en" else hindi)
+        for messages, english, hindi in ASKED.values()
+        for message in messages
+        for language in ("en", "hi")
+    ],
+)
+def test_every_question_is_understood_and_answered_in_the_chosen_language(
+    demo,  # noqa: F811
+    message,
+    language,
+    expected,
+):
+    """An English shop asking in Hindi or Hinglish gets the real answer in English; a Hindi
+    shop asking in English or Hinglish gets it in Hindi."""
+    reply = reply_of(demo(message, language))
+    assert expected in reply, (message, language, reply)
+    assert not any(fallback in reply for fallback in FALLBACKS), (message, language, reply)
+    if language == "en":
+        assert not DEVANAGARI.search(reply), (message, reply)
+    else:
+        assert not ENGLISH_SENTENCE.search(reply), (message, reply)
+
+
+@pytest.mark.parametrize(
+    ("message", "language", "expected"),
+    [
+        ("समोसा ख़त्म हो गया", "en", "Samosa: sold out"),
+        ("samosa khatam ho gaya", "en", "Samosa: sold out"),
+        ("मसाला चाय अब 25 रुपये की है", "en", "Masala chai: price ₹20 → ₹25"),
+        ("masala chai ka price 25 karo", "en", "Masala chai: price ₹20 → ₹25"),
+        ("दूध का ऑर्डर करो", "en", "Demo suppliers near you for Milk"),
+        ("doodh mangao", "en", "Demo suppliers near you for Milk"),
+        ("दुकान रात 10 बजे बंद करो", "en", "Demo shop hours are"),
+        ("samosa sold out", "hi", "समोसा आज के लिए ख़त्म"),
+        ("masala chai ka price 25 karo", "hi", "मसाला चाय ₹20 → ₹25"),
+        ("doodh mangao", "hi", "दूध के लिए पास के डेमो सप्लायर"),
+        ("दुकान रात 10 बजे बंद करो", "hi", "डेमो दुकान का समय"),
+    ],
+)
+def test_change_requests_are_understood_in_any_script(demo, message, language, expected):  # noqa: F811
+    """What worked on main still works: a change or an order asked in Hindi or Hinglish is
+    prepared, and said in the shop's language."""
+    reply = reply_of(demo(message, language))
+    assert expected in reply, (message, language, reply)
+    if language == "en":
+        assert not DEVANAGARI.search(reply), (message, reply)
+
+
+def test_only_hindi_or_hinglish_is_read_again_in_english() -> None:
+    """Only a Hindi or Hinglish question is read again in English; English stays as it was."""
+    from app.demo_coach_en import in_english, item_in
+
+    assert in_english("What sold the most?") is None
+    assert in_english("मसाला चाय का दाम क्या है?") == "What is the price of Masala chai?"
+    assert in_english("doodh kitna bacha hai?") == "How much Milk is in stock?"
+    assert in_english("मेरा फ़ोन नंबर बदलो") is None
+    assert item_in("chai patti kitni bachi hai?") == "Tea dust"
+
+
+def test_the_live_coach_answers_in_the_chosen_language_whatever_script_is_typed() -> None:
+    """The live coach reads Hindi itself; its instruction pins the reply to the app language."""
+    from app.agent import INSTRUCTION
+
+    assert "Reply in the owner's chosen app language" in INSTRUCTION
+    assert "even when the owner mixes in other languages" in " ".join(INSTRUCTION.split())
 
 
 def test_reminder_language_follows_the_app_at_once(push_settings: Settings, monkeypatch: Any):  # noqa: F811
