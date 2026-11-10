@@ -44,6 +44,7 @@ import { chatBubbleStyle } from '../coach/bubbleStyle'
 import { PlainText } from '../../design/PlainText'
 import { RichText } from '../../design/LazyRichText'
 import { stripOfflinePrefix } from './offlinePrefix'
+import { withoutSummaryTitle } from './closingLine'
 import { stripMarkdown } from '../../design/markdownUtils'
 import { RateLimitError, streamCoach, TooSlowError, TURN_IDLE_MS } from '../../api/stream'
 import type { CoachEvent } from '../../api/stream'
@@ -572,9 +573,11 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
 
   /** A coach line joins the chat (and the camera or map it asks for, once). */
   function addCoachLine(text: string) {
-    if (!text.trim()) return
-    add({ role: 'coach', text: text.trim() })
-    offerCards(text)
+    // The summary card says the shop is set up: the closing words never say it a second time.
+    const said = summaryShown.current ? withoutSummaryTitle(text, o.summaryTitle) : text
+    if (!said.trim()) return
+    add({ role: 'coach', text: said.trim() })
+    offerCards(said)
   }
   /**
    * The coach's turn is in: it joins the chat, is spoken, and the silence clock starts. A live
@@ -742,6 +745,15 @@ function Journey({ setGalleryPhoto }: { setGalleryPhoto: (photo: GalleryPhoto | 
     )
     summaryLastRef.current = true
     setSummaryLastState(true)
+    // The closing words came in first: the card's title says the same, so they say it no more.
+    setLines((items) => {
+      const owner = items.findLastIndex((line) => line.role === 'owner')
+      return items.flatMap((line, index) => {
+        if (line.role !== 'coach' || index < owner) return [line]
+        const text = withoutSummaryTitle(line.text, o.summaryTitle)
+        return text ? [{ ...line, text }] : []
+      })
+    })
     add({ role: 'summary' })
   }
   /** Review my shop (big button): an already live shop goes straight to the congratulations. */

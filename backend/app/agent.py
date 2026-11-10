@@ -881,6 +881,9 @@ NEW_SHOP_TOPICS = (
 GOODBYE = "Okay, see you soon. Everything is saved."
 SELL_HINT = "No problem. Just say something like: I sell tea and snacks. "
 FINISH_BY_TAP = "Let us finish the rest on one screen: tap Type it in instead."
+# Everything is gathered: the summary card's title says "Your shop is set up", so the closing
+# words only wish them well (the owner read the same sentence twice, main CI 10 Nov).
+SET_UP = "All the best with your shop! "
 # The offline new-shop coach in Hindi (#100: a Hindi owner was greeted in English). Each English
 # sentence the coach says, and its Hindi; a reply is translated sentence by sentence.
 OFFLINE_HI = {
@@ -921,7 +924,7 @@ OFFLINE_HI = {
         "आपकी दुकान सेव हो गई। अभी सिर्फ़ आप इसे देख सकते हैं। "
     ),
     "All set. You can add your menu from Today.": ("सब तैयार है। आप अपना मेन्यू आज वाले पेज से जोड़ सकते हैं।"),
-    "Your shop is set up. ": "आपकी दुकान तैयार है। ",
+    SET_UP: "आपकी दुकान के लिए शुभकामनाएँ! ",
     **{
         f"No problem, I will leave {label} out for now. You can add it later. ": (
             f"कोई बात नहीं, {hindi} अभी छोड़ देते हैं। आप इसे बाद में जोड़ सकते हैं। "
@@ -1086,7 +1089,7 @@ def _new_shop_reply(
     if not (done["name"] and done["sell"] and done["location"]):
         # Basics put off: the rest is finished with taps, never asked in a loop.
         return prefix + FINISH_BY_TAP
-    return prefix + "Your shop is set up. "
+    return prefix + SET_UP
 
 
 class OfflineCoachModel(BaseLlm):
