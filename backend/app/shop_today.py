@@ -32,6 +32,7 @@ from .rescue import buffer_for, local_now
 from .shop_time import shop_timezone
 from .supply_chain import runs_out
 from .supply_coming import arrivals_by_item
+from .today_cards import TodayCards, cards_for
 
 router = APIRouter(prefix="/api/v1/businesses", tags=["today"])
 log = structlog.get_logger(__name__)
@@ -130,6 +131,8 @@ class Today(BaseModel):
     # Expenses noted for yesterday and today (minor units; 0 with none), for "spent · left".
     spent_yesterday: int = 0
     spent_today: int = 0
+    # What the owner chose about Today cards (dismissed, how often) and supplier replies (OB-176).
+    cards: TodayCards = TodayCards()
 
 
 def _day(fields: dict[str, Any], at: float | None = None) -> str:
@@ -376,6 +379,7 @@ async def today_page(business_id: str, request: Request) -> Today:
             spent_on, service, business_id, today - timedelta(days=1)
         ),
         spent_today=await anyio.to_thread.run_sync(spent_on, service, business_id, today),
+        cards=await anyio.to_thread.run_sync(cards_for, service, uid, business_id, fields),
     )
 
 

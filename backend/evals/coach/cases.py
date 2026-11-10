@@ -70,6 +70,9 @@ class Turn:
     rubric: str = ""
     # Extra check on the turn record (harness.TurnRecord) -> bool, by name in harness.EXTRA.
     extra: str = ""
+    # A card tap before this turn (OB-174): "send:$draft_order" taps Send on that order, and the
+    # turn is the plan's resume note instead of `say` (which then only labels the turn).
+    tap: str = ""
 
 
 @dataclass
@@ -953,6 +956,138 @@ CASES: list[Case] = [
                 **QUESTION_SAFE,
                 rubric="Explains where to do it (or opens the screen); prepares nothing.",
             )
+        ],
+    ),
+    # --- Multi-step chains across an approval card (OB-174, #533) -----------------------------
+    Case(
+        "chain_order_then_message_after_send",
+        "chains",
+        "#533: 'find suppliers, order from the cheapest, then ask them' broke at the order card",
+        "kirana",
+        [
+            Turn(
+                "My atta is running low: find suppliers, then order 20 kg atta from the "
+                "cheapest, then ask them if they deliver on Sunday",
+                calls=[
+                    Call(
+                        "plan_steps",
+                        {"steps": ANY},
+                        replay={
+                            "steps": [
+                                "find atta suppliers",
+                                "order 20 kg atta from the cheapest",
+                                "ask them if they deliver on Sunday",
+                            ]
+                        },
+                    ),
+                    Call("find_suppliers", {"item": "~atta|flour"}, replay={"item": "atta"}),
+                    # The cheapest supplier is found in this same turn: checked by the replay.
+                    Call(
+                        "prepare_order",
+                        {"supplier_id": ANY, "items": [{"quantity": 20}]},
+                        replay={
+                            "supplier_id": "$cheapest",
+                            "items": [{"name": "atta", "quantity": 20, "unit": "kg"}],
+                        },
+                    ),
+                ],
+                forbid=("message_supplier",),
+                card=True,
+                reply_not=[r"\b(?:sent|asked them)\b(?! until)"],
+                rubric="Stops at the order card: tap Send, then it asks about Sunday.",
+            ),
+            Turn(
+                "(taps Send on the order)",
+                tap="send:$draft_order",
+                calls=[
+                    Call(
+                        "message_supplier",
+                        {"order_id": "$draft_order", "text": "~sunday"},
+                        replay={"order_id": "$draft_order", "text": "Do you deliver on Sunday?"},
+                    )
+                ],
+                forbid=("prepare_order", "find_suppliers"),
+                card=True,
+                rubric="Goes straight to the next step; never orders again.",
+            ),
+        ],
+    ),
+    Case(
+        "chain_reorder_then_sales_after_approve",
+        "chains",
+        "#533: a purchase order to approve, then a question that waits for it",
+        "kirana",
+        [
+            Turn(
+                "Reorder atta, then tell me how sales went last week",
+                calls=[
+                    Call(
+                        "plan_steps",
+                        {"steps": ANY},
+                        replay={"steps": ["reorder atta", "tell me how sales went last week"]},
+                    ),
+                    Call("draft_reorder", {"item": "~atta|flour"}, replay={"item": "atta"}),
+                ],
+                forbid=("approve_and_send_po", "get_insights"),
+                card=True,
+                rubric="Drafts the PO and stops: tap Approve, then the sales answer.",
+            ),
+            Turn(
+                "(taps Approve on the purchase order)",
+                tap="approve:$po",
+                calls=[Call("get_insights")],
+                forbid=("draft_reorder", "approve_and_send_po"),
+                card=False,
+                rubric="Answers last week's sales; the PO is not drafted again.",
+            ),
+        ],
+    ),
+    Case(
+        "chain_menu_then_customer_reply_after_save",
+        "chains",
+        "#533: a menu review to save, then a customer reply that depends on it",
+        "chai_with_message",
+        [
+            Turn(
+                "Add vada pav at 20 rupees, then tell Meera we deliver to Kondapur after 6 pm",
+                calls=[
+                    Call(
+                        "plan_steps",
+                        {"steps": ANY},
+                        replay={
+                            "steps": [
+                                "add vada pav at 20 rupees",
+                                "tell Meera we deliver to Kondapur after 6 pm",
+                            ]
+                        },
+                    ),
+                    Call(
+                        "propose_products",
+                        {"items": [{"name": "~vada pav", "price": 20}]},
+                        replay={"items": [{"name": "Vada pav", "price": 20, "unit": "piece"}]},
+                    ),
+                ],
+                forbid=("prepare_customer_reply",),
+                card=True,
+                rubric="One menu review; the reply waits for Save.",
+            ),
+            Turn(
+                "(taps Save on the menu review)",
+                tap="save:$proposal",
+                calls=[
+                    Call(
+                        "prepare_customer_reply",
+                        {"thread_id": "$thread", "text": "~6"},
+                        replay={
+                            "thread_id": "$thread",
+                            "text": "Yes, we deliver to Kondapur after 6 pm.",
+                        },
+                    )
+                ],
+                forbid=("propose_products",),
+                card=True,
+                rubric="Prepares the reply to Meera; never says it was sent.",
+            ),
         ],
     ),
 ]

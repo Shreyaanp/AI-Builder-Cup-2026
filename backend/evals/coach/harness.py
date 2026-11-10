@@ -29,8 +29,9 @@ from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
 from google.genai import types
 
-from app import supply_chain
+from app import sourcing, supply_chain
 from app.agent import make_agent, ui_language
+from app.coach_plan import NOTE_STATE, PLAN_STATE, resume
 from app.coordinator import MerchantContext, current
 from app.merchant import MerchantStore
 from app.settings import Settings
@@ -76,6 +77,8 @@ def approval_card(kind: str, data: dict[str, Any] | None) -> bool:
 class TurnRecord:
     say: str
     calls: list[dict[str, Any]] = field(default_factory=list)
+    # Per model call: the tools offered, and the calls it made (OB-175).
+    offers: list[set[str]] = field(default_factory=list)
     responses: list[dict[str, Any]] = field(default_factory=list)
     cards: list[str] = field(default_factory=list)
     proposals: list[dict[str, Any]] = field(default_factory=list)
@@ -163,6 +166,17 @@ def found(call: Call, record: TurnRecord, names: dict[str, Any]) -> bool:
 
 # The calls the replay model makes this turn, resolved when made (ids found mid-case).
 script: ContextVar[Callable[[int], tuple[str, dict[str, Any]] | None]] = ContextVar("script")
+# The tool names each model call of this turn was offered (OB-175: fewer tools per turn).
+offered: ContextVar[list[set[str]]] = ContextVar("offered")
+
+
+def declared(llm_request: LlmRequest) -> set[str]:
+    return {
+        str(declaration.name)
+        for tool in (llm_request.config.tools if llm_request.config else None) or []
+        if isinstance(tool, types.Tool)
+        for declaration in tool.function_declarations or []
+    }
 
 
 class ReplayModel(BaseLlm):
@@ -180,6 +194,7 @@ class ReplayModel(BaseLlm):
                 break
             answered += sum(1 for part in parts if part.function_response)
         step = script.get()(answered)
+        offered.get().append(declared(llm_request))
         part = (
             types.Part(function_call=types.FunctionCall(name=step[0], args=step[1]))
             if step
@@ -220,6 +235,10 @@ def learn(names: dict[str, Any], tool: str, response: dict[str, Any]) -> None:
             names["cheapest"] = min(priced, key=lambda s: float(s["item"]["price"]))["id"]
     elif tool == "prepare_order" and response.get("order_id"):
         names["draft_order"] = response["order_id"]
+    elif tool == "draft_reorder" and response.get("order_id"):
+        names["po"] = response["order_id"]
+    elif response.get("proposal_id"):
+        names["proposal"] = response["proposal_id"]
 
 
 # --- Checks -----------------------------------------------------------------------------------
@@ -261,6 +280,13 @@ def check(
         results[f"{call.name} accepts the arguments"] = bool(last) and (
             last[0]["response"].get("status") not in REFUSED
         )
+    if record.offers:
+        # Offline the replay model makes the call whatever it was offered: this is the check
+        # that the turn's tool areas (OB-175) still hold every call the case needs.
+        unoffered = sorted({call["name"] for call in record.calls} - set().union(*record.offers))
+        results[
+            f"offered every tool it called{f' (not {unoffered})' if unoffered else ''}"
+        ] = not unoffered
     made = {call["name"] for call in record.calls}
     if forbidden := sorted(made & set(turn.forbid)):
         results[f"must not call {', '.join(forbidden)}"] = False
@@ -301,6 +327,40 @@ def settings_for(mode: Mode, model: str = "") -> Settings:
     )
 
 
+async def tap_and_resume(
+    sessions: InMemorySessionService,
+    session_id: str,
+    ctx: MerchantContext,
+    tap: str,
+    names: dict[str, Any],
+) -> tuple[str, dict[str, Any]]:
+    """The owner taps a card, then the app's resume turn (OB-174): the note and its state."""
+    action, _, ref = tap.partition(":")
+    card_id = str(fill(ref, names))
+    bid = str(ctx.business_id)
+    if action == "send":
+        order = sourcing.get_order(ctx.store, UID, bid, card_id)
+        await anyio.to_thread.run_sync(
+            sourcing.confirm, ctx.store, UID, bid, card_id, order["version"]
+        )
+    elif action == "approve":
+        po = supply_chain.get_po(ctx.store, UID, bid, card_id)
+        await anyio.to_thread.run_sync(
+            supply_chain.approve, ctx.store, UID, bid, card_id, po["version"]
+        )
+    elif action == "save":
+        await anyio.to_thread.run_sync(
+            ctx.store.commit, UID, card_id, str(names.get("proposal_digest"))
+        )
+    session = await sessions.get_session(app_name="coach_eval", user_id=UID, session_id=session_id)
+    plan = session.state.get(PLAN_STATE) if session else None
+    decided = await anyio.to_thread.run_sync(resume, plan, ctx, card_id, action == "stop")
+    if not decided["run"]:
+        raise AssertionError(f"the plan did not resume after {tap}: {plan}")
+    ctx.plan = decided["plan"]
+    return str(decided["note"]), {PLAN_STATE: decided["plan"], NOTE_STATE: True}
+
+
 async def run_case(case: Case, mode: Mode, root: Path, model: str = "") -> CaseResult:
     store = MerchantStore(str(root / f"{case.id}.sqlite3"))
     # Some seeds run the supply chain's own event loop: keep them off this one.
@@ -331,12 +391,18 @@ async def run_case(case: Case, mode: Mode, root: Path, model: str = "") -> CaseR
             return call.name, fill(call.replay if call.replay is not None else call.args, names)
 
         context = MerchantContext(store, UID, bid, [], said)
-        tokens = (current.set(context), script.set(step))
+        offers: list[set[str]] = []
+        tokens = (current.set(context), script.set(step), offered.set(offers))
+        delta: dict[str, Any] | None = None
         try:
+            if turn.tap:
+                said, delta = await tap_and_resume(sessions, session.id, context, turn.tap, names)
+                context.message = said
             async for event in runner.run_async(
                 user_id=UID,
                 session_id=session.id,
                 new_message=types.Content(role="user", parts=[types.Part(text=said)]),
+                state_delta=delta,
             ):
                 for call in event.get_function_calls():
                     record.calls.append({"name": call.name, "args": dict(call.args or {})})
@@ -347,6 +413,7 @@ async def run_case(case: Case, mode: Mode, root: Path, model: str = "") -> CaseR
                 for public in public_events(event):
                     if public.kind == "proposal" and public.data:
                         record.proposals.append(public.data)
+                        names["proposal_digest"] = public.data.get("digest")
                     if approval_card(public.kind, public.data):
                         record.cards.append(public.kind)
                     if public.kind == "error":
@@ -362,5 +429,7 @@ async def run_case(case: Case, mode: Mode, root: Path, model: str = "") -> CaseR
         finally:
             current.reset(tokens[0])
             script.reset(tokens[1])
+            offered.reset(tokens[2])
+        record.offers = offers
         turns.append((record, check(turn, record, known, before, mode)))
     return CaseResult(case, mode, turns)

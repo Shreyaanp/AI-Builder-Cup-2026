@@ -5,6 +5,8 @@ import { closingMinutes, shopNow } from '../../owner/time'
 import { isFood, missingFacts, timeRanges, type AskFact } from '../shopProgress'
 import type { DayPart } from './todayCopy'
 import { leadSplit } from './leadOrder'
+import type { TodayCards } from './cardChoices'
+import { chosenCards, MAX_CARDS } from './cardRules'
 
 export type TodayFacts = components['schemas']['Today']
 export type CoachLine = components['schemas']['CoachLine']
@@ -44,6 +46,10 @@ export type Need =
   | { id: string; kind: 'soldOut'; items: Product[] }
   | { id: string; kind: 'step'; step: StepId }
   | { id: string; kind: 'facts'; facts: AskFact[] }
+  /** A supplier answered a chat order and the owner has not read it (OB-176). */
+  | { id: string; kind: 'supplierReply'; orderId: string; supplier: string; text: string }
+  /** Items on sale with no price yet: customers see no price (OB-176). */
+  | { id: string; kind: 'noPrice'; items: Product[] }
 
 export type Metric = 'sales' | 'items' | 'views' | 'questions' | 'stamps' | 'returning'
 export interface PulseLine {
@@ -70,6 +76,8 @@ export interface TodayPlan {
   lastDay: components['schemas']['LastDay'] | null
   /** A brand-new shop with no data yet: the next setup step instead of the pulse. */
   dayOne: { step: StepId } | null
+  /** The owner's choices about cards, for X (OB-176); null before the facts load. */
+  cards: TodayCards | null
 }
 
 export interface TodayInput {
@@ -94,6 +102,8 @@ export interface TodayInput {
   orderable?: string[]
   /** This morning's promise was done or cleared here (before the server facts reload). */
   promiseAnswered?: boolean
+  /** The owner's choices about cards (dismissed, how often), newest first (OB-176). */
+  cards?: TodayCards | null
 }
 
 export function isCloseDayWindow(fields: Business['fields'], now: Date): boolean {
@@ -175,6 +185,8 @@ const NEED_HINT: Record<Need['kind'], TodayHints['needs_you'][number] | null> = 
   soldOut: null,
   step: 'missing_info',
   facts: 'missing_info',
+  supplierReply: null,
+  noPrice: 'missing_info',
 }
 
 /** Kinds the shop's playbook puts first lead; everything else keeps its usual order. */
@@ -258,6 +270,15 @@ export function todayPlan(input: TodayInput): TodayPlan {
         : { id: 'promise', kind: 'promise', promise },
     )
   if (unread) all.push({ id: 'reply', kind: 'reply', count: unread })
+  const cards = input.cards ?? facts?.cards ?? null
+  for (const answer of cards?.supplier_replies ?? [])
+    all.push({
+      id: `supplier-${answer.order_id}`,
+      kind: 'supplierReply',
+      orderId: answer.order_id,
+      supplier: answer.supplier,
+      text: answer.text,
+    })
   if (closeWindow && !isClosed) all.push({ id: 'close-day', kind: 'closeDay' })
   const supplyRow: Need | null =
     supply && !merged
@@ -306,12 +327,18 @@ export function todayPlan(input: TodayInput): TodayPlan {
   if (soldOut.length) all.push({ id: 'sold-out', kind: 'soldOut', items: soldOut })
   // On its way, or just topped up: news first, "Order more" at most. Never the lead.
   if (supplyRow && input.supply?.waiting && !input.supply.soon) all.push(supplyRow)
+  // On sale with no price: what customers see says nothing (OB-176). Stock the shop only buys
+  // (for_sale false) has no price to set.
+  const unpriced = products.filter((p) => p.price === 0 && p.for_sale !== false)
+  if (unpriced.length) all.push({ id: 'no-price', kind: 'noPrice', items: unpriced })
   // On day one the hero carries the next step; elsewhere missing steps wait their turn here.
   if (!dayOne) for (const step of steps) all.push({ id: `step-${step}`, kind: 'step', step })
   const asked = shop.public ? missingFacts(shop.fields) : []
   if (asked.length) all.push({ id: 'facts', kind: 'facts', facts: asked.slice(0, 2) })
 
-  const { lead, more } = leadSplit(byPlaybook(all, facts?.hints))
+  // The owner's choices (Not now, Not useful, how often), then at most five cards (OB-176).
+  const { lead, more: rest } = leadSplit(byPlaybook(chosenCards(all, cards), facts?.hints))
+  const more = rest.slice(0, Math.max(0, MAX_CARDS - lead.length))
   return {
     part: dayPart(input.now),
     food,
@@ -323,5 +350,6 @@ export function todayPlan(input: TodayInput): TodayPlan {
     forecast,
     lastDay,
     dayOne,
+    cards,
   }
 }
