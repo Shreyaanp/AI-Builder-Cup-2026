@@ -453,6 +453,7 @@ class FirestoreMerchantStore:
                 "shop_daily",
                 "owner_habit",
                 "owner_promise",
+                "today_cards",
                 "day_total",
                 *SUPPLY_KINDS,
                 *MONEY_KINDS,

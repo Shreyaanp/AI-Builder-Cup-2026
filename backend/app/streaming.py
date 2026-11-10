@@ -169,6 +169,10 @@ def public_events(event: Event) -> list[StreamEvent]:
                 )
                 if card:
                     output.append(StreamEvent(kind=card[0], data=card[1]))  # type: ignore[arg-type]
+            plan = (response.response or {}).get("plan") if response else None
+            if isinstance(plan, dict):
+                # A multi-step plan moved on or parked on a card: the app's steps list (OB-174).
+                output.append(StreamEvent(kind="plan", data=plan))
             if response and response.name == "set_reply_language":
                 # The owner asked for another language: the app switches its own setting too.
                 changed = response.response or {}
@@ -351,7 +355,11 @@ class CoachRuntime:
         text: str,
         language: str,
         currency: str | None = None,
+        state_delta: dict[str, Any] | None = None,
+        note: bool = False,
     ) -> AsyncIterator[StreamEvent]:
+        """One typed coach turn. note=True: the server's own resume note for a multi-step plan
+        (OB-174): never the demo script or the instant path, and saved with state_delta."""
         # The app language reaches the instruction via a context variable, never the owner's
         # message (models echo bracketed prefixes back into replies).
         merchant = current.get()
@@ -363,7 +371,7 @@ class CoachRuntime:
         voice_resume.live_handles.changed(principal.uid, session_id)
         ui_language.set(language)
         timer = FirstOutput("text_agent")
-        if merchant and merchant.uid.startswith("public-demo-"):
+        if merchant and merchant.uid.startswith("public-demo-") and not note:
             from .demo_coach import public_demo_turn
 
             demo = await public_demo_turn(merchant, text)
@@ -375,6 +383,7 @@ class CoachRuntime:
                 return
         if (
             self.settings.instant_path_enabled
+            and not note
             and merchant
             and not merchant.uid.startswith("public-demo-")
         ):
@@ -390,6 +399,7 @@ class CoachRuntime:
             user_id=principal.uid,
             session_id=session_id,
             new_message=types.Content(role="user", parts=[types.Part(text=text)]),
+            state_delta=state_delta,
             # Room for context → propose → self-repair → propose → reply.
             run_config=RunConfig(streaming_mode=StreamingMode.SSE, max_llm_calls=8),
         )

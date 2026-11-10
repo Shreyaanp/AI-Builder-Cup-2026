@@ -2334,6 +2334,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/businesses/{business_id}/today/cards/dismiss": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Dismiss Card */
+        post: operations["dismiss_card_api_v1_businesses__business_id__today_cards_dismiss_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/businesses/{business_id}/today/cards/frequency": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Card Frequency */
+        post: operations["card_frequency_api_v1_businesses__business_id__today_cards_frequency_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/businesses/{business_id}/habit": {
         parameters: {
             query?: never;
@@ -4375,6 +4409,14 @@ export interface components {
              */
             owner_kind: boolean;
         };
+        /** CardFrequency */
+        CardFrequency: {
+            /**
+             * Frequency
+             * @enum {string}
+             */
+            frequency: "daily" | "important" | "off";
+        };
         /** Cash */
         Cash: {
             /** Opening */
@@ -4475,7 +4517,10 @@ export interface components {
         };
         /** CoachTurn */
         CoachTurn: {
-            /** Message */
+            /**
+             * Message
+             * @default
+             */
             message: string;
             /**
              * Language
@@ -4496,6 +4541,7 @@ export interface components {
              */
             new_shop: boolean;
             new_shop_draft?: components["schemas"]["NewShopDraft"] | null;
+            resume?: components["schemas"]["PlanResume"] | null;
         };
         /**
          * Command
@@ -4874,6 +4920,16 @@ export interface components {
             google_unavailable: boolean;
             /** Places */
             places: components["schemas"]["DiscoveryPlace"][];
+        };
+        /** Dismiss */
+        Dismiss: {
+            /** Card */
+            card: string;
+            /**
+             * Reason
+             * @enum {string}
+             */
+            reason: "not_now" | "not_useful";
         };
         /** DraftEdit */
         DraftEdit: {
@@ -6188,6 +6244,19 @@ export interface components {
             lng: number;
             /** Label */
             label: string;
+        };
+        /**
+         * PlanResume
+         * @description The owner tapped (or discarded) the card a multi-step plan waits for (OB-174).
+         */
+        PlanResume: {
+            /** Card Id */
+            card_id: string;
+            /**
+             * Stop
+             * @default false
+             */
+            stop: boolean;
         };
         /** PlanningInput */
         PlanningInput: {
@@ -7623,6 +7692,15 @@ export interface components {
              */
             note: string;
         };
+        /** SupplierReply */
+        SupplierReply: {
+            /** Order Id */
+            order_id: string;
+            /** Supplier */
+            supplier: string;
+            /** Text */
+            text: string;
+        };
         /** TailorAttributes */
         TailorAttributes: {
             /** Services */
@@ -7739,6 +7817,15 @@ export interface components {
              * @default 0
              */
             spent_today: number;
+            /**
+             * @default {
+             *       "frequency": "daily",
+             *       "hidden": [],
+             *       "resting": [],
+             *       "supplier_replies": []
+             *     }
+             */
+            cards: components["schemas"]["TodayCards"];
         };
         /** TodayArea */
         TodayArea: {
@@ -7748,6 +7835,33 @@ export interface components {
             name: string;
             /** Demo */
             demo: boolean;
+        };
+        /**
+         * TodayCards
+         * @description What the owner chose about Today cards, as of now, plus supplier replies waiting.
+         */
+        TodayCards: {
+            /**
+             * Frequency
+             * @default daily
+             * @enum {string}
+             */
+            frequency: "daily" | "important" | "off";
+            /**
+             * Hidden
+             * @default []
+             */
+            hidden: string[];
+            /**
+             * Resting
+             * @default []
+             */
+            resting: string[];
+            /**
+             * Supplier Replies
+             * @default []
+             */
+            supplier_replies: components["schemas"]["SupplierReply"][];
         };
         /** TodayFeed */
         TodayFeed: {
@@ -8143,7 +8257,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "ready" | "delta" | "reply" | "turn_complete" | "error" | "interrupted" | "input_transcript" | "output_transcript" | "audio_format" | "pong" | "ping" | "proposal" | "draft" | "workflow" | "sourcing" | "suppliers" | "order" | "rescue_proposal" | "purchase_order" | "supply_rules" | "supply" | "chart" | "action" | "payment_link";
+            kind: "ready" | "delta" | "reply" | "turn_complete" | "error" | "interrupted" | "input_transcript" | "output_transcript" | "audio_format" | "pong" | "ping" | "proposal" | "draft" | "workflow" | "sourcing" | "suppliers" | "order" | "rescue_proposal" | "purchase_order" | "supply_rules" | "supply" | "chart" | "action" | "payment_link" | "plan";
             /**
              * Session Id
              * @default null
@@ -12787,6 +12901,76 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CloseReward"] | null;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    dismiss_card_api_v1_businesses__business_id__today_cards_dismiss_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Dismiss"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TodayCards"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    card_frequency_api_v1_businesses__business_id__today_cards_frequency_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                business_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CardFrequency"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TodayCards"];
                 };
             };
             /** @description Validation Error */
