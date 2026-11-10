@@ -84,6 +84,9 @@ LIMITS: dict[str, tuple[tuple[int, int], ...]] = {
     "helpful": ((30, 600),),
     "today": ((30, 60), (600, 86_400)),
     "thread:translate": ((30, 60),),
+    # One-tap replies (#695): a real shop's model may choose among the fixed sentences, at most
+    # once per opened question the templates did not understand.
+    "thread:suggest": ((30, 60), (600, 86_400)),
     # A-4: no cost; many phones share one IP (carrier NAT, office wifi, a demo room).
     "bootstrap": ((300, 60),),
     "consent": ((120, 60),),
@@ -122,6 +125,8 @@ PAID_OWNER_ACTIONS = frozenset(
         "supply:read",
         # Every upload is moderated with paid Vision before it is saved.
         "gallery",
+        # One-tap replies may ask the text model to choose a fixed sentence (#695).
+        "thread:suggest",
     }
 )
 

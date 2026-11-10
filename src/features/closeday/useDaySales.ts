@@ -12,6 +12,9 @@ export type SavedSale = {
   upi?: number | null
 }
 
+/** Sent when a day is closed or edited, so every screen showing today's sales looks again. */
+export const DAY_CLOSED = 'chalkboard:day-closed'
+
 /** Check saved records before allowing a new close; a failed check must not look empty. */
 export function useDaySales(day: string) {
   const { api, active } = useWorkspace()
@@ -38,6 +41,12 @@ export function useDaySales(day: string) {
       })
     return () => controller.abort()
   }, [api, id, day, attempt])
+  // Closed from another screen (Coach, the chat's button): the Grow card never goes stale.
+  useEffect(() => {
+    const again = () => setAttempt((n) => n + 1)
+    window.addEventListener(DAY_CLOSED, again)
+    return () => window.removeEventListener(DAY_CLOSED, again)
+  }, [])
   const current = result && result.id === id && result.day === day ? result : null
   return {
     rows: current?.rows ?? null,

@@ -1108,7 +1108,8 @@ function busyHours(locale: string, busy: [number, number], start: Date, end: Dat
   }
   const part = (d: Date) => {
     const h = d.getUTCHours()
-    return h < 12 ? 'सुबह' : h < 16 ? 'दोपहर' : h < 20 ? 'शाम' : 'रात'
+    // Midnight to 4 is still night: "रात 12–2", never "सुबह 12".
+    return h < 4 ? 'रात' : h < 12 ? 'सुबह' : h < 16 ? 'दोपहर' : h < 20 ? 'शाम' : 'रात'
   }
   const clock = (d: Date) => {
     const m = d.getUTCMinutes()
